@@ -64,7 +64,10 @@ export function validatePlanEdit(
   rules: PlanRules,
   units: Units,
 ): Validation<PlanDraft> {
-  return validatePlanInput(input, rules, units, { unchangedStart: plan.startsAt });
+  return validatePlanInput(input, rules, units, {
+    unchangedStart: plan.startsAt,
+    unchangedRetention: plan.retentionDays,
+  });
 }
 
 export interface RetentionEdit {
@@ -75,16 +78,20 @@ export interface RetentionEdit {
   deletesNow: boolean;
 }
 
-/** Retention can change at any time; delete_at is always recomputed (spec 3.1 Retention edits). */
+/**
+ * Retention can change at any time; delete_at is always recomputed (spec 3.1 Retention edits).
+ * An unchanged retention stays valid above a lowered maximum (spec 3.10).
+ */
 export function validateRetentionEdit(
   value: string,
-  plan: Pick<Plan, "startsAt">,
+  plan: Pick<Plan, "startsAt" | "retentionDays">,
   now: Date,
   maxRetentionDays: number,
 ): Result<RetentionEdit, "retention_out_of_range" | "retention_shorter_than_recap_window"> {
   const days = /^\d+$/.test(value.trim()) ? Number(value.trim()) : Number.NaN;
   const recapWindow = defaultRecapWindow(days);
-  const checked = validateRetention(days, recapWindow, maxRetentionDays);
+  const max = days === plan.retentionDays ? Math.max(maxRetentionDays, days) : maxRetentionDays;
+  const checked = validateRetention(days, recapWindow, max);
   if (!checked.ok) return checked;
   const newDeleteAt = deleteAt(plan.startsAt, checked.value);
   return ok({

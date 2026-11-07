@@ -60,3 +60,10 @@ export function fieldErrorMessage(code: string, t: Translate): string {
 function isMessageKey(key: string): key is MessageKey {
   return Object.hasOwn(en, key);
 }
+
+/** 1..max days, plus a longer current value kept from before MAX_RETENTION_DAYS was lowered (spec 3.10). */
+export function retentionOptions(maxRetentionDays: number, current: string): string[] {
+  const options = Array.from({ length: maxRetentionDays }, (_, index) => String(index + 1));
+  if (/^\d+$/.test(current) && Number(current) > maxRetentionDays) options.push(current);
+  return options;
+}

@@ -3,21 +3,31 @@ import { mkdirSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
+import {
+  applyRetentionMax,
+  runHousekeeping,
+  runRetentionSweep,
+} from "./application/maintenance.ts";
+import type { PlanDeps } from "./application/plans.ts";
 import { createApp } from "./adapters/in/http/app.tsx";
+import { startScheduler } from "./adapters/in/scheduler.ts";
 import { createLogger, type Logger } from "./adapters/logging.ts";
-import { openInstanceKeys } from "./adapters/out/crypto/instance-keys.ts";
+import { type InstanceKeys, openInstanceKeys } from "./adapters/out/crypto/instance-keys.ts";
 import { KeyError } from "./adapters/out/crypto/keyring.ts";
 import { createIdGenerator } from "./adapters/out/ids.ts";
-import { openDatabase } from "./adapters/out/sqlite/database.ts";
+import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "./adapters/out/sqlite/plans.ts";
 import { createResponseRepository } from "./adapters/out/sqlite/responses.ts";
 import { systemClock } from "./adapters/out/system-clock.ts";
 import { createTokenService } from "./adapters/out/tokens.ts";
-import { type ConfigSource, loadConfig } from "./config.ts";
+import { type Config, type ConfigSource, loadConfig } from "./config.ts";
 
 /** Port inside the container; publish it or put a reverse proxy in front. */
 export const DEFAULT_PORT = 3000;
+
+const MINUTE_MS = 60 * 1000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
 
 export interface RunningServer {
   url: URL;
@@ -28,15 +38,18 @@ export type StartResult =
   | { ok: true; server: RunningServer; warnings: string[] }
   | { ok: false; errors: string[] };
 
-interface StartOptions {
-  port?: number;
-  logger?: Logger;
+interface Instance {
+  config: Config;
+  database: Database;
+  keys: InstanceKeys;
+  planDeps: PlanDeps;
+  warnings: string[];
 }
 
-export async function startServer(
+/** Configuration, database and keys, shared by the server and CLI commands. */
+async function openInstance(
   env: ConfigSource,
-  { port = DEFAULT_PORT, logger = createLogger() }: StartOptions = {},
-): Promise<StartResult> {
+): Promise<{ ok: true; instance: Instance } | { ok: false; errors: string[] }> {
   const loaded = loadConfig(env);
   if (!loaded.ok) return loaded;
   const { config } = loaded;
@@ -45,30 +58,47 @@ export async function startServer(
   mkdirSync(config.dataDir, { recursive: true });
   const database = await openDatabase(join(config.dataDir, "rendezroute.db"));
 
-  let keys: Awaited<ReturnType<typeof openInstanceKeys>>;
+  let keys: InstanceKeys;
   try {
     keys = await openInstanceKeys(config, database);
-    if (keys.warning !== undefined) warnings.push(keys.warning);
   } catch (error) {
     await database.close();
     if (error instanceof KeyError) return { ok: false, errors: [error.message] };
     throw error;
   }
+  if (keys.warning !== undefined) warnings.push(keys.warning);
 
-  const app = createApp({
-    config,
-    csrfKey: keys.csrfKey,
-    logger,
-    planDeps: {
-      plans: createPlanRepository(database, keys.cipher),
-      devices: createDeviceRepository(database),
-      responses: createResponseRepository(database, keys.cipher),
-      tokens: createTokenService(),
-      ids: createIdGenerator(),
-      clock: systemClock,
-      limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
-    },
-  });
+  const planDeps: PlanDeps = {
+    plans: createPlanRepository(database, keys.cipher),
+    devices: createDeviceRepository(database),
+    responses: createResponseRepository(database, keys.cipher),
+    tokens: createTokenService(),
+    ids: createIdGenerator(),
+    clock: systemClock,
+    limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
+  };
+  return { ok: true, instance: { config, database, keys, planDeps, warnings } };
+}
+
+export async function startServer(
+  env: ConfigSource,
+  { port = DEFAULT_PORT, logger = createLogger() }: { port?: number; logger?: Logger } = {},
+): Promise<StartResult> {
+  const opened = await openInstance(env);
+  if (!opened.ok) return opened;
+  const { config, database, keys, planDeps, warnings } = opened.instance;
+
+  // The first sweep finishes before the server listens, so plans past their deletion
+  // date are never served after downtime (spec 3.10: sweep at startup).
+  const scheduler = await startScheduler(
+    [
+      { name: "retention_sweep", intervalMs: MINUTE_MS, run: () => runRetentionSweep(planDeps) },
+      { name: "housekeeping", intervalMs: DAY_MS, run: () => runHousekeeping(planDeps) },
+    ],
+    { logger },
+  );
+
+  const app = createApp({ config, csrfKey: keys.csrfKey, logger, planDeps });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));
   });
@@ -80,6 +110,7 @@ export async function startServer(
     server: {
       url: new URL(`http://127.0.0.1:${address.port}`),
       close: async () => {
+        await scheduler.stop();
         await new Promise<void>((resolve, reject) =>
           server.close((error) => (error ? reject(error) : resolve())),
         );
@@ -87,4 +118,22 @@ export async function startServer(
       },
     },
   };
+}
+
+/** CLI `apply-retention-max` (spec 3.10): applies the configured maximum to existing plans. */
+export async function runApplyRetentionMax(
+  env: ConfigSource,
+): Promise<
+  | { ok: true; shortened: number; deleted: number; warnings: string[] }
+  | { ok: false; errors: string[] }
+> {
+  const opened = await openInstance(env);
+  if (!opened.ok) return opened;
+  const { config, database, planDeps, warnings } = opened.instance;
+  try {
+    const result = await applyRetentionMax(planDeps, { maxRetentionDays: config.maxRetentionDays });
+    return { ok: true, ...result, warnings };
+  } finally {
+    await database.close();
+  }
 }

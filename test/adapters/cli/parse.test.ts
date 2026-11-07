@@ -7,6 +7,10 @@ describe("parseCommand (decision I5)", () => {
     expect(parseCommand(["serve"])).toEqual({ kind: "serve" });
   });
 
+  it("knows apply-retention-max (spec 3.10)", () => {
+    expect(parseCommand(["apply-retention-max"])).toEqual({ kind: "apply-retention-max" });
+  });
+
   it("shows help", () => {
     for (const argv of [["help"], ["--help"], ["-h"]]) {
       expect(parseCommand(argv)).toEqual({

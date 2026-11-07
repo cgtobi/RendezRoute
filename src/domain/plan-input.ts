@@ -99,8 +99,14 @@ export function validatePlanInput(
   input: PlanInput,
   rules: PlanRules,
   units: Units,
-  /** When editing: a start equal to this instant is not re-checked against "now" (spec 3.1 Start date). */
-  { unchangedStart }: { unchangedStart?: Date | undefined } = {},
+  /**
+   * When editing: a start equal to `unchangedStart` is not re-checked against "now" (spec 3.1 Start date),
+   * and a retention equal to `unchangedRetention` stays valid above a lowered maximum (spec 3.10).
+   */
+  {
+    unchangedStart,
+    unchangedRetention,
+  }: { unchangedStart?: Date | undefined; unchangedRetention?: number | undefined } = {},
 ): Validation<PlanDraft> {
   const errors: FieldError[] = [];
   const fail = (field: PlanField, code: string): undefined => {
@@ -230,10 +236,15 @@ export function validatePlanInput(
       : WHOLE.test(retention)
         ? Number(retention)
         : Number.NaN;
+  // Existing plans keep their promised period when the instance maximum is lowered (spec 3.10).
+  const maxRetention =
+    requested === unchangedRetention
+      ? Math.max(rules.maxRetentionDays, requested)
+      : rules.maxRetentionDays;
   const checkedRetention = validateRetention(
     requested,
     defaultRecapWindow(requested),
-    rules.maxRetentionDays,
+    maxRetention,
   );
   if (checkedRetention.ok) retentionDays = checkedRetention.value;
   else fail("retentionDays", checkedRetention.error);

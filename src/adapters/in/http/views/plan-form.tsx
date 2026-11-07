@@ -8,7 +8,7 @@ import type { FieldError, PlanField, PlanInput } from "../../../../domain/plan-i
 import { PLAN_LIMITS } from "../../../../domain/plan-input.ts";
 import { defaultRetentionDays } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
-import { fieldErrorMessage } from "./format.ts";
+import { fieldErrorMessage, retentionOptions } from "./format.ts";
 
 const COLOR_PRESETS = [
   "#2E5BFF",
@@ -237,9 +237,9 @@ export function PlanForm({
 
       <Field field="retentionDays" label={t("form.retention")}>
         <select id={id("retentionDays")} name="retentionDays">
-          {Array.from({ length: maxRetentionDays }, (_, index) => index + 1).map((days) => (
-            <option value={String(days)} selected={retentionDays === String(days)}>
-              {days === 1 ? t("form.retentionOne") : t("form.retentionMany", { days })}
+          {retentionOptions(maxRetentionDays, retentionDays).map((days) => (
+            <option value={days} selected={retentionDays === days}>
+              {days === "1" ? t("form.retentionOne") : t("form.retentionMany", { days })}
             </option>
           ))}
         </select>

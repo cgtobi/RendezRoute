@@ -9,6 +9,7 @@ import { checkpoint, type Database } from "./database.ts";
 import type { PlansTable } from "./schema.ts";
 
 const EXACT_START = "plans.exact_location" as const;
+const DELETE_CHUNK = 500;
 
 interface StoredExactStart {
   lat?: number;
@@ -115,6 +116,22 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     updatedAt: new Date(row.updated_at),
   });
 
+  const deleteMany = async (ids: readonly string[]): Promise<void> => {
+    if (ids.length === 0) return;
+    await database.db.transaction().execute(async (trx) => {
+      // Chunks stay far below SQLite's limit of 32,766 parameters per statement.
+      for (let start = 0; start < ids.length; start += DELETE_CHUNK) {
+        // Responses, device links and creation nonces go with them (on delete cascade).
+        await trx
+          .deleteFrom("plans")
+          .where("id", "in", ids.slice(start, start + DELETE_CHUNK))
+          .execute();
+      }
+    });
+    // Deleted content also leaves the WAL (spec 3.10, decision D8).
+    checkpoint(database);
+  };
+
   return {
     async create({ plan, hostTokenHash, creationNonce, hostDeviceId }) {
       const createdAt = iso(plan.createdAt);
@@ -164,11 +181,26 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       await database.db.updateTable("plans").set(fields).where("id", "=", id).execute();
     },
 
-    async delete(id) {
-      // Responses, device links and creation nonces go with it (on delete cascade).
-      await database.db.deleteFrom("plans").where("id", "=", id).execute();
-      // Manual deletions also leave the WAL (spec 3.10, decision D8).
-      checkpoint(database);
+    delete: (id) => deleteMany([id]),
+
+    deleteMany,
+
+    async findDueForDeletion(now) {
+      const rows = await database.db
+        .selectFrom("plans")
+        .select("id")
+        .where("delete_at", "<=", now.toISOString())
+        .execute();
+      return rows.map((row) => row.id);
+    },
+
+    async findWithRetentionAbove(maxRetentionDays) {
+      const rows = await database.db
+        .selectFrom("plans")
+        .selectAll()
+        .where("retention_days", ">", maxRetentionDays)
+        .execute();
+      return rows.map(fromRow);
     },
 
     async findIdByCreationNonce(nonce) {

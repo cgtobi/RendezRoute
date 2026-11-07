@@ -161,3 +161,23 @@ describe("deleting (spec 5 feature 9)", () => {
     expect((await host.get(`/p/${planId}`)).status).toBe(200);
   });
 });
+
+describe("retention above a lowered maximum (spec 3.10)", () => {
+  it("keeps the plan's promised retention when the host saves other changes", async () => {
+    const test = await createTestApp({ env: { MAX_RETENTION_DAYS: "7" } });
+    const host = new TestClient(test.app);
+    const { planId } = await createPlanViaUi(host, { retentionDays: "7" });
+    // As if created before the owner lowered MAX_RETENTION_DAYS from 30 to 7.
+    test.database.sqlite
+      .prepare("update plans set retention_days = 30, delete_at = '2026-07-07T05:30:00.000Z'")
+      .run();
+
+    const fields = await editForm(host, planId);
+    expect(fields.retentionDays).toBe("30");
+    expect((await host.postForm(`/p/${planId}/host`, { ...fields, title: "Renamed" })).status).toBe(
+      303,
+    );
+    const row = test.database.sqlite.prepare("select title, retention_days from plans").get();
+    expect(row).toEqual({ title: "Renamed", retention_days: 30 });
+  });
+});

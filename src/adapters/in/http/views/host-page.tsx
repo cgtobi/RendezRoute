@@ -3,7 +3,7 @@ import type { Translate } from "../../../i18n/i18n.ts";
 import type { HostPerson } from "../../../../application/host.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import { CSRF_FIELD } from "../csrf.ts";
-import { fieldErrorMessage } from "./format.ts";
+import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import { PlanForm } from "./plan-form.tsx";
 
 export interface HostPageProps {
@@ -137,13 +137,11 @@ function RetentionForm(props: HostPageProps) {
           <div class={error === undefined ? "field" : "field field-invalid"}>
             <label for="field-retentionDays">{t("form.retention")}</label>
             <select id="field-retentionDays" name="retentionDays">
-              {Array.from({ length: props.maxRetentionDays }, (_, index) => String(index + 1)).map(
-                (days) => (
-                  <option value={days} selected={props.values.retentionDays === days}>
-                    {days === "1" ? t("form.retentionOne") : t("form.retentionMany", { days })}
-                  </option>
-                ),
-              )}
+              {retentionOptions(props.maxRetentionDays, props.values.retentionDays).map((days) => (
+                <option value={days} selected={props.values.retentionDays === days}>
+                  {days === "1" ? t("form.retentionOne") : t("form.retentionMany", { days })}
+                </option>
+              ))}
             </select>
             {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
           </div>

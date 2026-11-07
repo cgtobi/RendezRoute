@@ -28,6 +28,18 @@ export function createFakeRepositories(): {
     `${deviceId}|${target.role}|${target.role === "host" ? target.planId : target.responseId}`;
   const copy = (response: PlanResponse) => structuredClone(response);
 
+  /** Plan deletion with the cascades the database performs. */
+  const deletePlan = (id: string) => {
+    plans.delete(id);
+    for (const [nonce, planId] of planNonces) if (planId === id) planNonces.delete(nonce);
+    for (const [responseId, entry] of responses) {
+      if (entry.response.planId !== id) continue;
+      responses.delete(responseId);
+      for (const key of links) if (key.endsWith(`|manage|${responseId}`)) links.delete(key);
+    }
+    for (const key of links) if (key.endsWith(`|host|${id}`)) links.delete(key);
+  };
+
   return {
     plans: {
       async create({ plan, hostTokenHash, creationNonce, hostDeviceId }) {
@@ -51,15 +63,20 @@ export function createFakeRepositories(): {
         const entry = plans.get(plan.id);
         if (entry !== undefined) entry.plan = structuredClone(plan);
       },
-      async delete(id) {
-        plans.delete(id);
-        for (const [nonce, planId] of planNonces) if (planId === id) planNonces.delete(nonce);
-        for (const [responseId, entry] of responses) {
-          if (entry.response.planId !== id) continue;
-          responses.delete(responseId);
-          for (const key of links) if (key.endsWith(`|manage|${responseId}`)) links.delete(key);
-        }
-        for (const key of links) if (key.endsWith(`|host|${id}`)) links.delete(key);
+
+      async findDueForDeletion(now) {
+        return [...plans.values()]
+          .filter((e) => e.plan.deleteAt.getTime() <= now.getTime())
+          .map((e) => e.plan.id);
+      },
+      async findWithRetentionAbove(max) {
+        return [...plans.values()]
+          .filter((e) => e.plan.retentionDays > max)
+          .map((e) => structuredClone(e.plan));
+      },
+      delete: async (id) => deletePlan(id),
+      async deleteMany(ids) {
+        for (const id of ids) deletePlan(id);
       },
     },
 
@@ -80,6 +97,22 @@ export function createFakeRepositories(): {
       },
       async hasLink(deviceId, target) {
         return links.has(linkKey(deviceId, target));
+      },
+      async deleteInactive({ unlinkedLastSeenBefore, anyLastSeenBefore }) {
+        let deleted = 0;
+        for (const [id, entry] of devices) {
+          const seen = entry.device.lastSeenAt.getTime();
+          const linked = [...links].some((key) => key.startsWith(`${id}|`));
+          if (
+            seen < anyLastSeenBefore.getTime() ||
+            (!linked && seen < unlinkedLastSeenBefore.getTime())
+          ) {
+            devices.delete(id);
+            for (const key of links) if (key.startsWith(`${id}|`)) links.delete(key);
+            deleted++;
+          }
+        }
+        return deleted;
       },
       all: () => [...devices.values()].map((entry) => ({ ...entry.device })),
     },

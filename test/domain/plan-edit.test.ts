@@ -101,6 +101,42 @@ describe("validatePlanEdit (spec 3.1 Start date)", () => {
   });
 });
 
+describe("retention above a lowered maximum (spec 3.10: existing plans keep their promised period)", () => {
+  const longPlan = samplePlan({}, { retentionDays: "30" });
+  const lowered = { ...rules, maxRetentionDays: 7 };
+
+  it("keeps an unchanged retention valid when editing other fields", () => {
+    const saved = validatePlanEdit(
+      { ...planToInput(longPlan, "metric"), title: "Renamed" },
+      longPlan,
+      lowered,
+      "metric",
+    );
+    expect(saved.ok && saved.value.retentionDays).toBe(30);
+  });
+
+  it("still applies the maximum to a changed retention", () => {
+    const changed = validatePlanEdit(
+      { ...planToInput(longPlan, "metric"), retentionDays: "20" },
+      longPlan,
+      lowered,
+      "metric",
+    );
+    expect(changed).toEqual({
+      ok: false,
+      errors: [{ field: "retentionDays", code: "retention_out_of_range" }],
+    });
+  });
+
+  it("keeps an unchanged retention valid in the retention-only edit", () => {
+    expect(validateRetentionEdit("30", longPlan, started, 7).ok).toBe(true);
+    expect(validateRetentionEdit("20", longPlan, started, 7)).toEqual({
+      ok: false,
+      error: "retention_out_of_range",
+    });
+  });
+});
+
 describe("validateRetentionEdit (spec 3.1 Retention edits)", () => {
   it("recomputes delete_at and the recap window", () => {
     expect(validateRetentionEdit("3", plan, started, 30)).toEqual({

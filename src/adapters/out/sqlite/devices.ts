@@ -1,6 +1,6 @@
 // Devices and their links (spec 3.2). Only token hashes are stored.
 import type { DeviceLinkTarget, DeviceRepository } from "../../../application/ports.ts";
-import type { Database } from "./database.ts";
+import { checkpoint, type Database } from "./database.ts";
 
 const columns = (target: DeviceLinkTarget) =>
   target.role === "host"
@@ -55,6 +55,31 @@ export function createDeviceRepository(database: Database): DeviceRepository {
         )
         .executeTakeFirst();
       return row !== undefined;
+    },
+
+    async deleteInactive({ unlinkedLastSeenBefore, anyLastSeenBefore }) {
+      const result = await database.db
+        .deleteFrom("devices")
+        .where((eb) =>
+          eb.or([
+            eb("last_seen_at", "<", anyLastSeenBefore.toISOString()),
+            eb.and([
+              eb("last_seen_at", "<", unlinkedLastSeenBefore.toISOString()),
+              eb.not(
+                eb.exists(
+                  eb
+                    .selectFrom("device_links")
+                    .select("device_id")
+                    .whereRef("device_links.device_id", "=", "devices.id"),
+                ),
+              ),
+            ]),
+          ]),
+        )
+        .executeTakeFirst();
+      const deleted = Number(result.numDeletedRows);
+      if (deleted > 0) checkpoint(database);
+      return deleted;
     },
   };
 }

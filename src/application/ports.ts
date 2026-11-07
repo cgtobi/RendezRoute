@@ -86,6 +86,12 @@ export interface PlanRepository {
   update(plan: Plan): Promise<void>;
   /** Hard delete of the plan and everything referencing it, physically removed from disk (spec 1.6, 3.10). */
   delete(id: string): Promise<void>;
+  /** Like delete, for several plans in one transaction (retention sweep). */
+  deleteMany(ids: readonly string[]): Promise<void>;
+  /** IDs of plans whose delete_at is at or before `now`, cancelled plans included (spec 3.10). */
+  findDueForDeletion(now: Date): Promise<string[]>;
+  /** Plans whose retention exceeds `maxRetentionDays` (apply-retention-max). */
+  findWithRetentionAbove(maxRetentionDays: number): Promise<Plan[]>;
 }
 
 export interface Device {
@@ -105,6 +111,11 @@ export interface DeviceRepository {
   /** Idempotent. */
   link(deviceId: string, target: DeviceLinkTarget, now: Date): Promise<void>;
   hasLink(deviceId: string, target: DeviceLinkTarget): Promise<boolean>;
+  /** Deletes devices without links last seen before the first cutoff, and any device before the second. */
+  deleteInactive(cutoffs: {
+    unlinkedLastSeenBefore: Date;
+    anyLastSeenBefore: Date;
+  }): Promise<number>;
 }
 
 export interface NewResponse {

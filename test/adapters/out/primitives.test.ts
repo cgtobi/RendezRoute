@@ -3,6 +3,8 @@ import { createIdGenerator } from "../../../src/adapters/out/ids.ts";
 import { systemClock } from "../../../src/adapters/out/system-clock.ts";
 import { createTokenService } from "../../../src/adapters/out/tokens.ts";
 import { FakeClock } from "../../fakes/clock.ts";
+import { FakeFieldCipher } from "../../fakes/field-cipher.ts";
+import { FakeOutboundHttp } from "../../fakes/outbound-http.ts";
 import { SequentialIdGenerator } from "../../fakes/ids.ts";
 import { FakeTokenService } from "../../fakes/tokens.ts";
 
@@ -73,5 +75,36 @@ describe("fakes", () => {
     const tokens = new FakeTokenService();
     expect([tokens.generate(), tokens.generate()]).toEqual(["token-0001", "token-0002"]);
     expect(tokens.hash("token-0001")).toBe(createTokenService().hash("token-0001"));
+  });
+});
+
+describe("FakeFieldCipher", () => {
+  const cipher = new FakeFieldCipher();
+
+  it("round-trips, hides the plaintext and binds the field", () => {
+    const encrypted = cipher.encrypt("SENTINEL-name", "responses.display_name");
+    expect(encrypted).not.toContain("SENTINEL");
+    expect(cipher.decrypt(encrypted, "responses.display_name")).toBe("SENTINEL-name");
+    expect(() => cipher.decrypt(encrypted, "responses.request_note")).toThrow(/different field/);
+  });
+});
+
+describe("FakeOutboundHttp", () => {
+  it("answers configured URL prefixes, records requests and refuses everything else", async () => {
+    const http = new FakeOutboundHttp().respond("https://geo.example/search", {
+      body: '{"ok":true}',
+    });
+    const response = await http.get(new URL("https://geo.example/search?q=Isar"));
+    expect(response.status).toBe(200);
+    expect(new TextDecoder().decode(response.body)).toBe('{"ok":true}');
+    expect(http.requests.map((url) => url.href)).toEqual(["https://geo.example/search?q=Isar"]);
+    await expect(http.get(new URL("https://elsewhere.example/"))).rejects.toThrow(
+      /no fake response/,
+    );
+  });
+
+  it("simulates failures", async () => {
+    const http = new FakeOutboundHttp().fail("https://weather.example/", new Error("timed out"));
+    await expect(http.get(new URL("https://weather.example/v1"))).rejects.toThrow(/timed out/);
   });
 });

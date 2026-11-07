@@ -22,6 +22,13 @@ function env(extra: Record<string, string> = {}): Record<string, string> {
   };
 }
 
+/** A key directory outside DATA_DIR, as spec 3.11 recommends. */
+function keyDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "rendezroute-keys-"));
+  dirs.push(dir);
+  return dir;
+}
+
 async function start(vars: Record<string, string>) {
   const result = await startServer(vars, { port: 0 });
   if (result.ok) running.push(result.server);
@@ -56,7 +63,7 @@ describe("startServer", () => {
 describe("encryption key handling at startup (spec 3.11)", () => {
   it("generates a key on first start and reuses it afterwards", async () => {
     const vars = env();
-    const keyFile = join(vars.DATA_DIR ?? "", "secrets", "field.key");
+    const keyFile = join(keyDir(), "field.key");
     vars.ENCRYPTION_KEY_FILE = keyFile;
 
     const first = await start(vars);
@@ -70,7 +77,7 @@ describe("encryption key handling at startup (spec 3.11)", () => {
 
   it("refuses to start when the key does not match the database", async () => {
     const vars = env();
-    const keyFile = join(vars.DATA_DIR ?? "", "secrets", "field.key");
+    const keyFile = join(keyDir(), "field.key");
     vars.ENCRYPTION_KEY_FILE = keyFile;
     const first = await start(vars);
     if (!first.ok) throw new Error(first.errors.join("; "));

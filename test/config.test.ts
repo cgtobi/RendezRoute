@@ -76,6 +76,12 @@ describe("BASE_URL", () => {
     );
   });
 
+  it("must not contain credentials", () => {
+    expect(errors({ ...minimal, BASE_URL: "https://user:pw@runs.example.org" })).toEqual([
+      expect.stringContaining("credentials"),
+    ]);
+  });
+
   it("must use HTTPS (spec section 11)", () => {
     expect(errors({ ...minimal, BASE_URL: "http://runs.example.org" })).toEqual([
       expect.stringContaining("HTTPS"),
@@ -129,6 +135,18 @@ describe("DEFAULT_TIMEZONE", () => {
     expect(ok({ ...minimal, DEFAULT_TIMEZONE: "Europe/Berlin" }).config.defaultTimezone).toBe(
       "Europe/Berlin",
     );
+  });
+
+  it("rejects UTC offsets, which are not IANA zones", () => {
+    for (const zone of ["+01:00", "-0530"]) {
+      expect(errors({ ...minimal, DEFAULT_TIMEZONE: zone })).toEqual([
+        expect.stringContaining("DEFAULT_TIMEZONE"),
+      ]);
+    }
+  });
+
+  it("canonicalizes zone names", () => {
+    expect(ok({ ...minimal, DEFAULT_TIMEZONE: "utc" }).config.defaultTimezone).toBe("UTC");
   });
 
   it("rejects unknown zones", () => {
@@ -232,6 +250,34 @@ describe("external services (spec 3.9)", () => {
       MAP_TILE_URL: "https://{s}.tiles.example.org/{z}/{x}/{y}.png",
     });
     expect(config.maps.tileCspSource).toBe("https://*.tiles.example.org");
+  });
+
+  it("wildcards the whole first host label when it contains {s}", () => {
+    const { config } = ok({
+      ...minimal,
+      MAP_TILE_URL: "https://tiles-{s}.example.com/{z}/{x}/{y}.png",
+    });
+    expect(config.maps.tileCspSource).toBe("https://*.example.com");
+  });
+
+  it("keeps a port in the CSP source", () => {
+    const { config } = ok({
+      ...minimal,
+      MAP_TILE_URL: "https://{s}.tiles.example.org:8443/{z}/{x}/{y}.png",
+    });
+    expect(config.maps.tileCspSource).toBe("https://*.tiles.example.org:8443");
+  });
+
+  it("rejects {s} outside the first host label", () => {
+    expect(
+      errors({ ...minimal, MAP_TILE_URL: "https://tiles.{s}.example.com/{z}/{x}/{y}.png" }),
+    ).toEqual([expect.stringContaining("{s}")]);
+  });
+
+  it("rejects credentials in MAP_TILE_URL, which browsers see", () => {
+    expect(
+      errors({ ...minimal, MAP_TILE_URL: "https://key:secret@tiles.example.org/{z}/{x}/{y}.png" }),
+    ).toEqual([expect.stringContaining("credentials")]);
   });
 
   it("requires {z}, {x} and {y} in MAP_TILE_URL", () => {

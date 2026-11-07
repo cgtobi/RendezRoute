@@ -3,7 +3,8 @@
 // Home Assistant options file, spec section 8) can be mapped onto it later.
 import { isAbsolute } from "node:path";
 
-export type Env = Readonly<Record<string, string | undefined>>;
+/** Raw key/value configuration, e.g. process.env or a mapped Home Assistant options file. */
+export type ConfigSource = Readonly<Record<string, string | undefined>>;
 
 export interface Config {
   baseUrl: URL;
@@ -50,7 +51,7 @@ const DEFAULTS = {
 
 const MAX_INSTANCE_NAME_LENGTH = 60;
 
-export function loadConfig(env: Env): ConfigResult {
+export function loadConfig(env: ConfigSource): ConfigResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   const read = (name: string): string | undefined => {
@@ -100,13 +101,24 @@ export function loadConfig(env: Env): ConfigResult {
 
   const allowInsecureDev = bool("ALLOW_INSECURE_DEV", false);
 
-  /** Outbound service URLs must use HTTPS except in development mode. */
-  const serviceUrl = (name: string, value: string, fallback: string): URL => {
-    const url = httpUrl(name, value);
+  /** URLs this instance serves or calls must use HTTPS, except in development mode. */
+  const requireHttps = (name: string, url: URL): boolean => {
+    if (url.protocol === "https:" || allowInsecureDev) return true;
+    errors.push(`${name} must use HTTPS unless ALLOW_INSECURE_DEV=true (development only).`);
+    return false;
+  };
+
+  const rejectCredentials = (name: string, url: URL): boolean => {
+    if (url.username === "" && url.password === "") return true;
+    errors.push(`${name} must not contain credentials (user:password@).`);
+    return false;
+  };
+
+  /** Outbound service URL from the environment, or the default. */
+  const serviceUrl = (name: string, fallback: string): URL => {
+    const url = httpUrl(name, read(name) || fallback);
     if (url === undefined) return new URL(fallback);
-    if (url.protocol !== "https:" && !allowInsecureDev) {
-      errors.push(`${name} must use HTTPS unless ALLOW_INSECURE_DEV=true, got "${url.href}".`);
-    }
+    requireHttps(name, url);
     return url;
   };
 
@@ -120,22 +132,20 @@ export function loadConfig(env: Env): ConfigResult {
   } else {
     const parsed = httpUrl("BASE_URL", rawBaseUrl);
     if (parsed !== undefined) {
-      if (parsed.pathname !== "/" || parsed.search !== "" || parsed.hash !== "") {
+      const isOrigin = parsed.pathname === "/" && parsed.search === "" && parsed.hash === "";
+      if (!isOrigin) {
         errors.push(
           `BASE_URL must be an origin without path, query or fragment, got "${rawBaseUrl}".`,
         );
-      } else if (parsed.protocol !== "https:" && !allowInsecureDev) {
-        errors.push(
-          `BASE_URL must use HTTPS (set ALLOW_INSECURE_DEV=true for local development only), got "${rawBaseUrl}".`,
-        );
-      } else {
+      } else if (rejectCredentials("BASE_URL", parsed) && requireHttps("BASE_URL", parsed)) {
         baseUrl = parsed;
       }
     }
   }
   if (allowInsecureDev) {
     warnings.push(
-      "ALLOW_INSECURE_DEV=true: running in development mode; cookies are not marked Secure. Never use this in production.",
+      "ALLOW_INSECURE_DEV=true: running in development mode; cookies are not marked Secure and " +
+        "outbound requests may use http and private networks. Never use this in production.",
     );
   }
 
@@ -155,12 +165,14 @@ export function loadConfig(env: Env): ConfigResult {
     errors.push(`CONTACT_EMAIL must be an email address, got "${contactEmail}".`);
   }
 
-  // DEFAULT_TIMEZONE
+  // DEFAULT_TIMEZONE: IANA names only; Intl also accepts offsets such as "+01:00".
   const rawTimezone = read("DEFAULT_TIMEZONE") || DEFAULTS.DEFAULT_TIMEZONE;
   let defaultTimezone: string = DEFAULTS.DEFAULT_TIMEZONE;
   try {
-    defaultTimezone = new Intl.DateTimeFormat("en", { timeZone: rawTimezone }).resolvedOptions()
+    const resolved = new Intl.DateTimeFormat("en", { timeZone: rawTimezone }).resolvedOptions()
       .timeZone;
+    if (/^[+-]/.test(resolved)) throw new RangeError("offset, not an IANA zone");
+    defaultTimezone = resolved;
   } catch {
     errors.push(
       `DEFAULT_TIMEZONE must be an IANA time zone such as "Europe/Berlin", got "${rawTimezone}".`,
@@ -170,13 +182,7 @@ export function loadConfig(env: Env): ConfigResult {
   // Maps
   const mapsEnabled = bool("MAPS_ENABLED", true);
   const tileUrl = read("MAP_TILE_URL") || DEFAULTS.MAP_TILE_URL;
-  let tileCspSource = "";
-  if (!["{z}", "{x}", "{y}"].every((placeholder) => tileUrl.includes(placeholder))) {
-    errors.push(`MAP_TILE_URL must contain {z}, {x} and {y}, got "${tileUrl}".`);
-  } else {
-    const parsed = serviceUrl("MAP_TILE_URL", tileUrl.replace("{s}", "s"), DEFAULTS.MAP_TILE_URL);
-    tileCspSource = `${parsed.protocol}//${tileUrl.includes("{s}") ? parsed.host.replace(/^s\./, "*.") : parsed.host}`;
-  }
+  const tileCspSource = tileSource(tileUrl);
   const attribution = read("MAP_ATTRIBUTION") ?? DEFAULTS.MAP_ATTRIBUTION;
   if (mapsEnabled && attribution === "") {
     errors.push(
@@ -184,23 +190,36 @@ export function loadConfig(env: Env): ConfigResult {
     );
   }
 
-  // Geocoder and weather
-  const geocoderWanted = bool("GEOCODER_ENABLED", true);
-  const geocoderUrl = serviceUrl(
-    "GEOCODER_URL",
-    read("GEOCODER_URL") || DEFAULTS.GEOCODER_URL,
-    DEFAULTS.GEOCODER_URL,
-  );
+  /** Validates MAP_TILE_URL and returns its CSP img-src source; `{s}` in the first host label becomes `*`. */
+  function tileSource(template: string): string {
+    if (!["{z}", "{x}", "{y}"].every((placeholder) => template.includes(placeholder))) {
+      errors.push(`MAP_TILE_URL must contain {z}, {x} and {y}, got "${template}".`);
+      return "";
+    }
+    const host = /^[a-z]+:\/\/(?:[^@/]*@)?([^/]+)/i.exec(template)?.[1] ?? "";
+    const [firstLabel = "", ...otherLabels] = host.split(".");
+    if (otherLabels.some((label) => label.includes("{s}"))) {
+      errors.push(
+        "MAP_TILE_URL may use {s} only in the first host label, e.g. https://{s}.tiles.example.org.",
+      );
+      return "";
+    }
+    const parsed = httpUrl("MAP_TILE_URL", template.replaceAll("{s}", "a"));
+    if (parsed === undefined || !rejectCredentials("MAP_TILE_URL", parsed)) return "";
+    requireHttps("MAP_TILE_URL", parsed);
+    const cspHost = firstLabel.includes("{s}") ? ["*", ...otherLabels].join(".") : host;
+    return `${parsed.protocol}//${cspHost}`;
+  }
+
+  // Geocoder and weather. The geocoder setting is effective only with CONTACT_EMAIL.
+  const geocoderSetting = bool("GEOCODER_ENABLED", true);
+  const geocoderUrl = serviceUrl("GEOCODER_URL", DEFAULTS.GEOCODER_URL);
   const weatherEnabled = bool("WEATHER_ENABLED", true);
-  const weatherUrl = serviceUrl(
-    "WEATHER_URL",
-    read("WEATHER_URL") || DEFAULTS.WEATHER_URL,
-    DEFAULTS.WEATHER_URL,
-  );
+  const weatherUrl = serviceUrl("WEATHER_URL", DEFAULTS.WEATHER_URL);
 
   if (contactEmail === undefined) {
     const disabled = [
-      geocoderWanted && "geocoding",
+      geocoderSetting && "geocoding",
       mapsEnabled && "server-side tile fetching",
     ].filter(Boolean);
     if (disabled.length > 0) {
@@ -245,7 +264,7 @@ export function loadConfig(env: Env): ConfigResult {
         attribution,
         serverSideTiles: mapsEnabled && contactEmail !== undefined,
       },
-      geocoder: { enabled: geocoderWanted && contactEmail !== undefined, url: geocoderUrl },
+      geocoder: { enabled: geocoderSetting && contactEmail !== undefined, url: geocoderUrl },
       weather: { enabled: weatherEnabled, url: weatherUrl },
       allowInsecureDev,
     },

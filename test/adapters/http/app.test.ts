@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vite-plus/test";
 import { createApp as createAppWithDeps } from "../../../src/adapters/in/http/app.tsx";
+import { en } from "../../../src/adapters/i18n/messages/en.ts";
 import { createLogger } from "../../../src/adapters/logging.ts";
 import { type Config, loadConfig } from "../../../src/config.ts";
 
@@ -85,8 +86,21 @@ describe("app-wide middleware", () => {
     }
   });
 
-  it("rejects state-changing requests without a CSRF token", async () => {
+  it("rejects state-changing requests without a CSRF token, with a translated message", async () => {
     const response = await createApp({ config: config() }).request("/", { method: "POST" });
     expect(response.status).toBe(403);
+    expect(await response.text()).toContain(en["error.csrf"]);
+  });
+
+  it("answers unexpected errors with a translated message and no details", async () => {
+    const app = createApp({ config: config() });
+    app.get("/boom", () => {
+      throw new Error("SENTINEL internal detail");
+    });
+    const response = await app.request("/boom");
+    expect(response.status).toBe(500);
+    const body = await response.text();
+    expect(body).toContain(en["error.internal"]);
+    expect(body).not.toContain("SENTINEL");
   });
 });

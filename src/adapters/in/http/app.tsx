@@ -3,6 +3,7 @@ import { jsxRenderer } from "hono/jsx-renderer";
 import type { Config } from "../../../config.ts";
 import { type Language, negotiateLanguage, type Translate, translator } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
+import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
 import { Layout } from "./layout.tsx";
 import { requestLogger } from "./request-logger.ts";
@@ -24,14 +25,21 @@ export interface AppDeps {
   logger: Logger;
 }
 
-type Env = { Variables: { language: Language; t: Translate; csrfToken: () => string } };
+/** Hono context variables set by the app middleware. */
+type AppEnv = {
+  Variables: { language: Language; t: Translate; csrfToken: () => string; clientIp: string };
+};
 
-export function createApp({ config, csrfKey, logger }: AppDeps): Hono<Env> {
-  const app = new Hono<Env>();
+export function createApp({ config, csrfKey, logger }: AppDeps): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
+
+  /** Works even before the language middleware ran, e.g. for early errors. */
+  const translate = (c: Context): Translate =>
+    translator(negotiateLanguage(c.req.header("accept-language")));
 
   app.use(requestLogger(logger));
   app.use(securityHeaders(config));
-  app.use(csrf({ key: csrfKey, config }));
+  app.use(clientIp({ trustProxy: config.trustProxy }));
 
   app.use(async (c, next) => {
     const language = negotiateLanguage(c.req.header("accept-language"));
@@ -40,9 +48,11 @@ export function createApp({ config, csrfKey, logger }: AppDeps): Hono<Env> {
     await next();
   });
 
+  app.use(csrf({ key: csrfKey, config, onReject: (c) => c.text(translate(c)("error.csrf"), 403) }));
+
   app.use(
     jsxRenderer(
-      ({ children, title }, c: Context<Env>) => (
+      ({ children, title }, c: Context<AppEnv>) => (
         <Layout config={config} language={c.get("language")} t={c.get("t")} title={title}>
           {children}
         </Layout>
@@ -54,7 +64,7 @@ export function createApp({ config, csrfKey, logger }: AppDeps): Hono<Env> {
   app.onError((error, c) => {
     // Error class only: messages may contain user input.
     logger.error("unhandled_error", { name: error.name });
-    return c.text("Internal error", 500);
+    return c.text(translate(c)("error.internal"), 500);
   });
 
   app.get("/healthz", (c) => c.text("ok"));

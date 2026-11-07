@@ -7,14 +7,15 @@ export const DEFAULT_LANGUAGE: Language = "en";
 const catalogs: Readonly<Record<Language, Messages>> = { en };
 
 /**
- * Best supported language for an Accept-Language header (decision P7).
- * Region tags match by primary subtag; falls back to English.
+ * Best language from an Accept-Language header among `supported` (decision P7).
+ * Region tags match by primary subtag; unknown or malformed input yields `fallback`.
  */
-export function negotiateLanguage<L extends string = Language>(
+export function pickLanguage<L extends string>(
   header: string | undefined,
-  supported: readonly L[] = SUPPORTED_LANGUAGES as unknown as readonly L[],
-): L | Language {
-  if (!header) return DEFAULT_LANGUAGE;
+  supported: readonly L[],
+  fallback: L,
+): L {
+  if (!header) return fallback;
 
   const ranked = header
     .split(",")
@@ -31,7 +32,11 @@ export function negotiateLanguage<L extends string = Language>(
     const match = supported.find((language) => language === primary);
     if (match !== undefined) return match;
   }
-  return DEFAULT_LANGUAGE;
+  return fallback;
+}
+
+export function negotiateLanguage(header: string | undefined): Language {
+  return pickLanguage(header, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE);
 }
 
 export type Translate = (

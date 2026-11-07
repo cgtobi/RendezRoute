@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import {
+  createKeyring,
   deriveKey,
   KeyError,
   openKeyring,
@@ -44,6 +45,16 @@ describe("resolveKeyLocation (spec 3.11, decision I7)", () => {
       directory: "/secrets",
       warning: undefined,
     });
+  });
+
+  it("warns when ENCRYPTION_KEY_FILE points inside DATA_DIR", () => {
+    const location = resolveKeyLocation({
+      encryptionKeyFile: "/data/secrets/field.key",
+      dataDir: "/data",
+      mountPoints: [],
+    });
+    expect(location.file).toBe("/data/secrets/field.key");
+    expect(location.warning).toMatch(/backups of DATA_DIR .* include the key/i);
   });
 
   it("prefers a mounted /keys volume", () => {
@@ -121,6 +132,14 @@ describe("openKeyring (spec 3.11 key handling)", () => {
     expect(() => readFileSync(file)).toThrow(/ENOENT/);
   });
 
+  it("stops when encrypted data exists but no fingerprint was stored to verify the key", () => {
+    const file = join(tempDir(), "field.key");
+    openKeyring(file, fresh);
+    expect(() =>
+      openKeyring(file, { storedFingerprint: undefined, hasEncryptedData: true }),
+    ).toThrow(/cannot be verified/);
+  });
+
   it("generates a new key when the old one is gone but no encrypted data remains", () => {
     const file = join(tempDir(), "field.key");
     expect(
@@ -156,6 +175,14 @@ describe("deriveKey", () => {
     const csrf = deriveKey(keyring, "csrf");
     expect(csrf).toHaveLength(32);
     expect(deriveKey(keyring, "csrf").equals(csrf)).toBe(true);
-    expect(deriveKey(keyring, "identity-hmac").equals(csrf)).toBe(false);
+    expect(deriveKey(keyring, "identity-lookup").equals(csrf)).toBe(false);
+  });
+});
+
+describe("createKeyring", () => {
+  it("requires 32-byte keys and an existing current version", () => {
+    expect(() => createKeyring(1, [[1, Buffer.alloc(16)]])).toThrow(/32 bytes/);
+    expect(() => createKeyring(2, [[1, Buffer.alloc(32)]])).toThrow(/current key/);
+    expect(createKeyring(1, [[1, Buffer.alloc(32)]]).current).toBe(1);
   });
 });

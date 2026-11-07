@@ -1,31 +1,35 @@
 import { describe, expect, it } from "vite-plus/test";
-import { negotiateLanguage, translator } from "../../../src/adapters/i18n/i18n.ts";
+import { negotiateLanguage, pickLanguage, translator } from "../../../src/adapters/i18n/i18n.ts";
 
-describe("negotiateLanguage (decision P7)", () => {
+describe("pickLanguage (decision P7)", () => {
   const supported = ["en", "de"] as const;
+  const pick = (header: string | undefined) => pickLanguage(header, supported, "en");
 
   it("picks the supported language with the highest quality", () => {
-    expect(negotiateLanguage("fr-FR,fr;q=0.9,de;q=0.8,en;q=0.7", supported)).toBe("de");
-    expect(negotiateLanguage("en;q=0.5,de;q=0.4", supported)).toBe("en");
+    expect(pick("fr-FR,fr;q=0.9,de;q=0.8,en;q=0.7")).toBe("de");
+    expect(pick("en;q=0.5,de;q=0.4")).toBe("en");
   });
 
   it("matches region tags by their primary language", () => {
-    expect(negotiateLanguage("de-AT", supported)).toBe("de");
+    expect(pick("de-AT")).toBe("de");
   });
 
   it("ignores languages with q=0", () => {
-    expect(negotiateLanguage("de;q=0,en;q=0.1", supported)).toBe("en");
+    expect(pick("de;q=0,en;q=0.1")).toBe("en");
   });
 
   it("falls back to English", () => {
-    expect(negotiateLanguage(undefined, supported)).toBe("en");
-    expect(negotiateLanguage("", supported)).toBe("en");
-    expect(negotiateLanguage("fr,it;q=0.5", supported)).toBe("en");
-    expect(negotiateLanguage("garbage;;;q=x", supported)).toBe("en");
+    expect(pick(undefined)).toBe("en");
+    expect(pick("")).toBe("en");
+    expect(pick("fr,it;q=0.5")).toBe("en");
+    expect(pick("garbage;;;q=x")).toBe("en");
   });
+});
 
-  it("uses the app's supported languages by default", () => {
+describe("negotiateLanguage", () => {
+  it("picks among the app's supported languages", () => {
     expect(negotiateLanguage("en-GB")).toBe("en");
+    expect(negotiateLanguage("de")).toBe("en");
   });
 });
 

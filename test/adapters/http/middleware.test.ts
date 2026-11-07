@@ -137,6 +137,15 @@ describe("CSRF protection (spec 3.8, decision I8)", () => {
     expect(setCookie).not.toContain("Secure");
   });
 
+  it("lets the app render the rejection", async () => {
+    const hono = new Hono<CsrfEnv>();
+    hono.use(csrf({ key, config: config(), onReject: (c) => c.text("translated", 403) }));
+    hono.post("/action", (c) => c.text("done"));
+    const response = await hono.request("/action", { method: "POST" });
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe("translated");
+  });
+
   it("does not check safe methods", async () => {
     expect((await app().request("/plain", { method: "HEAD" })).status).toBe(200);
   });

@@ -49,6 +49,16 @@ describe("isBlockedAddress (spec 3.11 SSRF)", () => {
   });
 });
 
+/** Test DNS: known names only, so no test depends on real resolution. */
+function resolver(table: Record<string, string>) {
+  return (hostname: string) => {
+    const address = table[hostname];
+    return address === undefined
+      ? Promise.reject(new Error(`unknown test host ${hostname}`))
+      : Promise.resolve([{ address, family: address.includes(":") ? 6 : 4 }]);
+  };
+}
+
 describe("OutboundHttp", () => {
   const servers: Server[] = [];
   afterEach(async () => {
@@ -73,7 +83,7 @@ describe("OutboundHttp", () => {
     userAgent: "RendezRoute/test (+https://runs.example.org; owner@example.org)",
     allowHttp: true,
     isBlocked: (address) => address === "127.0.0.2",
-    lookupOverrides: { "evil.test": "127.0.0.2", "fine.test": "127.0.0.1" },
+    resolve: resolver({ "evil.test": "127.0.0.2", "fine.test": "127.0.0.1" }),
   };
 
   describe("with the production policy", () => {

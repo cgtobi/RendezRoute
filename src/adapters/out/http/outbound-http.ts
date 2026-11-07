@@ -2,7 +2,7 @@
 // metadata addresses are refused after DNS resolution, for IP literals and on every
 // redirect hop. The check runs inside the socket's DNS lookup, so the address that
 // was checked is the address that is connected to (no DNS rebinding window).
-import { lookup as dnsLookup, type LookupAddress } from "node:dns";
+import { type LookupAddress, promises as dnsPromises } from "node:dns";
 import { BlockList, isIP } from "node:net";
 import { Agent, fetch } from "undici";
 import type { OutboundHttp, OutboundResponse } from "../../../application/ports.ts";
@@ -105,8 +105,8 @@ export interface OutboundHttpOptions {
   allowHttp?: boolean;
   /** Address policy; defaults to isBlockedAddress. Development may allow private networks. */
   isBlocked?: (address: string) => boolean;
-  /** Test hook: hostname → address, bypassing DNS but not the address policy. */
-  lookupOverrides?: Readonly<Record<string, string>>;
+  /** Name resolution; defaults to the system resolver. Results always pass the address policy. */
+  resolve?: (hostname: string) => Promise<LookupAddress[]>;
   timeoutMs?: number;
   maxBytes?: number;
   maxRedirects?: number;
@@ -118,7 +118,8 @@ const DEFAULT_MAX_REDIRECTS = 5;
 
 export function createOutboundHttp(options: OutboundHttpOptions): OutboundHttp {
   const isBlocked = options.isBlocked ?? isBlockedAddress;
-  const overrides = options.lookupOverrides ?? {};
+  const resolve =
+    options.resolve ?? ((hostname: string) => dnsPromises.lookup(hostname, { all: true }));
 
   const guardedLookup = (
     hostname: string,
@@ -137,10 +138,9 @@ export function createOutboundHttp(options: OutboundHttpOptions): OutboundHttp {
       const [first] = addresses as [LookupAddress];
       return callback(null, first.address, first.family);
     };
-    const override = overrides[hostname];
-    if (override !== undefined) return done(null, [{ address: override, family: isIP(override) }]);
-    dnsLookup(hostname, { all: true, family: lookupOptions.family ?? 0 }, (error, addresses) =>
-      done(error, addresses),
+    resolve(hostname).then(
+      (addresses) => done(null, addresses),
+      (error: unknown) => done(error instanceof Error ? error : new Error(String(error)), []),
     );
   };
 

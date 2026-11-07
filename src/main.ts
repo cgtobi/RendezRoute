@@ -1,24 +1,17 @@
 // Composition root (spec 2a): reads configuration and wires the enabled adapters.
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { createApp } from "./adapters/in/http/app.tsx";
 import { createLogger, type Logger } from "./adapters/logging.ts";
-import {
-  deriveKey,
-  KeyError,
-  openKeyring,
-  parseMountPoints,
-  resolveKeyLocation,
-} from "./adapters/out/crypto/keyring.ts";
-import { type Database, hasEncryptedData, openDatabase } from "./adapters/out/sqlite/database.ts";
-import { readMeta, writeMeta } from "./adapters/out/sqlite/meta.ts";
-import { type Config, type Env, loadConfig } from "./config.ts";
+import { openInstanceKeys } from "./adapters/out/crypto/instance-keys.ts";
+import { KeyError } from "./adapters/out/crypto/keyring.ts";
+import { openDatabase } from "./adapters/out/sqlite/database.ts";
+import { type ConfigSource, loadConfig } from "./config.ts";
 
 /** Port inside the container; publish it or put a reverse proxy in front. */
 export const DEFAULT_PORT = 3000;
-const MOUNTINFO = "/proc/self/mountinfo";
 
 export interface RunningServer {
   url: URL;
@@ -35,7 +28,7 @@ interface StartOptions {
 }
 
 export async function startServer(
-  env: Env,
+  env: ConfigSource,
   { port = DEFAULT_PORT, logger = createLogger() }: StartOptions = {},
 ): Promise<StartResult> {
   const loaded = loadConfig(env);
@@ -48,7 +41,7 @@ export async function startServer(
 
   let csrfKey: Buffer;
   try {
-    const keys = await openKeys(config, database);
+    const keys = await openInstanceKeys(config, database);
     csrfKey = keys.csrfKey;
     if (keys.warning !== undefined) warnings.push(keys.warning);
   } catch (error) {
@@ -76,23 +69,4 @@ export async function startServer(
       },
     },
   };
-}
-
-async function openKeys(
-  config: Config,
-  database: Database,
-): Promise<{ csrfKey: Buffer; warning: string | undefined }> {
-  const location = resolveKeyLocation({
-    encryptionKeyFile: config.encryptionKeyFile,
-    dataDir: config.dataDir,
-    mountPoints: existsSync(MOUNTINFO) ? parseMountPoints(readFileSync(MOUNTINFO, "utf8")) : [],
-  });
-  const storedFingerprint = await readMeta(database, "key_fingerprint");
-  const opened = openKeyring(location.file, {
-    storedFingerprint,
-    hasEncryptedData: hasEncryptedData(database),
-  });
-  if (storedFingerprint !== opened.fingerprint)
-    await writeMeta(database, "key_fingerprint", opened.fingerprint);
-  return { csrfKey: deriveKey(opened.keyring, "csrf"), warning: location.warning };
 }

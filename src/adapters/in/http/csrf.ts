@@ -2,7 +2,7 @@
 // The cookie holds only a random value, is session-scoped and is set only when a page
 // renders a form. The token in the form is HMAC(key, cookie value).
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import type { Config } from "../../../config.ts";
 
@@ -17,11 +17,14 @@ export function csrf({
   key,
   config,
   exemptPaths = [],
+  onReject = (c) => c.body(null, 403),
 }: {
   key: Buffer;
   config: Config;
   /** e.g. the signature-verified ActivityPub inbox (v1.0). */
   exemptPaths?: readonly string[];
+  /** Renders the 403 response; the app supplies a translated page. */
+  onReject?: (c: Context) => Response | Promise<Response>;
 }): MiddlewareHandler<CsrfEnv> {
   const cookieName = config.allowInsecureDev ? "rr-csrf" : "__Host-rr-csrf";
   const sign = (value: string) => createHmac("sha256", key).update(value).digest("base64url");
@@ -45,8 +48,7 @@ export function csrf({
 
     if (SAFE_METHODS.has(c.req.method) || exemptPaths.includes(c.req.path)) return next();
 
-    const forbidden = () =>
-      c.text("Invalid or missing security token. Reload the page and try again.", 403);
+    const forbidden = () => onReject(c);
 
     const origin = c.req.header("origin");
     const fetchSite = c.req.header("sec-fetch-site");

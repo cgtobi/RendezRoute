@@ -19,11 +19,33 @@ export interface TokenService {
   hash(token: string): string;
 }
 
+/** Every encrypted column (spec 3.11, section 4), named `<table>.<column without _enc>`. */
+export const ENCRYPTED_FIELDS = [
+  "plans.exact_location",
+  "routes.geojson",
+  "routes.gpx_file",
+  "plan_templates.exact_location",
+  "plan_templates.route_geojson",
+  "plan_templates.gpx_file",
+  "responses.display_name",
+  "responses.request_note",
+  "responses.remote_actor",
+  "recap_contributions.body",
+  "recap_contributions.link_url",
+  "notification_channels.config",
+  "job_queue.payload",
+  "reports.details",
+  "reports.attached_content",
+  "identities.subject",
+  "identities.display_name",
+] as const;
+export type EncryptedField = (typeof ENCRYPTED_FIELDS)[number];
+
 export interface FieldCipher {
-  /** Encrypts a private field. `context` names the field and is authenticated, not stored. */
-  encrypt(plaintext: string, context: string): string;
-  /** Throws if the value was tampered with or the context does not match. */
-  decrypt(ciphertext: string, context: string): string;
+  /** Encrypts a private field. The field name is authenticated, not stored (decision I16). */
+  encrypt(plaintext: string, field: EncryptedField): string;
+  /** Throws if the value was tampered with or belongs to a different field. */
+  decrypt(ciphertext: string, field: EncryptedField): string;
 }
 
 export interface OutboundResponse {

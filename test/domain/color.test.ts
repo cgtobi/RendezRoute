@@ -4,6 +4,7 @@ import {
   DEFAULT_COLORS,
   type HexColor,
   parseHexColor,
+  planTheme,
   textColorOn,
 } from "../../src/domain/color.ts";
 
@@ -82,5 +83,21 @@ describe("textColorOn (spec 3.1, security test: contrast)", () => {
         }
       }
     }
+  });
+});
+
+describe("planTheme (spec 3.1 Plan colors)", () => {
+  it("pairs each plan color with its readable text color", () => {
+    const parse = (value: string) => {
+      const parsed = parseHexColor(value);
+      if (!parsed.ok) throw new Error("test color invalid");
+      return parsed.value;
+    };
+    expect(planTheme({ primary: parse("#2E5BFF"), secondary: parse("#FFEB3B") })).toEqual({
+      primary: "#2E5BFF",
+      onPrimary: WHITE,
+      secondary: "#FFEB3B",
+      onSecondary: NEAR_BLACK,
+    });
   });
 });

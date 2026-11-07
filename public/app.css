@@ -251,6 +251,7 @@ input[type="color"] {
   padding: 12px;
   border: 2px solid var(--plan-secondary, #ff7a45);
   border-radius: var(--radius);
+  background: var(--plan-primary-tint, transparent);
 }
 
 .exact-start h2 {
@@ -294,7 +295,12 @@ button.danger {
   margin: 16px 0;
 }
 
+/* Counters are a secondary-color fill (spec 3.1); text keeps the normal color. */
 .counts {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--plan-secondary-tint, var(--surface));
   font-weight: 600;
 }
 

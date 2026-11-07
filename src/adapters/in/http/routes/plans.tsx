@@ -1,6 +1,6 @@
 // Plan routes (spec 5 features 1 and 3).
 import type { Context, Hono } from "hono";
-import { createPlan, viewPlan } from "../../../../application/plans.ts";
+import { createPlan, viewPlan, viewPlanTheme } from "../../../../application/plans.ts";
 import { DEFAULT_COLORS } from "../../../../domain/color.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import { routeForDownload } from "../../../../application/routes.ts";
@@ -10,6 +10,7 @@ import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { formatDate } from "../views/format.ts";
 import { LinksPage } from "../views/links-page.tsx";
 import { PlanForm } from "../views/plan-form.tsx";
+import { themeCss } from "../views/theme-css.ts";
 import {
   badRequest,
   formField,
@@ -111,6 +112,15 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
         );
       }
     }
+  });
+
+  /** Public per-plan colors; the plan page links it with a color version, so it can be cached for long. */
+  app.get("/p/:id/theme.css", async (c) => {
+    const result = await viewPlanTheme(planDeps, { planId: c.req.param("id") });
+    if (result.kind === "not_found") return planGone(c);
+    c.header("content-type", "text/css; charset=utf-8");
+    c.header("cache-control", "public, max-age=31536000, immutable");
+    return c.body(themeCss(result.theme));
   });
 
   /** Regenerated GPX for participants and the host; 404 for everyone else (spec 3.6, P4, D10). */

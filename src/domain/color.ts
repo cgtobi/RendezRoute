@@ -48,3 +48,20 @@ export function textColorOn(background: HexColor): HexColor {
     ? WHITE
     : NEAR_BLACK;
 }
+
+export interface PlanTheme {
+  primary: HexColor;
+  onPrimary: HexColor;
+  secondary: HexColor;
+  onSecondary: HexColor;
+}
+
+/** The plan's colors with readable text on each (spec 3.1); secondary text uses only the pairing. */
+export function planTheme(colors: { primary: HexColor; secondary: HexColor }): PlanTheme {
+  return {
+    primary: colors.primary,
+    onPrimary: textColorOn(colors.primary),
+    secondary: colors.secondary,
+    onSecondary: textColorOn(colors.secondary),
+  };
+}

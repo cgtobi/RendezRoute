@@ -7,6 +7,7 @@ import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input
 import type { Config } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
 import { PlanPage } from "../views/plan-page.tsx";
+import { themeVersion } from "../views/theme-css.ts";
 
 export interface RouteDeps {
   config: Config;
@@ -80,6 +81,14 @@ export function renderPlanPage(
       responsesOpen={responsesOpen}
       respondForm={showForm ? { ...form, csrfToken: c.get("csrfToken")() } : undefined}
     />,
-    { title: result.view.title },
+    {
+      title: result.view.title,
+      head: (
+        <link
+          rel="stylesheet"
+          href={`/p/${result.view.id}/theme.css?v=${themeVersion(result.view.colors)}`}
+        />
+      ),
+    },
   );
 }

@@ -1,4 +1,5 @@
 // Plan use cases (spec 5 features 1 and 3).
+import { type PlanTheme, planTheme } from "../domain/color.ts";
 import type { Units } from "../domain/pace.ts";
 import type { Plan } from "../domain/plan.ts";
 import { type FieldError, type PlanInput, validatePlanInput } from "../domain/plan-input.ts";
@@ -157,4 +158,15 @@ export async function viewPlan(
     };
   }
   return { kind: "responder", view: viewForResponder(plan, counts, own), responsesOpen };
+}
+
+/** The plan's colors for its theme stylesheet; public data (spec 3.1). */
+export async function viewPlanTheme(
+  deps: PlanDeps,
+  request: { planId: string },
+): Promise<{ kind: "found"; theme: PlanTheme } | { kind: "not_found" }> {
+  const plan = await deps.plans.findById(request.planId);
+  return plan === undefined
+    ? { kind: "not_found" }
+    : { kind: "found", theme: planTheme(plan.colors) };
 }

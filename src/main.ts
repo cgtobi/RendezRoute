@@ -11,6 +11,7 @@ import { createIdGenerator } from "./adapters/out/ids.ts";
 import { openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "./adapters/out/sqlite/plans.ts";
+import { createResponseRepository } from "./adapters/out/sqlite/responses.ts";
 import { systemClock } from "./adapters/out/system-clock.ts";
 import { createTokenService } from "./adapters/out/tokens.ts";
 import { type ConfigSource, loadConfig } from "./config.ts";
@@ -61,6 +62,7 @@ export async function startServer(
     planDeps: {
       plans: createPlanRepository(database, keys.cipher),
       devices: createDeviceRepository(database),
+      responses: createResponseRepository(database, keys.cipher),
       tokens: createTokenService(),
       ids: createIdGenerator(),
       clock: systemClock,

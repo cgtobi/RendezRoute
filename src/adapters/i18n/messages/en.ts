@@ -84,6 +84,7 @@ export const en = {
   "field.color_invalid": "Please choose a color.",
   "field.retention_out_of_range": "Please choose one of the offered periods.",
   "field.retention_shorter_than_recap_window": "Please choose a longer period.",
+  "field.name_taken_by_host": "That's the host's name. Please use a different one.",
 
   "links.heading": "Your plan is ready",
   "links.planLink": "Plan link: share this one",
@@ -111,6 +112,49 @@ export const en = {
   "plan.openMapsApp": "Open in maps app",
   "plan.deletion": "This plan will be deleted on {date}.",
 
+  "plan.counts": "{participants} joined · {interested} interested",
+  "plan.participants": "Who's coming",
+  "plan.interestedPeople": "Interested",
+  "plan.yourResponse": "Your response",
+  "plan.manageResponse": "Change or withdraw",
+  "plan.cancelled": "This plan was cancelled.",
+
+  "status.interested": "Interested",
+  "status.joined": "You're in",
+  "status.requested": "Request pending",
+  "status.rejected": "Not accepted for this plan.",
+  "status.removed": "The host removed you from this plan.",
+
+  "respond.heading": "Are you coming?",
+  "respond.name": "Your name",
+  "respond.nameHint": "The host sees it. If you join, other participants see it too.",
+  "respond.openModeNote":
+    "Anyone with the link who joins sees the exact start and who else is coming.",
+  "respond.interested": "Interested",
+  "respond.join": "I'm in",
+  "respond.closed": "Responses are closed for this plan.",
+  "respond.blocked": "You can't respond to this plan.",
+
+  "responded.heading": "Response saved",
+  "responded.manageLink": "Your manage link: keep this private",
+  "responded.manageLinkWarning":
+    "Save it now. It is shown only once. With it you can change or withdraw your response from another device. This browser stays linked.",
+  "responded.back": "Back to the plan",
+
+  "manage.heading": "Your response to “{title}”",
+  "manage.choice": "Your response",
+  "manage.save": "Save changes",
+  "manage.locked": "Responses are closed now. You can still change your name or withdraw.",
+  "manage.withdraw": "Withdraw…",
+  "manage.withdrawExplain": "This deletes your response and your name from this plan.",
+  "manage.withdrawConfirm": "Withdraw and delete my response",
+  "manage.back": "Back to the plan",
+
+  "manageLink.heading": "Use this manage link on this device?",
+  "manageLink.body": "This link lets you change or withdraw your response to “{title}”.",
+  "manageLink.sharedWarning":
+    "Only continue on your own device: anyone using this browser can then change or withdraw your response.",
+
   "hostLink.heading": "Use this host link on this device?",
   "hostLink.ogTitle": "Private link",
   "hostLink.ogDescription": "This is a private link. Please don't share it.",
@@ -119,6 +163,7 @@ export const en = {
     "Only continue on your own device: anyone using this browser can then manage the plan.",
   "hostLink.confirm": "Use on this device",
   "hostLink.invalid": "This link is not valid. It may have been replaced by a newer one.",
+  "secretLink.confirm": "Use on this device",
 } as const;
 
 export type MessageKey = keyof typeof en;

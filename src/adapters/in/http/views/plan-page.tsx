@@ -1,7 +1,15 @@
-// Plan page (spec 5 feature 3). Renders only what the read model contains (spec 2a).
+// Plan page (spec 5 features 3 and 5). Renders only what the read model contains (spec 2a);
+// which model it receives decides what may be shown (spec 3.6).
 import type { Translate } from "../../../i18n/i18n.ts";
-import type { PlanViewForPoster, PlanViewForViewer } from "../../../../application/plan-views.ts";
+import type {
+  PersonView,
+  PlanViewForParticipant,
+  PlanViewForPoster,
+  PlanViewForResponder,
+  PlanViewForViewer,
+} from "../../../../application/plan-views.ts";
 import { paceStyleFor } from "../../../../domain/activity.ts";
+import type { ExactStart } from "../../../../domain/geo.ts";
 import {
   formatDate,
   formatDay,
@@ -11,19 +19,24 @@ import {
   formatTime,
 } from "./format.ts";
 import { Linkified } from "./linkify.tsx";
+import { RespondForm, type RespondFormState } from "./respond-form.tsx";
+
+export type PlanPageAudience =
+  | { kind: "viewer"; view: PlanViewForViewer }
+  | { kind: "responder"; view: PlanViewForResponder }
+  | { kind: "participant"; view: PlanViewForParticipant }
+  | { kind: "poster"; view: PlanViewForPoster };
 
 export function PlanPage(props: {
   t: Translate;
   language: string;
-  /** Which read model this is decides what may be shown (spec 3.6). */
-  audience:
-    | { kind: "viewer"; view: PlanViewForViewer }
-    | { kind: "poster"; view: PlanViewForPoster };
+  audience: PlanPageAudience;
+  responsesOpen: boolean;
+  /** The response form's state; shown to viewers while responses are open. */
+  respondForm: RespondFormState | undefined;
 }) {
   const { t, language, audience } = props;
   const { view } = audience;
-  const isPoster = audience.kind === "poster";
-  const exactStart = audience.kind === "poster" ? audience.view.exactStart : undefined;
 
   return (
     <article class="plan">
@@ -36,7 +49,12 @@ export function PlanPage(props: {
         </p>
       </header>
 
-      {isPoster && <p class="notice">{t("plan.youAreHost")}</p>}
+      {view.status === "cancelled" && (
+        <p class="warning" role="status">
+          {t("plan.cancelled")}
+        </p>
+      )}
+      {audience.kind === "poster" && <p class="notice">{t("plan.youAreHost")}</p>}
 
       <dl class="plan-facts">
         <dt>{t("plan.when")}</dt>
@@ -73,42 +91,113 @@ export function PlanPage(props: {
         <dd>{t(`drop.${view.dropPolicy}`)}</dd>
       </dl>
 
+      <p class="counts">
+        {t("plan.counts", {
+          participants: view.counts.participants,
+          interested: view.counts.interested,
+        })}
+      </p>
+
       {view.note !== undefined && (
         <p class="note">
           <Linkified text={view.note} />
         </p>
       )}
 
-      {exactStart !== undefined && (
-        <section class="exact-start">
-          <h2>{t("plan.exactStart")}</h2>
-          <p class="hint">{t("plan.exactStartPrivate")}</p>
-          {exactStart.description !== undefined && (
-            <p>
-              <Linkified text={exactStart.description} />
-            </p>
-          )}
-          {exactStart.point !== undefined && (
-            <p>
-              {exactStart.point.lat}, {exactStart.point.lng} ·{" "}
-              <a href={`geo:${exactStart.point.lat},${exactStart.point.lng}`}>
-                {t("plan.openMapsApp")}
-              </a>{" "}
-              ·{" "}
-              <a
-                href={`https://www.openstreetmap.org/?mlat=${exactStart.point.lat}&mlon=${exactStart.point.lng}#map=17/${exactStart.point.lat}/${exactStart.point.lng}`}
-                rel="noopener noreferrer"
-              >
-                {t("plan.openStreetMap")}
-              </a>
-            </p>
-          )}
+      {(audience.kind === "participant" || audience.kind === "poster") && (
+        <ExactStartSection t={t} exactStart={audience.view.exactStart} />
+      )}
+
+      {(audience.kind === "responder" || audience.kind === "participant") && (
+        <section class="own-response">
+          <h2>{t("plan.yourResponse")}</h2>
+          <p>{t(`status.${audience.view.ownResponse.kind}`)}</p>
+          <p>
+            <a href={`/p/${view.id}/me`}>{t("plan.manageResponse")}</a>
+          </p>
         </section>
       )}
+
+      {(audience.kind === "participant" || audience.kind === "poster") && (
+        <People heading={t("plan.participants")} people={audience.view.participants} t={t} />
+      )}
+      {audience.kind === "poster" && audience.view.interested.length > 0 && (
+        <People heading={t("plan.interestedPeople")} people={audience.view.interested} t={t} />
+      )}
+
+      {audience.kind === "viewer" &&
+        (props.responsesOpen && props.respondForm !== undefined ? (
+          <RespondForm t={t} planId={view.id} state={props.respondForm} />
+        ) : (
+          <p class="notice">{t("respond.closed")}</p>
+        ))}
 
       <p class="deletion">
         {t("plan.deletion", { date: formatDate(view.deleteAt, view.timeZone, language) })}
       </p>
     </article>
+  );
+}
+
+function ExactStartSection({
+  t,
+  exactStart,
+}: {
+  t: Translate;
+  exactStart: ExactStart | undefined;
+}) {
+  if (exactStart === undefined) return null;
+  const { point } = exactStart;
+  return (
+    <section class="exact-start">
+      <h2>{t("plan.exactStart")}</h2>
+      <p class="hint">{t("plan.exactStartPrivate")}</p>
+      {exactStart.description !== undefined && (
+        <p>
+          <Linkified text={exactStart.description} />
+        </p>
+      )}
+      {point !== undefined && (
+        <p>
+          {point.lat}, {point.lng} ·{" "}
+          <a href={`geo:${point.lat},${point.lng}`}>{t("plan.openMapsApp")}</a> ·{" "}
+          <a
+            href={`https://www.openstreetmap.org/?mlat=${point.lat}&mlon=${point.lng}#map=17/${point.lat}/${point.lng}`}
+            rel="noopener noreferrer"
+          >
+            {t("plan.openStreetMap")}
+          </a>
+        </p>
+      )}
+    </section>
+  );
+}
+
+function People({
+  heading,
+  people,
+  t,
+}: {
+  heading: string;
+  people: readonly PersonView[];
+  t: Translate;
+}) {
+  return (
+    <section class="people">
+      <h2>{heading}</h2>
+      <ul>
+        {people.map((person) => (
+          <li>
+            {person.name}
+            {person.isHost && (
+              <>
+                {" "}
+                <span class="badge">{t("plan.host")}</span>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
-import { confirmHostLink, openHostLink } from "../../src/application/host-links.ts";
+import { confirmHostLink, openHostLink } from "../../src/application/secret-links.ts";
 import { createPlan, type PlanDeps, viewPlan } from "../../src/application/plans.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
@@ -64,7 +64,9 @@ describe("createPlan (spec 5 feature 1)", () => {
     const device = await repos.devices.findByTokenHash(
       deps.tokens.hash(result.newDeviceToken ?? ""),
     );
-    expect(await repos.devices.isHost(device?.id ?? "", result.planId)).toBe(true);
+    expect(
+      await repos.devices.hasLink(device?.id ?? "", { role: "host", planId: result.planId }),
+    ).toBe(true);
   });
 
   it("reuses an existing device", async () => {

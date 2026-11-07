@@ -9,6 +9,10 @@ import {
   openDatabase,
 } from "../../../../src/adapters/out/sqlite/database.ts";
 import { readMeta, writeMeta } from "../../../../src/adapters/out/sqlite/meta.ts";
+import { migrations } from "../../../../src/adapters/out/sqlite/migrations/index.ts";
+import BetterSqlite3 from "better-sqlite3";
+import { Kysely, SqliteDialect, sql } from "kysely";
+import { Migrator } from "kysely/migration";
 
 const open: Database[] = [];
 const dirs: string[] = [];
@@ -106,5 +110,47 @@ describe("physical deletion (spec 3.10, security test)", () => {
     const raw = (file: string) => (existsSync(file) ? readFileSync(file).toString("latin1") : "");
     expect(raw(path)).not.toContain(sentinel);
     expect(raw(`${path}-wal`)).not.toContain(sentinel);
+  });
+});
+
+describe("upgrading an existing database (migration 0003 rebuilds device_links)", () => {
+  it("keeps host links created before the rebuild", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rendezroute-upgrade-"));
+    dirs.push(dir);
+    const path = join(dir, "rendezroute.db");
+
+    // A database as released after step 3: migrations 0001 and 0002 only.
+    const old = new Kysely<unknown>({
+      dialect: new SqliteDialect({ database: new BetterSqlite3(path) }),
+    });
+    const upTo0002 = Object.fromEntries(
+      Object.entries(migrations).filter(([name]) => name < "0003"),
+    );
+    const migrated = await new Migrator({
+      db: old,
+      provider: { getMigrations: () => Promise.resolve(upTo0002) },
+    }).migrateToLatest();
+    expect(migrated.error).toBeUndefined();
+    const t = "2026-06-01T08:00:00.000Z";
+    await sql`insert into plans (id, poster_name, poster_language, activity_type, title, starts_at, timezone, area_label,
+      drop_policy, recap_window, retention_days, delete_at, host_token_hash, created_at, updated_at)
+      values ('plan-1', 'Anna', 'en', 'run', 'Run', ${t}, 'UTC', 'Park', 'no_drop', '1w', 14, ${t}, 'hash', ${t}, ${t})`.execute(
+      old,
+    );
+    await sql`insert into devices values ('device-1', 'token-hash', ${t}, ${t})`.execute(old);
+    await sql`insert into device_links (device_id, role, plan_id, created_at) values ('device-1', 'host', 'plan-1', ${t})`.execute(
+      old,
+    );
+    await old.destroy();
+
+    const upgraded = await openDatabase(path);
+    open.push(upgraded);
+    const links = upgraded.sqlite
+      .prepare("select device_id, role, plan_id, response_id from device_links")
+      .all();
+    expect(links).toEqual([
+      { device_id: "device-1", role: "host", plan_id: "plan-1", response_id: null },
+    ]);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
   });
 });

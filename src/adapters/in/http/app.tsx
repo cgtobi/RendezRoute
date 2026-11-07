@@ -12,6 +12,8 @@ import type { Logger } from "../../logging.ts";
 import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
 import { registerPlanRoutes } from "./routes/plans.tsx";
+import { registerResponseRoutes } from "./routes/responses.tsx";
+import { registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
 import { requestLogger } from "./request-logger.ts";
 import { securityHeaders } from "./security-headers.ts";
@@ -124,6 +126,8 @@ export function createApp({ config, csrfKey, logger, planDeps }: AppDeps): Hono<
   });
 
   registerPlanRoutes(app, { config, planDeps });
+  registerResponseRoutes(app, { config, planDeps });
+  registerSecretLinkRoutes(app, { config, planDeps });
 
   return app;
 }

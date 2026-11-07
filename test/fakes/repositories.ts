@@ -1,24 +1,40 @@
-import type { Device, DeviceRepository, PlanRepository } from "../../src/application/ports.ts";
+import type {
+  Device,
+  DeviceLinkTarget,
+  DeviceRepository,
+  PlanRepository,
+  ResponseRepository,
+} from "../../src/application/ports.ts";
 import type { Plan } from "../../src/domain/plan.ts";
+import type { PlanResponse } from "../../src/domain/response.ts";
 
-/** In-memory plan and device repositories sharing one store, like the SQLite adapters share a database. */
+/** In-memory repositories sharing one store, like the SQLite adapters share a database. */
 export function createFakeRepositories(): {
   plans: PlanRepository;
   devices: DeviceRepository & { all(): Device[] };
+  responses: ResponseRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
-  const nonces = new Map<string, string>();
+  const planNonces = new Map<string, string>();
   const devices = new Map<string, { device: Device; tokenHash: string }>();
-  const hostLinks = new Set<string>();
-  const linkKey = (deviceId: string, planId: string) => `${deviceId}|${planId}`;
+  const links = new Set<string>();
+  const responses = new Map<
+    string,
+    { response: PlanResponse; manageTokenHash: string; deviceId: string | undefined }
+  >();
+  const responseNonces = new Map<string, string>();
+
+  const linkKey = (deviceId: string, target: DeviceLinkTarget) =>
+    `${deviceId}|${target.role}|${target.role === "host" ? target.planId : target.responseId}`;
+  const copy = (response: PlanResponse) => structuredClone(response);
 
   return {
     plans: {
       async create({ plan, hostTokenHash, creationNonce, hostDeviceId }) {
-        if (plans.has(plan.id) || nonces.has(creationNonce)) throw new Error("duplicate key");
+        if (plans.has(plan.id) || planNonces.has(creationNonce)) throw new Error("duplicate key");
         plans.set(plan.id, { plan: structuredClone(plan), hostTokenHash });
-        nonces.set(creationNonce, plan.id);
-        hostLinks.add(linkKey(hostDeviceId, plan.id));
+        planNonces.set(creationNonce, plan.id);
+        links.add(linkKey(hostDeviceId, { role: "host", planId: plan.id }));
       },
       async findById(id) {
         const entry = plans.get(id);
@@ -29,9 +45,10 @@ export function createFakeRepositories(): {
         return entry === undefined ? undefined : structuredClone(entry.plan);
       },
       async findIdByCreationNonce(nonce) {
-        return nonces.get(nonce);
+        return planNonces.get(nonce);
       },
     },
+
     devices: {
       async findByTokenHash(hash) {
         const entry = [...devices.values()].find((candidate) => candidate.tokenHash === hash);
@@ -44,13 +61,75 @@ export function createFakeRepositories(): {
         const entry = devices.get(id);
         if (entry !== undefined) entry.device = { ...entry.device, lastSeenAt: now };
       },
-      async linkHost(deviceId, planId) {
-        hostLinks.add(linkKey(deviceId, planId));
+      async link(deviceId, target) {
+        links.add(linkKey(deviceId, target));
       },
-      async isHost(deviceId, planId) {
-        return hostLinks.has(linkKey(deviceId, planId));
+      async hasLink(deviceId, target) {
+        return links.has(linkKey(deviceId, target));
       },
       all: () => [...devices.values()].map((entry) => ({ ...entry.device })),
+    },
+
+    responses: {
+      async create({ response, manageTokenHash, creationNonce, deviceId }) {
+        if (responses.has(response.id) || responseNonces.has(creationNonce))
+          throw new Error("duplicate key");
+        responses.set(response.id, { response: copy(response), manageTokenHash, deviceId });
+        responseNonces.set(creationNonce, response.id);
+        if (deviceId !== undefined)
+          links.add(linkKey(deviceId, { role: "manage", responseId: response.id }));
+      },
+      async findById(id) {
+        const entry = responses.get(id);
+        return entry === undefined ? undefined : copy(entry.response);
+      },
+      async findByManageTokenHash(hash) {
+        const entry = [...responses.values()].find(
+          (candidate) => candidate.manageTokenHash === hash,
+        );
+        return entry === undefined ? undefined : copy(entry.response);
+      },
+      async findIdByCreationNonce(nonce) {
+        return responseNonces.get(nonce);
+      },
+      async findForDevice(planId, deviceId) {
+        const entry = [...responses.values()].find(
+          (candidate) =>
+            candidate.response.planId === planId &&
+            links.has(linkKey(deviceId, { role: "manage", responseId: candidate.response.id })),
+        );
+        return entry === undefined ? undefined : copy(entry.response);
+      },
+      async listByPlan(planId) {
+        return [...responses.values()]
+          .filter((entry) => entry.response.planId === planId)
+          .map((entry) => copy(entry.response));
+      },
+      async counts(planId) {
+        const kinds = [...responses.values()]
+          .filter((e) => e.response.planId === planId)
+          .map((e) => e.response.kind);
+        return {
+          interested: kinds.filter((kind) => kind === "interested").length,
+          participants: kinds.filter((kind) => kind === "joined").length,
+        };
+      },
+      async update(response) {
+        const entry = responses.get(response.id);
+        if (entry !== undefined) entry.response = copy(response);
+      },
+      async delete(id) {
+        responses.delete(id);
+        for (const key of links) if (key.endsWith(`|manage|${id}`)) links.delete(key);
+      },
+      async isBlocked(planId, deviceId) {
+        return [...responses.values()].some(
+          (entry) =>
+            entry.response.planId === planId &&
+            entry.deviceId === deviceId &&
+            (entry.response.kind === "rejected" || entry.response.kind === "removed"),
+        );
+      },
     },
   };
 }

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { canRespond, isPosterName } from "../../src/domain/responding.ts";
+import {
+  canChangeResponse,
+  canRespond,
+  isPosterName,
+  OPEN_MODE_CHOICES,
+  validateDisplayName,
+} from "../../src/domain/responding.ts";
 
 const startsAt = new Date("2026-06-07T07:30:00Z");
 
@@ -42,5 +48,68 @@ describe("isPosterName (spec 3.5 Host badge)", () => {
 
   it("treats canonically equivalent Unicode spellings as equal", () => {
     expect(isPosterName("Amélie", "Amélie")).toBe(true);
+  });
+});
+
+describe("validateDisplayName (spec 3.5, decision D7)", () => {
+  it("trims and accepts names up to 50 characters", () => {
+    expect(validateDisplayName("  Ben ", "Anna")).toEqual({ ok: true, value: "Ben" });
+    expect(validateDisplayName("é".repeat(50), "Anna").ok).toBe(true);
+  });
+
+  it("rejects empty, too long and multi-line names", () => {
+    expect(validateDisplayName("  ", "Anna")).toEqual({ ok: false, error: "required" });
+    expect(validateDisplayName("x".repeat(51), "Anna")).toEqual({ ok: false, error: "too_long" });
+    expect(validateDisplayName("Ben\nB", "Anna")).toEqual({
+      ok: false,
+      error: "invalid_characters",
+    });
+  });
+
+  it("rejects exactly the poster's name, so the host badge stays unambiguous", () => {
+    expect(validateDisplayName("ANNA", "Anna")).toEqual({ ok: false, error: "name_taken_by_host" });
+  });
+});
+
+describe("open join mode (spec 3.4)", () => {
+  it("offers Interested and I'm in", () => {
+    expect(OPEN_MODE_CHOICES).toEqual(["interested", "joined"]);
+  });
+});
+
+describe("canChangeResponse (spec 5 feature 6)", () => {
+  const plan = { startsAt, status: "active" as const };
+  const before = new Date("2026-06-01T00:00:00Z");
+
+  it("lets interested and joined people switch before the start", () => {
+    expect(canChangeResponse({ kind: "interested" }, plan, before)).toEqual({
+      ok: true,
+      value: true,
+    });
+    expect(canChangeResponse({ kind: "joined" }, plan, before)).toEqual({ ok: true, value: true });
+  });
+
+  it("closes switching at the start and for cancelled plans, like new responses", () => {
+    expect(canChangeResponse({ kind: "joined" }, plan, startsAt)).toEqual({
+      ok: false,
+      error: "plan_started",
+    });
+    expect(canChangeResponse({ kind: "joined" }, { ...plan, status: "cancelled" }, before)).toEqual(
+      {
+        ok: false,
+        error: "plan_cancelled",
+      },
+    );
+  });
+
+  it("never lets removed or rejected people back in (spec 3.5)", () => {
+    expect(canChangeResponse({ kind: "removed" }, plan, before)).toEqual({
+      ok: false,
+      error: "blocked",
+    });
+    expect(canChangeResponse({ kind: "rejected" }, plan, before)).toEqual({
+      ok: false,
+      error: "blocked",
+    });
   });
 });

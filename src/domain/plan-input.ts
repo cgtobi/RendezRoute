@@ -19,6 +19,7 @@ import {
   validateRetention,
   validateStartsAt,
 } from "./schedule.ts";
+import type { FieldError as GenericFieldError } from "./result.ts";
 import { cleanText } from "./text.ts";
 import { localToInstant, validateTimeZone } from "./timezone.ts";
 
@@ -52,10 +53,7 @@ export const PLAN_INPUT_FIELDS = [
 export type PlanInput = Record<(typeof PLAN_INPUT_FIELDS)[number], string>;
 
 export type PlanField = keyof PlanInput;
-export interface FieldError {
-  field: PlanField;
-  code: string;
-}
+export type FieldError = GenericFieldError<PlanField>;
 export type Validation<T> = { ok: true; value: T } | { ok: false; errors: FieldError[] };
 
 export interface PlanDraft {

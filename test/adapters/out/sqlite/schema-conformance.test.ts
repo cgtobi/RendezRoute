@@ -8,6 +8,7 @@ import {
   PLAN_STATUSES,
   VISIBILITIES,
 } from "../../../../src/domain/plan.ts";
+import { RESPONSE_KINDS } from "../../../../src/domain/response.ts";
 import { RECAP_WINDOWS } from "../../../../src/domain/schedule.ts";
 
 let database: Database;
@@ -95,17 +96,42 @@ describe("plans constraints (spec section 4)", () => {
   });
 });
 
-describe("device_links", () => {
-  it("accepts only known roles", () => {
-    insertPlan({ id: "plan-x", host_token_hash: "hx" });
-    database.sqlite.exec(
-      "insert into devices values ('d1', 'th1', '2026-06-01T08:00:00.000Z', '2026-06-01T08:00:00.000Z')",
-    );
-    const link = (role: string) => () =>
+describe("responses enum columns", () => {
+  it("kind and previous_kind accept exactly the domain values", () => {
+    insertPlan({ id: "plan-r", host_token_hash: "hr" });
+    let n = 0;
+    const insert = (kind: string, previous: string | null) => () =>
       database.sqlite
-        .prepare("insert into device_links values ('d1', ?, 'plan-x', '2026-06-01T08:00:00.000Z')")
-        .run(role);
-    expect(link("bogus")).toThrow(/CHECK constraint failed/);
-    expect(link("host")).not.toThrow();
+        .prepare(
+          "insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language, previous_kind, created_at, updated_at) values (?, 'plan-r', ?, 'v1.x.y', ?, 'en', ?, 't', 't')",
+        )
+        .run(`r${++n}`, kind, `m${n}`, previous);
+    for (const kind of RESPONSE_KINDS) expect(insert(kind, null)).not.toThrow();
+    expect(insert("bogus", null)).toThrow(/CHECK constraint failed/);
+    for (const previous of ["interested", "requested", "joined"])
+      expect(insert("removed", previous)).not.toThrow();
+    expect(insert("removed", "removed")).toThrow(/CHECK constraint failed/);
+  });
+});
+
+describe("device_links", () => {
+  it("accepts only known roles, each with exactly its own target", () => {
+    insertPlan({ id: "plan-x", host_token_hash: "hx" });
+    database.sqlite.exec("insert into devices values ('d1', 'th1', 't', 't')");
+    database.sqlite.exec(
+      "insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language, created_at, updated_at) values ('resp-x', 'plan-x', 'joined', 'v1.x.y', 'mx', 'en', 't', 't')",
+    );
+    const link = (role: string, planId: string | null, responseId: string | null) => () =>
+      database.sqlite
+        .prepare(
+          "insert into device_links (device_id, role, plan_id, response_id, created_at) values ('d1', ?, ?, ?, 't')",
+        )
+        .run(role, planId, responseId);
+    expect(link("bogus", "plan-x", null)).toThrow(/CHECK constraint failed/);
+    expect(link("host", null, "resp-x")).toThrow(/CHECK constraint failed/);
+    expect(link("manage", "plan-x", null)).toThrow(/CHECK constraint failed/);
+    expect(link("host", "plan-x", "resp-x")).toThrow(/CHECK constraint failed/);
+    expect(link("host", "plan-x", null)).not.toThrow();
+    expect(link("manage", null, "resp-x")).not.toThrow();
   });
 });

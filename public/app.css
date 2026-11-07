@@ -268,3 +268,50 @@ input[type="color"] {
   color: var(--muted);
   font-size: 0.875rem;
 }
+
+/* Responding and managing */
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+button.secondary {
+  border: 2px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+}
+
+button.danger {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.respond,
+.own-response,
+.manage form {
+  margin: 16px 0;
+}
+
+.counts {
+  font-weight: 600;
+}
+
+.people ul {
+  padding-left: 1.2em;
+}
+
+.people li {
+  margin: 4px 0;
+}
+
+.withdraw {
+  margin: 24px 0;
+}
+
+.withdraw summary {
+  min-height: 44px;
+  color: var(--danger);
+  cursor: pointer;
+}

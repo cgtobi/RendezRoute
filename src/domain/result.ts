@@ -3,3 +3,9 @@ export type Result<T, E extends string> = { ok: true; value: T } | { ok: false; 
 
 export const ok = <T>(value: T): { ok: true; value: T } => ({ ok: true, value });
 export const err = <E extends string>(error: E): { ok: false; error: E } => ({ ok: false, error });
+
+/** A form-level error: which field, and a stable code adapters translate. */
+export interface FieldError<F extends string = string> {
+  field: F;
+  code: string;
+}

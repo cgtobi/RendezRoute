@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vite-plus/test";
 import { checkpoint } from "../../src/adapters/out/sqlite/database.ts";
 import { createTestApp } from "../support/app.ts";
 import { TestClient } from "../support/client.ts";
-import { createPlanViaUi } from "../support/plans.ts";
+import { createPlanViaUi, respondViaUi } from "../support/plans.ts";
 
 const SENTINEL_DESCRIPTION = "SENTINEL-exact-start-7c1e";
 const SENTINEL_LAT = "48.16321";
@@ -56,6 +56,102 @@ describe("exact start per audience (spec 3.6)", () => {
   });
 });
 
+const JOINED_NAME = "SENTINEL-joined-name";
+const INTERESTED_NAME = "SENTINEL-interested-name";
+const REMOVED_NAME = "SENTINEL-removed-name";
+
+/** One plan with a host, a joined, an interested and a removed person. */
+async function audiences() {
+  const test = await createTestApp();
+  const client = () => new TestClient(test.app);
+  const host = client();
+  const { planId, hostPath } = await createPlanViaUi(host, exactStart);
+  const joined = client();
+  const { managePath } = await respondViaUi(joined, planId, JOINED_NAME, "joined");
+  const interested = client();
+  await respondViaUi(interested, planId, INTERESTED_NAME, "interested");
+  const removed = client();
+  await respondViaUi(removed, planId, REMOVED_NAME, "joined");
+  test.database.sqlite
+    .prepare(
+      "update responses set kind = 'removed', previous_kind = 'joined' where id = (select max(id) from responses)",
+    )
+    .run();
+  return {
+    ...test,
+    planId,
+    hostPath,
+    managePath: managePath ?? "",
+    host,
+    joined,
+    interested,
+    removed,
+    viewer: client(),
+    client,
+  };
+}
+
+async function pages(client: TestClient, planId: string): Promise<string> {
+  const bodies = await Promise.all(
+    [`/p/${planId}`, `/p/${planId}/me`].map(async (path) => (await client.get(path)).text()),
+  );
+  return bodies.join("\n");
+}
+
+describe("names and exact start per audience (spec 3.6)", () => {
+  it("viewers see neither names nor the exact start", async () => {
+    const { viewer, planId } = await audiences();
+    const body = await pages(viewer, planId);
+    expectNoExactStart(body);
+    for (const name of [JOINED_NAME, INTERESTED_NAME, REMOVED_NAME])
+      expect(body).not.toContain(name);
+  });
+
+  it("interested people see only their own name, not others or the exact start", async () => {
+    const { interested, planId } = await audiences();
+    const body = await pages(interested, planId);
+    expectNoExactStart(body);
+    expect(body).not.toContain(JOINED_NAME);
+    expect(body).not.toContain(REMOVED_NAME);
+  });
+
+  it("removed people see what rejected people see: no names, no exact start", async () => {
+    const { removed, planId } = await audiences();
+    const body = await pages(removed, planId);
+    expectNoExactStart(body);
+    expect(body).not.toContain(JOINED_NAME);
+    expect(body).not.toContain(INTERESTED_NAME);
+  });
+
+  it("participants see the exact start and participant names, not interested or removed names", async () => {
+    const { joined, planId } = await audiences();
+    const body = await pages(joined, planId);
+    expect(body).toContain(SENTINEL_DESCRIPTION);
+    expect(body).toContain(JOINED_NAME);
+    expect(body).not.toContain(INTERESTED_NAME);
+    expect(body).not.toContain(REMOVED_NAME);
+  });
+
+  it("the host sees participants and interested people, but not removed people", async () => {
+    const { host, planId } = await audiences();
+    const body = await pages(host, planId);
+    expect(body).toContain(SENTINEL_DESCRIPTION);
+    expect(body).toContain(JOINED_NAME);
+    expect(body).toContain(INTERESTED_NAME);
+    expect(body).not.toContain(REMOVED_NAME);
+  });
+
+  it("a preview fetcher opening a manage link learns nothing private (decision D1)", async () => {
+    const { client, planId, managePath } = await audiences();
+    const fetcher = client();
+    const confirm = await (await fetcher.get(managePath)).text();
+    const body = confirm + (await pages(fetcher, planId));
+    expectNoExactStart(body);
+    for (const name of [JOINED_NAME, INTERESTED_NAME, REMOVED_NAME])
+      expect(body).not.toContain(name);
+  });
+});
+
 describe("host link (spec 3.2: shown once on creation)", () => {
   it("appears on no page after the links page, not even for the host", async () => {
     const { app } = await createTestApp();
@@ -75,10 +171,20 @@ describe("data at rest (spec 2b)", () => {
     const path = join(dir, "rendezroute.db");
     const { app, database } = await createTestApp({ databasePath: path });
     const host = new TestClient(app);
-    const { hostPath } = await createPlanViaUi(host, exactStart);
-    const hostToken = hostPath.slice("/a/".length);
-    const deviceToken = host.cookies.get("__Host-rr-device") ?? "";
-    expect(deviceToken).toHaveLength(43);
+    const { planId, hostPath } = await createPlanViaUi(host, exactStart);
+    const joined = new TestClient(app);
+    const { managePath } = await respondViaUi(joined, planId, JOINED_NAME, "joined");
+    const secrets = [
+      SENTINEL_DESCRIPTION,
+      SENTINEL_LAT,
+      JOINED_NAME,
+      hostPath.slice("/a/".length),
+      (managePath ?? "/m/missing").slice("/m/".length),
+      host.cookies.get("__Host-rr-device") ?? "missing",
+      joined.cookies.get("__Host-rr-device") ?? "missing",
+    ];
+    // Every secret was actually captured (no fallback placeholders).
+    for (const secret of secrets) expect(secret).not.toContain("missing");
 
     const raw = () =>
       [path, `${path}-wal`]
@@ -86,10 +192,7 @@ describe("data at rest (spec 2b)", () => {
         .map((file) => readFileSync(file).toString("latin1"))
         .join("");
     for (const content of [raw(), (checkpoint(database), raw())]) {
-      expect(content).not.toContain(SENTINEL_DESCRIPTION);
-      expect(content).not.toContain(SENTINEL_LAT);
-      expect(content).not.toContain(hostToken);
-      expect(content).not.toContain(deviceToken);
+      for (const secret of secrets) expect(content).not.toContain(secret);
     }
     await database.close();
   });

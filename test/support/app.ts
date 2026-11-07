@@ -7,6 +7,7 @@ import { createIdGenerator } from "../../src/adapters/out/ids.ts";
 import { type Database, openDatabase } from "../../src/adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "../../src/adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "../../src/adapters/out/sqlite/plans.ts";
+import { createResponseRepository } from "../../src/adapters/out/sqlite/responses.ts";
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { type Config, loadConfig } from "../../src/config.ts";
 import { FakeClock } from "../fakes/clock.ts";
@@ -39,6 +40,7 @@ export async function createTestApp({
     planDeps: {
       plans: createPlanRepository(database, cipher),
       devices: createDeviceRepository(database),
+      responses: createResponseRepository(database, cipher),
       tokens: createTokenService(),
       ids: createIdGenerator(),
       clock,

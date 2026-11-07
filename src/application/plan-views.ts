@@ -5,7 +5,25 @@ import type { HexColor } from "../domain/color.ts";
 import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { PaceBand } from "../domain/pace.ts";
 import type { DropPolicy, Plan, PlanStatus } from "../domain/plan.ts";
+import type { PlanResponse, ResponseKind } from "../domain/response.ts";
 
+export interface Counts {
+  interested: number;
+  participants: number;
+}
+
+export interface PersonView {
+  name: string;
+  /** The poster, shown with a host badge (spec 3.5). */
+  isHost: boolean;
+}
+
+export interface OwnResponseView {
+  kind: ResponseKind;
+  displayName: string;
+}
+
+/** Everyone: public details and counts. */
 export interface PlanViewForViewer {
   id: string;
   title: string;
@@ -22,14 +40,29 @@ export interface PlanViewForViewer {
   colors: { primary: HexColor; secondary: HexColor };
   status: PlanStatus;
   deleteAt: Date;
+  counts: Counts;
 }
 
+/** Interested, pending, rejected and removed people: viewer content plus their own status. */
+export interface PlanViewForResponder extends PlanViewForViewer {
+  ownResponse: OwnResponseView;
+}
+
+/** Accepted participants: plus exact start and participant names. */
+export interface PlanViewForParticipant extends PlanViewForResponder {
+  exactStart: ExactStart | undefined;
+  participants: PersonView[];
+}
+
+/** The poster: plus interested names. */
 export interface PlanViewForPoster extends PlanViewForViewer {
   exactStart: ExactStart | undefined;
+  participants: PersonView[];
+  interested: PersonView[];
   retentionDays: number;
 }
 
-export function viewForViewer(plan: Plan): PlanViewForViewer {
+export function viewForViewer(plan: Plan, counts: Counts): PlanViewForViewer {
   return {
     id: plan.id,
     title: plan.title,
@@ -46,9 +79,58 @@ export function viewForViewer(plan: Plan): PlanViewForViewer {
     colors: plan.colors,
     status: plan.status,
     deleteAt: plan.deleteAt,
+    counts: { interested: counts.interested, participants: counts.participants },
   };
 }
 
-export function viewForPoster(plan: Plan): PlanViewForPoster {
-  return { ...viewForViewer(plan), exactStart: plan.exactStart, retentionDays: plan.retentionDays };
+const ownResponse = (response: PlanResponse): OwnResponseView => ({
+  kind: response.kind,
+  displayName: response.displayName,
+});
+
+/** Host first, then joined people in response order. */
+function participantsOf(plan: Plan, responses: readonly PlanResponse[]): PersonView[] {
+  return [
+    { name: plan.posterName, isHost: true },
+    ...responses
+      .filter((r) => r.kind === "joined")
+      .map((r) => ({ name: r.displayName, isHost: false })),
+  ];
+}
+
+export function viewForResponder(
+  plan: Plan,
+  counts: Counts,
+  response: PlanResponse,
+): PlanViewForResponder {
+  return { ...viewForViewer(plan, counts), ownResponse: ownResponse(response) };
+}
+
+export function viewForParticipant(
+  plan: Plan,
+  counts: Counts,
+  response: PlanResponse,
+  responses: readonly PlanResponse[],
+): PlanViewForParticipant {
+  return {
+    ...viewForResponder(plan, counts, response),
+    exactStart: plan.exactStart,
+    participants: participantsOf(plan, responses),
+  };
+}
+
+export function viewForPoster(
+  plan: Plan,
+  counts: Counts,
+  responses: readonly PlanResponse[],
+): PlanViewForPoster {
+  return {
+    ...viewForViewer(plan, counts),
+    exactStart: plan.exactStart,
+    participants: participantsOf(plan, responses),
+    interested: responses
+      .filter((r) => r.kind === "interested")
+      .map((r) => ({ name: r.displayName, isHost: false })),
+    retentionDays: plan.retentionDays,
+  };
 }

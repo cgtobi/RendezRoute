@@ -2,6 +2,7 @@
 // repository integration tests and the schema conformance test catch drift.
 import type { ActivityType } from "../../../domain/activity.ts";
 import type { DropPolicy, JoinMode, PlanStatus, Visibility } from "../../../domain/plan.ts";
+import type { ResponseKind } from "../../../domain/response.ts";
 import type { RecapWindow } from "../../../domain/schedule.ts";
 
 export interface InstanceMetaTable {
@@ -54,9 +55,25 @@ export interface DevicesTable {
 
 export interface DeviceLinksTable {
   device_id: string;
-  role: "host";
-  plan_id: string;
+  role: "host" | "manage";
+  plan_id: string | null;
+  response_id: string | null;
   created_at: string;
+}
+
+export interface ResponsesTable {
+  id: string;
+  plan_id: string;
+  kind: ResponseKind;
+  display_name_enc: string;
+  request_note_enc: string | null;
+  manage_token_hash: string;
+  device_id: string | null;
+  language: string;
+  previous_kind: ResponseKind | null;
+  creation_nonce: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PlanCreationNoncesTable {
@@ -72,4 +89,5 @@ export interface DatabaseSchema {
   devices: DevicesTable;
   device_links: DeviceLinksTable;
   plan_creation_nonces: PlanCreationNoncesTable;
+  responses: ResponsesTable;
 }

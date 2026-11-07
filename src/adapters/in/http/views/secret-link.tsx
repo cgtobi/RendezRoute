@@ -1,8 +1,9 @@
-// Confirmation step for host links (decision D1).
+// Confirmation step for host and manage links (decision D1).
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 
-export function HostLinkHead({ t }: { t: Translate }) {
+/** Generic tags, so a pasted secret link previews as a warning rather than the plan. */
+export function SecretLinkHead({ t }: { t: Translate }) {
   return (
     <>
       <meta name="robots" content="noindex" />
@@ -12,22 +13,24 @@ export function HostLinkHead({ t }: { t: Translate }) {
   );
 }
 
-export function HostLinkConfirm(props: {
+export function SecretLinkConfirm(props: {
   t: Translate;
-  title: string;
+  heading: string;
+  body: string;
+  warning: string;
+  action: "/a" | "/m";
   token: string;
   csrfToken: string;
 }) {
-  const { t } = props;
   return (
     <section>
-      <h1>{t("hostLink.heading")}</h1>
-      <p>{t("hostLink.body", { title: props.title })}</p>
-      <p class="warning">{t("hostLink.sharedWarning")}</p>
-      <form method="post" action="/a">
+      <h1>{props.heading}</h1>
+      <p>{props.body}</p>
+      <p class="warning">{props.warning}</p>
+      <form method="post" action={props.action}>
         <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
         <input type="hidden" name="token" value={props.token} />
-        <button type="submit">{t("hostLink.confirm")}</button>
+        <button type="submit">{props.t("secretLink.confirm")}</button>
       </form>
     </section>
   );

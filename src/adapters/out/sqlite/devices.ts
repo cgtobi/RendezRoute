@@ -1,6 +1,11 @@
 // Devices and their links (spec 3.2). Only token hashes are stored.
-import type { DeviceRepository } from "../../../application/ports.ts";
+import type { DeviceLinkTarget, DeviceRepository } from "../../../application/ports.ts";
 import type { Database } from "./database.ts";
+
+const columns = (target: DeviceLinkTarget) =>
+  target.role === "host"
+    ? { role: "host" as const, plan_id: target.planId, response_id: null }
+    : { role: "manage" as const, plan_id: null, response_id: target.responseId };
 
 export function createDeviceRepository(database: Database): DeviceRepository {
   return {
@@ -29,26 +34,25 @@ export function createDeviceRepository(database: Database): DeviceRepository {
         .execute();
     },
 
-    async linkHost(deviceId, planId, now) {
+    async link(deviceId, target, now) {
       await database.db
         .insertInto("device_links")
-        .values({
-          device_id: deviceId,
-          role: "host",
-          plan_id: planId,
-          created_at: now.toISOString(),
-        })
+        .values({ device_id: deviceId, ...columns(target), created_at: now.toISOString() })
         .onConflict((conflict) => conflict.doNothing())
         .execute();
     },
 
-    async isHost(deviceId, planId) {
+    async hasLink(deviceId, target) {
       const row = await database.db
         .selectFrom("device_links")
         .select("device_id")
         .where("device_id", "=", deviceId)
-        .where("plan_id", "=", planId)
-        .where("role", "=", "host")
+        .where("role", "=", target.role)
+        .where(
+          target.role === "host" ? "plan_id" : "response_id",
+          "=",
+          target.role === "host" ? target.planId : target.responseId,
+        )
         .executeTakeFirst();
       return row !== undefined;
     },

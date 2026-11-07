@@ -74,7 +74,7 @@ describe("PlanRepository", () => {
 
   it("links the creating device as host in the same step", async () => {
     const plan = await seed();
-    expect(await repos().devices.isHost("device-1", plan.id)).toBe(true);
+    expect(await repos().devices.hasLink("device-1", { role: "host", planId: plan.id })).toBe(true);
   });
 
   it("encrypts the exact start: neither coordinates nor description appear in the row (spec 3.11)", async () => {
@@ -122,10 +122,10 @@ describe("DeviceRepository", () => {
     const plan = await seed();
     const { devices } = repos();
     await devices.create({ id: "device-2", tokenHash: "hash-2", now: fixtureNow });
-    expect(await devices.isHost("device-2", plan.id)).toBe(false);
-    await devices.linkHost("device-2", plan.id, fixtureNow);
-    await devices.linkHost("device-2", plan.id, fixtureNow);
-    expect(await devices.isHost("device-2", plan.id)).toBe(true);
+    expect(await devices.hasLink("device-2", { role: "host", planId: plan.id })).toBe(false);
+    await devices.link("device-2", { role: "host", planId: plan.id }, fixtureNow);
+    await devices.link("device-2", { role: "host", planId: plan.id }, fixtureNow);
+    expect(await devices.hasLink("device-2", { role: "host", planId: plan.id })).toBe(true);
   });
 });
 

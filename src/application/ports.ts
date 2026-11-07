@@ -1,4 +1,5 @@
 import type { Plan } from "../domain/plan.ts";
+import type { PlanResponse } from "../domain/response.ts";
 
 // Driven ports (spec 2a). Use cases receive implementations as arguments;
 // adapters in src/adapters/out implement them, fakes live in test/fakes.
@@ -88,11 +89,44 @@ export interface Device {
   lastSeenAt: Date;
 }
 
+/** What a device is linked to, and in which role (spec 3.2). */
+export type DeviceLinkTarget =
+  | { role: "host"; planId: string }
+  | { role: "manage"; responseId: string };
+
 export interface DeviceRepository {
   findByTokenHash(hash: string): Promise<Device | undefined>;
   create(device: { id: string; tokenHash: string; now: Date }): Promise<void>;
   touch(id: string, now: Date): Promise<void>;
   /** Idempotent. */
-  linkHost(deviceId: string, planId: string, now: Date): Promise<void>;
-  isHost(deviceId: string, planId: string): Promise<boolean>;
+  link(deviceId: string, target: DeviceLinkTarget, now: Date): Promise<void>;
+  hasLink(deviceId: string, target: DeviceLinkTarget): Promise<boolean>;
+}
+
+export interface NewResponse {
+  response: PlanResponse;
+  manageTokenHash: string;
+  /** One-time value from the response form; detects double submits. */
+  creationNonce: string;
+  /** Linked as manager and kept for blocks; undefined only in tests and imports. */
+  deviceId: string | undefined;
+}
+
+export interface ResponseRepository {
+  /** Stores the response and links the device as manager, in one transaction. */
+  create(input: NewResponse): Promise<void>;
+  findById(id: string): Promise<PlanResponse | undefined>;
+  findByManageTokenHash(hash: string): Promise<PlanResponse | undefined>;
+  findIdByCreationNonce(nonce: string): Promise<string | undefined>;
+  /** The response a device manages for a plan, if any (one per device and plan). */
+  findForDevice(planId: string, deviceId: string): Promise<PlanResponse | undefined>;
+  listByPlan(planId: string): Promise<PlanResponse[]>;
+  /** Interested and joined counts; rejected and removed people never count (spec 3.5). */
+  counts(planId: string): Promise<{ interested: number; participants: number }>;
+  /** Updates kind, display name and previous kind. */
+  update(response: PlanResponse): Promise<void>;
+  /** Hard delete, including device links (spec 1.6). */
+  delete(id: string): Promise<void>;
+  /** True if this device was rejected or removed for this plan (spec 3.5). */
+  isBlocked(planId: string, deviceId: string): Promise<boolean>;
 }

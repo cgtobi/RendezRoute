@@ -2,6 +2,7 @@
 // Takes a plain key/value record so sources other than process.env (e.g. a
 // Home Assistant options file, spec section 8) can be mapped onto it later.
 import { isAbsolute } from "node:path";
+import { validateTimeZone } from "./domain/timezone.ts";
 
 /** Raw key/value configuration, e.g. process.env or a mapped Home Assistant options file. */
 export type ConfigSource = Readonly<Record<string, string | undefined>>;
@@ -165,19 +166,15 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     errors.push(`CONTACT_EMAIL must be an email address, got "${contactEmail}".`);
   }
 
-  // DEFAULT_TIMEZONE: IANA names only; Intl also accepts offsets such as "+01:00".
+  // DEFAULT_TIMEZONE
   const rawTimezone = read("DEFAULT_TIMEZONE") || DEFAULTS.DEFAULT_TIMEZONE;
-  let defaultTimezone: string = DEFAULTS.DEFAULT_TIMEZONE;
-  try {
-    const resolved = new Intl.DateTimeFormat("en", { timeZone: rawTimezone }).resolvedOptions()
-      .timeZone;
-    if (/^[+-]/.test(resolved)) throw new RangeError("offset, not an IANA zone");
-    defaultTimezone = resolved;
-  } catch {
+  const timezone = validateTimeZone(rawTimezone);
+  if (!timezone.ok) {
     errors.push(
       `DEFAULT_TIMEZONE must be an IANA time zone such as "Europe/Berlin", got "${rawTimezone}".`,
     );
   }
+  const defaultTimezone = timezone.ok ? timezone.value : DEFAULTS.DEFAULT_TIMEZONE;
 
   // Maps
   const mapsEnabled = bool("MAPS_ENABLED", true);

@@ -1,0 +1,31 @@
+import type { MiddlewareHandler } from "hono";
+import type { Config } from "../../../config.ts";
+
+/** Security headers from spec 3.8 on every response, including 404 and error responses. */
+export function securityHeaders(config: Config): MiddlewareHandler {
+  const imgSources = [
+    "'self'",
+    "data:",
+    ...(config.maps.enabled ? [config.maps.tileCspSource] : []),
+  ];
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self'",
+    "font-src 'self'",
+    `img-src ${imgSources.join(" ")}`,
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+
+  return async (c, next) => {
+    await next();
+    c.res.headers.set("content-security-policy", csp);
+    c.res.headers.set("x-content-type-options", "nosniff");
+    // Secret-link responses set the stricter no-referrer themselves (spec 3.2).
+    if (!c.res.headers.has("referrer-policy"))
+      c.res.headers.set("referrer-policy", "strict-origin");
+  };
+}

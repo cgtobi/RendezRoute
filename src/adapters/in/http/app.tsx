@@ -2,7 +2,11 @@ import { type Context, Hono } from "hono";
 import { jsxRenderer } from "hono/jsx-renderer";
 import type { Config } from "../../../config.ts";
 import { type Language, negotiateLanguage, type Translate, translator } from "../../i18n/i18n.ts";
+import type { Logger } from "../../logging.ts";
+import { csrf } from "./csrf.ts";
 import { Layout } from "./layout.tsx";
+import { requestLogger } from "./request-logger.ts";
+import { securityHeaders } from "./security-headers.ts";
 
 declare module "hono" {
   interface ContextRenderer {
@@ -15,12 +19,19 @@ declare module "hono" {
 
 export interface AppDeps {
   config: Config;
+  /** Derived from the encryption key (deriveKey(keyring, "csrf")). */
+  csrfKey: Buffer;
+  logger: Logger;
 }
 
-type Env = { Variables: { language: Language; t: Translate } };
+type Env = { Variables: { language: Language; t: Translate; csrfToken: () => string } };
 
-export function createApp({ config }: AppDeps): Hono<Env> {
+export function createApp({ config, csrfKey, logger }: AppDeps): Hono<Env> {
   const app = new Hono<Env>();
+
+  app.use(requestLogger(logger));
+  app.use(securityHeaders(config));
+  app.use(csrf({ key: csrfKey, config }));
 
   app.use(async (c, next) => {
     const language = negotiateLanguage(c.req.header("accept-language"));
@@ -39,6 +50,12 @@ export function createApp({ config }: AppDeps): Hono<Env> {
       { docType: true },
     ),
   );
+
+  app.onError((error, c) => {
+    // Error class only: messages may contain user input.
+    logger.error("unhandled_error", { name: error.name });
+    return c.text("Internal error", 500);
+  });
 
   app.get("/healthz", (c) => c.text("ok"));
 

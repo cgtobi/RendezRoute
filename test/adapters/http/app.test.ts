@@ -1,6 +1,15 @@
+import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vite-plus/test";
-import { createApp } from "../../../src/adapters/in/http/app.tsx";
+import { createApp as createAppWithDeps } from "../../../src/adapters/in/http/app.tsx";
+import { createLogger } from "../../../src/adapters/logging.ts";
 import { type Config, loadConfig } from "../../../src/config.ts";
+
+const createApp = ({ config }: { config: Config }) =>
+  createAppWithDeps({
+    config,
+    csrfKey: randomBytes(32),
+    logger: createLogger({ write: () => {} }),
+  });
 
 function config(env: Record<string, string> = {}): Config {
   const result = loadConfig({
@@ -63,5 +72,21 @@ describe("page layout", () => {
       headers: { "accept-language": "fr,en;q=0.5" },
     });
     expect(await response.text()).toContain('<html lang="en">');
+  });
+});
+
+describe("app-wide middleware", () => {
+  it("applies the security headers to pages and health checks", async () => {
+    const app = createApp({ config: config() });
+    for (const path of ["/", "/healthz", "/missing"]) {
+      const response = await app.request(path);
+      expect(response.headers.get("content-security-policy")).toContain("default-src 'self'");
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    }
+  });
+
+  it("rejects state-changing requests without a CSRF token", async () => {
+    const response = await createApp({ config: config() }).request("/", { method: "POST" });
+    expect(response.status).toBe(403);
   });
 });

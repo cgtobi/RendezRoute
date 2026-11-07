@@ -1,7 +1,9 @@
 import type { Migration } from "kysely/migration";
 import * as m0001 from "./0001-instance-meta.ts";
+import * as m0002 from "./0002-plans-and-devices.ts";
 
 /** Statically imported so migrations work identically from src/ and dist/. Keys sort in order. */
 export const migrations: Readonly<Record<string, Migration>> = {
   "0001-instance-meta": m0001,
+  "0002-plans-and-devices": m0002,
 };

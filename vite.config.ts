@@ -25,6 +25,8 @@ export default defineConfig({
       "typescript/no-explicit-any": "error",
       eqeqeq: "error",
       "no-console": "error",
+      // Helpers named expect* (e.g. expectNoExactStart) count as assertions.
+      "vitest/expect-expect": ["warn", { assertFunctionNames: ["expect", "expect*"] }],
     },
     overrides: [
       {

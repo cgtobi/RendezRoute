@@ -1,3 +1,5 @@
+import type { Plan } from "../domain/plan.ts";
+
 // Driven ports (spec 2a). Use cases receive implementations as arguments;
 // adapters in src/adapters/out implement them, fakes live in test/fakes.
 
@@ -63,4 +65,34 @@ export interface OutboundHttp {
     url: URL,
     options?: { headers?: Readonly<Record<string, string>>; maxBytes?: number; timeoutMs?: number },
   ): Promise<OutboundResponse>;
+}
+
+export interface NewPlan {
+  plan: Plan;
+  hostTokenHash: string;
+  /** One-time value from the create form; detects resubmission (decision I9). */
+  creationNonce: string;
+  hostDeviceId: string;
+}
+
+export interface PlanRepository {
+  /** Stores the plan, its creation nonce and the host device link in one transaction. */
+  create(input: NewPlan): Promise<void>;
+  findById(id: string): Promise<Plan | undefined>;
+  findByHostTokenHash(hash: string): Promise<Plan | undefined>;
+  findIdByCreationNonce(nonce: string): Promise<string | undefined>;
+}
+
+export interface Device {
+  id: string;
+  lastSeenAt: Date;
+}
+
+export interface DeviceRepository {
+  findByTokenHash(hash: string): Promise<Device | undefined>;
+  create(device: { id: string; tokenHash: string; now: Date }): Promise<void>;
+  touch(id: string, now: Date): Promise<void>;
+  /** Idempotent. */
+  linkHost(deviceId: string, planId: string, now: Date): Promise<void>;
+  isHost(deviceId: string, planId: string): Promise<boolean>;
 }

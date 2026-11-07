@@ -67,8 +67,12 @@ export function csrf({
         type.startsWith("application/x-www-form-urlencoded") ||
         type.startsWith("multipart/form-data")
       ) {
-        const field = (await c.req.parseBody())[CSRF_FIELD];
-        if (typeof field === "string") submitted = field;
+        try {
+          const field = (await c.req.parseBody())[CSRF_FIELD];
+          if (typeof field === "string") submitted = field;
+        } catch {
+          // Malformed body: treated as a missing token.
+        }
       }
     }
 

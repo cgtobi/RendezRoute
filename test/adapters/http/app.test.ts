@@ -3,6 +3,10 @@ import { describe, expect, it } from "vite-plus/test";
 import { createApp as createAppWithDeps } from "../../../src/adapters/in/http/app.tsx";
 import { en } from "../../../src/adapters/i18n/messages/en.ts";
 import { createLogger } from "../../../src/adapters/logging.ts";
+import { FakeClock } from "../../fakes/clock.ts";
+import { SequentialIdGenerator } from "../../fakes/ids.ts";
+import { createFakeRepositories } from "../../fakes/repositories.ts";
+import { FakeTokenService } from "../../fakes/tokens.ts";
 import { type Config, loadConfig } from "../../../src/config.ts";
 
 const createApp = ({ config }: { config: Config }) =>
@@ -10,6 +14,13 @@ const createApp = ({ config }: { config: Config }) =>
     config,
     csrfKey: randomBytes(32),
     logger: createLogger({ write: () => {} }),
+    planDeps: {
+      ...createFakeRepositories(),
+      tokens: new FakeTokenService(),
+      ids: new SequentialIdGenerator(),
+      clock: new FakeClock(),
+      limits: { horizonDays: 180, maxRetentionDays: 30 },
+    },
   });
 
 function config(env: Record<string, string> = {}): Config {

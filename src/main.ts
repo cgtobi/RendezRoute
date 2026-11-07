@@ -7,7 +7,12 @@ import { createApp } from "./adapters/in/http/app.tsx";
 import { createLogger, type Logger } from "./adapters/logging.ts";
 import { openInstanceKeys } from "./adapters/out/crypto/instance-keys.ts";
 import { KeyError } from "./adapters/out/crypto/keyring.ts";
+import { createIdGenerator } from "./adapters/out/ids.ts";
 import { openDatabase } from "./adapters/out/sqlite/database.ts";
+import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
+import { createPlanRepository } from "./adapters/out/sqlite/plans.ts";
+import { systemClock } from "./adapters/out/system-clock.ts";
+import { createTokenService } from "./adapters/out/tokens.ts";
 import { type ConfigSource, loadConfig } from "./config.ts";
 
 /** Port inside the container; publish it or put a reverse proxy in front. */
@@ -39,10 +44,9 @@ export async function startServer(
   mkdirSync(config.dataDir, { recursive: true });
   const database = await openDatabase(join(config.dataDir, "rendezroute.db"));
 
-  let csrfKey: Buffer;
+  let keys: Awaited<ReturnType<typeof openInstanceKeys>>;
   try {
-    const keys = await openInstanceKeys(config, database);
-    csrfKey = keys.csrfKey;
+    keys = await openInstanceKeys(config, database);
     if (keys.warning !== undefined) warnings.push(keys.warning);
   } catch (error) {
     await database.close();
@@ -50,7 +54,19 @@ export async function startServer(
     throw error;
   }
 
-  const app = createApp({ config, csrfKey, logger });
+  const app = createApp({
+    config,
+    csrfKey: keys.csrfKey,
+    logger,
+    planDeps: {
+      plans: createPlanRepository(database, keys.cipher),
+      devices: createDeviceRepository(database),
+      tokens: createTokenService(),
+      ids: createIdGenerator(),
+      clock: systemClock,
+      limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
+    },
+  });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));
   });

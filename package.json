@@ -1,0 +1,39 @@
+{
+  "name": "rendezroute",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Self-hosted app for advertising a planned run or ride so others can join",
+  "license": "AGPL-3.0-only",
+  "bin": {
+    "rendezroute": "dist/cli.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/cli.js serve",
+    "dev": "vpx --watch src/cli.ts serve",
+    "typecheck": "tsc --noEmit",
+    "lint": "vp lint",
+    "fmt": "vp fmt",
+    "test": "vp test",
+    "check": "vp check --deny-warnings && tsc --noEmit && vp test"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.6",
+    "hono": "4.13.17"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2",
+    "vite-plus": "1.5.0"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "volta": {
+    "node": "26.13.0"
+  },
+  "allowScripts": {
+    "fsevents": false
+  }
+}

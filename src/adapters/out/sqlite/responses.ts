@@ -2,7 +2,7 @@
 import type { Selectable } from "kysely";
 import type { FieldCipher, ResponseRepository } from "../../../application/ports.ts";
 import type { PlanResponse } from "../../../domain/response.ts";
-import type { Database } from "./database.ts";
+import { checkpoint, type Database } from "./database.ts";
 import type { ResponsesTable } from "./schema.ts";
 
 const DISPLAY_NAME = "responses.display_name" as const;
@@ -122,6 +122,8 @@ export function createResponseRepository(
 
     async delete(id) {
       await database.db.deleteFrom("responses").where("id", "=", id).execute();
+      // Manual deletions also leave the WAL (spec 3.10, decision D8).
+      checkpoint(database);
     },
 
     async isBlocked(planId, deviceId) {

@@ -99,6 +99,8 @@ export function validatePlanInput(
   input: PlanInput,
   rules: PlanRules,
   units: Units,
+  /** When editing: a start equal to this instant is not re-checked against "now" (spec 3.1 Start date). */
+  { unchangedStart }: { unchangedStart?: Date | undefined } = {},
 ): Validation<PlanDraft> {
   const errors: FieldError[] = [];
   const fail = (field: PlanField, code: string): undefined => {
@@ -146,8 +148,12 @@ export function validatePlanInput(
     if (!instant.ok) {
       fail("date", instant.error);
     } else {
-      const checked = validateStartsAt(instant.value, rules.now, rules.horizonDays);
-      startsAt = checked.ok ? checked.value : fail("date", checked.error);
+      if (unchangedStart !== undefined && instant.value.getTime() === unchangedStart.getTime()) {
+        startsAt = instant.value;
+      } else {
+        const checked = validateStartsAt(instant.value, rules.now, rules.horizonDays);
+        startsAt = checked.ok ? checked.value : fail("date", checked.error);
+      }
     }
   }
 

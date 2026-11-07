@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import type { Context } from "hono";
 import type { PlanDeps } from "../../../../application/plans.ts";
 import type { ViewPlanResult } from "../../../../application/plans.ts";
+import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input.ts";
 import type { Config } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
 import { PlanPage } from "../views/plan-page.tsx";
@@ -26,6 +27,10 @@ export async function readForm(c: Context): Promise<Record<string, unknown> | un
 
 export const formField = (body: Record<string, unknown>, name: string): string =>
   typeof body[name] === "string" ? body[name] : "";
+
+/** A PlanInput with every field taken from `value`. */
+export const planInput = (value: (field: string) => string): PlanInput =>
+  Object.fromEntries(PLAN_INPUT_FIELDS.map((field) => [field, value(field)])) as PlanInput;
 
 /** Responses that carry or follow a secret link (spec 3.2, 3.8). */
 export function secretLinkHeaders(c: Context): void {

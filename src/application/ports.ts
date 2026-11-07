@@ -82,6 +82,10 @@ export interface PlanRepository {
   findById(id: string): Promise<Plan | undefined>;
   findByHostTokenHash(hash: string): Promise<Plan | undefined>;
   findIdByCreationNonce(nonce: string): Promise<string | undefined>;
+  /** Stores every field of an existing plan. */
+  update(plan: Plan): Promise<void>;
+  /** Hard delete of the plan and everything referencing it, physically removed from disk (spec 1.6, 3.10). */
+  delete(id: string): Promise<void>;
 }
 
 export interface Device {
@@ -125,7 +129,7 @@ export interface ResponseRepository {
   counts(planId: string): Promise<{ interested: number; participants: number }>;
   /** Updates kind, display name and previous kind. */
   update(response: PlanResponse): Promise<void>;
-  /** Hard delete, including device links (spec 1.6). */
+  /** Hard delete, including device links, physically removed from disk (spec 1.6, 3.10). */
   delete(id: string): Promise<void>;
   /** True if this device was rejected or removed for this plan (spec 3.5). */
   isBlocked(planId: string, deviceId: string): Promise<boolean>;

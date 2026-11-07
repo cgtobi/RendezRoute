@@ -85,6 +85,7 @@ export const en = {
   "field.retention_out_of_range": "Please choose one of the offered periods.",
   "field.retention_shorter_than_recap_window": "Please choose a longer period.",
   "field.name_taken_by_host": "That's the host's name. Please use a different one.",
+  "field.name_taken_by_response": "Someone who responded already uses this name.",
 
   "links.heading": "Your plan is ready",
   "links.planLink": "Plan link: share this one",
@@ -154,6 +155,35 @@ export const en = {
   "manageLink.body": "This link lets you change or withdraw your response to “{title}”.",
   "manageLink.sharedWarning":
     "Only continue on your own device: anyone using this browser can then change or withdraw your response.",
+
+  "plan.managePlan": "Manage plan",
+
+  "host.heading": "Manage your plan",
+  "host.saved": "Changes saved.",
+  "host.save": "Save changes",
+  "host.retentionOnly":
+    "The plan has started or was cancelled. You can still change when it is deleted.",
+  "host.deletesNowWarning": "This will delete the plan now.",
+  "host.deleteNow": "Delete the plan now",
+  "host.people": "People",
+  "host.participants": "Joined",
+  "host.interested": "Interested",
+  "host.removed": "Removed",
+  "host.noPeople": "Nobody has responded yet.",
+  "host.remove": "Remove",
+  "host.restore": "Undo removal",
+  "host.removeHint":
+    "Removed people lose access to the exact start and can't respond again from the same device.",
+  "host.cancel": "Cancel plan…",
+  "host.cancelExplain":
+    "Cancelling is final. The plan stays visible with a “cancelled” banner until it is deleted. To run it after all, create a new plan.",
+  "host.cancelConfirm": "Cancel this plan",
+  "host.delete": "Delete plan…",
+  "host.deleteHeading": "Delete “{title}”?",
+  "host.deleteExplain":
+    "This deletes the plan, its exact start and all {count} responses with their names, right away and for good. It cannot be undone.",
+  "host.deleteConfirm": "Delete for good",
+  "host.back": "Back to the plan",
 
   "hostLink.heading": "Use this host link on this device?",
   "hostLink.ogTitle": "Private link",

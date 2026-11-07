@@ -78,3 +78,22 @@ export function localToInstant(
     return err("datetime_invalid");
   }
 }
+
+/** Wall-clock date ("YYYY-MM-DD") and time ("HH:MM") of an instant in an IANA zone. */
+export function instantToLocal(instant: Date, zone: string): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(instant);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
+}

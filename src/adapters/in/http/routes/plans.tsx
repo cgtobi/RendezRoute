@@ -2,11 +2,7 @@
 import type { Context, Hono } from "hono";
 import { createPlan, viewPlan } from "../../../../application/plans.ts";
 import { DEFAULT_COLORS } from "../../../../domain/color.ts";
-import {
-  type FieldError,
-  PLAN_INPUT_FIELDS,
-  type PlanInput,
-} from "../../../../domain/plan-input.ts";
+import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { formatDate } from "../views/format.ts";
@@ -17,20 +13,17 @@ import {
   formField,
   newNonce,
   planGone,
+  planInput,
   readForm,
   renderPlanPage,
   type RouteDeps,
   secretLinkHeaders,
 } from "./shared.tsx";
 
-const TIME_ZONES = (() => {
+export const TIME_ZONES = (() => {
   const zones = Intl.supportedValuesOf("timeZone");
   return zones.includes("UTC") ? zones : ["UTC", ...zones];
 })();
-
-/** A PlanInput with every field taken from `value`. */
-const planInput = (value: (field: string) => string): PlanInput =>
-  Object.fromEntries(PLAN_INPUT_FIELDS.map((field) => [field, value(field)])) as PlanInput;
 
 export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {
   const emptyForm = (): PlanInput => ({
@@ -57,6 +50,9 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
         nonce={nonce}
         timeZones={TIME_ZONES}
         maxRetentionDays={config.maxRetentionDays}
+        action="/new"
+        heading={c.get("t")("form.heading")}
+        submitLabel={c.get("t")("form.submit")}
       />,
       { title: c.get("t")("form.heading") },
     );

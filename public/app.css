@@ -315,3 +315,32 @@ button.danger {
   color: var(--danger);
   cursor: pointer;
 }
+
+/* Host page */
+
+.people-actions {
+  padding: 0;
+  list-style: none;
+}
+
+.people-actions li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.people-actions form {
+  margin: 0;
+}
+
+.danger-zone {
+  margin: 24px 0;
+}
+
+.danger-zone summary,
+.danger-zone a {
+  color: var(--danger);
+}

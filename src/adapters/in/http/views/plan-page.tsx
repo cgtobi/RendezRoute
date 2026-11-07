@@ -54,7 +54,11 @@ export function PlanPage(props: {
           {t("plan.cancelled")}
         </p>
       )}
-      {audience.kind === "poster" && <p class="notice">{t("plan.youAreHost")}</p>}
+      {audience.kind === "poster" && (
+        <p class="notice">
+          {t("plan.youAreHost")} <a href={`/p/${view.id}/host`}>{t("plan.managePlan")}</a>
+        </p>
+      )}
 
       <dl class="plan-facts">
         <dt>{t("plan.when")}</dt>

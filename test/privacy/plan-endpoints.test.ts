@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { checkpoint } from "../../src/adapters/out/sqlite/database.ts";
 import { createTestApp } from "../support/app.ts";
-import { TestClient } from "../support/client.ts";
+import { hiddenFields as hiddenFieldsOf, TestClient } from "../support/client.ts";
 import { createPlanViaUi, respondViaUi } from "../support/plans.ts";
 
 const SENTINEL_DESCRIPTION = "SENTINEL-exact-start-7c1e";
@@ -92,9 +92,13 @@ async function audiences() {
 }
 
 async function pages(client: TestClient, planId: string): Promise<string> {
-  const bodies = await Promise.all(
-    [`/p/${planId}`, `/p/${planId}/me`].map(async (path) => (await client.get(path)).text()),
-  );
+  const paths = [
+    `/p/${planId}`,
+    `/p/${planId}/me`,
+    `/p/${planId}/host`,
+    `/p/${planId}/host/delete`,
+  ];
+  const bodies = await Promise.all(paths.map(async (path) => (await client.get(path)).text()));
   return bodies.join("\n");
 }
 
@@ -132,13 +136,14 @@ describe("names and exact start per audience (spec 3.6)", () => {
     expect(body).not.toContain(REMOVED_NAME);
   });
 
-  it("the host sees participants and interested people, but not removed people", async () => {
+  it("the host sees participants and interested people; removed people only on the host page (decision D8)", async () => {
     const { host, planId } = await audiences();
     const body = await pages(host, planId);
     expect(body).toContain(SENTINEL_DESCRIPTION);
     expect(body).toContain(JOINED_NAME);
     expect(body).toContain(INTERESTED_NAME);
-    expect(body).not.toContain(REMOVED_NAME);
+    expect(await (await host.get(`/p/${planId}`)).text()).not.toContain(REMOVED_NAME);
+    expect(await (await host.get(`/p/${planId}/host`)).text()).toContain(REMOVED_NAME);
   });
 
   it("a preview fetcher opening a manage link learns nothing private (decision D1)", async () => {
@@ -216,5 +221,42 @@ describe("logs (spec 2b: never tokens, names or exact coordinates)", () => {
     expect(output).not.toContain("SENTINEL");
     expect(output).not.toContain(SENTINEL_LAT);
     expect(output).not.toContain(host.cookies.get("__Host-rr-device") ?? "never");
+  });
+});
+
+describe("plan deletion (spec 2b: no row, job or file references the plan)", () => {
+  it("leaves no trace of the plan, its responses or names in any table or file", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rendezroute-delete-"));
+    dirs.push(dir);
+    const path = join(dir, "rendezroute.db");
+    const { app, database } = await createTestApp({ databasePath: path });
+    const host = new TestClient(app);
+    const { planId } = await createPlanViaUi(host, exactStart);
+    await respondViaUi(new TestClient(app), planId, JOINED_NAME, "joined");
+
+    const confirm = await (await host.get(`/p/${planId}/host/delete`)).text();
+    expect((await host.postForm(`/p/${planId}/host/delete`, hiddenFieldsOf(confirm))).status).toBe(
+      303,
+    );
+
+    const tables = database.sqlite
+      .prepare("select name from sqlite_master where type = 'table'")
+      .pluck()
+      .all() as string[];
+    for (const table of tables) {
+      const rows = JSON.stringify(database.sqlite.prepare(`select * from "${table}"`).all());
+      // The table name shows up in the failure message.
+      expect({ table, referencesPlan: rows.includes(planId) }).toEqual({
+        table,
+        referencesPlan: false,
+      });
+    }
+    const files = [path, `${path}-wal`]
+      .filter(existsSync)
+      .map((file) => readFileSync(file).toString("latin1"))
+      .join("");
+    for (const secret of [planId, JOINED_NAME, SENTINEL_DESCRIPTION])
+      expect(files).not.toContain(secret);
+    await database.close();
   });
 });

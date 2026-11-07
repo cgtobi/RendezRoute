@@ -26,9 +26,13 @@ export interface PlanFormProps {
   values: PlanInput;
   errors: readonly FieldError[];
   csrfToken: string;
-  nonce: string;
+  /** One-time value for creating; editing needs none (decision I9). */
+  nonce: string | undefined;
   timeZones: readonly string[];
   maxRetentionDays: number;
+  action: string;
+  heading: string;
+  submitLabel: string;
 }
 
 export function PlanForm({
@@ -39,6 +43,9 @@ export function PlanForm({
   nonce,
   timeZones,
   maxRetentionDays,
+  action,
+  heading,
+  submitLabel,
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
   const id = (field: PlanField) => `field-${field}`;
@@ -86,15 +93,15 @@ export function PlanForm({
       : values.retentionDays;
 
   return (
-    <form method="post" action="/new" class="plan-form">
-      <h1>{t("form.heading")}</h1>
+    <form method="post" action={action} class="plan-form">
+      <h1>{heading}</h1>
       {errors.length > 0 && (
         <p class="error" role="alert">
           {t("form.errors")}
         </p>
       )}
       <input type="hidden" name={CSRF_FIELD} value={csrfToken} />
-      <input type="hidden" name="nonce" value={nonce} />
+      {nonce !== undefined && <input type="hidden" name="nonce" value={nonce} />}
 
       <Field field="posterName" label={t("form.posterName")} hint={t("form.posterNameHint")}>
         {input("posterName", {
@@ -238,7 +245,7 @@ export function PlanForm({
         </select>
       </Field>
 
-      <button type="submit">{t("form.submit")}</button>
+      <button type="submit">{submitLabel}</button>
     </form>
   );
 }

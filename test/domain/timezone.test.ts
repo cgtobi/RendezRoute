@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { localToInstant, validateTimeZone } from "../../src/domain/timezone.ts";
+import { instantToLocal, localToInstant, validateTimeZone } from "../../src/domain/timezone.ts";
 
 describe("validateTimeZone (spec 3.1 Time)", () => {
   it("accepts IANA zones and returns their canonical name", () => {
@@ -52,6 +52,28 @@ describe("localToInstant (spec 3.1: times are entered in the plan's time zone)",
         ok: false,
         error: "datetime_invalid",
       });
+    }
+  });
+});
+
+describe("instantToLocal", () => {
+  it("shows an instant as wall-clock date and time in a zone, inverting localToInstant", () => {
+    expect(instantToLocal(new Date("2026-06-07T05:30:00Z"), "Europe/Berlin")).toEqual({
+      date: "2026-06-07",
+      time: "07:30",
+    });
+    expect(instantToLocal(new Date("2026-01-01T00:15:00Z"), "America/New_York")).toEqual({
+      date: "2025-12-31",
+      time: "19:15",
+    });
+    for (const [date, time] of [
+      ["2026-06-07", "07:30"],
+      ["2026-12-31", "23:59"],
+      ["2026-03-29", "03:30"],
+    ] as const) {
+      const instant = localToInstant(date, time, "Europe/Berlin");
+      if (!instant.ok) throw new Error("invalid");
+      expect(instantToLocal(instant.value, "Europe/Berlin")).toEqual({ date, time });
     }
   });
 });

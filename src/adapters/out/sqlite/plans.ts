@@ -5,7 +5,7 @@ import type { FieldCipher, PlanRepository } from "../../../application/ports.ts"
 import { type HexColor, parseHexColor } from "../../../domain/color.ts";
 import type { ExactStart } from "../../../domain/geo.ts";
 import type { Plan } from "../../../domain/plan.ts";
-import type { Database } from "./database.ts";
+import { checkpoint, type Database } from "./database.ts";
 import type { PlansTable } from "./schema.ts";
 
 const EXACT_START = "plans.exact_location" as const;
@@ -152,6 +152,23 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
         .where("host_token_hash", "=", hash)
         .executeTakeFirst();
       return row === undefined ? undefined : fromRow(row);
+    },
+
+    async update(plan) {
+      const {
+        id,
+        host_token_hash: _hostTokenHash,
+        created_at: _createdAt,
+        ...fields
+      } = toRow(plan, "");
+      await database.db.updateTable("plans").set(fields).where("id", "=", id).execute();
+    },
+
+    async delete(id) {
+      // Responses, device links and creation nonces go with it (on delete cascade).
+      await database.db.deleteFrom("plans").where("id", "=", id).execute();
+      // Manual deletions also leave the WAL (spec 3.10, decision D8).
+      checkpoint(database);
     },
 
     async findIdByCreationNonce(nonce) {

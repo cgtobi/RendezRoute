@@ -11,6 +11,7 @@ import { type Language, negotiateLanguage, type Translate, translator } from "..
 import type { Logger } from "../../logging.ts";
 import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
+import { registerHostRoutes } from "./routes/host.tsx";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { registerSecretLinkRoutes } from "./routes/secret-links.tsx";
@@ -128,6 +129,7 @@ export function createApp({ config, csrfKey, logger, planDeps }: AppDeps): Hono<
   registerPlanRoutes(app, { config, planDeps });
   registerResponseRoutes(app, { config, planDeps });
   registerSecretLinkRoutes(app, { config, planDeps });
+  registerHostRoutes(app, { config, planDeps });
 
   return app;
 }

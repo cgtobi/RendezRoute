@@ -47,6 +47,20 @@ export function createFakeRepositories(): {
       async findIdByCreationNonce(nonce) {
         return planNonces.get(nonce);
       },
+      async update(plan) {
+        const entry = plans.get(plan.id);
+        if (entry !== undefined) entry.plan = structuredClone(plan);
+      },
+      async delete(id) {
+        plans.delete(id);
+        for (const [nonce, planId] of planNonces) if (planId === id) planNonces.delete(nonce);
+        for (const [responseId, entry] of responses) {
+          if (entry.response.planId !== id) continue;
+          responses.delete(responseId);
+          for (const key of links) if (key.endsWith(`|manage|${responseId}`)) links.delete(key);
+        }
+        for (const key of links) if (key.endsWith(`|host|${id}`)) links.delete(key);
+      },
     },
 
     devices: {

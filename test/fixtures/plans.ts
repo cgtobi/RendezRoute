@@ -41,6 +41,7 @@ export function samplePlan(overrides: Partial<Plan> = {}, input: Partial<PlanInp
     visibility: "link",
     joinMode: "open",
     status: "active",
+    hasRoute: false,
     createdAt: fixtureNow,
     updatedAt: fixtureNow,
     ...overrides,

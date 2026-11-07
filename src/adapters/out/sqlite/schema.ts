@@ -82,6 +82,12 @@ export interface PlanCreationNoncesTable {
   created_at: string;
 }
 
+export interface RoutesTable {
+  id: string;
+  plan_id: string;
+  geojson_enc: string;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -90,4 +96,5 @@ export interface DatabaseSchema {
   device_links: DeviceLinksTable;
   plan_creation_nonces: PlanCreationNoncesTable;
   responses: ResponsesTable;
+  routes: RoutesTable;
 }

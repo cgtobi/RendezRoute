@@ -4,6 +4,7 @@ import { createPlan, type PlanDeps, viewPlan } from "../../src/application/plans
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { createFakeRepositories } from "../fakes/repositories.ts";
+import { FakeRouteParser } from "../fakes/route-parser.ts";
 import { FakeTokenService } from "../fakes/tokens.ts";
 import { fixtureNow, sampleInput } from "../fixtures/plans.ts";
 
@@ -16,6 +17,7 @@ beforeEach(() => {
   clock = new FakeClock(fixtureNow);
   deps = {
     ...repos,
+    routeParser: new FakeRouteParser(),
     tokens: new FakeTokenService(),
     ids: new SequentialIdGenerator(),
     clock,

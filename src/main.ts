@@ -1,5 +1,6 @@
 // Composition root (spec 2a): reads configuration and wires the enabled adapters.
 import { mkdirSync } from "node:fs";
+import { createGpxRouteParser } from "./adapters/out/gpx/route-parser.ts";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
@@ -72,6 +73,7 @@ async function openInstance(
     plans: createPlanRepository(database, keys.cipher),
     devices: createDeviceRepository(database),
     responses: createResponseRepository(database, keys.cipher),
+    routeParser: createGpxRouteParser(),
     tokens: createTokenService(),
     ids: createIdGenerator(),
     clock: systemClock,

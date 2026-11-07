@@ -21,6 +21,8 @@ export interface Plan extends PlanDraft {
   visibility: Visibility;
   joinMode: JoinMode;
   status: PlanStatus;
+  /** The route itself is loaded separately, only where it may be shown (spec 3.6). */
+  hasRoute: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

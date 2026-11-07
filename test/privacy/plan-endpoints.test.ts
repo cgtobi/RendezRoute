@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it } from "vite-plus/test";
 import { checkpoint } from "../../src/adapters/out/sqlite/database.ts";
 import { createTestApp } from "../support/app.ts";
 import { hiddenFields as hiddenFieldsOf, TestClient } from "../support/client.ts";
-import { createPlanViaUi, respondViaUi } from "../support/plans.ts";
+import { sampleGpx } from "../support/gpx.ts";
+import { createPlanViaUi, planForm as planFormFields, respondViaUi } from "../support/plans.ts";
 
 const SENTINEL_DESCRIPTION = "SENTINEL-exact-start-7c1e";
 const SENTINEL_LAT = "48.16321";
@@ -258,5 +259,37 @@ describe("plan deletion (spec 2b: no row, job or file references the plan)", () 
     for (const secret of [planId, JOINED_NAME, SENTINEL_DESCRIPTION])
       expect(files).not.toContain(secret);
     await database.close();
+  });
+});
+
+describe("route geometry per audience (spec 3.6, decision D10)", () => {
+  it("never reaches viewers, interested people or preview fetchers", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const hidden = await host.hiddenFields("/new");
+    const created = await host.postMultipart(
+      "/new",
+      {
+        ...hidden,
+        ...planFormFields({ exactLat: "", exactLng: "", exactDescription: SENTINEL_DESCRIPTION }),
+      },
+      { gpx: { name: "run.gpx", content: sampleGpx({ lat: 47.54321 }) } },
+    );
+    const planId = /\/p\/([A-Za-z0-9_-]{22})/.exec(await created.text())?.[1] ?? "";
+    const interested = new TestClient(test.app);
+    await respondViaUi(interested, planId, INTERESTED_NAME, "interested");
+
+    for (const client of [new TestClient(test.app), interested]) {
+      for (const path of [
+        `/p/${planId}`,
+        `/p/${planId}/me`,
+        `/p/${planId}/route.gpx`,
+        `/p/${planId}/host`,
+      ]) {
+        const body = await (await client.get(path)).text();
+        expect(body).not.toContain("47.54321");
+        expect(body).not.toContain("10.98765");
+      }
+    }
   });
 });

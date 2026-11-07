@@ -21,6 +21,9 @@ export interface HostPageProps {
   saved: boolean;
   /** A retention edit would delete the plan now and needs confirmation (spec 3.1). */
   confirmDeleteNow: boolean;
+  hasRoute: boolean;
+  /** Error code from the last route upload. */
+  routeError: string | undefined;
 }
 
 export function HostPage(props: HostPageProps) {
@@ -50,10 +53,13 @@ export function HostPage(props: HostPageProps) {
           action={`/p/${planId}/host`}
           heading={t("host.heading")}
           submitLabel={t("host.save")}
+          withGpx={false}
         />
       ) : (
         <RetentionForm {...props} />
       )}
+
+      {props.scope === "all" && <RouteSection {...props} />}
 
       <section class="people">
         <h2>{t("host.people")}</h2>
@@ -109,6 +115,44 @@ export function HostPage(props: HostPageProps) {
       <p class="danger-zone">
         <a href={`/p/${planId}/host/delete`}>{t("host.delete")}</a>
       </p>
+    </section>
+  );
+}
+
+function RouteSection(props: HostPageProps) {
+  const { t, planId } = props;
+  return (
+    <section class="route">
+      <h2>{t("host.route")}</h2>
+      <p>{props.hasRoute ? t("host.routePresent") : t("host.routeNone")}</p>
+      <form method="post" action={`/p/${planId}/host/route`} enctype="multipart/form-data">
+        <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+        <div class={props.routeError === undefined ? "field" : "field field-invalid"}>
+          <label for="field-route">{t("form.gpx")}</label>
+          <input
+            id="field-route"
+            type="file"
+            name="gpx"
+            accept=".gpx,application/gpx+xml"
+            required
+          />
+          <p class="hint">{t("host.routeHint")}</p>
+          {props.routeError !== undefined && (
+            <p class="error">{fieldErrorMessage(props.routeError, t)}</p>
+          )}
+        </div>
+        <button type="submit">
+          {props.hasRoute ? t("host.routeReplace") : t("host.routeUpload")}
+        </button>
+      </form>
+      {props.hasRoute && (
+        <form method="post" action={`/p/${planId}/host/route/remove`}>
+          <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+          <button type="submit" class="secondary">
+            {t("host.routeRemove")}
+          </button>
+        </form>
+      )}
     </section>
   );
 }

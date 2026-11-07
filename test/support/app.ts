@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts";
 import { createApp } from "../../src/adapters/in/http/app.tsx";
 import { createLogger } from "../../src/adapters/logging.ts";
 import { createFieldCipher } from "../../src/adapters/out/crypto/field-cipher.ts";
@@ -41,6 +42,7 @@ export async function createTestApp({
       plans: createPlanRepository(database, cipher),
       devices: createDeviceRepository(database),
       responses: createResponseRepository(database, cipher),
+      routeParser: createGpxRouteParser(),
       tokens: createTokenService(),
       ids: createIdGenerator(),
       clock,

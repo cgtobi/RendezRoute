@@ -5,10 +5,32 @@ import type { FieldCipher, PlanRepository } from "../../../application/ports.ts"
 import { type HexColor, parseHexColor } from "../../../domain/color.ts";
 import type { ExactStart } from "../../../domain/geo.ts";
 import type { Plan } from "../../../domain/plan.ts";
+import type { Route } from "../../../domain/route.ts";
 import { checkpoint, type Database } from "./database.ts";
 import type { PlansTable } from "./schema.ts";
 
 const EXACT_START = "plans.exact_location" as const;
+const ROUTE = "routes.geojson" as const;
+
+type Position = [number, number] | [number, number, number];
+interface MultiLineString {
+  type: "MultiLineString";
+  coordinates: Position[][];
+}
+
+/** GeoJSON order: [longitude, latitude, elevation?]. */
+const toGeoJson = (route: Route): MultiLineString => ({
+  type: "MultiLineString",
+  coordinates: route.segments.map((segment) =>
+    segment.map((p): Position => (p.ele === undefined ? [p.lng, p.lat] : [p.lng, p.lat, p.ele])),
+  ),
+});
+
+const fromGeoJson = (geojson: MultiLineString): Route => ({
+  segments: geojson.coordinates.map((line) =>
+    line.map(([lng, lat, ele]) => (ele === undefined ? { lat, lng } : { lat, lng, ele })),
+  ),
+});
 const DELETE_CHUNK = 500;
 
 interface StoredExactStart {
@@ -81,7 +103,7 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     updated_at: iso(plan.updatedAt),
   });
 
-  const fromRow = (row: Selectable<PlansTable>): Plan => ({
+  const fromRow = (row: Selectable<PlansTable> & { has_route: unknown }): Plan => ({
     id: row.id,
     posterName: row.poster_name,
     posterLanguage: row.poster_language,
@@ -109,12 +131,28 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     visibility: row.visibility,
     joinMode: row.join_mode,
     status: row.status,
+    hasRoute: Boolean(row.has_route),
     recapWindow: row.recap_window,
     retentionDays: row.retention_days,
     deleteAt: new Date(row.delete_at),
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   });
+
+  /** Plans with a has_route flag; the route itself is loaded only by findRoute. */
+  const selectPlans = () =>
+    database.db
+      .selectFrom("plans")
+      .selectAll("plans")
+      .select((eb) =>
+        eb
+          .exists(
+            eb.selectFrom("routes").select("routes.id").whereRef("routes.plan_id", "=", "plans.id"),
+          )
+          .as("has_route"),
+      );
+
+  const encryptRoute = (route: Route) => cipher.encrypt(JSON.stringify(toGeoJson(route)), ROUTE);
 
   const deleteMany = async (ids: readonly string[]): Promise<void> => {
     if (ids.length === 0) return;
@@ -133,7 +171,7 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
   };
 
   return {
-    async create({ plan, hostTokenHash, creationNonce, hostDeviceId }) {
+    async create({ plan, hostTokenHash, creationNonce, hostDeviceId, route }) {
       const createdAt = iso(plan.createdAt);
       await database.db.transaction().execute(async (trx) => {
         await trx.insertInto("plans").values(toRow(plan, hostTokenHash)).execute();
@@ -150,24 +188,23 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
             created_at: createdAt,
           })
           .execute();
+        if (route !== undefined) {
+          // One route per plan, so the plan ID doubles as the route ID.
+          await trx
+            .insertInto("routes")
+            .values({ id: plan.id, plan_id: plan.id, geojson_enc: encryptRoute(route) })
+            .execute();
+        }
       });
     },
 
     async findById(id) {
-      const row = await database.db
-        .selectFrom("plans")
-        .selectAll()
-        .where("id", "=", id)
-        .executeTakeFirst();
+      const row = await selectPlans().where("plans.id", "=", id).executeTakeFirst();
       return row === undefined ? undefined : fromRow(row);
     },
 
     async findByHostTokenHash(hash) {
-      const row = await database.db
-        .selectFrom("plans")
-        .selectAll()
-        .where("host_token_hash", "=", hash)
-        .executeTakeFirst();
+      const row = await selectPlans().where("plans.host_token_hash", "=", hash).executeTakeFirst();
       return row === undefined ? undefined : fromRow(row);
     },
 
@@ -195,12 +232,37 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     },
 
     async findWithRetentionAbove(maxRetentionDays) {
-      const rows = await database.db
-        .selectFrom("plans")
-        .selectAll()
-        .where("retention_days", ">", maxRetentionDays)
+      const rows = await selectPlans()
+        .where("plans.retention_days", ">", maxRetentionDays)
         .execute();
       return rows.map(fromRow);
+    },
+
+    async findRoute(planId) {
+      const row = await database.db
+        .selectFrom("routes")
+        .select("geojson_enc")
+        .where("plan_id", "=", planId)
+        .executeTakeFirst();
+      return row === undefined
+        ? undefined
+        : fromGeoJson(JSON.parse(cipher.decrypt(row.geojson_enc, ROUTE)));
+    },
+
+    async saveRoute(planId, route) {
+      const geojson_enc = encryptRoute(route);
+      await database.db
+        .insertInto("routes")
+        .values({ id: planId, plan_id: planId, geojson_enc })
+        .onConflict((conflict) => conflict.column("plan_id").doUpdateSet({ geojson_enc }))
+        .execute();
+      // The replaced route's ciphertext also leaves the WAL.
+      checkpoint(database);
+    },
+
+    async deleteRoute(planId) {
+      await database.db.deleteFrom("routes").where("plan_id", "=", planId).execute();
+      checkpoint(database);
     },
 
     async findIdByCreationNonce(nonce) {

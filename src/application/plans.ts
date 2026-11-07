@@ -2,6 +2,7 @@
 import type { Units } from "../domain/pace.ts";
 import type { Plan } from "../domain/plan.ts";
 import { type FieldError, type PlanInput, validatePlanInput } from "../domain/plan-input.ts";
+import { applyRouteDefaults, type Route, routeStats } from "../domain/route.ts";
 import { canRespond } from "../domain/responding.ts";
 import { type DeviceDeps, ensureDevice, resolveDevice } from "./devices.ts";
 import {
@@ -14,11 +15,12 @@ import {
   viewForResponder,
   viewForViewer,
 } from "./plan-views.ts";
-import type { PlanRepository, ResponseRepository } from "./ports.ts";
+import type { PlanRepository, ResponseRepository, RouteParser } from "./ports.ts";
 
 export interface PlanDeps extends DeviceDeps {
   plans: PlanRepository;
   responses: ResponseRepository;
+  routeParser: RouteParser;
   limits: { horizonDays: number; maxRetentionDays: number };
 }
 
@@ -48,15 +50,35 @@ export async function createPlan(
     /** One-time value from the form (decision I9). */
     creationNonce: string;
     deviceToken: string | undefined;
+    /** Optional GPX upload; an empty file counts as none (spec 5 feature 2). */
+    gpx?: Uint8Array | undefined;
   },
 ): Promise<CreatePlanResult> {
   if (!NONCE.test(request.creationNonce)) return { kind: "bad_request" };
   const existing = await deps.plans.findIdByCreationNonce(request.creationNonce);
   if (existing !== undefined) return { kind: "duplicate", planId: existing };
 
+  let input = request.input;
+  let route: Route | undefined;
+  if (request.gpx !== undefined && request.gpx.byteLength > 0) {
+    const parsed = deps.routeParser.parse(request.gpx);
+    if (!parsed.ok) return { kind: "invalid", errors: [{ field: "gpx", code: parsed.error }] };
+    route = parsed.value;
+    input = applyRouteDefaults(input, routeStats(route), "fill");
+  }
+
   const now = deps.clock.now();
-  const draft = validatePlanInput(request.input, { now, ...deps.limits }, request.units);
-  if (!draft.ok) return { kind: "invalid", errors: draft.errors };
+  const draft = validatePlanInput(input, { now, ...deps.limits }, request.units);
+  if (!draft.ok) {
+    // A distance taken from the route is the route's problem, not the empty field's (D7, D10).
+    const distanceFromRoute = route !== undefined && request.input.distanceKm.trim() === "";
+    const errors = draft.errors.map((error) =>
+      distanceFromRoute && error.field === "distanceKm"
+        ? { field: "gpx" as const, code: "route_too_long" }
+        : error,
+    );
+    return { kind: "invalid", errors };
+  }
 
   const hostToken = deps.tokens.generate();
   const { device, newToken } = await ensureDevice(deps, request.deviceToken);
@@ -67,6 +89,7 @@ export async function createPlan(
     visibility: "link",
     joinMode: "open",
     status: "active",
+    hasRoute: route !== undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -76,6 +99,7 @@ export async function createPlan(
       hostTokenHash: deps.tokens.hash(hostToken),
       creationNonce: request.creationNonce,
       hostDeviceId: device.id,
+      route,
     });
   } catch (error) {
     // A concurrent submit of the same form won the race (nonce is unique).

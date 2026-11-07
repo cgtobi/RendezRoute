@@ -1,5 +1,7 @@
 import type { Plan } from "../domain/plan.ts";
 import type { PlanResponse } from "../domain/response.ts";
+import type { Result } from "../domain/result.ts";
+import type { Route, RouteError } from "../domain/route.ts";
 
 // Driven ports (spec 2a). Use cases receive implementations as arguments;
 // adapters in src/adapters/out implement them, fakes live in test/fakes.
@@ -26,10 +28,8 @@ export interface TokenService {
 export const ENCRYPTED_FIELDS = [
   "plans.exact_location",
   "routes.geojson",
-  "routes.gpx_file",
   "plan_templates.exact_location",
   "plan_templates.route_geojson",
-  "plan_templates.gpx_file",
   "responses.display_name",
   "responses.request_note",
   "responses.remote_actor",
@@ -74,6 +74,8 @@ export interface NewPlan {
   /** One-time value from the create form; detects resubmission (decision I9). */
   creationNonce: string;
   hostDeviceId: string;
+  /** Stored with the plan when the poster uploaded a GPX file. */
+  route?: Route | undefined;
 }
 
 export interface PlanRepository {
@@ -92,6 +94,12 @@ export interface PlanRepository {
   findDueForDeletion(now: Date): Promise<string[]>;
   /** Plans whose retention exceeds `maxRetentionDays` (apply-retention-max). */
   findWithRetentionAbove(maxRetentionDays: number): Promise<Plan[]>;
+  /** The route, decrypted; only for audiences that may see it (spec 3.6). */
+  findRoute(planId: string): Promise<Route | undefined>;
+  /** Adds or replaces the plan's route. */
+  saveRoute(planId: string, route: Route): Promise<void>;
+  /** Removes the plan's route, physically (spec 3.10). */
+  deleteRoute(planId: string): Promise<void>;
 }
 
 export interface Device {
@@ -144,4 +152,11 @@ export interface ResponseRepository {
   delete(id: string): Promise<void>;
   /** True if this device was rejected or removed for this plan (spec 3.5). */
   isBlocked(planId: string, deviceId: string): Promise<boolean>;
+}
+
+export type RouteParseError = RouteError | "route_too_large" | "route_unsafe" | "route_unreadable";
+
+/** GPX → route, within the upload limits (spec 2a, 3.8). */
+export interface RouteParser {
+  parse(file: Uint8Array): Result<Route, RouteParseError>;
 }

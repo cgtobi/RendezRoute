@@ -28,6 +28,16 @@ export async function readForm(c: Context): Promise<Record<string, unknown> | un
 export const formField = (body: Record<string, unknown>, name: string): string =>
   typeof body[name] === "string" ? body[name] : "";
 
+/** The bytes of an uploaded file field, or undefined if none was chosen. */
+export async function formFile(
+  body: Record<string, unknown>,
+  name: string,
+): Promise<Uint8Array | undefined> {
+  const file = body[name];
+  if (!(file instanceof File) || file.size === 0) return undefined;
+  return new Uint8Array(await file.arrayBuffer());
+}
+
 /** A PlanInput with every field taken from `value`. */
 export const planInput = (value: (field: string) => string): PlanInput =>
   Object.fromEntries(PLAN_INPUT_FIELDS.map((field) => [field, value(field)])) as PlanInput;

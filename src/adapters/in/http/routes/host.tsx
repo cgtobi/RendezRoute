@@ -12,7 +12,16 @@ import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
 import { DeleteConfirm, HostPage } from "../views/host-page.tsx";
-import { badRequest, formField, planGone, planInput, readForm, type RouteDeps } from "./shared.tsx";
+import { removeRoute, setRoute } from "../../../../application/routes.ts";
+import {
+  badRequest,
+  formField,
+  formFile,
+  planGone,
+  planInput,
+  readForm,
+  type RouteDeps,
+} from "./shared.tsx";
 import { TIME_ZONES } from "./plans.tsx";
 
 export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {
@@ -23,7 +32,12 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
 
   const render = async (
     c: Context<AppEnv>,
-    form: { values?: PlanInput; errors?: readonly FieldError[]; confirmDeleteNow?: boolean } = {},
+    form: {
+      values?: PlanInput;
+      errors?: readonly FieldError[];
+      confirmDeleteNow?: boolean;
+      routeError?: string;
+    } = {},
   ) => {
     const page = await viewHostPage(planDeps, request(c));
     if (page.kind === "not_found") return planGone(c);
@@ -44,6 +58,8 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
         maxRetentionDays={config.maxRetentionDays}
         saved={c.req.query("saved") !== undefined}
         confirmDeleteNow={form.confirmDeleteNow ?? false}
+        hasRoute={page.hasRoute}
+        routeError={form.routeError}
       />,
       { title: c.get("t")("host.heading") },
     );
@@ -53,6 +69,8 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
   const afterAction = (c: Context<AppEnv>, result: { kind: string }, target: string) => {
     if (result.kind === "not_found") return planGone(c);
     if (result.kind === "forbidden") return c.redirect(`/p/${request(c).planId}`, 303);
+    // A refused action changed nothing, so no "Changes saved." notice.
+    if (result.kind === "not_allowed") return c.redirect(`/p/${request(c).planId}/host`, 303);
     return c.redirect(target, 303);
   };
 
@@ -110,6 +128,24 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
   app.post("/p/:id/host/delete", async (c) => {
     const result = await deletePlan(planDeps, request(c));
     return afterAction(c, result, `/p/${request(c).planId}`);
+  });
+
+  app.post("/p/:id/host/route", async (c) => {
+    const body = await readForm(c);
+    if (body === undefined) return badRequest(c);
+    const gpx = await formFile(body, "gpx");
+    if (gpx === undefined) return c.redirect(`/p/${request(c).planId}/host`, 303);
+    const result = await setRoute(planDeps, { ...request(c), gpx });
+    if (result.kind === "invalid") {
+      c.status(422);
+      return render(c, { routeError: result.code });
+    }
+    return afterAction(c, result, `/p/${request(c).planId}/host?saved`);
+  });
+
+  app.post("/p/:id/host/route/remove", async (c) => {
+    const result = await removeRoute(planDeps, request(c));
+    return afterAction(c, result, `/p/${request(c).planId}/host?saved`);
   });
 
   for (const [action, change] of [

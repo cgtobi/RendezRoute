@@ -53,7 +53,8 @@ export const PLAN_INPUT_FIELDS = [
 export type PlanInput = Record<(typeof PLAN_INPUT_FIELDS)[number], string>;
 
 export type PlanField = keyof PlanInput;
-export type FieldError = GenericFieldError<PlanField>;
+/** Plan form errors; "gpx" is the optional route file field (spec 5 feature 2). */
+export type FieldError = GenericFieldError<PlanField | "gpx">;
 export type Validation<T> = { ok: true; value: T } | { ok: false; errors: FieldError[] };
 
 export interface PlanDraft {

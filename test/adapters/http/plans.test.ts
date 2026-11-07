@@ -88,13 +88,10 @@ describe("POST /new", () => {
     expect(client.cookies.has(DEVICE_COOKIE)).toBe(false);
   });
 
-  it("rejects oversized request bodies before parsing them", async () => {
+  it("rejects oversized request bodies before parsing them (100 KB outside the GPX upload routes, D10)", async () => {
     const { client } = await setup();
     const hidden = await client.hiddenFields("/new");
-    const response = await client.postForm("/new", {
-      ...hidden,
-      ...planForm({ note: "x".repeat(200_000) }),
-    });
+    const response = await client.postForm("/a", { ...hidden, token: "x".repeat(200_000) });
     expect(response.status).toBe(413);
   });
 

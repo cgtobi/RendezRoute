@@ -3,6 +3,8 @@ import type { Context, Hono } from "hono";
 import { createPlan, viewPlan } from "../../../../application/plans.ts";
 import { DEFAULT_COLORS } from "../../../../domain/color.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
+import { routeForDownload } from "../../../../application/routes.ts";
+import { toGpx } from "../../../out/gpx/write-gpx.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { formatDate } from "../views/format.ts";
@@ -11,6 +13,7 @@ import { PlanForm } from "../views/plan-form.tsx";
 import {
   badRequest,
   formField,
+  formFile,
   newNonce,
   planGone,
   planInput,
@@ -19,6 +22,16 @@ import {
   type RouteDeps,
   secretLinkHeaders,
 } from "./shared.tsx";
+
+/** ASCII file name from a title, e.g. "Easy Sunday run" → "easy-sunday-run". */
+const fileName = (title: string) =>
+  title
+    .normalize("NFKD")
+    .replace(/[^\x20-\x7E]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "route";
 
 export const TIME_ZONES = (() => {
   const zones = Intl.supportedValuesOf("timeZone");
@@ -53,6 +66,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
         action="/new"
         heading={c.get("t")("form.heading")}
         submitLabel={c.get("t")("form.submit")}
+        withGpx
       />,
       { title: c.get("t")("form.heading") },
     );
@@ -70,6 +84,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
       language: c.get("language"),
       creationNonce: formField(body, "nonce"),
       deviceToken: readDeviceToken(c, config),
+      gpx: await formFile(body, "gpx"),
     });
 
     switch (result.kind) {
@@ -96,6 +111,19 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
         );
       }
     }
+  });
+
+  /** Regenerated GPX for participants and the host; 404 for everyone else (spec 3.6, P4, D10). */
+  app.get("/p/:id/route.gpx", async (c) => {
+    const result = await routeForDownload(planDeps, {
+      planId: c.req.param("id"),
+      deviceToken: readDeviceToken(c, config),
+    });
+    if (result.kind === "not_found") return planGone(c);
+    c.header("content-type", "application/gpx+xml; charset=utf-8");
+    c.header("content-disposition", `attachment; filename="${fileName(result.title)}.gpx"`);
+    c.header("cache-control", "private, no-store");
+    return c.body(toGpx(result.route, result.title));
   });
 
   app.get("/p/:id", async (c) => {

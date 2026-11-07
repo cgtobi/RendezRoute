@@ -112,6 +112,16 @@ export function PlanPage(props: {
         <ExactStartSection t={t} exactStart={audience.view.exactStart} />
       )}
 
+      {(audience.kind === "participant" || audience.kind === "poster") &&
+        audience.view.hasRoute && (
+          <section class="route">
+            <h2>{t("plan.route")}</h2>
+            <p>
+              <a href={`/p/${view.id}/route.gpx`}>{t("plan.downloadGpx")}</a>
+            </p>
+          </section>
+        )}
+
       {(audience.kind === "responder" || audience.kind === "participant") && (
         <section class="own-response">
           <h2>{t("plan.yourResponse")}</h2>

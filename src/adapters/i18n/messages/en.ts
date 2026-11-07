@@ -61,6 +61,9 @@ export const en = {
   "form.retentionOne": "1 day after the run",
   "form.retentionMany": "{days} days after the run",
   "form.submit": "Create plan",
+  "form.gpx": "Route (GPX file, optional)",
+  "form.gpxHint":
+    "Fills in distance, elevation and the exact start. Only people who join can see and download the route. If the form shows an error, choose the file again.",
 
   "field.invalid": "This value is not valid.",
   "field.required": "Please fill this in.",
@@ -84,6 +87,14 @@ export const en = {
   "field.color_invalid": "Please choose a color.",
   "field.retention_out_of_range": "Please choose one of the offered periods.",
   "field.retention_shorter_than_recap_window": "Please choose a longer period.",
+  "field.route_too_large": "The file is larger than 5 MB.",
+  "field.route_unsafe":
+    "This file can't be read safely. Please export it again as a plain GPX file.",
+  "field.route_unreadable": "This doesn't look like a GPX file.",
+  "field.route_empty": "The file contains no track or route.",
+  "field.route_too_many_points": "The route has more than 50,000 points.",
+  "field.route_invalid": "The file contains invalid coordinates.",
+  "field.route_too_long": "The route is longer than 1,000 km.",
   "field.name_taken_by_host": "That's the host's name. Please use a different one.",
   "field.name_taken_by_response": "Someone who responded already uses this name.",
 
@@ -157,6 +168,16 @@ export const en = {
     "Only continue on your own device: anyone using this browser can then change or withdraw your response.",
 
   "plan.managePlan": "Manage plan",
+  "plan.route": "Route",
+  "plan.downloadGpx": "Download GPX",
+
+  "host.route": "Route",
+  "host.routeNone": "No route yet.",
+  "host.routePresent": "This plan has a route.",
+  "host.routeUpload": "Upload route",
+  "host.routeReplace": "Replace route",
+  "host.routeRemove": "Remove route",
+  "host.routeHint": "Distance and elevation are taken from the route.",
 
   "host.heading": "Manage your plan",
   "host.saved": "Changes saved.",

@@ -7,6 +7,7 @@ import type {
 } from "../../src/application/ports.ts";
 import type { Plan } from "../../src/domain/plan.ts";
 import type { PlanResponse } from "../../src/domain/response.ts";
+import type { Route } from "../../src/domain/route.ts";
 
 /** In-memory repositories sharing one store, like the SQLite adapters share a database. */
 export function createFakeRepositories(): {
@@ -15,6 +16,7 @@ export function createFakeRepositories(): {
   responses: ResponseRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
+  const routes = new Map<string, Route>();
   const planNonces = new Map<string, string>();
   const devices = new Map<string, { device: Device; tokenHash: string }>();
   const links = new Set<string>();
@@ -31,6 +33,7 @@ export function createFakeRepositories(): {
   /** Plan deletion with the cascades the database performs. */
   const deletePlan = (id: string) => {
     plans.delete(id);
+    routes.delete(id);
     for (const [nonce, planId] of planNonces) if (planId === id) planNonces.delete(nonce);
     for (const [responseId, entry] of responses) {
       if (entry.response.planId !== id) continue;
@@ -42,8 +45,9 @@ export function createFakeRepositories(): {
 
   return {
     plans: {
-      async create({ plan, hostTokenHash, creationNonce, hostDeviceId }) {
+      async create({ plan, hostTokenHash, creationNonce, hostDeviceId, route }) {
         if (plans.has(plan.id) || planNonces.has(creationNonce)) throw new Error("duplicate key");
+        if (route !== undefined) routes.set(plan.id, structuredClone(route));
         plans.set(plan.id, { plan: structuredClone(plan), hostTokenHash });
         planNonces.set(creationNonce, plan.id);
         links.add(linkKey(hostDeviceId, { role: "host", planId: plan.id }));
@@ -68,6 +72,20 @@ export function createFakeRepositories(): {
         return [...plans.values()]
           .filter((e) => e.plan.deleteAt.getTime() <= now.getTime())
           .map((e) => e.plan.id);
+      },
+      async findRoute(planId) {
+        const route = routes.get(planId);
+        return route === undefined ? undefined : structuredClone(route);
+      },
+      async saveRoute(planId, route) {
+        routes.set(planId, structuredClone(route));
+        const entry = plans.get(planId);
+        if (entry !== undefined) entry.plan = { ...entry.plan, hasRoute: true };
+      },
+      async deleteRoute(planId) {
+        routes.delete(planId);
+        const entry = plans.get(planId);
+        if (entry !== undefined) entry.plan = { ...entry.plan, hasRoute: false };
       },
       async findWithRetentionAbove(max) {
         return [...plans.values()]

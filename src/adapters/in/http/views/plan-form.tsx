@@ -33,6 +33,8 @@ export interface PlanFormProps {
   action: string;
   heading: string;
   submitLabel: string;
+  /** Offer the optional GPX file field (create form only; the host page has its own route section). */
+  withGpx: boolean;
 }
 
 export function PlanForm({
@@ -46,6 +48,7 @@ export function PlanForm({
   action,
   heading,
   submitLabel,
+  withGpx,
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
   const id = (field: PlanField) => `field-${field}`;
@@ -93,7 +96,12 @@ export function PlanForm({
       : values.retentionDays;
 
   return (
-    <form method="post" action={action} class="plan-form">
+    <form
+      method="post"
+      action={action}
+      class="plan-form"
+      enctype={withGpx ? "multipart/form-data" : undefined}
+    >
       <h1>{heading}</h1>
       {errors.length > 0 && (
         <p class="error" role="alert">
@@ -234,6 +242,19 @@ export function PlanForm({
           </Field>
         </div>
       </fieldset>
+
+      {withGpx && (
+        <div class={errors.some((e) => e.field === "gpx") ? "field field-invalid" : "field"}>
+          <label for="field-gpx">{t("form.gpx")}</label>
+          <input id="field-gpx" type="file" name="gpx" accept=".gpx,application/gpx+xml" />
+          <p class="hint">{t("form.gpxHint")}</p>
+          {errors
+            .filter((e) => e.field === "gpx")
+            .map((e) => (
+              <p class="error">{fieldErrorMessage(e.code, t)}</p>
+            ))}
+        </div>
+      )}
 
       <Field field="retentionDays" label={t("form.retention")}>
         <select id={id("retentionDays")} name="retentionDays">

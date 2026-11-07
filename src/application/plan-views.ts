@@ -51,12 +51,15 @@ export interface PlanViewForResponder extends PlanViewForViewer {
 /** Accepted participants: plus exact start and participant names. */
 export interface PlanViewForParticipant extends PlanViewForResponder {
   exactStart: ExactStart | undefined;
+  /** Whether a route can be downloaded (spec 3.6: route only for participants and the poster). */
+  hasRoute: boolean;
   participants: PersonView[];
 }
 
 /** The poster: plus interested names. */
 export interface PlanViewForPoster extends PlanViewForViewer {
   exactStart: ExactStart | undefined;
+  hasRoute: boolean;
   participants: PersonView[];
   interested: PersonView[];
   retentionDays: number;
@@ -115,6 +118,7 @@ export function viewForParticipant(
   return {
     ...viewForResponder(plan, counts, response),
     exactStart: plan.exactStart,
+    hasRoute: plan.hasRoute,
     participants: participantsOf(plan, responses),
   };
 }
@@ -127,6 +131,7 @@ export function viewForPoster(
   return {
     ...viewForViewer(plan, counts),
     exactStart: plan.exactStart,
+    hasRoute: plan.hasRoute,
     participants: participantsOf(plan, responses),
     interested: responses
       .filter((r) => r.kind === "interested")

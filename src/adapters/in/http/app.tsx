@@ -27,6 +27,10 @@ const STATIC_ROOT = relative(
 
 /** Form posts; generous for the largest text fields (note: 2,000 characters). */
 const MAX_BODY_BYTES = 100 * 1024;
+/** GPX uploads: the 5 MB file limit plus the form fields and multipart overhead. */
+const MAX_UPLOAD_BODY_BYTES = 5.5 * 1024 * 1024;
+const isUploadRoute = (method: string, path: string) =>
+  method === "POST" && (path === "/new" || /^\/p\/[^/]+\/host\/route$/.test(path));
 
 declare module "hono" {
   interface ContextRenderer {
@@ -68,12 +72,12 @@ export function createApp({ config, csrfKey, logger, planDeps }: AppDeps): Hono<
     await next();
   });
 
-  // Before CSRF, which parses form bodies. Uploads (step 7) get their own larger limit.
-  app.use(
-    bodyLimit({
-      maxSize: MAX_BODY_BYTES,
-      onError: (c) => c.text(translate(c)("error.tooLarge"), 413),
-    }),
+  // Before CSRF, which parses form bodies. Only the GPX upload routes accept more (spec 3.8).
+  const tooLarge = (c: Context) => c.text(translate(c)("error.tooLarge"), 413);
+  const formLimit = bodyLimit({ maxSize: MAX_BODY_BYTES, onError: tooLarge });
+  const uploadLimit = bodyLimit({ maxSize: MAX_UPLOAD_BODY_BYTES, onError: tooLarge });
+  app.use((c, next) =>
+    isUploadRoute(c.req.method, c.req.path) ? uploadLimit(c, next) : formLimit(c, next),
   );
 
   app.use(csrf({ key: csrfKey, config, onReject: (c) => c.text(translate(c)("error.csrf"), 403) }));

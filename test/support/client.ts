@@ -37,6 +37,26 @@ export class TestClient {
     });
   }
 
+  /** A multipart form post with files, like a browser form with enctype="multipart/form-data". */
+  postMultipart(
+    path: string,
+    fields: Record<string, string>,
+    files: Record<string, { name: string; content: string | Uint8Array }>,
+  ): Promise<Response> {
+    const form = new FormData();
+    for (const [name, value] of Object.entries(fields)) form.append(name, value);
+    for (const [name, file] of Object.entries(files)) {
+      const bytes =
+        typeof file.content === "string" ? new TextEncoder().encode(file.content) : file.content;
+      form.append(
+        name,
+        new Blob([new Uint8Array(bytes)], { type: "application/gpx+xml" }),
+        file.name,
+      );
+    }
+    return this.request(path, { method: "POST", body: form });
+  }
+
   /** GETs a page and returns the values of its hidden form fields (e.g. _csrf, nonce). */
   async hiddenFields(path: string): Promise<Record<string, string>> {
     const html = await (await this.get(path)).text();

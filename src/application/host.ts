@@ -16,10 +16,10 @@ import { isPosterName } from "../domain/responding.ts";
 import { resolveDevice } from "./devices.ts";
 import type { PlanDeps } from "./plans.ts";
 
-type Denied = { kind: "not_found" } | { kind: "forbidden" };
+export type Denied = { kind: "not_found" } | { kind: "forbidden" };
 
 /** The plan, if the device is linked to it as host. */
-async function asHost(
+export async function asHost(
   deps: PlanDeps,
   planId: string,
   deviceToken: string | undefined,
@@ -36,7 +36,7 @@ async function asHost(
   return plan;
 }
 
-const isDenied = (value: Plan | Denied): value is Denied => "kind" in value;
+export const isDenied = (value: Plan | Denied): value is Denied => "kind" in value;
 
 export interface HostPerson {
   responseId: string;
@@ -53,6 +53,7 @@ export type HostPageResult =
       input: PlanInput;
       scope: "all" | "retention";
       canCancel: boolean;
+      hasRoute: boolean;
       people: { participants: HostPerson[]; interested: HostPerson[]; removed: HostPerson[] };
     };
 
@@ -75,6 +76,7 @@ export async function viewHostPage(
     input: planToInput(plan, "metric"),
     scope: editScope(plan, now),
     canCancel: canCancel(plan, now).ok,
+    hasRoute: plan.hasRoute,
     people: {
       participants: people("joined"),
       interested: people("interested"),

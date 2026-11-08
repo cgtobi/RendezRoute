@@ -71,6 +71,17 @@ describe("planToInput", () => {
       expect({ ...variant, ...saved.value }).toEqual(variant);
     }
   });
+
+  it("shows miles and feet with imperial units, and an unchanged form keeps distance and elevation", () => {
+    const plan = samplePlan({ distanceMeters: 12500, elevationGainMeters: 350 });
+    const input = planToInput(plan, "imperial");
+    expect(input.distanceKm).toBe("7.767");
+    expect(input.elevationGainM).toBe("1148");
+    const saved = validatePlanEdit(input, plan, rules, "imperial");
+    if (!saved.ok) throw new Error(JSON.stringify(saved.errors));
+    expect(saved.value.distanceMeters).toBe(12500);
+    expect(saved.value.elevationGainMeters).toBe(350);
+  });
 });
 
 describe("validatePlanEdit (spec 3.1 Start date)", () => {

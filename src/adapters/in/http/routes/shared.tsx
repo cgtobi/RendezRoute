@@ -5,6 +5,7 @@ import type { PlanDeps } from "../../../../application/plans.ts";
 import type { Geocoder, PreviewRenderer } from "../../../../application/ports.ts";
 import type { ViewPlanResult } from "../../../../application/plans.ts";
 import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input.ts";
+import { clientKey, type RateLimiter } from "../rate-limit.ts";
 import type { Config } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
 import { MapAssets, type MapSettings } from "../views/maps.tsx";
@@ -18,6 +19,23 @@ export interface RouteDeps {
   /** Place search; undefined when the geocoder is disabled (spec 3.9). */
   geocoder: Geocoder | undefined;
   previewRenderer: PreviewRenderer;
+  limits: RateLimits;
+}
+
+/** Per-client limits (spec 5 feature 12, decision I32). */
+export interface RateLimits {
+  create: RateLimiter;
+  respond: RateLimiter;
+  geocode: RateLimiter;
+  preview: RateLimiter;
+}
+
+/** The rate-limit key of the request's client; never logged (decision I18). */
+export const clientOf = (c: Context<AppEnv>) => clientKey(c.get("clientIp"));
+
+export function tooManyRequests(c: Context<AppEnv>, retryAfterSeconds: number) {
+  c.header("retry-after", String(retryAfterSeconds));
+  return c.text(c.get("t")("error.rateLimited"), 429);
 }
 
 /** Tile settings for browser maps, or undefined when maps are disabled (spec 3.9). */
@@ -91,10 +109,12 @@ export function renderPlanPage(
     <PlanPage
       t={c.get("t")}
       language={c.get("language")}
+      units={c.get("units")}
       audience={audience}
       responsesOpen={responsesOpen}
       respondForm={showForm ? { ...form, csrfToken: c.get("csrfToken")() } : undefined}
       map={map}
+      planUrl={new URL(`/p/${result.view.id}`, config.baseUrl).href}
     />,
     {
       title: result.view.title,

@@ -2,7 +2,7 @@
 // from the public PlanPreview, in the plan's language, so every requester gets the same preview.
 import type { PlanPreview } from "../../../../application/plan-views.ts";
 import { negotiateLanguage, type Translate, translator } from "../../../i18n/i18n.ts";
-import { formatDay, formatKilometers, formatPaceBand, formatTime } from "./format.ts";
+import { formatDay, formatDistance, formatPaceBand, formatTime } from "./format.ts";
 
 export interface PreviewText {
   language: string;
@@ -21,7 +21,8 @@ export function previewText(preview: PlanPreview): PreviewText {
   const t = translator(language);
   const details: string[] = [];
   if (preview.distanceMeters !== undefined) {
-    details.push(`${formatKilometers(preview.distanceMeters, language)} ${t("unit.km")}`);
+    // Metric for everyone: previews are the same for every requester (decision I30).
+    details.push(formatDistance(preview.distanceMeters, "metric", language, t));
   }
   if (preview.pace !== undefined) {
     details.push(formatPaceBand(preview.pace, preview.activity, "metric", t));

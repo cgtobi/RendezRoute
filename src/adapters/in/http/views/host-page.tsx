@@ -7,6 +7,7 @@ import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import type { MapSettings } from "./maps.tsx";
 import { PlanForm } from "./plan-form.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
+import type { Units } from "../../../../domain/units.ts";
 
 export interface HostPageProps {
   t: Translate;
@@ -30,6 +31,7 @@ export interface HostPageProps {
   placeSearch: boolean;
   /** The submitted "hide start and end" choice of the last route upload. */
   routeTrim: string;
+  units: Units;
 }
 
 export function HostPage(props: HostPageProps) {
@@ -63,6 +65,7 @@ export function HostPage(props: HostPageProps) {
           map={props.map}
           placeSearch={props.placeSearch}
           routeTrim=""
+          units={props.units}
         />
       ) : (
         <RetentionForm {...props} />
@@ -150,7 +153,12 @@ function RouteSection(props: HostPageProps) {
             <p class="error">{fieldErrorMessage(props.routeError, t)}</p>
           )}
         </div>
-        <RouteTrimField t={t} id="field-route-trim" selected={props.routeTrim} />
+        <RouteTrimField
+          t={t}
+          id="field-route-trim"
+          selected={props.routeTrim}
+          units={props.units}
+        />
         <button type="submit">
           {props.hasRoute ? t("host.routeReplace") : t("host.routeUpload")}
         </button>

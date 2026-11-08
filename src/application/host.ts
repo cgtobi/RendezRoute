@@ -59,7 +59,7 @@ export type HostPageResult =
 
 export async function viewHostPage(
   deps: PlanDeps,
-  request: { planId: string; deviceToken: string | undefined },
+  request: { planId: string; deviceToken: string | undefined; units: Units },
 ): Promise<HostPageResult> {
   const plan = await asHost(deps, request.planId, request.deviceToken);
   if (isDenied(plan)) return plan;
@@ -73,7 +73,7 @@ export async function viewHostPage(
     kind: "found",
     planId: plan.id,
     title: plan.title,
-    input: planToInput(plan, "metric"),
+    input: planToInput(plan, request.units),
     scope: editScope(plan, now),
     canCancel: canCancel(plan, now).ok,
     hasRoute: plan.hasRoute,

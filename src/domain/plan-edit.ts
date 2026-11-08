@@ -1,6 +1,7 @@
 // Editing, cancelling and removing (spec 3.1 Editing, Retention edits; 3.5; 5 features 7–8; decision D8).
 import { paceStyleFor } from "./activity.ts";
-import { formatPace, formatSpeed, type Units } from "./pace.ts";
+import { formatPace, formatSpeed } from "./pace.ts";
+import { metersToDistance, metersToElevation, type Units } from "./units.ts";
 import type { Plan } from "./plan.ts";
 import {
   type PlanDraft,
@@ -45,8 +46,14 @@ export function planToInput(plan: Plan, units: Units): PlanInput {
     exactDescription: plan.exactStart?.description ?? "",
     exactLat: exactPoint === undefined ? "" : String(exactPoint.lat),
     exactLng: exactPoint === undefined ? "" : String(exactPoint.lng),
-    distanceKm: plan.distanceMeters === undefined ? "" : decimal(plan.distanceMeters / 1000),
-    elevationGainM: plan.elevationGainMeters === undefined ? "" : String(plan.elevationGainMeters),
+    distanceKm:
+      plan.distanceMeters === undefined
+        ? ""
+        : decimal(metersToDistance(plan.distanceMeters, units)),
+    elevationGainM:
+      plan.elevationGainMeters === undefined
+        ? ""
+        : String(Math.round(metersToElevation(plan.elevationGainMeters, units))),
     // Faster first for pace, slower first for speed, as people say them ("5:30 to 6:00", "25 to 28 km/h").
     paceFrom: pace === undefined ? "" : paceValue(style === "pace" ? pace.fastest : pace.slowest),
     paceTo: pace === undefined ? "" : paceValue(style === "pace" ? pace.slowest : pace.fastest),

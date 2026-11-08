@@ -45,6 +45,7 @@ describe("createPlan (spec 5 feature 1)", () => {
     expect(result).toEqual({
       kind: "created",
       planId: "plan-0001",
+      title: "Easy Sunday run",
       hostToken: "token-0001",
       newDeviceToken: "token-0002",
       deleteAt: new Date("2026-06-21T05:30:00Z"),

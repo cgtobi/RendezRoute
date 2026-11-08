@@ -7,7 +7,8 @@ import {
   type Translate,
 } from "../../i18n/i18n.ts";
 import { CSRF_FIELD } from "./csrf.ts";
-import { RETURN_FIELD } from "./routes/language.ts";
+import { RETURN_FIELD } from "./routes/preferences.ts";
+import { type Units, UNITS } from "../../../domain/units.ts";
 
 const SOFTWARE_NAME = "RendezRoute";
 
@@ -18,7 +19,8 @@ interface LayoutProps {
   title?: string | undefined;
   /** Extra head elements, e.g. robots or Open Graph tags. */
   head?: Child | undefined;
-  /** The footer language form; left out of pages that cannot be loaded again (decision D15). */
+  units: Units;
+  /** The footer language and units forms; left out of pages that cannot be loaded again (decision D15). */
   languageSwitch?: { csrfToken: string; returnTo: string } | undefined;
   children?: Child;
 }
@@ -29,6 +31,7 @@ export function Layout({
   t,
   title,
   head,
+  units,
   languageSwitch,
   children,
 }: LayoutProps) {
@@ -40,6 +43,7 @@ export function Layout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{pageTitle}</title>
         <link rel="stylesheet" href="/static/app.css" />
+        <script src="/static/build/app.js" defer></script>
         {head}
       </head>
       <body>
@@ -54,7 +58,30 @@ export function Layout({
         <main>{children}</main>
         <footer class="site-footer">
           {languageSwitch !== undefined && (
-            <LanguageSwitch t={t} language={language} {...languageSwitch} />
+            <>
+              <PreferenceForm
+                t={t}
+                {...languageSwitch}
+                action="/language"
+                field="language"
+                label={t("layout.language")}
+                options={SUPPORTED_LANGUAGES.map((value) => ({
+                  value,
+                  label: LANGUAGE_NAMES[value],
+                  lang: value,
+                }))}
+                selected={language}
+              />
+              <PreferenceForm
+                t={t}
+                {...languageSwitch}
+                action="/units"
+                field="units"
+                label={t("layout.units")}
+                options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
+                selected={units}
+              />
+            </>
           )}
           {config.instanceName !== SOFTWARE_NAME && (
             <p>{t("layout.poweredBy", { name: SOFTWARE_NAME })}</p>
@@ -65,27 +92,36 @@ export function Layout({
   );
 }
 
-/** Works without JavaScript: choose and submit; each language is named in itself. */
-function LanguageSwitch(props: {
+/** Works without JavaScript: choose and submit (decisions P5, D15). */
+function PreferenceForm(props: {
   t: Translate;
-  language: Language;
   csrfToken: string;
   returnTo: string;
+  action: string;
+  field: string;
+  label: string;
+  options: readonly { value: string; label: string; lang?: string }[];
+  selected: string;
 }) {
+  const id = `preference-${props.field}`;
   return (
-    <form method="post" action="/language" class="language-switch">
+    <form method="post" action={props.action} class="preference">
       <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
       <input type="hidden" name={RETURN_FIELD} value={props.returnTo} />
-      <label for="language-select">{props.t("layout.language")}</label>
-      <select id="language-select" name="language">
-        {SUPPORTED_LANGUAGES.map((language) => (
-          <option value={language} lang={language} selected={language === props.language}>
-            {LANGUAGE_NAMES[language]}
+      <label for={id}>{props.label}</label>
+      <select id={id} name={props.field}>
+        {props.options.map((option) => (
+          <option
+            value={option.value}
+            lang={option.lang}
+            selected={option.value === props.selected}
+          >
+            {option.label}
           </option>
         ))}
       </select>
       <button type="submit" class="secondary">
-        {props.t("layout.languageSubmit")}
+        {props.t("layout.change")}
       </button>
     </form>
   );

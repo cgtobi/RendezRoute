@@ -44,7 +44,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps, geocod
       routeTrim?: string;
     } = {},
   ) => {
-    const page = await viewHostPage(planDeps, request(c));
+    const page = await viewHostPage(planDeps, { ...request(c), units: c.get("units") });
     if (page.kind === "not_found") return planGone(c);
     if (page.kind === "forbidden") return c.redirect(`/p/${request(c).planId}`, 303);
     c.header("cache-control", "private, no-store");
@@ -57,6 +57,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps, geocod
         canCancel={page.canCancel}
         people={page.people}
         values={form.values ?? localizedInput(page.input, c.get("language"))}
+        units={c.get("units")}
         errors={form.errors ?? []}
         csrfToken={c.get("csrfToken")()}
         timeZones={TIME_ZONES}
@@ -93,7 +94,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps, geocod
     const result = await editPlan(planDeps, {
       ...request(c),
       input: values,
-      units: "metric",
+      units: c.get("units"),
       confirmDeleteNow: formField(body, "confirmDeleteNow") === "1",
     });
     switch (result.kind) {
@@ -117,7 +118,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps, geocod
   });
 
   app.get("/p/:id/host/delete", async (c) => {
-    const page = await viewHostPage(planDeps, request(c));
+    const page = await viewHostPage(planDeps, { ...request(c), units: c.get("units") });
     if (page.kind === "not_found") return planGone(c);
     if (page.kind === "forbidden") return c.redirect(`/p/${request(c).planId}`, 303);
     c.header("cache-control", "private, no-store");

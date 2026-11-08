@@ -75,11 +75,15 @@ describe("host access (spec 5 feature 7)", () => {
   it("is limited to devices linked as host", async () => {
     const ben = await person("Ben", "joined");
     for (const deviceToken of [undefined, ben.newDeviceToken]) {
-      expect(await viewHostPage(deps, { planId, deviceToken })).toEqual({ kind: "forbidden" });
+      expect(await viewHostPage(deps, { planId, deviceToken, units: "metric" })).toEqual({
+        kind: "forbidden",
+      });
       expect(await cancelPlan(deps, { planId, deviceToken })).toEqual({ kind: "forbidden" });
       expect(await deletePlan(deps, { planId, deviceToken })).toEqual({ kind: "forbidden" });
     }
-    expect(await viewHostPage(deps, { planId: "nope", deviceToken: host })).toEqual({
+    expect(
+      await viewHostPage(deps, { planId: "nope", deviceToken: host, units: "metric" }),
+    ).toEqual({
       kind: "not_found",
     });
   });
@@ -88,7 +92,7 @@ describe("host access (spec 5 feature 7)", () => {
     const ben = await person("Ben", "joined");
     const cleo = await person("Cleo", "interested");
     await removePerson(deps, { planId, deviceToken: host, responseId: cleo.responseId });
-    const page = await viewHostPage(deps, { planId, deviceToken: host });
+    const page = await viewHostPage(deps, { planId, deviceToken: host, units: "metric" });
     expect(page).toMatchObject({
       kind: "found",
       scope: "all",
@@ -217,7 +221,7 @@ describe("cancelPlan (spec 5 feature 8, decision D8)", () => {
       kind: "not_allowed",
       reason: "already_cancelled",
     });
-    expect(await viewHostPage(deps, { planId, deviceToken: host })).toMatchObject({
+    expect(await viewHostPage(deps, { planId, deviceToken: host, units: "metric" })).toMatchObject({
       scope: "retention",
       canCancel: false,
     });

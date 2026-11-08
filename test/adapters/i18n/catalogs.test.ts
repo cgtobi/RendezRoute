@@ -15,19 +15,21 @@ const forms = (message: Message): string[] =>
 const placeholders = (text: string) =>
   [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1] ?? "").sort((a, b) => a.localeCompare(b));
 
+const UNITS = [
+  "unit.minPerKm",
+  "unit.kmh",
+  "unit.km",
+  "unit.m",
+  "unit.minPerMi",
+  "unit.mph",
+  "unit.mi",
+  "unit.ft",
+];
+
 /** Strings that are the same in every language. */
 const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
-  de: ["unit.minPerKm", "unit.kmh", "unit.km", "unit.m", "plan.pace", "plan.route", "host.route"],
-  fr: [
-    "unit.minPerKm",
-    "unit.kmh",
-    "unit.km",
-    "unit.m",
-    "form.date",
-    "form.latitude",
-    "form.longitude",
-    "plan.distance",
-  ],
+  de: [...UNITS, "plan.pace", "plan.route", "host.route"],
+  fr: [...UNITS, "form.date", "form.latitude", "form.longitude", "plan.distance"],
 };
 
 const english = catalogs.en as Readonly<Record<string, Message>>;

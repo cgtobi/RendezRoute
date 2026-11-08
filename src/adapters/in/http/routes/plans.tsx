@@ -25,6 +25,8 @@ import {
   readForm,
   renderPlanPage,
   type RouteDeps,
+  clientOf,
+  tooManyRequests,
   secretLinkHeaders,
 } from "./shared.tsx";
 
@@ -45,7 +47,7 @@ export const TIME_ZONES = (() => {
 
 export function registerPlanRoutes(
   app: Hono<AppEnv>,
-  { config, planDeps, geocoder, previewRenderer }: RouteDeps,
+  { config, planDeps, geocoder, previewRenderer, limits }: RouteDeps,
 ) {
   const emptyForm = (): PlanInput => ({
     ...planInput(() => ""),
@@ -78,6 +80,8 @@ export function registerPlanRoutes(
         withGpx
         map={mapSettings(config)}
         placeSearch={geocoder !== undefined}
+        units={c.get("units")}
+        detectZoneFrom={errors.length === 0 ? config.defaultTimezone : undefined}
         routeTrim={routeTrim}
       />,
       { title: c.get("t")("form.heading"), head: <MapAssets /> },
@@ -89,10 +93,13 @@ export function registerPlanRoutes(
     const body = await readForm(c);
     if (body === undefined) return badRequest(c);
     const values = planInput((field) => formField(body, field));
+    // Only created plans count, so fixing form errors is never blocked.
+    const allowed = limits.create.check(clientOf(c));
+    if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
 
     const result = await createPlan(planDeps, {
       input: values,
-      units: "metric",
+      units: c.get("units"),
       language: c.get("language"),
       creationNonce: formField(body, "nonce"),
       deviceToken: readDeviceToken(c, config),
@@ -115,6 +122,7 @@ export function registerPlanRoutes(
           formField(body, ROUTE_TRIM_FIELD),
         );
       case "created": {
+        limits.create.take(clientOf(c));
         if (result.newDeviceToken !== undefined) setDeviceToken(c, config, result.newDeviceToken);
         secretLinkHeaders(c);
         const planPath = `/p/${result.planId}`;
@@ -123,6 +131,7 @@ export function registerPlanRoutes(
             t={c.get("t")}
             planUrl={new URL(planPath, config.baseUrl).href}
             planPath={planPath}
+            title={result.title}
             hostUrl={new URL(`/a/${result.hostToken}`, config.baseUrl).href}
             deletion={formatDate(result.deleteAt, result.timeZone, c.get("language"))}
           />,
@@ -156,11 +165,21 @@ export function registerPlanRoutes(
 
   /** Card image for link previews (spec 3.3); public, cached per plan version. */
   app.get("/p/:id/og.png", async (c) => {
+    // Only renders count: cached cards stay available to chat apps' fetchers.
+    let retryAfterSeconds = 0;
     const result = await previewImage(
       { plans: planDeps.plans, renderer: previewRenderer },
-      { planId: c.req.param("id") },
+      {
+        planId: c.req.param("id"),
+        mayRender: () => {
+          const allowed = limits.preview.take(clientOf(c));
+          if (!allowed.ok) retryAfterSeconds = allowed.retryAfterSeconds;
+          return allowed.ok;
+        },
+      },
     );
     if (result.kind === "not_found") return planGone(c);
+    if (result.kind === "limited") return tooManyRequests(c, retryAfterSeconds);
     if (result.kind === "busy") {
       c.header("retry-after", "5");
       return c.text(c.get("t")("error.busy"), 503);

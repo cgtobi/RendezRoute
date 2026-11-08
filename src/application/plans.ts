@@ -40,6 +40,8 @@ export type CreatePlanResult =
   | {
       kind: "created";
       planId: string;
+      /** For the share links on the links page. */
+      title: string;
       hostToken: string;
       newDeviceToken: string | undefined;
       deleteAt: Date;
@@ -135,6 +137,7 @@ export async function createPlan(
   return {
     kind: "created",
     planId: plan.id,
+    title: plan.title,
     hostToken,
     newDeviceToken: newToken,
     deleteAt: plan.deleteAt,

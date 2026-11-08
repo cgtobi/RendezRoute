@@ -1,10 +1,9 @@
 // Pace is stored as whole seconds per km (spec 3.1). Runs are entered and shown as
 // min:ss per km or mile; rides as whole km/h or mph (decision D3).
 import { err, ok, type Result } from "./result.ts";
+import { KM_PER_MILE, type Units } from "./units.ts";
 
-export type Units = "metric" | "imperial";
-
-const KM_PER_MILE = 1.609344;
+export type { Units } from "./units.ts";
 
 /** Accepted band in seconds per km: 60 km/h at the fast end, 30:00 min/km at the slow end (decision D6). */
 export const PACE_LIMITS = { fastest: 60, slowest: 1800 } as const;

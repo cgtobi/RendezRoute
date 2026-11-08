@@ -144,4 +144,19 @@ describe("previewImage (spec 3.10: cached, deleted with the plan)", () => {
     renderer.busy = false;
     expect((await image(plan.planId)).kind).toBe("found");
   });
+
+  it("asks before rendering, but not for cached images (rate limits, decision I32)", async () => {
+    const plan = await created();
+    const asked: string[] = [];
+    const limited = () =>
+      previewImage(
+        { ...deps, renderer },
+        { planId: plan.planId, mayRender: () => !asked.push("x") },
+      );
+    expect(await limited()).toEqual({ kind: "limited" });
+    expect(renderer.rendered).toHaveLength(0);
+    await image(plan.planId);
+    expect((await limited()).kind).toBe("found");
+    expect(asked).toHaveLength(1);
+  });
 });

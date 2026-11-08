@@ -11,6 +11,7 @@ import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import { MapTools, type MapSettings } from "./maps.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
+import type { Units } from "../../../../domain/units.ts";
 
 const COLOR_PRESETS = [
   "#2E5BFF",
@@ -43,6 +44,10 @@ export interface PlanFormProps {
   placeSearch: boolean;
   /** The submitted "hide start and end" choice, kept when the form shows errors. */
   routeTrim: string;
+  /** Distance, elevation and pace are entered in these units (decision P5). */
+  units: Units;
+  /** The server's default zone, which the app script may replace with the poster's (decision P6). */
+  detectZoneFrom?: string | undefined;
 }
 
 export function PlanForm({
@@ -60,6 +65,8 @@ export function PlanForm({
   map,
   placeSearch,
   routeTrim,
+  units,
+  detectZoneFrom,
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
   const id = (field: PlanField) => `field-${field}`;
@@ -154,7 +161,7 @@ export function PlanForm({
       </div>
 
       <Field field="timeZone" label={t("form.timeZone")}>
-        <select id={id("timeZone")} name="timeZone">
+        <select id={id("timeZone")} name="timeZone" data-detect-zone={detectZoneFrom}>
           {timeZones.map((zone) => (
             <option value={zone} selected={values.timeZone === zone}>
               {zone}
@@ -207,17 +214,23 @@ export function PlanForm({
       </fieldset>
 
       <div class="field-row">
-        <Field field="distanceKm" label={t("form.distance")}>
+        <Field
+          field="distanceKm"
+          label={t("form.distance", { unit: t(units === "imperial" ? "unit.mi" : "unit.km") })}
+        >
           {input("distanceKm", { inputmode: "decimal" })}
         </Field>
-        <Field field="elevationGainM" label={t("form.elevation")}>
+        <Field
+          field="elevationGainM"
+          label={t("form.elevation", { unit: t(units === "imperial" ? "unit.ft" : "unit.m") })}
+        >
           {input("elevationGainM", { inputmode: "numeric" })}
         </Field>
       </div>
 
       <fieldset>
         <legend>{t("form.pace")}</legend>
-        <p class="hint">{t("form.paceHint")}</p>
+        <p class="hint">{t(units === "imperial" ? "form.paceHintImperial" : "form.paceHint")}</p>
         <div class="field-row">
           <Field field="paceFrom" label={t("form.paceFrom")}>
             {input("paceFrom")}
@@ -281,7 +294,7 @@ export function PlanForm({
             ))}
         </div>
       )}
-      {withGpx && <RouteTrimField t={t} id="field-gpxTrim" selected={routeTrim} />}
+      {withGpx && <RouteTrimField t={t} id="field-gpxTrim" selected={routeTrim} units={units} />}
 
       <Field field="retentionDays" label={t("form.retention")}>
         <select id={id("retentionDays")} name="retentionDays">

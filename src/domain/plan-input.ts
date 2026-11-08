@@ -9,7 +9,8 @@ import {
   validateExactStart,
   validateGeoPoint,
 } from "./geo.ts";
-import { type PaceBand, paceFromSpeed, parsePace, type Units, validatePaceBand } from "./pace.ts";
+import { type PaceBand, paceFromSpeed, parsePace, validatePaceBand } from "./pace.ts";
+import { distanceToMeters, elevationToMeters, type Units } from "./units.ts";
 import { DROP_POLICIES, type DropPolicy } from "./plan.ts";
 import {
   defaultRecapWindow,
@@ -183,7 +184,8 @@ export function validatePlanInput(
   let distanceMeters: number | undefined;
   const distance = input.distanceKm.trim();
   if (distance !== "") {
-    const km = DECIMAL.test(distance) ? Number(distance.replace(",", ".")) : Number.NaN;
+    const value = DECIMAL.test(distance) ? Number(distance.replace(",", ".")) : Number.NaN;
+    const km = distanceToMeters(value, units) / 1000;
     if (Number.isNaN(km)) fail("distanceKm", "number_invalid");
     else if (km < PLAN_LIMITS.distanceKm.min || km > PLAN_LIMITS.distanceKm.max)
       fail("distanceKm", "out_of_range");
@@ -192,10 +194,12 @@ export function validatePlanInput(
   let elevationGainMeters: number | undefined;
   const elevation = input.elevationGainM.trim();
   if (elevation !== "") {
-    if (!WHOLE.test(elevation)) fail("elevationGainM", "number_invalid");
-    else if (Number(elevation) > PLAN_LIMITS.elevationGainM.max)
-      fail("elevationGainM", "out_of_range");
-    else elevationGainMeters = Number(elevation);
+    const meters = WHOLE.test(elevation)
+      ? Math.round(elevationToMeters(Number(elevation), units))
+      : Number.NaN;
+    if (Number.isNaN(meters)) fail("elevationGainM", "number_invalid");
+    else if (meters > PLAN_LIMITS.elevationGainM.max) fail("elevationGainM", "out_of_range");
+    else elevationGainMeters = meters;
   }
 
   // Pace band, in the style of the activity.

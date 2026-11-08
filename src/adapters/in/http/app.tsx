@@ -8,13 +8,15 @@ import { jsxRenderer } from "hono/jsx-renderer";
 import type { PlanDeps } from "../../../application/plans.ts";
 import type { Geocoder, PreviewRenderer } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
+import { isUnits, type Units } from "../../../domain/units.ts";
 import { type Language, resolveLanguage, type Translate, translator } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
 import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
-import { readLanguageCookie } from "./language-cookie.ts";
+import { readPreference } from "./preference-cookies.ts";
+import { createRateLimiter } from "./rate-limit.ts";
 import { registerHostRoutes } from "./routes/host.tsx";
-import { registerLanguageRoutes } from "./routes/language.ts";
+import { registerPreferenceRoutes } from "./routes/preferences.ts";
 import { registerPlaceRoutes } from "./routes/places.ts";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
@@ -59,7 +61,13 @@ export interface AppDeps {
 
 /** Hono context variables set by the app middleware. */
 export type AppEnv = {
-  Variables: { language: Language; t: Translate; csrfToken: () => string; clientIp: string };
+  Variables: {
+    language: Language;
+    t: Translate;
+    units: Units;
+    csrfToken: () => string;
+    clientIp: string;
+  };
 };
 
 export function createApp({
@@ -75,7 +83,7 @@ export function createApp({
   /** The language cookie, else the browser's languages (decision D15). */
   const requestLanguage = (c: Context): Language =>
     resolveLanguage({
-      cookie: readLanguageCookie(c, config),
+      cookie: readPreference(c, config, "lang"),
       acceptLanguage: c.req.header("accept-language"),
     });
   /** Works even before the language middleware ran, e.g. for early errors. */
@@ -89,6 +97,8 @@ export function createApp({
     const language = requestLanguage(c);
     c.set("language", language);
     c.set("t", translator(language));
+    const units = readPreference(c, config, "units");
+    c.set("units", isUnits(units) ? units : "metric");
     await next();
     // Pages and plain-text errors are in the request's language; images, scripts and feeds are not.
     if (/^text\/(html|plain)/.test(c.res.headers.get("content-type") ?? "")) {
@@ -116,6 +126,7 @@ export function createApp({
           t={c.get("t")}
           title={title}
           head={head}
+          units={c.get("units")}
           languageSwitch={
             // Pages answering a form post (e.g. links shown once) cannot be loaded again.
             c.req.method === "GET"
@@ -161,13 +172,20 @@ export function createApp({
     );
   });
 
-  const deps = { config, planDeps, geocoder, previewRenderer };
+  const now = () => planDeps.clock.now().getTime();
+  const limits = {
+    create: createRateLimiter({ capacity: 5, perHour: 10, now }),
+    respond: createRateLimiter({ capacity: 10, perHour: 30, now }),
+    geocode: createRateLimiter({ capacity: 10, perHour: 600, now }),
+    preview: createRateLimiter({ capacity: 10, perHour: 60, now }),
+  };
+  const deps = { config, planDeps, geocoder, previewRenderer, limits };
   registerPlanRoutes(app, deps);
   registerResponseRoutes(app, deps);
   registerSecretLinkRoutes(app, deps);
   registerHostRoutes(app, deps);
-  if (geocoder !== undefined) registerPlaceRoutes(app, { geocoder });
-  registerLanguageRoutes(app, { config });
+  if (geocoder !== undefined) registerPlaceRoutes(app, { geocoder, limits });
+  registerPreferenceRoutes(app, { config });
 
   return app;
 }

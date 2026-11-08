@@ -1,11 +1,13 @@
 // Shown once after creating a plan (spec 3.2): the host link exists only in this response.
 import type { Translate } from "../../../i18n/i18n.ts";
+import { ShareLinks } from "./share.tsx";
 
 export function LinksPage(props: {
   t: Translate;
   planUrl: string;
   hostUrl: string;
   planPath: string;
+  title: string;
   deletion: string;
 }) {
   const { t } = props;
@@ -16,6 +18,7 @@ export function LinksPage(props: {
       <p class="link-box">
         <a href={props.planPath}>{props.planUrl}</a>
       </p>
+      <ShareLinks t={t} url={props.planUrl} title={props.title} />
       <h2>{t("links.hostLink")}</h2>
       <p class="link-box">
         <code>{props.hostUrl}</code>

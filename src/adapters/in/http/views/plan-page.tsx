@@ -9,12 +9,14 @@ import type {
   PlanViewForViewer,
 } from "../../../../application/plan-views.ts";
 import { paceStyleFor } from "../../../../domain/activity.ts";
+import type { Units } from "../../../../domain/units.ts";
+import { ShareLinks } from "./share.tsx";
 import type { ExactStart } from "../../../../domain/geo.ts";
 import {
   formatDate,
   formatDay,
-  formatKilometers,
-  formatNumber,
+  formatDistance,
+  formatElevation,
   formatPaceBand,
   formatTime,
 } from "./format.ts";
@@ -31,14 +33,17 @@ export type PlanPageAudience =
 export function PlanPage(props: {
   t: Translate;
   language: string;
+  units: Units;
   audience: PlanPageAudience;
   responsesOpen: boolean;
   /** The response form's state; shown to viewers while responses are open. */
   respondForm: RespondFormState | undefined;
   /** Tile settings; undefined when maps are disabled. */
   map: MapSettings | undefined;
+  /** The absolute public link, for the share helpers. */
+  planUrl: string;
 }) {
-  const { t, language, audience, map } = props;
+  const { t, language, units, audience, map } = props;
   const { view } = audience;
   const insider = audience.kind === "participant" || audience.kind === "poster";
 
@@ -69,30 +74,28 @@ export function PlanPage(props: {
         <dd>
           {formatDay(view.startsAt, view.timeZone, language)},{" "}
           {formatTime(view.startsAt, view.timeZone, language)}{" "}
-          <span class="time-zone">({t("plan.timeZone", { zone: view.timeZone })})</span>
+          <span class="time-zone" data-time-zone={view.timeZone}>
+            ({t("plan.timeZone", { zone: view.timeZone })})
+          </span>
         </dd>
         <dt>{t("plan.where")}</dt>
         <dd>{view.area.label}</dd>
         {view.distanceMeters !== undefined && (
           <>
             <dt>{t("plan.distance")}</dt>
-            <dd>
-              {formatKilometers(view.distanceMeters, language)} {t("unit.km")}
-            </dd>
+            <dd>{formatDistance(view.distanceMeters, units, language, t)}</dd>
           </>
         )}
         {view.elevationGainMeters !== undefined && (
           <>
             <dt>{t("plan.elevation")}</dt>
-            <dd>
-              {formatNumber(view.elevationGainMeters, language)} {t("unit.m")}
-            </dd>
+            <dd>{formatElevation(view.elevationGainMeters, units, language, t)}</dd>
           </>
         )}
         {view.pace !== undefined && (
           <>
             <dt>{paceStyleFor(view.activity) === "pace" ? t("plan.pace") : t("plan.speed")}</dt>
-            <dd>{formatPaceBand(view.pace, view.activity, "metric", t)}</dd>
+            <dd>{formatPaceBand(view.pace, view.activity, units, t)}</dd>
           </>
         )}
         <dt>{t("plan.group")}</dt>
@@ -105,6 +108,8 @@ export function PlanPage(props: {
           interested: view.counts.interested,
         })}
       </p>
+
+      {view.status !== "cancelled" && <ShareLinks t={t} url={props.planUrl} title={view.title} />}
 
       {view.note !== undefined && (
         <p class="note">

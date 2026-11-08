@@ -18,10 +18,12 @@ import {
   readForm,
   renderPlanPage,
   type RouteDeps,
+  clientOf,
+  tooManyRequests,
   secretLinkHeaders,
 } from "./shared.tsx";
 
-export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {
+export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, limits }: RouteDeps) {
   const message = (
     c: Context<AppEnv>,
     planId: string,
@@ -45,6 +47,9 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps }: 
     const body = await readForm(c);
     if (body === undefined) return badRequest(c);
     const deviceToken = readDeviceToken(c, config);
+    // Only new responses count (spec 5 feature 12).
+    const allowed = limits.respond.check(clientOf(c));
+    if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
     const result = await respond(planDeps, {
       planId,
       choice: formField(body, "choice"),
@@ -56,6 +61,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps }: 
 
     switch (result.kind) {
       case "created": {
+        limits.respond.take(clientOf(c));
         if (result.newDeviceToken !== undefined) setDeviceToken(c, config, result.newDeviceToken);
         secretLinkHeaders(c);
         return c.render(

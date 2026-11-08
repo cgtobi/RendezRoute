@@ -2,7 +2,8 @@
 import { localeOf as locale, type Translate } from "../../../i18n/i18n.ts";
 import { en, type MessageKey } from "../../../i18n/messages/en.ts";
 import { type ActivityType, paceStyleFor } from "../../../../domain/activity.ts";
-import { formatPace, formatSpeed, type PaceBand, type Units } from "../../../../domain/pace.ts";
+import { formatPace, formatSpeed, type PaceBand } from "../../../../domain/pace.ts";
+import { metersToDistance, metersToElevation, type Units } from "../../../../domain/units.ts";
 
 export function formatDay(date: Date, zone: string, language: string): string {
   return new Intl.DateTimeFormat(locale(language), { dateStyle: "full", timeZone: zone }).format(
@@ -22,10 +23,28 @@ export function formatDate(date: Date, zone: string, language: string): string {
   );
 }
 
-export function formatKilometers(meters: number, language: string): string {
-  return new Intl.NumberFormat(locale(language), { maximumFractionDigits: 1 }).format(
-    meters / 1000,
+/** "12.5 km" or "7.8 mi" (decision P5). */
+export function formatDistance(
+  meters: number,
+  units: Units,
+  language: string,
+  t: Translate,
+): string {
+  const value = new Intl.NumberFormat(locale(language), { maximumFractionDigits: 1 }).format(
+    metersToDistance(meters, units),
   );
+  return `${value} ${t(units === "imperial" ? "unit.mi" : "unit.km")}`;
+}
+
+/** "350 m" or "1,148 ft". */
+export function formatElevation(
+  meters: number,
+  units: Units,
+  language: string,
+  t: Translate,
+): string {
+  const value = formatNumber(Math.round(metersToElevation(meters, units)), language);
+  return `${value} ${t(units === "imperial" ? "unit.ft" : "unit.m")}`;
 }
 
 export function formatNumber(value: number, language: string): string {
@@ -41,7 +60,7 @@ export function localizeDecimal(value: string, language: string): string {
   return value.replace(".", separator);
 }
 
-/** "5:30–6:00 min/km" for runs, "25–28 km/h" for rides (slower value first). */
+/** "5:30–6:00 min/km" for runs, "25–28 km/h" for rides (slower value first); per mile or mph in imperial. */
 export function formatPaceBand(
   band: PaceBand,
   activity: ActivityType,
@@ -50,10 +69,10 @@ export function formatPaceBand(
 ): string {
   if (paceStyleFor(activity) === "pace") {
     const [from, to] = [formatPace(band.fastest, units), formatPace(band.slowest, units)];
-    return `${from === to ? from : `${from}–${to}`} ${t("unit.minPerKm")}`;
+    return `${from === to ? from : `${from}–${to}`} ${t(units === "imperial" ? "unit.minPerMi" : "unit.minPerKm")}`;
   }
   const [from, to] = [formatSpeed(band.slowest, units), formatSpeed(band.fastest, units)];
-  return `${from === to ? from : `${from}–${to}`} ${t("unit.kmh")}`;
+  return `${from === to ? from : `${from}–${to}`} ${t(units === "imperial" ? "unit.mph" : "unit.kmh")}`;
 }
 
 /** Message for a domain or form error code, with a generic fallback. */

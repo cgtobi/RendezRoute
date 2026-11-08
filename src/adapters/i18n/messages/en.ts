@@ -6,7 +6,10 @@ export const en = {
   "layout.poweredBy": "Powered by {name}",
   "layout.devBanner": "Development mode: insecure settings are active. Not for production use.",
   "layout.language": "Language",
-  "layout.languageSubmit": "Change",
+  "layout.change": "Change",
+  "layout.units": "Units",
+  "units.metric": "Metric (km)",
+  "units.imperial": "Imperial (mi)",
 
   "home.intro": "Plan a run or ride, share the link, and see who joins. No account needed.",
   "home.cta": "Plan a run or ride",
@@ -15,6 +18,7 @@ export const en = {
   "error.internal": "Something went wrong on our side. Please try again later.",
   "error.tooLarge": "This request is too large.",
   "error.busy": "The server is busy. Please try again in a few seconds.",
+  "error.rateLimited": "Too many requests from your network. Please try again in a few minutes.",
   "error.badRequest": "The form could not be processed. Please reload the page and try again.",
 
   "activity.run": "Run",
@@ -30,6 +34,11 @@ export const en = {
   "unit.kmh": "km/h",
   "unit.km": "km",
   "unit.m": "m",
+
+  "unit.minPerMi": "min/mi",
+  "unit.mph": "mph",
+  "unit.mi": "mi",
+  "unit.ft": "ft",
 
   "form.heading": "Plan a run or ride",
   "form.errors": "Please check the fields marked below.",
@@ -68,11 +77,13 @@ export const en = {
   "map.planLabel": "Map of the meeting area",
   "map.zoomIn": "Zoom in",
   "map.zoomOut": "Zoom out",
-  "form.distance": "Distance (km, optional)",
-  "form.elevation": "Elevation gain (m, optional)",
+  "form.distance": "Distance ({unit}, optional)",
+  "form.elevation": "Elevation gain ({unit}, optional)",
   "form.pace": "Pace or speed (optional)",
   "form.paceHint":
     "Runs: pace per km, for example 5:30 to 6:00. Rides: speed in km/h, for example 25 to 28.",
+  "form.paceHintImperial":
+    "Runs: pace per mile, for example 9:00 to 9:30. Rides: speed in mph, for example 15 to 18.",
   "form.paceFrom": "From",
   "form.paceTo": "To",
   "form.dropPolicy": "Group policy",
@@ -90,6 +101,7 @@ export const en = {
   "form.gpxTrimOff": "Show the whole route",
   "form.gpxTrimMeters": "Hide {meters} m at each end",
   "form.gpxTrimKilometers": "Hide {km} km at each end",
+  "form.gpxTrimMiles": "Hide about {miles} mi at each end",
   "form.gpxHint":
     "Fills in distance, elevation and the exact start. Only people who join can see and download the route. If the form shows an error, choose the file again.",
 
@@ -197,6 +209,12 @@ export const en = {
   "manageLink.body": "This link lets you change or withdraw your response to “{title}”.",
   "manageLink.sharedWarning":
     "Only continue on your own device: anyone using this browser can then change or withdraw your response.",
+
+  "share.heading": "Share",
+  "share.native": "Share…",
+  "share.copy": "Copy link",
+  "share.copied": "Link copied.",
+  "share.copyFailed": "Couldn’t copy. Please copy the link from the address bar.",
 
   "plan.managePlan": "Manage plan",
   "plan.route": "Route",

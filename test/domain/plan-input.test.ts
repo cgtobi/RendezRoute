@@ -182,6 +182,20 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
         { field: "elevationGainM", code: "number_invalid" },
       ]);
     });
+
+    it("are entered in miles and feet with imperial units (spec 2 i18n, decision P5)", () => {
+      const imperial = (overrides: Partial<PlanInput>) => {
+        const result = validatePlanInput({ ...valid, ...overrides }, rules, "imperial");
+        if (!result.ok) throw new Error(JSON.stringify(result.errors));
+        return result.value;
+      };
+      expect(imperial({ distanceKm: "10" }).distanceMeters).toBe(16093);
+      expect(imperial({ elevationGainM: "1000" }).elevationGainMeters).toBe(305);
+      const tooFar = validatePlanInput({ ...valid, distanceKm: "622" }, rules, "imperial");
+      expect(tooFar.ok ? [] : tooFar.errors).toEqual([
+        { field: "distanceKm", code: "out_of_range" },
+      ]);
+    });
   });
 
   describe("pace band (spec 3.1 Pace, decisions D3 and D6)", () => {

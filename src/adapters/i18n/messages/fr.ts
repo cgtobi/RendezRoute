@@ -9,7 +9,10 @@ export const fr: Messages = {
   "layout.devBanner":
     "Mode développement : des réglages non sécurisés sont actifs. Ne pas utiliser en production.",
   "layout.language": "Langue",
-  "layout.languageSubmit": "Changer",
+  "layout.change": "Changer",
+  "layout.units": "Unités",
+  "units.metric": "Métrique (km)",
+  "units.imperial": "Impérial (miles)",
 
   "home.intro":
     "Planifiez une course ou une sortie vélo, partagez le lien et voyez qui vient. Aucun compte nécessaire.",
@@ -20,6 +23,8 @@ export const fr: Messages = {
   "error.internal": "Un problème est survenu de notre côté. Veuillez réessayer plus tard.",
   "error.tooLarge": "Cette requête est trop volumineuse.",
   "error.busy": "Le serveur est occupé. Veuillez réessayer dans quelques secondes.",
+  "error.rateLimited":
+    "Trop de requêtes depuis votre réseau. Veuillez réessayer dans quelques minutes.",
   "error.badRequest":
     "Le formulaire n’a pas pu être traité. Veuillez recharger la page et réessayer.",
 
@@ -36,6 +41,11 @@ export const fr: Messages = {
   "unit.kmh": "km/h",
   "unit.km": "km",
   "unit.m": "m",
+
+  "unit.minPerMi": "min/mi",
+  "unit.mph": "mph",
+  "unit.mi": "mi",
+  "unit.ft": "ft",
 
   "form.heading": "Planifier une course ou une sortie vélo",
   "form.errors": "Veuillez vérifier les champs signalés ci-dessous.",
@@ -76,11 +86,13 @@ export const fr: Messages = {
   "map.planLabel": "Carte de la zone de rendez-vous",
   "map.zoomIn": "Zoom avant",
   "map.zoomOut": "Zoom arrière",
-  "form.distance": "Distance (km, facultatif)",
-  "form.elevation": "Dénivelé positif (m, facultatif)",
+  "form.distance": "Distance ({unit}, facultatif)",
+  "form.elevation": "Dénivelé positif ({unit}, facultatif)",
   "form.pace": "Allure ou vitesse (facultatif)",
   "form.paceHint":
     "Course à pied : allure par km, par exemple 5:30 à 6:00. Vélo : vitesse en km/h, par exemple 25 à 28.",
+  "form.paceHintImperial":
+    "Course à pied : allure par mile, par exemple 9:00 à 9:30. Vélo : vitesse en mph, par exemple 15 à 18.",
   "form.paceFrom": "De",
   "form.paceTo": "À",
   "form.dropPolicy": "Règle du groupe",
@@ -101,6 +113,7 @@ export const fr: Messages = {
   "form.gpxTrimOff": "Afficher tout le parcours",
   "form.gpxTrimMeters": "Masquer {meters} m à chaque extrémité",
   "form.gpxTrimKilometers": "Masquer {km} km à chaque extrémité",
+  "form.gpxTrimMiles": "Masquer environ {miles} mi à chaque extrémité",
   "form.gpxHint":
     "Remplit la distance, le dénivelé et le point de départ exact. Seules les personnes inscrites peuvent voir et télécharger le parcours. Si le formulaire affiche une erreur, choisissez à nouveau le fichier.",
 
@@ -210,6 +223,12 @@ export const fr: Messages = {
   "manageLink.body": "Ce lien permet de modifier ou de retirer votre réponse à « {title} ».",
   "manageLink.sharedWarning":
     "Ne continuez que sur votre propre appareil : toute personne utilisant ce navigateur pourra ensuite modifier ou retirer votre réponse.",
+
+  "share.heading": "Partager",
+  "share.native": "Partager…",
+  "share.copy": "Copier le lien",
+  "share.copied": "Lien copié.",
+  "share.copyFailed": "La copie a échoué. Veuillez copier le lien depuis la barre d’adresse.",
 
   "plan.managePlan": "Gérer la sortie",
   "plan.route": "Parcours",

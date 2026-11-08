@@ -7,7 +7,10 @@ export const de: Messages = {
   "layout.devBanner":
     "Entwicklungsmodus: Unsichere Einstellungen sind aktiv. Nicht für den Produktivbetrieb.",
   "layout.language": "Sprache",
-  "layout.languageSubmit": "Ändern",
+  "layout.change": "Ändern",
+  "layout.units": "Einheiten",
+  "units.metric": "Metrisch (km)",
+  "units.imperial": "Imperial (Meilen)",
 
   "home.intro":
     "Plane einen Lauf oder eine Ausfahrt, teile den Link und sieh, wer mitkommt. Kein Konto nötig.",
@@ -18,6 +21,8 @@ export const de: Messages = {
   "error.internal": "Bei uns ist etwas schiefgelaufen. Bitte versuche es später noch einmal.",
   "error.tooLarge": "Diese Anfrage ist zu groß.",
   "error.busy": "Der Server ist ausgelastet. Bitte versuche es in ein paar Sekunden noch einmal.",
+  "error.rateLimited":
+    "Zu viele Anfragen aus deinem Netzwerk. Bitte versuche es in ein paar Minuten noch einmal.",
   "error.badRequest":
     "Das Formular konnte nicht verarbeitet werden. Bitte lade die Seite neu und versuche es noch einmal.",
 
@@ -34,6 +39,11 @@ export const de: Messages = {
   "unit.kmh": "km/h",
   "unit.km": "km",
   "unit.m": "m",
+
+  "unit.minPerMi": "min/mi",
+  "unit.mph": "mph",
+  "unit.mi": "mi",
+  "unit.ft": "ft",
 
   "form.heading": "Lauf oder Ausfahrt planen",
   "form.errors": "Bitte prüfe die markierten Felder.",
@@ -72,11 +82,13 @@ export const de: Messages = {
   "map.planLabel": "Karte des Treffgebiets",
   "map.zoomIn": "Vergrößern",
   "map.zoomOut": "Verkleinern",
-  "form.distance": "Distanz (km, optional)",
-  "form.elevation": "Höhenmeter (m, optional)",
+  "form.distance": "Distanz ({unit}, optional)",
+  "form.elevation": "Höhenmeter ({unit}, optional)",
   "form.pace": "Pace oder Tempo (optional)",
   "form.paceHint":
     "Läufe: Pace pro km, zum Beispiel 5:30 bis 6:00. Radfahrten: Tempo in km/h, zum Beispiel 25 bis 28.",
+  "form.paceHintImperial":
+    "Läufe: Pace pro Meile, zum Beispiel 9:00 bis 9:30. Radfahrten: Tempo in mph, zum Beispiel 15 bis 18.",
   "form.paceFrom": "Von",
   "form.paceTo": "Bis",
   "form.dropPolicy": "Gruppenregel",
@@ -97,6 +109,7 @@ export const de: Messages = {
   "form.gpxTrimOff": "Ganze Route zeigen",
   "form.gpxTrimMeters": "{meters} m an jedem Ende ausblenden",
   "form.gpxTrimKilometers": "{km} km an jedem Ende ausblenden",
+  "form.gpxTrimMiles": "Etwa {miles} mi an jedem Ende ausblenden",
   "form.gpxHint":
     "Füllt Distanz, Höhenmeter und den genauen Treffpunkt aus. Nur wer zusagt, kann die Route sehen und herunterladen. Wenn das Formular einen Fehler zeigt, wähle die Datei noch einmal aus.",
 
@@ -208,6 +221,12 @@ export const de: Messages = {
     "Mit diesem Link kannst du deine Antwort auf „{title}“ ändern oder zurückziehen.",
   "manageLink.sharedWarning":
     "Mach nur auf deinem eigenen Gerät weiter: Alle, die diesen Browser nutzen, können danach deine Antwort ändern oder zurückziehen.",
+
+  "share.heading": "Teilen",
+  "share.native": "Teilen…",
+  "share.copy": "Link kopieren",
+  "share.copied": "Link kopiert.",
+  "share.copyFailed": "Kopieren hat nicht geklappt. Bitte kopiere den Link aus der Adresszeile.",
 
   "plan.managePlan": "Treffen verwalten",
   "plan.route": "Route",

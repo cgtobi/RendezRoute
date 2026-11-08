@@ -97,6 +97,33 @@ describe("notification endpoints (spec 6 feature 3)", () => {
   });
 });
 
+describe("deleting an upcoming plan (spec 3.10)", () => {
+  it("leaves only its standalone notification jobs, which expire within 24 hours", async () => {
+    const { app, host, ben, planId, database, clock } = await setup();
+    await call(ben, `/p/${planId}/me/notifications`, { subscription });
+    await call(host, `/p/${planId}/host/notifications`, { subscription });
+    // A notice for the host, tied to the plan, is still waiting.
+    await respondViaUi(new TestClient(app), planId, "Ida", "joined");
+    const jobs = () =>
+      database.sqlite
+        .prepare("select plan_id, response_id, expires_at, payload_enc from job_queue")
+        .all() as { plan_id: string | null; response_id: string | null; expires_at: string }[];
+    expect(jobs().some((job) => job.plan_id === planId)).toBe(true);
+
+    const csrf = (await host.hiddenFields(`/p/${planId}/host/delete`))._csrf ?? "";
+    await host.postForm(`/p/${planId}/host/delete`, { _csrf: csrf });
+
+    const left = jobs();
+    expect(left).toHaveLength(1);
+    expect(left[0]).toMatchObject({
+      plan_id: null,
+      response_id: null,
+      expires_at: new Date(clock.now().getTime() + 24 * 60 * 60 * 1000).toISOString(),
+    });
+    expect(JSON.stringify(left)).not.toContain("fcm.googleapis.com");
+  });
+});
+
 describe("abuse limits on notifications (spec 3.11)", () => {
   it("refuse a burst of subscriptions from one client", async () => {
     const { ben, planId } = await setup();

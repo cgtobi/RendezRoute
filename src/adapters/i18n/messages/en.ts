@@ -297,6 +297,7 @@ export const en = {
   "notify.cancelled": "The plan was cancelled.",
   "notify.deleted": "The plan was deleted by its host.",
   "notify.dayBefore": "Reminder: the plan is tomorrow.",
+  "notify.startsToday": "Reminder: the plan is today.",
   "notify.deletionReminder": "This plan will be deleted soon. Save what you want to keep.",
   "notify.recapDeleted": "The host deleted the recap of this plan.",
   "notify.newResponse": "Someone responded to your plan.",

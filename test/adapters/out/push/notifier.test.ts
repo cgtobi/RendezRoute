@@ -80,7 +80,7 @@ const notifier = () =>
 describe("Web Push notifier (spec 6 feature 3, decision I36)", () => {
   it("sends an encrypted message in the recipient's language with VAPID identification", async () => {
     http.respond(ENDPOINT, { status: 201 });
-    expect(await notifier().send(channelId, notification)).toBe("sent");
+    expect(await notifier().send({ channelId }, notification)).toBe("sent");
     const [post] = http.posts;
     expect(post?.url.href).toBe(ENDPOINT);
     expect(post?.headers).toMatchObject({
@@ -97,12 +97,24 @@ describe("Web Push notifier (spec 6 feature 3, decision I36)", () => {
     });
   });
 
+  it("sends to a subscription carried by the job itself, after its channel is gone", async () => {
+    http.respond(ENDPOINT, { status: 201 });
+    const message = { ...notification, kind: "deleted" as const, planPath: undefined };
+    expect(await notifier().send({ subscription: { endpoint: ENDPOINT, keys } }, message)).toBe(
+      "sent",
+    );
+    expect(decrypt(http.posts[0]?.body ?? new Uint8Array())).toEqual({
+      title: "Hill repeats",
+      body: "Die Organisator:in hat das Treffen gelöscht.",
+    });
+  });
+
   it("reports subscriptions the push service refuses as gone, so they are deleted", async () => {
     for (const status of [400, 403, 404, 410, 413]) {
       http.respond(ENDPOINT, { status });
-      expect(await notifier().send(channelId, notification)).toBe("gone");
+      expect(await notifier().send({ channelId }, notification)).toBe("gone");
     }
-    expect(await notifier().send("unknown-channel", notification)).toBe("gone");
+    expect(await notifier().send({ channelId: "unknown-channel" }, notification)).toBe("gone");
   });
 
   it("reports a subscription whose browser key is not a valid P-256 point as gone", async () => {
@@ -111,14 +123,14 @@ describe("Web Push notifier (spec 6 feature 3, decision I36)", () => {
       { endpoint: `${ENDPOINT}/broken`, keys: { ...keys, p256dh: `B${"A".repeat(86)}` } },
     );
     http.respond(ENDPOINT, { status: 201 });
-    expect(await notifier().send(broken, notification)).toBe("gone");
+    expect(await notifier().send({ channelId: broken }, notification)).toBe("gone");
     expect(http.posts).toEqual([]);
   });
 
   it("retries when the push service is busy or failing", async () => {
     for (const status of [429, 500, 503]) {
       http.respond(ENDPOINT, { status });
-      expect(await notifier().send(channelId, notification)).toBe("retry");
+      expect(await notifier().send({ channelId }, notification)).toBe("retry");
     }
   });
 });

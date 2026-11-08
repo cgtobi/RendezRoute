@@ -6,6 +6,7 @@ import * as m0004 from "./0004-routes.ts";
 import * as m0005 from "./0005-plan-previews.ts";
 import * as m0006 from "./0006-job-queue.ts";
 import * as m0007 from "./0007-notification-channels.ts";
+import * as m0008 from "./0008-sent-reminders.ts";
 
 /** Statically imported so migrations work identically from src/ and dist/. Keys sort in order. */
 export const migrations: Readonly<Record<string, Migration>> = {
@@ -16,4 +17,5 @@ export const migrations: Readonly<Record<string, Migration>> = {
   "0005-plan-previews": m0005,
   "0006-job-queue": m0006,
   "0007-notification-channels": m0007,
+  "0008-sent-reminders": m0008,
 };

@@ -45,6 +45,11 @@ export function createFakeRepositories(): {
     for (const key of links) if (key.endsWith(`|host|${id}`)) links.delete(key);
   };
 
+  const activeWhere = (matches: (plan: Plan) => boolean) =>
+    [...plans.values()]
+      .filter((e) => e.plan.status === "active" && matches(e.plan))
+      .map((e) => structuredClone(e.plan));
+
   return {
     plans: {
       async create({ plan, hostTokenHash, creationNonce, hostDeviceId, route }) {
@@ -95,6 +100,12 @@ export function createFakeRepositories(): {
         routes.delete(planId);
         const entry = plans.get(planId);
         if (entry !== undefined) entry.plan = { ...entry.plan, hasRoute: false };
+      },
+      async findActiveStartingBetween(from, to) {
+        return activeWhere((plan) => plan.startsAt >= from && plan.startsAt <= to);
+      },
+      async findActiveDeletingBetween(from, to) {
+        return activeWhere((plan) => plan.deleteAt >= from && plan.deleteAt <= to);
       },
       async findWithRetentionAbove(max) {
         return [...plans.values()]

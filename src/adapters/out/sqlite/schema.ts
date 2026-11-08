@@ -4,6 +4,7 @@ import type { Generated } from "kysely";
 import type { ActivityType } from "../../../domain/activity.ts";
 import type { JobType } from "../../../domain/jobs.ts";
 import type { DropPolicy, JoinMode, PlanStatus, Visibility } from "../../../domain/plan.ts";
+import type { ReminderKind } from "../../../domain/reminders.ts";
 import type { ResponseKind } from "../../../domain/response.ts";
 import type { RecapWindow } from "../../../domain/schedule.ts";
 
@@ -118,6 +119,13 @@ export interface NotificationChannelsTable {
   created_at: string;
 }
 
+export interface SentRemindersTable {
+  plan_id: string;
+  response_id: string | null;
+  kind: ReminderKind;
+  due_at: string;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -130,4 +138,5 @@ export interface DatabaseSchema {
   plan_previews: PlanPreviewsTable;
   job_queue: JobQueueTable;
   notification_channels: NotificationChannelsTable;
+  sent_reminders: SentRemindersTable;
 }

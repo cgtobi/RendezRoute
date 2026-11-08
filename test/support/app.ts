@@ -5,6 +5,7 @@ import { createRateLimits } from "../../src/adapters/in/http/rate-limit.ts";
 import { generateVapidKeys } from "../../src/adapters/out/crypto/vapid-keys.ts";
 import { createChannelRepository } from "../../src/adapters/out/sqlite/channels.ts";
 import { createJobQueue } from "../../src/adapters/out/sqlite/jobs.ts";
+import { createSentReminderRepository } from "../../src/adapters/out/sqlite/reminders.ts";
 import { createLogger } from "../../src/adapters/logging.ts";
 import { createFieldCipher } from "../../src/adapters/out/crypto/field-cipher.ts";
 import { createKeyring } from "../../src/adapters/out/crypto/keyring.ts";
@@ -66,7 +67,7 @@ export async function createTestApp({
     ids,
     clock,
     limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
-    notify: { channels, jobs },
+    notify: { channels, jobs, reminders: createSentReminderRepository(database) },
   };
   const app = createApp({
     config,

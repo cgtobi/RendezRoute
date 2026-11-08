@@ -10,6 +10,8 @@ export const NOTIFICATION_KINDS = [
   "cancelled",
   "deleted",
   "dayBefore",
+  // The day-before reminder for someone who joined after midnight (decision I39).
+  "startsToday",
   "deletionReminder",
   "recapDeleted",
   // To the host (one switch per hosted plan, D17).

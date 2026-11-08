@@ -231,6 +231,24 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       return rows.map((row) => row.id);
     },
 
+    async findActiveStartingBetween(from, to) {
+      const rows = await selectPlans()
+        .where("plans.status", "=", "active")
+        .where("plans.starts_at", ">=", from.toISOString())
+        .where("plans.starts_at", "<=", to.toISOString())
+        .execute();
+      return rows.map(fromRow);
+    },
+
+    async findActiveDeletingBetween(from, to) {
+      const rows = await selectPlans()
+        .where("plans.status", "=", "active")
+        .where("plans.delete_at", ">=", from.toISOString())
+        .where("plans.delete_at", "<=", to.toISOString())
+        .execute();
+      return rows.map(fromRow);
+    },
+
     async findWithRetentionAbove(maxRetentionDays) {
       const rows = await selectPlans()
         .where("plans.retention_days", ">", maxRetentionDays)

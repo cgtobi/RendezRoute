@@ -26,9 +26,12 @@ export function createWebPushNotifier({
   now: () => Date;
 }): Notifier {
   return {
-    async send(channelId, notification: Notification) {
-      const channel = await channels.findById(channelId);
-      if (channel === undefined) return "gone";
+    async send(to, notification: Notification) {
+      const subscription =
+        "subscription" in to
+          ? to.subscription
+          : (await channels.findById(to.channelId))?.subscription;
+      if (subscription === undefined) return "gone";
       const { title, body } = notificationText(notification);
       const message = {
         title,
@@ -41,13 +44,13 @@ export function createWebPushNotifier({
       try {
         encrypted = encryptPayload(
           new TextEncoder().encode(JSON.stringify(message)),
-          channel.subscription.keys,
+          subscription.keys,
         );
       } catch {
         // The browser's key is not a usable P-256 point: no message can ever reach it.
         return "gone";
       }
-      const endpoint = new URL(channel.subscription.endpoint);
+      const endpoint = new URL(subscription.endpoint);
       const response = await http.post(endpoint, {
         headers: {
           authorization: vapidAuthorization({ endpoint, keys: vapid, subject, now: now() }),

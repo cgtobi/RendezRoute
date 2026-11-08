@@ -311,6 +311,7 @@ export const fr: Messages = {
   "notify.cancelled": "La sortie a été annulée.",
   "notify.deleted": "L’organisateur·rice a supprimé la sortie.",
   "notify.dayBefore": "Rappel : la sortie a lieu demain.",
+  "notify.startsToday": "Rappel : la sortie a lieu aujourd’hui.",
   "notify.deletionReminder":
     "Cette sortie sera bientôt supprimée. Enregistrez ce que vous voulez garder.",
   "notify.recapDeleted": "L’organisateur·rice a supprimé le récapitulatif de cette sortie.",

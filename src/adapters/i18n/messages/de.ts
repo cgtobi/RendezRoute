@@ -310,6 +310,7 @@ export const de: Messages = {
   "notify.cancelled": "Das Treffen wurde abgesagt.",
   "notify.deleted": "Die Organisator:in hat das Treffen gelöscht.",
   "notify.dayBefore": "Erinnerung: Das Treffen ist morgen.",
+  "notify.startsToday": "Erinnerung: Das Treffen ist heute.",
   "notify.deletionReminder":
     "Dieses Treffen wird bald gelöscht. Sichere, was du behalten möchtest.",
   "notify.recapDeleted": "Die Organisator:in hat den Rückblick dieses Treffens gelöscht.",

@@ -80,18 +80,18 @@ describe("notifications (spec 6 feature 3, decision I36)", () => {
     const notifier = new FakeNotifier();
     await enqueueNotification(
       { jobs, clock },
-      { channelId: "channel-1", notification, planId: "abc" },
+      { to: { channelId: "channel-1" }, notification, planId: "abc" },
     );
     const result = await run({ notification: notificationHandler({ notifier }) });
     expect(result.done).toBe(1);
-    expect(notifier.sent).toEqual([{ channelId: "channel-1", notification }]);
+    expect(notifier.sent).toEqual([{ to: { channelId: "channel-1" }, notification }]);
   });
 
   it("drop a job whose channel is gone and report the channel", async () => {
     const notifier = new FakeNotifier();
     notifier.result = "gone";
     const gone: string[] = [];
-    await enqueueNotification({ jobs, clock }, { channelId: "channel-1", notification });
+    await enqueueNotification({ jobs, clock }, { to: { channelId: "channel-1" }, notification });
     const handler = notificationHandler({
       notifier,
       onGone: (id) => (gone.push(id), Promise.resolve()),
@@ -104,7 +104,7 @@ describe("notifications (spec 6 feature 3, decision I36)", () => {
     const notifier = new FakeNotifier();
     notifier.result = "failed";
     const gone: string[] = [];
-    await enqueueNotification({ jobs, clock }, { channelId: "channel-1", notification });
+    await enqueueNotification({ jobs, clock }, { to: { channelId: "channel-1" }, notification });
     const handler = notificationHandler({
       notifier,
       onGone: (id) => (gone.push(id), Promise.resolve()),
@@ -113,11 +113,40 @@ describe("notifications (spec 6 feature 3, decision I36)", () => {
     expect(gone).toEqual([]);
   });
 
+  it("can carry their own subscription, for messages that outlive the plan (spec 3.10)", async () => {
+    const notifier = new FakeNotifier();
+    notifier.result = "gone";
+    const gone: string[] = [];
+    const subscription = {
+      endpoint: "https://fcm.googleapis.com/fcm/send/abc",
+      keys: { p256dh: `B${"A".repeat(86)}`, auth: "A".repeat(22) },
+    };
+    await enqueueNotification({ jobs, clock }, { to: { subscription }, notification });
+    const handler = notificationHandler({
+      notifier,
+      onGone: (id) => (gone.push(id), Promise.resolve()),
+    });
+    expect(await run({ notification: handler })).toMatchObject({ dropped: 1 });
+    expect(notifier.sent).toEqual([{ to: { subscription }, notification }]);
+    expect(gone).toEqual([]);
+    await jobs.enqueue({
+      type: "notification",
+      payload: { to: { subscription: { endpoint: "https://evil.example/x" } }, notification },
+      runAt: clock.now(),
+    });
+    expect(await run({ notification: handler })).toMatchObject({ dropped: 1 });
+    expect(notifier.sent).toHaveLength(1);
+  });
+
   it("retry when the push service is unavailable, and drop malformed payloads", async () => {
     const notifier = new FakeNotifier();
     notifier.result = "retry";
-    await enqueueNotification({ jobs, clock }, { channelId: "channel-1", notification });
-    await jobs.enqueue({ type: "notification", payload: { channelId: 5 }, runAt: clock.now() });
+    await enqueueNotification({ jobs, clock }, { to: { channelId: "channel-1" }, notification });
+    await jobs.enqueue({
+      type: "notification",
+      payload: { to: { channelId: 5 }, notification },
+      runAt: clock.now(),
+    });
     expect(await run({ notification: notificationHandler({ notifier }) })).toMatchObject({
       retried: 1,
       dropped: 1,

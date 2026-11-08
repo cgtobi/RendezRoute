@@ -2,6 +2,7 @@ import type { JobType } from "../domain/jobs.ts";
 import type { Notification } from "../domain/notification.ts";
 import type { PushSubscription } from "../domain/push.ts";
 import type { Plan } from "../domain/plan.ts";
+import type { ReminderKind } from "../domain/reminders.ts";
 import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import type { Route, RouteError } from "../domain/route.ts";
@@ -106,6 +107,10 @@ export interface PlanRepository {
   deleteMany(ids: readonly string[]): Promise<void>;
   /** IDs of plans whose delete_at is at or before `now`, cancelled plans included (spec 3.10). */
   findDueForDeletion(now: Date): Promise<string[]>;
+  /** Active plans starting within the range, bounds included (spec 6 feature 3: day-before reminder). */
+  findActiveStartingBetween(from: Date, to: Date): Promise<Plan[]>;
+  /** Active plans being deleted within the range, bounds included (spec 3.10: deletion reminder). */
+  findActiveDeletingBetween(from: Date, to: Date): Promise<Plan[]>;
   /** Plans whose retention exceeds `maxRetentionDays` (apply-retention-max). */
   findWithRetentionAbove(maxRetentionDays: number): Promise<Plan[]>;
   /** The route, decrypted; only for audiences that may see it (spec 3.6). */
@@ -244,9 +249,30 @@ export interface JobQueue {
  */
 export type SendResult = "sent" | "gone" | "retry" | "failed";
 
-/** Delivers a notification to one channel (spec 2a); one adapter per channel kind. */
+/**
+ * Where a notification goes: a stored channel, or a subscription carried by the job itself, for
+ * messages that outlive their plan and its channels (spec 3.10 deletion notifications).
+ */
+export type NotificationTarget = { channelId: string } | { subscription: PushSubscription };
+
+/** Delivers a notification (spec 2a); one adapter per channel kind. */
 export interface Notifier {
-  send(channelId: string, notification: Notification): Promise<SendResult>;
+  send(to: NotificationTarget, notification: Notification): Promise<SendResult>;
+}
+
+/** A reminder for one response, or for a whole plan, at the moment it was due (decision I39). */
+export interface SentReminder {
+  kind: ReminderKind;
+  planId: string;
+  responseId?: string | undefined;
+  dueAt: Date;
+}
+
+/** Remembers which reminders went out; deleted with their plan or response. */
+export interface SentReminderRepository {
+  wasSent(reminder: SentReminder): Promise<boolean>;
+  /** Idempotent. */
+  record(reminder: SentReminder): Promise<void>;
 }
 
 /** Who a notification channel belongs to: a response, or the host of a plan (spec 4). */

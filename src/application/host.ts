@@ -19,7 +19,7 @@ import { isPosterName } from "../domain/responding.ts";
 import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import { resolveDevice } from "./devices.ts";
-import { notifyResponders, notifyResponse } from "./notify.ts";
+import { deletionNotices, notifyResponders, notifyResponse } from "./notify.ts";
 import type { PlanDeps } from "./plans.ts";
 
 export type Denied = { kind: "not_found" } | { kind: "forbidden" };
@@ -199,14 +199,16 @@ export async function cancelPlan(
   return { kind: "cancelled" };
 }
 
-/** Hard delete (spec 1.6). Deletion notifications and templates arrive in v0.5. */
+/** Hard delete (spec 1.6), telling everyone still in if the plan was upcoming (spec 3.10). */
 export async function deletePlan(
   deps: PlanDeps,
   request: { planId: string; deviceToken: string | undefined },
 ): Promise<Denied | { kind: "deleted" }> {
   const plan = await asHost(deps, request.planId, request.deviceToken);
   if (isDenied(plan)) return plan;
+  const sendNotices = await deletionNotices(deps, plan);
   await deps.plans.delete(plan.id);
+  await sendNotices();
   return { kind: "deleted" };
 }
 

@@ -33,6 +33,7 @@ import type {
   ResponseRepository,
   RouteParseError,
   RouteParser,
+  SentReminderRepository,
 } from "./ports.ts";
 
 export interface PlanDeps extends DeviceDeps {
@@ -40,8 +41,10 @@ export interface PlanDeps extends DeviceDeps {
   responses: ResponseRepository;
   routeParser: RouteParser;
   limits: { horizonDays: number; maxRetentionDays: number };
-  /** Notification channels and the job queue that delivers to them (spec 6 feature 3). */
-  notify?: { channels: ChannelRepository; jobs: JobQueue } | undefined;
+  /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
+  notify?:
+    | { channels: ChannelRepository; jobs: JobQueue; reminders: SentReminderRepository }
+    | undefined;
 }
 
 const NONCE = /^[A-Za-z0-9_-]{16,64}$/;

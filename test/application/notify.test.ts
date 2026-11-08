@@ -16,6 +16,7 @@ import { FakeChannelRepository } from "../fakes/channels.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { FakeJobQueue } from "../fakes/job-queue.ts";
+import { FakeSentReminders } from "../fakes/reminders.ts";
 import { createFakeRepositories } from "../fakes/repositories.ts";
 import { fakeGpx, FakeRouteParser } from "../fakes/route-parser.ts";
 import { FakeTokenService } from "../fakes/tokens.ts";
@@ -47,7 +48,7 @@ beforeEach(async () => {
     ids: new SequentialIdGenerator(),
     clock: new FakeClock(fixtureNow),
     limits: { horizonDays: 180, maxRetentionDays: 30 },
-    notify: { channels, jobs },
+    notify: { channels, jobs, reminders: new FakeSentReminders() },
   };
   const created = await createPlan(deps, {
     input: { ...sampleInput, joinMode: "approval" },
@@ -82,10 +83,10 @@ async function responder(name: string, choice: string, language = "fr") {
 const queued = () =>
   [...jobs.jobs.values()].map((job) => {
     const payload = job.payload as {
-      channelId: string;
+      to: { channelId: string };
       notification: { kind: string; language: string };
     };
-    return `${payload.notification.kind} ${payload.notification.language} ${payload.channelId}`;
+    return `${payload.notification.kind} ${payload.notification.language} ${payload.to.channelId}`;
   });
 
 describe("notification switches (spec 6 feature 3, decision D17)", () => {

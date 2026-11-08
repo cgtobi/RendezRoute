@@ -12,6 +12,7 @@ import {
 import { runDueJobs } from "./application/jobs.ts";
 import { notificationHandler } from "./application/notifications.ts";
 import type { PlanDeps } from "./application/plans.ts";
+import { reminderStillDue, runReminders } from "./application/reminders.ts";
 import type { Geocoder, PreviewRenderer } from "./application/ports.ts";
 import { createApp } from "./adapters/in/http/app.tsx";
 import { createRateLimits } from "./adapters/in/http/rate-limit.ts";
@@ -33,6 +34,7 @@ import { backupDatabase, createBackupStore } from "./adapters/out/sqlite/backups
 import { createJobQueue } from "./adapters/out/sqlite/jobs.ts";
 import { createChannelRepository } from "./adapters/out/sqlite/channels.ts";
 import { loadOrCreateVapidKeys } from "./adapters/out/crypto/vapid-keys.ts";
+import { createSentReminderRepository } from "./adapters/out/sqlite/reminders.ts";
 import { createWebPushNotifier } from "./adapters/out/push/notifier.ts";
 import { isPushServiceHost } from "./domain/push.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
@@ -161,6 +163,7 @@ async function openInstance(
     notify: {
       channels: createChannelRepository(database, keys.cipher, ids, () => systemClock.now()),
       jobs: createJobQueue(database, keys.cipher, ids),
+      reminders: createSentReminderRepository(database),
     },
   };
   return { ok: true, instance: { config, database, keys, planDeps, warnings } };
@@ -194,6 +197,7 @@ export async function startServer(
     notification: notificationHandler({
       notifier,
       onGone: (channelId) => notify.channels.delete(channelId),
+      stillDue: (reminder) => reminderStillDue(planDeps, reminder),
     }),
   };
   const sweepLimits = () => {
@@ -217,6 +221,8 @@ export async function startServer(
         intervalMs: JOB_INTERVAL_MS,
         run: () => runDueJobs({ jobs: notify.jobs, clock: planDeps.clock }, jobHandlers),
       },
+      // Day-before and deletion reminders (spec 6 feature 3, 3.10), queued as jobs above.
+      { name: "reminders", intervalMs: MINUTE_MS, run: () => runReminders(planDeps) },
       // Forgets client addresses whose limits have refilled, also when no requests come in.
       { name: "rate_limit_sweep", intervalMs: MINUTE_MS, run: sweepLimits },
     ],

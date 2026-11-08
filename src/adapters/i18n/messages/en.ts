@@ -52,6 +52,8 @@ export const en = {
     "Place search goes through this server to {host}. That service sees what you search for, but not who you are. Searches and their results are kept in this server’s memory for up to {days} days, so repeated searches need no new request.",
   "privacy.push":
     "If you turn on notifications, your browser’s push service (from Google, Mozilla, Apple or Microsoft) delivers them. The messages are encrypted; the service only sees that one was sent.",
+  "privacy.calendar":
+    "If you create a calendar link, your calendar app’s server fetches it. That server sees the public details of your plans and that you responded to them.",
   "privacy.location":
     "“Use my location” asks your browser for your position and only fills in the form; it is sent only when you submit the form.",
   "privacy.locationMap":
@@ -289,6 +291,8 @@ export const en = {
   "plan.managePlan": "Manage plan",
   "plan.route": "Route",
   "plan.downloadGpx": "Download GPX",
+  "plan.addToCalendar": "Add to calendar",
+  "plan.subscribeCalendar": "Subscribe to all your plans in your calendar",
 
   "notify.accepted": "You’re in. The exact start is now on the plan page.",
   "notify.rejected": "Your request was not accepted for this plan.",
@@ -311,6 +315,31 @@ export const en = {
   "push.failed": "Notifications could not be turned on. Please try again.",
   "push.hint": "Only news about this plan: changes, cancellation, your request and reminders.",
   "push.hostHint": "News about responses, requests and withdrawals.",
+
+  "calendar.title": "Calendar subscription",
+  "calendar.intro":
+    "Your calendar app can show all plans you host or responded to in this browser. It updates them by itself when a plan changes, is cancelled or deleted.",
+  "calendar.contents":
+    "The calendar has only public details: title, time, meeting area and the link. Never the exact start, the route or anyone’s name. Your calendar app’s server fetches it, so that server sees these details and that you responded.",
+  "calendar.create": "Create calendar link",
+  "calendar.active": "This browser has a calendar link.",
+  "calendar.renew": "Get a new link",
+  "calendar.renewHint":
+    "The old link then stops working. Use this if you lost the link or shared it by mistake.",
+  "calendar.nothingYet":
+    "Create a plan or respond to one in this browser first. The calendar link lists those plans.",
+  "calendar.stop": "Stop the calendar link",
+  "calendar.linkHeading": "Your calendar link",
+  "calendar.subscribe": "Subscribe in your calendar app",
+  "calendar.copy": "Or add this address in your calendar app:",
+  "calendar.linkWarning":
+    "This link is shown only once. Anyone who has it sees the public details of your plans, so keep it private.",
+  "calendar.expiry":
+    "The link works as long as you open this site in this browser now and then. Updates in your calendar don’t count: if you don’t open the site in this browser for {days} days, this browser’s data is deleted, and the link with it.",
+  "calendar.yourPlan": "{title} (your plan)",
+  "calendar.cancelled": "Cancelled: {title}",
+  "calendar.deletionEntry": "“{title}” will be deleted today",
+  "calendar.exactStart": "Exact start: {start}",
 
   "host.route": "Route",
   "host.routeNone": "No route yet.",

@@ -3,7 +3,7 @@ import type { Notification } from "../domain/notification.ts";
 import type { PushSubscription } from "../domain/push.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { ReminderKind } from "../domain/reminders.ts";
-import type { PlanResponse } from "../domain/response.ts";
+import type { PlanResponse, ResponseKind } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import type { Route, RouteError } from "../domain/route.ts";
 import type { PlanPreview } from "./plan-views.ts";
@@ -111,6 +111,8 @@ export interface PlanRepository {
   findActiveStartingBetween(from: Date, to: Date): Promise<Plan[]>;
   /** Active plans being deleted within the range, bounds included (spec 3.10: deletion reminder). */
   findActiveDeletingBetween(from: Date, to: Date): Promise<Plan[]>;
+  /** Plans the device hosts or manages a response to, with the response's kind (spec 6 feature 2). */
+  findLinkedToDevice(deviceId: string): Promise<LinkedPlan[]>;
   /** Plans whose retention exceeds `maxRetentionDays` (apply-retention-max). */
   findWithRetentionAbove(maxRetentionDays: number): Promise<Plan[]>;
   /** The route, decrypted; only for audiences that may see it (spec 3.6). */
@@ -124,6 +126,11 @@ export interface PlanRepository {
   /** Replaces the plan's cached preview image. */
   savePreview(planId: string, version: string, image: Uint8Array): Promise<void>;
 }
+
+/** A plan as seen from one device: hosted, or responded to with a response of some kind. */
+export type LinkedPlan =
+  | { plan: Plan; role: "host" }
+  | { plan: Plan; role: "manage"; responseKind: ResponseKind };
 
 export interface Device {
   id: string;
@@ -294,4 +301,23 @@ export interface ChannelRepository {
   listFor(owner: ChannelOwner): Promise<NotificationChannel[]>;
   findById(id: string): Promise<NotificationChannel | undefined>;
   delete(id: string): Promise<void>;
+}
+
+/** A personal calendar feed (spec 6 feature 2); only the hash of its token is stored. */
+export interface CalendarFeed {
+  id: string;
+  deviceId: string;
+  /** For the feed's texts: calendar servers fetch it without the browser's preferences. */
+  language: string;
+  createdAt: Date;
+}
+
+export interface CalendarFeedRepository {
+  /** Stores the device's feed, replacing any earlier one, whose link then stops working. */
+  replace(feed: CalendarFeed & { tokenHash: string }): Promise<void>;
+  findByTokenHash(hash: string): Promise<CalendarFeed | undefined>;
+  findForDevice(deviceId: string): Promise<CalendarFeed | undefined>;
+  deleteForDevice(deviceId: string): Promise<void>;
+  /** Deletes feeds whose device has nothing linked any more (spec 3.10); returns how many. */
+  deleteUnlinked(): Promise<number>;
 }

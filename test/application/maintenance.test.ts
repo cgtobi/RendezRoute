@@ -66,6 +66,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
     const backups = new FakeBackupStore(2);
     expect(await runHousekeeping({ ...deps, backups })).toEqual({
       deletedDevices: 0,
+      deletedFeeds: 0,
       deletedBackups: 2,
     });
     expect(backups.cutoffs).toEqual([new Date(fixtureNow.getTime() - 7 * 24 * 60 * 60 * 1000)]);
@@ -77,10 +78,29 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
     clock.advance({ days: 31 });
     expect(await runHousekeeping({ ...deps, backups: new FakeBackupStore() })).toEqual({
       deletedDevices: 1,
+      deletedFeeds: 0,
       deletedBackups: 0,
     });
     expect(await repos.devices.findByTokenHash("lonely-hash")).toBeUndefined();
     expect(await repos.devices.findByTokenHash("hash-p")).toBeDefined();
+  });
+});
+
+describe("runHousekeeping and calendar feeds (spec 3.10)", () => {
+  it("deletes feeds once they no longer reference anything", async () => {
+    await addPlan("p", 14);
+    await repos.calendarFeeds.replace({
+      id: "feed",
+      deviceId: "device-p",
+      tokenHash: "feed-hash",
+      language: "en",
+      createdAt: fixtureNow,
+    });
+    const housekeeping = () => runHousekeeping({ ...deps, backups: new FakeBackupStore() });
+    expect((await housekeeping()).deletedFeeds).toBe(0);
+    await repos.plans.delete("p");
+    expect((await housekeeping()).deletedFeeds).toBe(1);
+    expect(await repos.calendarFeeds.findByTokenHash("feed-hash")).toBeUndefined();
   });
 });
 

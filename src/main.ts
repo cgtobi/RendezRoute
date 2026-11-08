@@ -32,6 +32,7 @@ import { createMapTiles } from "./adapters/out/preview/tiles.ts";
 import { createIdGenerator } from "./adapters/out/ids.ts";
 import { backupDatabase, createBackupStore } from "./adapters/out/sqlite/backups.ts";
 import { createJobQueue } from "./adapters/out/sqlite/jobs.ts";
+import { createCalendarFeedRepository } from "./adapters/out/sqlite/calendar-feeds.ts";
 import { createChannelRepository } from "./adapters/out/sqlite/channels.ts";
 import { loadOrCreateVapidKeys } from "./adapters/out/crypto/vapid-keys.ts";
 import { createSentReminderRepository } from "./adapters/out/sqlite/reminders.ts";
@@ -160,6 +161,7 @@ async function openInstance(
     ids,
     clock: systemClock,
     limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
+    calendarFeeds: createCalendarFeedRepository(database),
     notify: {
       channels: createChannelRepository(database, keys.cipher, ids, () => systemClock.now()),
       jobs: createJobQueue(database, keys.cipher, ids),

@@ -1,7 +1,10 @@
 import type {
+  CalendarFeed,
+  CalendarFeedRepository,
   Device,
   DeviceLinkTarget,
   DeviceRepository,
+  LinkedPlan,
   PlanRepository,
   ResponseRepository,
 } from "../../src/application/ports.ts";
@@ -14,6 +17,7 @@ export function createFakeRepositories(): {
   plans: PlanRepository;
   devices: DeviceRepository & { all(): Device[] };
   responses: ResponseRepository;
+  calendarFeeds: CalendarFeedRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
   const routes = new Map<string, Route>();
@@ -26,6 +30,7 @@ export function createFakeRepositories(): {
     { response: PlanResponse; manageTokenHash: string; deviceId: string | undefined }
   >();
   const responseNonces = new Map<string, string>();
+  const feeds = new Map<string, CalendarFeed & { tokenHash: string }>();
 
   const linkKey = (deviceId: string, target: DeviceLinkTarget) =>
     `${deviceId}|${target.role}|${target.role === "host" ? target.planId : target.responseId}`;
@@ -107,6 +112,29 @@ export function createFakeRepositories(): {
       async findActiveDeletingBetween(from, to) {
         return activeWhere((plan) => plan.deleteAt >= from && plan.deleteAt <= to);
       },
+      async findLinkedToDevice(deviceId) {
+        const linked: LinkedPlan[] = [];
+        for (const key of links) {
+          const [device, role, id = ""] = key.split("|");
+          if (device !== deviceId) continue;
+          if (role === "host") {
+            const entry = plans.get(id);
+            if (entry !== undefined)
+              linked.push({ plan: structuredClone(entry.plan), role: "host" });
+          } else {
+            const response = responses.get(id)?.response;
+            const entry = response && plans.get(response.planId);
+            if (response !== undefined && entry !== undefined) {
+              linked.push({
+                plan: structuredClone(entry.plan),
+                role: "manage",
+                responseKind: response.kind,
+              });
+            }
+          }
+        }
+        return linked.sort((a, b) => a.plan.startsAt.getTime() - b.plan.startsAt.getTime());
+      },
       async findWithRetentionAbove(max) {
         return [...plans.values()]
           .filter((e) => e.plan.retentionDays > max)
@@ -146,6 +174,7 @@ export function createFakeRepositories(): {
             (!linked && seen < unlinkedLastSeenBefore.getTime())
           ) {
             devices.delete(id);
+            feeds.delete(id);
             for (const key of links) if (key.startsWith(`${id}|`)) links.delete(key);
             deleted++;
           }
@@ -216,5 +245,41 @@ export function createFakeRepositories(): {
         );
       },
     },
+
+    calendarFeeds: {
+      async replace(feed) {
+        feeds.set(feed.deviceId, { ...feed });
+      },
+      async findByTokenHash(hash) {
+        const found = [...feeds.values()].find((feed) => feed.tokenHash === hash);
+        return found === undefined ? undefined : withoutHash(found);
+      },
+      async findForDevice(deviceId) {
+        const found = feeds.get(deviceId);
+        return found === undefined ? undefined : withoutHash(found);
+      },
+      async deleteForDevice(deviceId) {
+        feeds.delete(deviceId);
+      },
+      async deleteUnlinked() {
+        let deleted = 0;
+        for (const deviceId of feeds.keys()) {
+          if (![...links].some((key) => key.startsWith(`${deviceId}|`))) {
+            feeds.delete(deviceId);
+            deleted++;
+          }
+        }
+        return deleted;
+      },
+    },
+  };
+}
+
+function withoutHash(feed: CalendarFeed & { tokenHash: string }): CalendarFeed {
+  return {
+    id: feed.id,
+    deviceId: feed.deviceId,
+    language: feed.language,
+    createdAt: feed.createdAt,
   };
 }

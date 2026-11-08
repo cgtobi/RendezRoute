@@ -53,6 +53,8 @@ export const de: Messages = {
     "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Suchanfragen und Ergebnisse bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit wiederholte Suchen keine neue Anfrage brauchen.",
   "privacy.push":
     "Wenn du Benachrichtigungen einschaltest, stellt der Push-Dienst deines Browsers (von Google, Mozilla, Apple oder Microsoft) sie zu. Die Nachrichten sind verschlüsselt; der Dienst sieht nur, dass eine verschickt wurde.",
+  "privacy.calendar":
+    "Wenn du einen Kalender-Link erstellst, ruft der Server deiner Kalender-App ihn ab. Dieser Server sieht die öffentlichen Angaben deiner Treffen und dass du darauf geantwortet hast.",
   "privacy.location":
     "„Meinen Standort verwenden“ fragt deinen Browser nach deiner Position und füllt nur das Formular aus; gesendet wird sie erst, wenn du das Formular abschickst.",
   "privacy.locationMap":
@@ -302,6 +304,8 @@ export const de: Messages = {
   "plan.managePlan": "Treffen verwalten",
   "plan.route": "Route",
   "plan.downloadGpx": "GPX herunterladen",
+  "plan.addToCalendar": "Zum Kalender hinzufügen",
+  "plan.subscribeCalendar": "Alle deine Treffen im Kalender abonnieren",
 
   "notify.accepted": "Du bist dabei. Der genaue Treffpunkt steht jetzt beim Treffen.",
   "notify.rejected": "Deine Anfrage für dieses Treffen wurde nicht angenommen.",
@@ -327,6 +331,31 @@ export const de: Messages = {
   "push.hint":
     "Nur Neuigkeiten zu diesem Treffen: Änderungen, Absage, deine Anfrage und Erinnerungen.",
   "push.hostHint": "Neuigkeiten zu Antworten, Anfragen und zurückgezogenen Antworten.",
+
+  "calendar.title": "Kalender-Abo",
+  "calendar.intro":
+    "Deine Kalender-App kann alle Treffen zeigen, die du in diesem Browser organisierst oder auf die du geantwortet hast. Sie aktualisiert sie selbst, wenn ein Treffen geändert, abgesagt oder gelöscht wird.",
+  "calendar.contents":
+    "Der Kalender enthält nur öffentliche Angaben: Titel, Zeit, Treffgebiet und den Link. Nie den genauen Treffpunkt, die Route oder Namen. Der Server deiner Kalender-App ruft ihn ab und sieht daher diese Angaben und dass du geantwortet hast.",
+  "calendar.create": "Kalender-Link erstellen",
+  "calendar.active": "Dieser Browser hat einen Kalender-Link.",
+  "calendar.renew": "Neuen Link erstellen",
+  "calendar.renewHint":
+    "Der alte Link funktioniert dann nicht mehr. Nutze das, wenn du den Link verloren oder versehentlich geteilt hast.",
+  "calendar.nothingYet":
+    "Erstelle zuerst in diesem Browser ein Treffen oder antworte auf eins. Der Kalender-Link zeigt diese Treffen.",
+  "calendar.stop": "Kalender-Link beenden",
+  "calendar.linkHeading": "Dein Kalender-Link",
+  "calendar.subscribe": "In deiner Kalender-App abonnieren",
+  "calendar.copy": "Oder füge diese Adresse in deiner Kalender-App hinzu:",
+  "calendar.linkWarning":
+    "Dieser Link wird nur einmal angezeigt. Wer ihn hat, sieht die öffentlichen Angaben deiner Treffen. Halte ihn also privat.",
+  "calendar.expiry":
+    "Der Link funktioniert, solange du diese Seite ab und zu in diesem Browser öffnest. Aktualisierungen in deinem Kalender zählen nicht: Öffnest du die Seite in diesem Browser {days} Tage lang nicht, werden die Daten dieses Browsers gelöscht und der Link mit ihnen.",
+  "calendar.yourPlan": "{title} (dein Treffen)",
+  "calendar.cancelled": "Abgesagt: {title}",
+  "calendar.deletionEntry": "„{title}“ wird heute gelöscht",
+  "calendar.exactStart": "Genauer Treffpunkt: {start}",
 
   "host.route": "Route",
   "host.routeNone": "Noch keine Route.",

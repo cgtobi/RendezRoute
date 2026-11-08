@@ -31,6 +31,7 @@ describe("privacy notice (spec 5 feature 13)", () => {
       "privacy.logs",
       "privacy.rateLimits",
       "privacy.previews",
+      "privacy.calendar",
     ] as const) {
       expect(text(html)).toContain(en(key));
     }
@@ -76,9 +77,9 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect(noContact).toContain("tile.openstreetmap.org");
   });
 
-  it("mentions no features this version does not have (weather, calendars)", async () => {
+  it("mentions no features this version does not have (weather)", async () => {
     const { html } = await page();
-    expect(html).not.toMatch(/weather|open-meteo|calendar/i);
+    expect(html).not.toMatch(/weather|open-meteo/i);
   });
 
   it("is translated", async () => {

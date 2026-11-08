@@ -3,6 +3,7 @@ import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts
 import { createApp } from "../../src/adapters/in/http/app.tsx";
 import { createRateLimits } from "../../src/adapters/in/http/rate-limit.ts";
 import { generateVapidKeys } from "../../src/adapters/out/crypto/vapid-keys.ts";
+import { createCalendarFeedRepository } from "../../src/adapters/out/sqlite/calendar-feeds.ts";
 import { createChannelRepository } from "../../src/adapters/out/sqlite/channels.ts";
 import { createJobQueue } from "../../src/adapters/out/sqlite/jobs.ts";
 import { createSentReminderRepository } from "../../src/adapters/out/sqlite/reminders.ts";
@@ -67,6 +68,7 @@ export async function createTestApp({
     ids,
     clock,
     limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
+    calendarFeeds: createCalendarFeedRepository(database),
     notify: { channels, jobs, reminders: createSentReminderRepository(database) },
   };
   const app = createApp({

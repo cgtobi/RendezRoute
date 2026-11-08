@@ -16,6 +16,7 @@ import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
 import { readPreference } from "./preference-cookies.ts";
 import type { RateLimits } from "./rate-limit.ts";
+import { registerCalendarRoutes } from "./routes/calendar.tsx";
 import { registerHostRoutes } from "./routes/host.tsx";
 import { registerNotificationRoutes } from "./routes/notifications.ts";
 import { registerPreferenceRoutes } from "./routes/preferences.ts";
@@ -209,6 +210,7 @@ export function createApp({
   if (geocoder !== undefined) registerPlaceRoutes(app, { geocoder, limits: rateLimits });
   registerPreferenceRoutes(app, { config });
   registerNotificationRoutes(app, { config, planDeps, limits: rateLimits });
+  registerCalendarRoutes(app, deps);
 
   return app;
 }

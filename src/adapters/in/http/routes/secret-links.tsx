@@ -11,9 +11,12 @@ import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { SecretLinkConfirm, SecretLinkHead } from "../views/secret-link.tsx";
 import { badRequest, formField, readForm, type RouteDeps, secretLinkHeaders } from "./shared.tsx";
 
-/** Paths that carry a secret token (spec 3.2); they must never be echoed into other URLs. */
+/**
+ * Paths that carry a secret token (spec 3.2): host and manage links, and calendar feeds. They must
+ * never be echoed into other URLs.
+ */
 export function isSecretLinkPath(path: string): boolean {
-  return /^\/(?:a|m)(?:\/|$)/.test(path);
+  return /^\/(?:a|m|c)(?:\/|$)/.test(path);
 }
 
 const KINDS = {

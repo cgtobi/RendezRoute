@@ -14,11 +14,13 @@ export async function runRetentionSweep(deps: PlanDeps): Promise<{ deletedPlans:
 /** Daily expiry of devices and pre-migration backups; templates join in v0.5 (spec 3.10, 11). */
 export async function runHousekeeping(
   deps: PlanDeps & { backups: BackupStore },
-): Promise<{ deletedDevices: number; deletedBackups: number }> {
+): Promise<{ deletedDevices: number; deletedFeeds: number; deletedBackups: number }> {
   const now = deps.clock.now();
   const deletedDevices = await deps.devices.deleteInactive(deviceExpiryCutoffs(now));
+  // Feeds that no longer reference anything (spec 3.10); those of deleted devices went with them.
+  const deletedFeeds = await deps.calendarFeeds.deleteUnlinked();
   const deletedBackups = await deps.backups.deleteOlderThan(backupExpiryCutoff(now));
-  return { deletedDevices, deletedBackups };
+  return { deletedDevices, deletedFeeds, deletedBackups };
 }
 
 /** Applies a lowered MAX_RETENTION_DAYS to existing plans (CLI `apply-retention-max`, spec 3.10). */

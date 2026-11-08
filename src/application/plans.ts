@@ -27,6 +27,7 @@ import {
 } from "./plan-views.ts";
 import type { Result } from "../domain/result.ts";
 import type {
+  CalendarFeedRepository,
   ChannelRepository,
   JobQueue,
   PlanRepository,
@@ -41,6 +42,8 @@ export interface PlanDeps extends DeviceDeps {
   responses: ResponseRepository;
   routeParser: RouteParser;
   limits: { horizonDays: number; maxRetentionDays: number };
+  /** Personal calendar feeds (spec 6 feature 2). */
+  calendarFeeds: CalendarFeedRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
   notify?:
     | { channels: ChannelRepository; jobs: JobQueue; reminders: SentReminderRepository }

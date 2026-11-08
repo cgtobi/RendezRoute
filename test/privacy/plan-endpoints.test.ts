@@ -60,8 +60,11 @@ describe("exact start per audience (spec 3.6)", () => {
 const JOINED_NAME = "SENTINEL-joined-name";
 const INTERESTED_NAME = "SENTINEL-interested-name";
 const REMOVED_NAME = "SENTINEL-removed-name";
+const PENDING_NAME = "SENTINEL-pending-name";
+const REJECTED_NAME = "SENTINEL-rejected-name";
+const ALL_NAMES = [JOINED_NAME, INTERESTED_NAME, REMOVED_NAME, PENDING_NAME, REJECTED_NAME];
 
-/** One plan with a host, a joined, an interested and a removed person. */
+/** One plan with a host and a joined, interested, removed, pending and rejected person. */
 async function audiences() {
   const test = await createTestApp();
   const client = () => new TestClient(test.app);
@@ -73,11 +76,20 @@ async function audiences() {
   await respondViaUi(interested, planId, INTERESTED_NAME, "interested");
   const removed = client();
   await respondViaUi(removed, planId, REMOVED_NAME, "joined");
-  test.database.sqlite
-    .prepare(
-      "update responses set kind = 'removed', previous_kind = 'joined' where id = (select max(id) from responses)",
-    )
-    .run();
+  const setLatest = (kind: string) =>
+    test.database.sqlite
+      .prepare(
+        `update responses set kind = '${kind}', previous_kind = 'joined' where id = (select max(id) from responses)`,
+      )
+      .run();
+  setLatest("removed");
+  // Pending and rejected requests, as approval mode would leave them (spec 3.4).
+  const pending = client();
+  await respondViaUi(pending, planId, PENDING_NAME, "joined");
+  setLatest("requested");
+  const rejected = client();
+  await respondViaUi(rejected, planId, REJECTED_NAME, "joined");
+  setLatest("rejected");
   return {
     ...test,
     planId,
@@ -87,6 +99,8 @@ async function audiences() {
     joined,
     interested,
     removed,
+    pending,
+    rejected,
     viewer: client(),
     client,
   };
@@ -98,6 +112,7 @@ async function pages(client: TestClient, planId: string): Promise<string> {
     `/p/${planId}/me`,
     `/p/${planId}/host`,
     `/p/${planId}/host/delete`,
+    `/p/${planId}/calendar.ics`,
   ];
   const bodies = await Promise.all(paths.map(async (path) => (await client.get(path)).text()));
   return bodies.join("\n");
@@ -118,6 +133,19 @@ describe("names and exact start per audience (spec 3.6)", () => {
     expectNoExactStart(body);
     expect(body).not.toContain(JOINED_NAME);
     expect(body).not.toContain(REMOVED_NAME);
+  });
+
+  it("pending and rejected requesters see no other names and no exact start", async () => {
+    const { pending, rejected, planId } = await audiences();
+    for (const [client, own] of [
+      [pending, PENDING_NAME],
+      [rejected, REJECTED_NAME],
+    ] as const) {
+      const body = await pages(client, planId);
+      expectNoExactStart(body);
+      const others = ALL_NAMES.filter((name) => name !== own);
+      for (const name of others) expect(body).not.toContain(name);
+    }
   });
 
   it("removed people see what rejected people see: no names, no exact start", async () => {
@@ -158,6 +186,37 @@ describe("names and exact start per audience (spec 3.6)", () => {
   });
 });
 
+/** Creates a calendar feed for the client and returns its path. */
+async function feedPath(client: TestClient): Promise<string> {
+  const hidden = await client.hiddenFields("/calendar");
+  const html = await (await client.postForm("/calendar", hidden)).text();
+  return /https:\/\/runs\.example\.org(\/c\/[A-Za-z0-9_-]{43})/.exec(html)?.[1] ?? "/c/missing";
+}
+
+describe("calendar feeds (spec 6 feature 2: public fields only)", () => {
+  it("never contain the exact start or anyone's name, for any audience", async () => {
+    const { host, joined, interested, pending, viewer, planId } = await audiences();
+    for (const client of [host, joined, interested, pending]) {
+      const feed = await (await viewer.get(await feedPath(client))).text();
+      expect(feed).toContain(planId);
+      expectNoExactStart(feed);
+      for (const name of [...ALL_NAMES, "Anna"]) expect(feed).not.toContain(name);
+    }
+  });
+
+  it("leave out plans where the browser was rejected or removed", async () => {
+    const { removed, rejected, planId, app } = await audiences();
+    for (const client of [removed, rejected]) {
+      // Nothing left to list: no feed link (spec 3.10).
+      expect(await feedPath(client)).toBe("/c/missing");
+      // A feed made for another plan still leaves this one out.
+      await createPlanViaUi(client);
+      const feed = await (await new TestClient(app).get(await feedPath(client))).text();
+      expect(feed).not.toContain(planId);
+    }
+  });
+});
+
 describe("host link (spec 3.2: shown once on creation)", () => {
   it("appears on no page after the links page, not even for the host", async () => {
     const { app } = await createTestApp();
@@ -180,7 +239,9 @@ describe("data at rest (spec 2b)", () => {
     const { planId, hostPath } = await createPlanViaUi(host, exactStart);
     const joined = new TestClient(app);
     const { managePath } = await respondViaUi(joined, planId, JOINED_NAME, "joined");
+    const feed = await feedPath(host);
     const secrets = [
+      feed.slice("/c/".length),
       SENTINEL_DESCRIPTION,
       SENTINEL_LAT,
       JOINED_NAME,
@@ -290,6 +351,21 @@ describe("route geometry per audience (spec 3.6, decision D10)", () => {
         expect(body).not.toContain("47.54321");
         expect(body).not.toContain("10.98765");
       }
+    }
+    // Calendars never carry the route (spec 6 feature 2). The host's download has the exact
+    // start, which here is the route's first point; the rest of the route is in no calendar.
+    const download = `/p/${planId}/calendar.ics`;
+    const hostDownload = await (await host.get(download)).text();
+    expect(hostDownload).toContain("GEO:47.54321;10.98765");
+    expect(hostDownload).not.toContain("47.54421");
+    const feeds = [await feedPath(host), await feedPath(interested)];
+    for (const body of [
+      await (await interested.get(download)).text(),
+      ...(await Promise.all(feeds.map(async (path) => (await host.get(path)).text()))),
+    ]) {
+      expect(body).toContain(planId);
+      expect(body).not.toContain("47.54321");
+      expect(body).not.toContain("47.54421");
     }
   });
 });

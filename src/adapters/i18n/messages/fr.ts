@@ -28,23 +28,23 @@ export const fr: Messages = {
   "privacy.noTracking": "Il n’y a ni comptes, ni mesure d’audience, ni publicité.",
   "privacy.durationHeading": "Durée de conservation",
   "privacy.retention":
-    "Chaque sortie est supprimée avec toutes les réponses, tous les noms et son parcours à la date indiquée sur sa page, entre 1 et {days} jours après la sortie, selon le choix de l’organisateur·rice. L’organisateur·rice peut la supprimer plus tôt, et vous pouvez retirer votre réponse à tout moment. Les données supprimées sont écrasées dans la base de données.",
+    "Chaque sortie est supprimée avec toutes les réponses, tous les noms et son parcours à la date indiquée sur sa page, entre 1 et {days} jours après la sortie, selon le choix de l’organisateur·rice. L’organisateur·rice peut la supprimer plus tôt, et vous pouvez retirer votre réponse à tout moment. Les données supprimées sont écrasées dans la base de données.",
   "privacy.retentionLowered":
     "Les sorties créées avant que ce maximum soit abaissé peuvent garder leur durée plus longue, jusqu’à {max} jours.",
   "privacy.devices":
     "Le lien entre votre navigateur et vos sorties ou réponses est supprimé {unlinkedDays} jours après sa dernière utilisation dès que plus rien n’y est associé, et dans tous les cas après {unusedDays} jours sans utilisation.",
   "privacy.backups":
-    "Les sauvegardes automatiques de la base faites avant les mises à jour du logiciel sont supprimées après {days} jours.",
+    "Les sauvegardes automatiques de la base faites avant les mises à jour du logiciel sont supprimées après {days} jours.",
   "privacy.operatorHeading": "Qui peut accéder aux données",
   "privacy.operator":
     "La personne qui exploite ce site peut techniquement accéder à tout ce qui y est enregistré, y compris aux données chiffrées. Le chiffrement protège les données en cas de fuite de sauvegardes de la base si la clé est conservée séparément, mais pas contre l’exploitant·e.",
   "privacy.cookiesHeading": "Cookies",
   "privacy.cookieDevice":
-    "Un cookie d’appareil, seulement après avoir créé une sortie, répondu ou ouvert un lien privé : une valeur aléatoire qui associe ce navigateur à ces éléments, conservée {days} jours.",
+    "Un cookie d’appareil, seulement après avoir créé une sortie, répondu ou ouvert un lien privé : une valeur aléatoire qui associe ce navigateur à ces éléments, conservée {days} jours.",
   "privacy.cookieCsrf":
     "Un cookie de session qui protège les formulaires contre les envois falsifiés. Les navigateurs le suppriment à leur fermeture, sauf s’ils restaurent votre session précédente.",
   "privacy.cookiePreferences":
-    "Des cookies de langue et d’unités, seulement si vous choisissez une langue ou des unités en bas d’une page, conservés {days} jours.",
+    "Des cookies de langue et d’unités, seulement si vous choisissez une langue ou des unités en bas d’une page, conservés {days} jours.",
   "privacy.cookieOthers": "Aucun autre cookie, et aucun cookie d’autres sites.",
   "privacy.servicesHeading": "Autres services",
   "privacy.tiles":
@@ -52,9 +52,11 @@ export const fr: Messages = {
   "privacy.tilesServer":
     "Pour les images d’aperçu des liens, ce serveur charge aussi des images de carte de la zone de rendez-vous approximative, sans rien transmettre vous concernant.",
   "privacy.geocoder":
-    "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Les recherches et leurs résultats restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes.",
+    "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Les recherches et leurs résultats restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes.",
   "privacy.push":
     "Si vous activez les notifications, le service push de votre navigateur (de Google, Mozilla, Apple ou Microsoft) les distribue. Les messages sont chiffrés ; le service voit seulement qu’un message a été envoyé.",
+  "privacy.calendar":
+    "Si vous créez un lien de calendrier, le serveur de votre application de calendrier le récupère. Ce serveur voit les informations publiques de vos sorties et que vous y avez répondu.",
   "privacy.location":
     "« Utiliser ma position » demande votre position à votre navigateur et remplit seulement le formulaire, qui ne l’envoie que si vous le validez.",
   "privacy.locationMap":
@@ -302,6 +304,8 @@ export const fr: Messages = {
   "plan.managePlan": "Gérer la sortie",
   "plan.route": "Parcours",
   "plan.downloadGpx": "Télécharger le GPX",
+  "plan.addToCalendar": "Ajouter au calendrier",
+  "plan.subscribeCalendar": "Abonner votre calendrier à toutes vos sorties",
 
   "notify.accepted":
     "Vous êtes inscrit·e. Le point de départ exact est maintenant sur la page de la sortie.",
@@ -327,6 +331,31 @@ export const fr: Messages = {
   "push.hint":
     "Seulement les nouvelles de cette sortie : modifications, annulation, votre demande et rappels.",
   "push.hostHint": "Les nouvelles des réponses, des demandes et des retraits.",
+
+  "calendar.title": "Abonnement de calendrier",
+  "calendar.intro":
+    "Votre application de calendrier peut afficher toutes les sorties que vous organisez ou auxquelles vous avez répondu dans ce navigateur. Elle les met à jour d’elle-même quand une sortie est modifiée, annulée ou supprimée.",
+  "calendar.contents":
+    "Le calendrier ne contient que des informations publiques : titre, heure, zone de rendez-vous et lien. Jamais le point de départ exact, le parcours ni le nom de quiconque. Le serveur de votre application de calendrier le récupère et voit donc ces informations et que vous avez répondu.",
+  "calendar.create": "Créer le lien de calendrier",
+  "calendar.active": "Ce navigateur a un lien de calendrier.",
+  "calendar.renew": "Obtenir un nouveau lien",
+  "calendar.renewHint":
+    "L’ancien lien cesse alors de fonctionner. Utilisez cette option si vous avez perdu le lien ou l’avez partagé par erreur.",
+  "calendar.nothingYet":
+    "Créez d’abord une sortie ou répondez à une sortie dans ce navigateur. Le lien de calendrier affiche ces sorties.",
+  "calendar.stop": "Arrêter le lien de calendrier",
+  "calendar.linkHeading": "Votre lien de calendrier",
+  "calendar.subscribe": "S’abonner dans votre application de calendrier",
+  "calendar.copy": "Ou ajoutez cette adresse dans votre application de calendrier :",
+  "calendar.linkWarning":
+    "Ce lien n’est affiché qu’une seule fois. Toute personne qui l’a voit les informations publiques de vos sorties ; gardez-le privé.",
+  "calendar.expiry":
+    "Le lien fonctionne tant que vous ouvrez ce site de temps en temps dans ce navigateur. Les mises à jour de votre calendrier ne comptent pas : si vous n’ouvrez pas le site dans ce navigateur pendant {days} jours, les données de ce navigateur sont supprimées, lien compris.",
+  "calendar.yourPlan": "{title} (votre sortie)",
+  "calendar.cancelled": "Annulée : {title}",
+  "calendar.deletionEntry": "« {title} » sera supprimée aujourd’hui",
+  "calendar.exactStart": "Point de départ exact : {start}",
 
   "host.route": "Parcours",
   "host.routeNone": "Pas encore de parcours.",

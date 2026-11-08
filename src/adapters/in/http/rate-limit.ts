@@ -26,6 +26,8 @@ export interface RateLimits {
   route: RateLimiter;
   /** Turning notifications on (spec 3.11: limits on notification spam). */
   notify: RateLimiter;
+  /** Creating calendar feed links (spec 6 feature 2). */
+  calendar: RateLimiter;
 }
 
 /**
@@ -33,7 +35,7 @@ export interface RateLimits {
  * created, so parallel requests cannot exceed the burst. Requests carrying a route file always
  * count (parsing is the costly part), as does every place search; previews count only renders.
  * Switching to joined or requested on the manage page counts as responding, since it notifies the
- * host; every attempt to turn notifications on counts too.
+ * host; every attempt to turn notifications on counts too, and every created calendar link.
  * A client is forgotten once its bucket is full again, after at most 30 minutes (create: 5
  * tokens at 10 per hour).
  */
@@ -45,6 +47,7 @@ export function createRateLimits(now: () => number): RateLimits {
     preview: createRateLimiter({ capacity: 10, perHour: 60, now }),
     route: createRateLimiter({ capacity: 10, perHour: 30, now }),
     notify: createRateLimiter({ capacity: 10, perHour: 30, now }),
+    calendar: createRateLimiter({ capacity: 5, perHour: 10, now }),
   };
 }
 

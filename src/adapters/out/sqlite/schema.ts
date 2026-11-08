@@ -126,6 +126,14 @@ export interface SentRemindersTable {
   due_at: string;
 }
 
+export interface CalendarFeedsTable {
+  id: string;
+  device_id: string;
+  token_hash: string;
+  language: string;
+  created_at: string;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -139,4 +147,5 @@ export interface DatabaseSchema {
   job_queue: JobQueueTable;
   notification_channels: NotificationChannelsTable;
   sent_reminders: SentRemindersTable;
+  calendar_feeds: CalendarFeedsTable;
 }

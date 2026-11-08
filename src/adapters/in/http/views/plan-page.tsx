@@ -47,6 +47,12 @@ export function PlanPage(props: {
   const { t, language, units, audience, map } = props;
   const { view } = audience;
   const insider = audience.kind === "participant" || audience.kind === "poster";
+  // The plans a calendar feed lists: rejected and removed people are no longer in (spec 6 feature 2).
+  const inFeed =
+    insider ||
+    (audience.kind === "responder" &&
+      audience.view.ownResponse.kind !== "rejected" &&
+      audience.view.ownResponse.kind !== "removed");
 
   return (
     <article class="plan">
@@ -175,6 +181,15 @@ export function PlanPage(props: {
 
       <p class="deletion">
         {t("plan.deletion", { date: formatDate(view.deleteAt, view.timeZone, language) })}
+      </p>
+      <p class="calendar-links">
+        <a href={`/p/${view.id}/calendar.ics`}>{t("plan.addToCalendar")}</a>
+        {inFeed && (
+          <>
+            {" · "}
+            <a href="/calendar">{t("plan.subscribeCalendar")}</a>
+          </>
+        )}
       </p>
     </article>
   );

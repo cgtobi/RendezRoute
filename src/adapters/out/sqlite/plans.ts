@@ -1,7 +1,7 @@
 // Plan persistence (spec 4). The exact start passes through FieldCipher; Kysely and
 // row types stay inside this adapter (spec 2a).
 import { type Insertable, type Selectable, sql } from "kysely";
-import type { FieldCipher, PlanRepository } from "../../../application/ports.ts";
+import type { FieldCipher, LinkedPlan, PlanRepository } from "../../../application/ports.ts";
 import { type HexColor, parseHexColor } from "../../../domain/color.ts";
 import type { ExactStart } from "../../../domain/geo.ts";
 import type { Plan } from "../../../domain/plan.ts";
@@ -247,6 +247,36 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
         .where("plans.delete_at", "<=", to.toISOString())
         .execute();
       return rows.map(fromRow);
+    },
+
+    async findLinkedToDevice(deviceId) {
+      const rows = await selectPlans()
+        .innerJoin("device_links", (join) =>
+          join.on((eb) =>
+            eb.or([
+              eb("device_links.plan_id", "=", eb.ref("plans.id")),
+              eb.exists(
+                eb
+                  .selectFrom("responses")
+                  .select("responses.id")
+                  .whereRef("responses.id", "=", "device_links.response_id")
+                  .whereRef("responses.plan_id", "=", "plans.id"),
+              ),
+            ]),
+          ),
+        )
+        .leftJoin("responses as own", "own.id", "device_links.response_id")
+        .select(["device_links.role as link_role", "own.kind as response_kind"])
+        .where("device_links.device_id", "=", deviceId)
+        .orderBy("plans.starts_at")
+        .orderBy("device_links.role")
+        .execute();
+      return rows.map((row): LinkedPlan => {
+        const plan = fromRow(row);
+        return row.link_role === "manage" && row.response_kind !== null
+          ? { plan, role: "manage", responseKind: row.response_kind }
+          : { plan, role: "host" };
+      });
     },
 
     async findWithRetentionAbove(maxRetentionDays) {

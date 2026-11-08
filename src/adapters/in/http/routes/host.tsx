@@ -25,10 +25,15 @@ import {
   planInput,
   readForm,
   type RouteDeps,
+  clientOf,
+  tooManyRequests,
 } from "./shared.tsx";
 import { TIME_ZONES } from "./plans.tsx";
 
-export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps, geocoder }: RouteDeps) {
+export function registerHostRoutes(
+  app: Hono<AppEnv>,
+  { config, planDeps, geocoder, limits }: RouteDeps,
+) {
   const request = (c: Context<AppEnv>) => ({
     planId: c.req.param("id") ?? "",
     deviceToken: readDeviceToken(c, config),
@@ -145,6 +150,9 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps, geocod
     if (body === undefined) return badRequest(c);
     const gpx = await formFile(body, "gpx");
     if (gpx === undefined) return c.redirect(`/p/${request(c).planId}/host`, 303);
+    // Every route file counts: parsing it is the costly part (decision I32).
+    const allowed = limits.route.take(clientOf(c));
+    if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
     const routeTrim = formField(body, ROUTE_TRIM_FIELD);
     const result = await setRoute(planDeps, { ...request(c), gpx, routeTrim });
     if (result.kind === "invalid") {

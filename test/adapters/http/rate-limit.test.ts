@@ -32,6 +32,17 @@ describe("rate limiter (decision I10)", () => {
     expect(limit.check("a")).toEqual({ ok: false, retryAfterSeconds: 600 });
   });
 
+  it("gives a token back when the work it was reserved for did not happen", () => {
+    const { limit } = limiter();
+    for (let i = 0; i < 3; i++) limit.take("a");
+    limit.refund("a");
+    expect(limit.take("a").ok).toBe(true);
+    expect(limit.take("a").ok).toBe(false);
+    // Never above the capacity, and nothing stored for unknown clients.
+    limit.refund("b");
+    expect(limit.size()).toBe(1);
+  });
+
   it("keeps clients apart", () => {
     const { limit } = limiter();
     for (let i = 0; i < 3; i++) limit.take("a");

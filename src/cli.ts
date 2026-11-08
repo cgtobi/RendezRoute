@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { parseCommand } from "./adapters/in/cli/parse.ts";
-import { runApplyRetentionMax, startServer } from "./main.ts";
+import { runApplyRetentionMax, runBackup, startServer } from "./main.ts";
 
 const command = parseCommand(process.argv.slice(2));
 
@@ -23,6 +23,18 @@ switch (command.kind) {
     for (const warning of result.warnings) console.warn(`Warning: ${warning}`);
     console.log(
       `Applied MAX_RETENTION_DAYS: shortened ${result.shortened} plan(s), deleted ${result.deleted} plan(s) whose new deletion date had passed.`,
+    );
+    break;
+  }
+  case "backup": {
+    const result = await runBackup(process.env, command.directory);
+    if (!result.ok) {
+      console.error(`Backup failed:\n${result.errors.map((e) => `  - ${e}`).join("\n")}`);
+      process.exit(1);
+    }
+    console.log(`Database backed up to ${result.path}`);
+    console.log(
+      "Back up the encryption key separately; without it, encrypted data cannot be read.",
     );
     break;
   }

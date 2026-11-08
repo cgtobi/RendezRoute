@@ -9,6 +9,8 @@ export interface RateLimiter {
   check(key: string): RateLimitResult;
   /** Takes a token if one is available. */
   take(key: string): RateLimitResult;
+  /** Gives back a token taken for work that did not happen, up to the capacity. */
+  refund(key: string): void;
   /** Forgets clients whose buckets are full again; run every minute so idle addresses go too. */
   sweep(): void;
   /** Number of tracked clients (for tests). */
@@ -21,12 +23,15 @@ export interface RateLimits {
   respond: RateLimiter;
   geocode: RateLimiter;
   preview: RateLimiter;
+  route: RateLimiter;
 }
 
 /**
- * Creating plans and responding count only successes; place search counts every request;
- * previews count only renders. A client is forgotten once its bucket is full again, after at
- * most 30 minutes (create: 5 tokens at 10 per hour).
+ * Creating plans and responding reserve a token before any work and give it back when nothing was
+ * created, so parallel requests cannot exceed the burst. Requests carrying a route file always
+ * count (parsing is the costly part), as does every place search; previews count only renders.
+ * A client is forgotten once its bucket is full again, after at most 30 minutes (create: 5
+ * tokens at 10 per hour).
  */
 export function createRateLimits(now: () => number): RateLimits {
   return {
@@ -34,6 +39,7 @@ export function createRateLimits(now: () => number): RateLimits {
     respond: createRateLimiter({ capacity: 10, perHour: 30, now }),
     geocode: createRateLimiter({ capacity: 10, perHour: 600, now }),
     preview: createRateLimiter({ capacity: 10, perHour: 60, now }),
+    route: createRateLimiter({ capacity: 10, perHour: 30, now }),
   };
 }
 
@@ -110,6 +116,10 @@ export function createRateLimiter({
       const outcome = result(bucket);
       if (outcome.ok) bucket.tokens -= 1;
       return outcome;
+    },
+    refund: (key) => {
+      const bucket = buckets.get(key);
+      if (bucket !== undefined) bucket.tokens = Math.min(capacity, bucket.tokens + 1);
     },
     sweep: () => forgetRefilled(now()),
     size: () => buckets.size,

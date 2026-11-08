@@ -5,6 +5,7 @@ import {
   runRetentionSweep,
 } from "../../src/application/maintenance.ts";
 import type { PlanDeps } from "../../src/application/plans.ts";
+import { FakeBackupStore } from "../fakes/backup-store.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { createFakeRepositories } from "../fakes/repositories.ts";
@@ -60,29 +61,21 @@ describe("runRetentionSweep (spec 3.10, acceptance criterion v0.1)", () => {
   });
 });
 
-const noBackups = { deleteOlderThan: () => Promise.resolve(0) };
-
 describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
   it("deletes pre-migration backups after 7 days (spec 11)", async () => {
-    const cutoffs: Date[] = [];
-    const backups = {
-      deleteOlderThan: (cutoff: Date) => {
-        cutoffs.push(cutoff);
-        return Promise.resolve(2);
-      },
-    };
+    const backups = new FakeBackupStore(2);
     expect(await runHousekeeping({ ...deps, backups })).toEqual({
       deletedDevices: 0,
       deletedBackups: 2,
     });
-    expect(cutoffs).toEqual([new Date(fixtureNow.getTime() - 7 * 24 * 60 * 60 * 1000)]);
+    expect(backups.cutoffs).toEqual([new Date(fixtureNow.getTime() - 7 * 24 * 60 * 60 * 1000)]);
   });
 
   it("deletes unlinked devices after 30 days without activity", async () => {
     await repos.devices.create({ id: "lonely", tokenHash: "lonely-hash", now: fixtureNow });
     await addPlan("p", 14);
     clock.advance({ days: 31 });
-    expect(await runHousekeeping({ ...deps, backups: noBackups })).toEqual({
+    expect(await runHousekeeping({ ...deps, backups: new FakeBackupStore() })).toEqual({
       deletedDevices: 1,
       deletedBackups: 0,
     });

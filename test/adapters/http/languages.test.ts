@@ -172,3 +172,35 @@ describe("link previews (decision I30)", () => {
     expect(page).toContain(html(de("activity.run")));
   });
 });
+
+describe("private links and the footer forms (review fix: tokens stay out of redirects)", () => {
+  it("never put a secret link into the return address", async () => {
+    const { client, app } = await setup();
+    const { hostPath } = await createPlanViaUi(client);
+    const stranger = new TestClient(app);
+    const page = await (await stranger.get(hostPath)).text();
+    const returnTo = [...page.matchAll(/name="returnTo" value="([^"]*)"/g)].map((m) => m[1]);
+    expect(returnTo.length).toBeGreaterThan(0);
+    expect(returnTo.every((value) => value === "/")).toBe(true);
+  });
+
+  it("refuse to redirect to a secret link even when asked", async () => {
+    const { client } = await setup();
+    const hidden = await client.hiddenFields("/new");
+    for (const returnTo of ["/a/abc", "/m/abc"]) {
+      const response = await client.postForm("/language", { ...hidden, language: "fr", returnTo });
+      expect(response.headers.get("location")).toBe("/");
+    }
+  });
+
+  it("answer a malformed form with 400, not a server error", async () => {
+    const { client } = await setup();
+    const csrf = (await client.hiddenFields("/new"))._csrf ?? "";
+    const response = await client.request("/language", {
+      method: "POST",
+      headers: { "content-type": "multipart/form-data; boundary=x", "x-csrf-token": csrf },
+      body: "--y\r\nbroken",
+    });
+    expect(response.status).toBe(400);
+  });
+});

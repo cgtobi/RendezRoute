@@ -3,6 +3,7 @@ import type { PlanPreview } from "../../../../src/application/plan-views.ts";
 import type { MapTiles } from "../../../../src/application/ports.ts";
 import { createPreviewRenderer } from "../../../../src/adapters/out/preview/renderer.ts";
 import { previewOf } from "../../../../src/application/plan-views.ts";
+import { FakeMapTiles } from "../../../fakes/map-tiles.ts";
 import { samplePlan } from "../../../fixtures/plans.ts";
 
 /** A valid 1 × 1 PNG, standing in for a 256 × 256 map tile. */
@@ -12,15 +13,6 @@ const TILE = Uint8Array.from(
     "base64",
   ),
 );
-
-class FakeTiles implements MapTiles {
-  readonly requested: string[] = [];
-  constructor(private readonly failing = false) {}
-  tile(z: number, x: number, y: number) {
-    this.requested.push(`${z}/${x}/${y}`);
-    return Promise.resolve(this.failing ? undefined : TILE);
-  }
-}
 
 const preview: PlanPreview = previewOf(samplePlan());
 
@@ -57,7 +49,7 @@ describe("preview card renderer (spec 3.3: Satori + resvg)", () => {
     "draws the area map from tiles around the public point only",
     { timeout: 20_000 },
     async () => {
-      const tiles = new FakeTiles();
+      const tiles = new FakeMapTiles(TILE);
       const result = await renderer({ tiles }).render(preview);
       expect(result.ok).toBe(true);
       expect(tiles.requested.length).toBeGreaterThan(0);
@@ -67,7 +59,7 @@ describe("preview card renderer (spec 3.3: Satori + resvg)", () => {
   );
 
   it("leaves the map out when tiles are missing", { timeout: 20_000 }, async () => {
-    const result = await renderer({ tiles: new FakeTiles(true) }).render(preview);
+    const result = await renderer({ tiles: new FakeMapTiles(TILE, true) }).render(preview);
     expect(result.ok).toBe(true);
   });
 

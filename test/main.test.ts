@@ -1,9 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import BetterSqlite3 from "better-sqlite3";
-import { runApplyRetentionMax, type RunningServer, startServer } from "../src/main.ts";
+import { runApplyRetentionMax, runBackup, type RunningServer, startServer } from "../src/main.ts";
 
 const running: RunningServer[] = [];
 const dirs: string[] = [];
@@ -140,5 +140,37 @@ describe("apply-retention-max (spec 3.10)", () => {
 
   it("refuses to run with invalid configuration", async () => {
     expect(await runApplyRetentionMax({ BASE_URL: "nope" })).toMatchObject({ ok: false });
+  });
+});
+
+describe("backup (spec 11: the database via SQLite's online backup API)", () => {
+  it("copies the live database while the server runs, readable only by its owner", async () => {
+    const vars = env();
+    const server = await start(vars);
+    if (!server.ok) throw new Error(server.errors.join("; "));
+    insertPlan(vars.DATA_DIR ?? "", "kept", 1, "2999-01-01T00:00:00.000Z");
+    const target = keyDir();
+
+    const result = await runBackup(vars, target);
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    const files = readdirSync(target);
+    expect(files).toEqual([expect.stringMatching(/^rendezroute-\d{4}-\d{2}-\d{2}T[\d-]+Z\.db$/)]);
+    expect(result.path).toBe(join(target, files[0] ?? ""));
+    expect(statSync(result.path).mode & 0o777).toBe(0o600);
+    const copy = new BetterSqlite3(result.path, { readonly: true });
+    expect(copy.prepare("select id from plans").pluck().all()).toEqual(["kept"]);
+    copy.close();
+  });
+
+  it("refuses a missing database or a relative target", async () => {
+    const vars = env();
+    expect(await runBackup(vars, keyDir())).toEqual({
+      ok: false,
+      errors: [expect.stringContaining("No database")],
+    });
+    expect(await runBackup(vars, "relative/dir")).toEqual({
+      ok: false,
+      errors: [expect.stringContaining("absolute")],
+    });
   });
 });

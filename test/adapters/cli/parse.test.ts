@@ -33,4 +33,10 @@ describe("parseCommand (decision I5)", () => {
       message: expect.stringContaining("serve"),
     });
   });
+
+  it("knows backup with a target directory (spec 11)", () => {
+    expect(parseCommand(["backup", "/backups"])).toEqual({ kind: "backup", directory: "/backups" });
+    expect(parseCommand(["backup"]).kind).toBe("error");
+    expect(parseCommand(["backup", "/a", "/b"]).kind).toBe("error");
+  });
 });

@@ -93,8 +93,16 @@ export function registerPlanRoutes(
     const body = await readForm(c);
     if (body === undefined) return badRequest(c);
     const values = planInput((field) => formField(body, field));
-    // Only created plans count, so fixing form errors is never blocked.
-    const allowed = limits.create.check(clientOf(c));
+    const client = clientOf(c);
+    const gpx = await formFile(body, "gpx");
+    // A route file always counts: parsing it is the costly part (decision I32).
+    if (gpx !== undefined && gpx.byteLength > 0) {
+      const routeAllowed = limits.route.take(client);
+      if (!routeAllowed.ok) return tooManyRequests(c, routeAllowed.retryAfterSeconds);
+    }
+    // Reserved before any work, given back unless a plan is created, so fixing form errors is
+    // never blocked and parallel requests cannot exceed the burst.
+    const allowed = limits.create.take(client);
     if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
 
     const result = await createPlan(planDeps, {
@@ -103,9 +111,10 @@ export function registerPlanRoutes(
       language: c.get("language"),
       creationNonce: formField(body, "nonce"),
       deviceToken: readDeviceToken(c, config),
-      gpx: await formFile(body, "gpx"),
+      gpx,
       routeTrim: formField(body, ROUTE_TRIM_FIELD),
     });
+    if (result.kind !== "created") limits.create.refund(client);
 
     switch (result.kind) {
       case "bad_request":
@@ -122,7 +131,6 @@ export function registerPlanRoutes(
           formField(body, ROUTE_TRIM_FIELD),
         );
       case "created": {
-        limits.create.take(clientOf(c));
         if (result.newDeviceToken !== undefined) setDeviceToken(c, config, result.newDeviceToken);
         secretLinkHeaders(c);
         const planPath = `/p/${result.planId}`;

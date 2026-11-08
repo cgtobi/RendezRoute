@@ -7,6 +7,8 @@ import { isUnits } from "../../../../domain/units.ts";
 import { isLanguage } from "../../../i18n/i18n.ts";
 import type { AppEnv } from "../app.tsx";
 import { type Preference, setPreference } from "../preference-cookies.ts";
+import { isSecretLinkPath } from "./secret-links.tsx";
+import { badRequest, formField, readForm } from "./shared.tsx";
 
 export const RETURN_FIELD = "returnTo";
 
@@ -17,17 +19,14 @@ export function registerPreferenceRoutes(app: Hono<AppEnv>, { config }: { config
   const choose =
     (preference: Preference, field: string, valid: (value: unknown) => boolean) =>
     async (c: Context<AppEnv>) => {
-      const body = await c.req.parseBody();
-      const value = body[field];
-      if (typeof value !== "string" || !valid(value)) {
-        return c.text(c.get("t")("error.badRequest"), 400);
-      }
+      const body = await readForm(c);
+      if (body === undefined) return badRequest(c);
+      const value = formField(body, field);
+      if (!valid(value)) return badRequest(c);
       setPreference(c, config, preference, value);
-      const returnTo = body[RETURN_FIELD];
-      return c.redirect(
-        typeof returnTo === "string" && LOCAL_PATH.test(returnTo) ? returnTo : "/",
-        303,
-      );
+      const returnTo = formField(body, RETURN_FIELD);
+      const safe = LOCAL_PATH.test(returnTo) && !isSecretLinkPath(returnTo);
+      return c.redirect(safe ? returnTo : "/", 303);
     };
 
   app.post("/language", choose("lang", "language", isLanguage));

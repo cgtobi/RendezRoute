@@ -18,7 +18,7 @@ Things to know before going live:
 - **`TRUST_PROXY=true`** is needed behind the proxy, or every visitor shares one rate limit. Never set it when the app is reachable without the proxy.
 - **Access logs** stay off in the proxy: private links carry tokens in their paths.
 - **`CONTACT_EMAIL`** identifies the instance to map and place-search providers, as their policies require; without it, place search and map images in link previews are off.
-- **Upgrades** back up the database before migrations (`/data/backups`, at most two, deleted after 7 days).
+- **Backups:** `docker compose exec rendezroute node dist/cli.js backup /data/manual-backups` copies the live database safely; copy it off the server together with the key volume, stored separately. Upgrades also back up the database before migrations (`/data/backups`, at most two, deleted after 7 days).
 - The generated privacy notice is at `/privacy`; set `PRIVACY_URL` and `IMPRINT_URL` to link your own pages.
 
 ## Development

@@ -105,6 +105,30 @@ describe("createPlan with a GPX file (spec 5 feature 2, P8)", () => {
     expect(result).toEqual({ kind: "invalid", errors: [{ field: "gpx", code: "route_too_long" }] });
   });
 
+  it("checks the form before reading the file, so invalid forms never cost a parse (review fix)", async () => {
+    let parses = 0;
+    const parser = new FakeRouteParser();
+    deps = {
+      ...deps,
+      routeParser: {
+        parse: (file) => {
+          parses++;
+          return parser.parse(file);
+        },
+      },
+    };
+    const result = await createPlan(deps, {
+      input: { ...noExactPoint, title: "" },
+      units: "metric",
+      language: "en",
+      creationNonce: nonce(),
+      deviceToken: undefined,
+      gpx: fakeGpx(route),
+    });
+    expect(result).toEqual({ kind: "invalid", errors: [{ field: "title", code: "required" }] });
+    expect(parses).toBe(0);
+  });
+
   it("treats an empty upload as no route", async () => {
     const { planId } = await created(sampleInput, new Uint8Array());
     expect(await repos.plans.findById(planId)).toMatchObject({ hasRoute: false });

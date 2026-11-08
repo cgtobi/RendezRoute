@@ -3,7 +3,7 @@
 // housekeeping deletes them after 7 days, so backups never outlive retention by more than a week.
 import { chmodSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import type BetterSqlite3 from "better-sqlite3";
+import BetterSqlite3 from "better-sqlite3";
 import type { BackupStore } from "../../../application/ports.ts";
 
 const PREFIX = "pre-migration-";
@@ -17,8 +17,8 @@ export interface BackupDirectory extends BackupStore {
 }
 
 /** Backup file names carry their creation time, so expiry does not depend on file times. */
-const fileName = (time: Date) =>
-  `${PREFIX}${time.toISOString().replaceAll(":", "-").replace(".", "-")}.db`;
+const stamp = (time: Date) => time.toISOString().replaceAll(":", "-").replace(".", "-");
+const fileName = (time: Date) => `${PREFIX}${stamp(time)}.db`;
 
 const createdAt = (name: string): Date | undefined => {
   const match = NAME.exec(name);
@@ -49,4 +49,25 @@ export function createBackupStore(dir: string): BackupDirectory {
       return Promise.resolve(expired.length);
     },
   };
+}
+
+/**
+ * Copies a database file, also while the server writes to it, with SQLite's online backup API
+ * (spec 11: "not a plain copy while running"). The copy is readable only by its owner.
+ */
+export async function backupDatabase(
+  source: string,
+  directory: string,
+  now: Date,
+): Promise<string> {
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const target = join(directory, `rendezroute-${stamp(now)}.db`);
+  const sqlite = new BetterSqlite3(source, { readonly: true, fileMustExist: true });
+  try {
+    await sqlite.backup(target);
+  } finally {
+    sqlite.close();
+  }
+  chmodSync(target, 0o600);
+  return target;
 }

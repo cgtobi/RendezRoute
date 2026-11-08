@@ -20,7 +20,7 @@ import { registerPreferenceRoutes } from "./routes/preferences.ts";
 import { registerPlaceRoutes } from "./routes/places.ts";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
-import { registerSecretLinkRoutes } from "./routes/secret-links.tsx";
+import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
 import { PrivacyPage } from "./views/privacy-page.tsx";
 import { requestLogger } from "./request-logger.ts";
@@ -193,8 +193,8 @@ export function createApp({
   return app;
 }
 
-/** Path and query of a request URL, for returning to the same page. */
+/** Path and query of a request URL, for returning to the same page; never a secret link (spec 3.2). */
 const localPath = (url: string) => {
   const { pathname, search } = new URL(url);
-  return pathname + search;
+  return isSecretLinkPath(pathname) ? "/" : pathname + search;
 };

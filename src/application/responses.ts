@@ -21,7 +21,15 @@ const isOpenModeChoice = (choice: string): choice is OpenModeChoice =>
   (OPEN_MODE_CHOICES as readonly string[]).includes(choice);
 
 export type RespondResult =
-  | { kind: "created"; planId: string; manageToken: string; newDeviceToken: string | undefined }
+  | {
+      kind: "created";
+      planId: string;
+      manageToken: string;
+      newDeviceToken: string | undefined;
+      /** For the join confirmation (spec 3.10: the deletion date is visible there). */
+      deleteAt: Date;
+      timeZone: string;
+    }
   | { kind: "duplicate"; planId: string }
   | { kind: "already_responded"; planId: string }
   | { kind: "is_host" }
@@ -93,7 +101,14 @@ export async function respond(
       return { kind: "duplicate", planId: plan.id };
     throw error;
   }
-  return { kind: "created", planId: plan.id, manageToken, newDeviceToken: newToken };
+  return {
+    kind: "created",
+    planId: plan.id,
+    manageToken,
+    newDeviceToken: newToken,
+    deleteAt: plan.deleteAt,
+    timeZone: plan.timeZone,
+  };
 }
 
 /** The device's response to a plan, if it manages one. */

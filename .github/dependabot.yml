@@ -1,0 +1,37 @@
+# Automated dependency updates (spec 3.11: dependency hygiene). Weekly, grouped, with a short
+# cooldown so brand-new releases settle before they are proposed.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      development:
+        dependency-type: development
+      production:
+        dependency-type: production
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  # The pinned base image; the E2E compose file uses the same image for its fake services.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: docker-compose
+    directory: /e2e
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

@@ -1,8 +1,8 @@
 // Composition root (spec 2a): reads configuration and wires the enabled adapters.
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { createGpxRouteParser } from "./adapters/out/gpx/route-parser.ts";
 import type { AddressInfo } from "node:net";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { serve } from "@hono/node-server";
 import {
   applyRetentionMax,
@@ -27,7 +27,7 @@ import { createOutboundHttp } from "./adapters/out/http/outbound-http.ts";
 import { createPreviewRenderer } from "./adapters/out/preview/renderer.ts";
 import { createMapTiles } from "./adapters/out/preview/tiles.ts";
 import { createIdGenerator } from "./adapters/out/ids.ts";
-import { createBackupStore } from "./adapters/out/sqlite/backups.ts";
+import { backupDatabase, createBackupStore } from "./adapters/out/sqlite/backups.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "./adapters/out/sqlite/plans.ts";
@@ -103,6 +103,8 @@ interface Instance {
 }
 
 /** Configuration, database and keys, shared by the server and CLI commands. */
+const databasePath = (config: Config) => join(config.dataDir, "rendezroute.db");
+
 /** Pre-migration backups live next to the database (spec 11). */
 const backupDir = (config: Config) => join(config.dataDir, "backups");
 
@@ -115,7 +117,7 @@ async function openInstance(
   const warnings = [...loaded.warnings];
 
   mkdirSync(config.dataDir, { recursive: true });
-  const database = await openDatabase(join(config.dataDir, "rendezroute.db"), {
+  const database = await openDatabase(databasePath(config), {
     backups: { dir: backupDir(config), now: () => systemClock.now() },
   });
 
@@ -218,4 +220,25 @@ export async function runApplyRetentionMax(
   } finally {
     await database.close();
   }
+}
+
+/**
+ * CLI `backup <directory>` (spec 11): copies the live database with SQLite's online backup API,
+ * so it is safe while the server runs. The encryption key is backed up separately.
+ */
+export async function runBackup(
+  env: ConfigSource,
+  directory: string,
+): Promise<{ ok: true; path: string } | { ok: false; errors: string[] }> {
+  const loaded = loadConfig(env);
+  if (!loaded.ok) return loaded;
+  if (!isAbsolute(directory)) {
+    return {
+      ok: false,
+      errors: [`The backup directory must be an absolute path, got "${directory}".`],
+    };
+  }
+  const source = databasePath(loaded.config);
+  if (!existsSync(source)) return { ok: false, errors: [`No database at ${source}.`] };
+  return { ok: true, path: await backupDatabase(source, directory, systemClock.now()) };
 }

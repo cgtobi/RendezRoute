@@ -3,6 +3,7 @@ import { type PlanTheme, planTheme } from "../domain/color.ts";
 import type { Units } from "../domain/pace.ts";
 import type { Plan } from "../domain/plan.ts";
 import { type FieldError, type PlanInput, validatePlanInput } from "../domain/plan-input.ts";
+import { audienceFor, canSee } from "../domain/visibility.ts";
 import {
   applyRouteDefaults,
   parseRouteTrim,
@@ -84,17 +85,22 @@ export async function createPlan(
   const existing = await deps.plans.findIdByCreationNonce(request.creationNonce);
   if (existing !== undefined) return { kind: "duplicate", planId: existing };
 
+  const now = deps.clock.now();
+  const rules = { now, ...deps.limits };
   let input = request.input;
   let route: Route | undefined;
   if (request.gpx !== undefined && request.gpx.byteLength > 0) {
+    // The form first: parsing a large file is the costly part, and filling empty fields from
+    // the route can add errors but never remove them.
+    const typed = validatePlanInput(input, rules, request.units);
+    if (!typed.ok) return { kind: "invalid", errors: typed.errors };
     const parsed = readRoute(deps, request.gpx, request.routeTrim);
     if (!parsed.ok) return { kind: "invalid", errors: [{ field: "gpx", code: parsed.error }] };
     route = parsed.value;
     input = applyRouteDefaults(input, routeStats(route), "fill");
   }
 
-  const now = deps.clock.now();
-  const draft = validatePlanInput(input, { now, ...deps.limits }, request.units);
+  const draft = validatePlanInput(input, rules, request.units);
   if (!draft.ok) {
     // A distance taken from the route is the route's problem, not the empty field's (D7, D10).
     const distanceFromRoute = route !== undefined && request.input.distanceKm.trim() === "";
@@ -145,7 +151,6 @@ export async function createPlan(
   };
 }
 
-/** Whether new responses and switches are possible now (spec 3.1 Responding). */
 /** Shared by every audience: whether responses are open and the public link preview. */
 type Open = { responsesOpen: boolean; preview: PlanPreview };
 
@@ -169,15 +174,21 @@ export async function viewPlan(
     preview: previewOf(plan),
   };
   const device = await resolveDevice(deps, request.deviceToken);
-  if (device === undefined) return { kind: "viewer", view: viewForViewer(plan, counts), ...shared };
+  const isHost =
+    device !== undefined &&
+    (await deps.devices.hasLink(device.id, { role: "host", planId: plan.id }));
+  const own =
+    device === undefined || isHost
+      ? undefined
+      : await deps.responses.findForDevice(plan.id, device.id);
 
-  if (await deps.devices.hasLink(device.id, { role: "host", planId: plan.id })) {
+  // The visibility matrix decides which read model an audience gets (spec 3.6).
+  const audience = audienceFor(isHost ? "poster" : own);
+  if (canSee(audience, "interestedNames")) {
     const responses = await deps.responses.listByPlan(plan.id);
     return { kind: "poster", view: viewForPoster(plan, counts, responses), ...shared };
   }
-  const own = await deps.responses.findForDevice(plan.id, device.id);
-  if (own === undefined) return { kind: "viewer", view: viewForViewer(plan, counts), ...shared };
-  if (own.kind === "joined") {
+  if (own !== undefined && canSee(audience, "exactStartAndRoute")) {
     const responses = await deps.responses.listByPlan(plan.id);
     return {
       kind: "participant",
@@ -185,7 +196,10 @@ export async function viewPlan(
       ...shared,
     };
   }
-  return { kind: "responder", view: viewForResponder(plan, counts, own), ...shared };
+  if (own !== undefined && canSee(audience, "ownResponseStatus")) {
+    return { kind: "responder", view: viewForResponder(plan, counts, own), ...shared };
+  }
+  return { kind: "viewer", view: viewForViewer(plan, counts), ...shared };
 }
 
 /** The plan's colors for its theme stylesheet; public data (spec 3.1). */

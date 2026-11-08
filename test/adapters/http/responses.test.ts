@@ -224,3 +224,13 @@ describe("manage link (spec 3.2, decision D1)", () => {
     expect((await newClient().get(`/m/${"x".repeat(43)}`)).status).toBe(404);
   });
 });
+
+describe("join confirmation (spec 3.10: the deletion date is visible)", () => {
+  it("shows when the plan and the response will be deleted", async () => {
+    const test = await createTestApp();
+    const { planId } = await createPlanViaUi(new TestClient(test.app));
+    const { html } = await respondViaUi(new TestClient(test.app), planId, "Ben", "joined");
+    // The sample plan starts 2026-06-07 in Berlin and is kept 14 days.
+    expect(html).toContain("This plan will be deleted on 21 June 2026.");
+  });
+});

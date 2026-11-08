@@ -10,6 +10,7 @@ import {
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { ManagePage } from "../views/manage-page.tsx";
+import { formatDate } from "../views/format.ts";
 import { RespondedPage } from "../views/responded-page.tsx";
 import {
   badRequest,
@@ -47,8 +48,9 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, li
     const body = await readForm(c);
     if (body === undefined) return badRequest(c);
     const deviceToken = readDeviceToken(c, config);
-    // Only new responses count (spec 5 feature 12).
-    const allowed = limits.respond.check(clientOf(c));
+    // Reserved before any work and given back unless a response is created (spec 5 feature 12).
+    const client = clientOf(c);
+    const allowed = limits.respond.take(client);
     if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
     const result = await respond(planDeps, {
       planId,
@@ -58,10 +60,10 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, li
       creationNonce: formField(body, "nonce"),
       deviceToken,
     });
+    if (result.kind !== "created") limits.respond.refund(client);
 
     switch (result.kind) {
       case "created": {
-        limits.respond.take(clientOf(c));
         if (result.newDeviceToken !== undefined) setDeviceToken(c, config, result.newDeviceToken);
         secretLinkHeaders(c);
         return c.render(
@@ -69,6 +71,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, li
             t={c.get("t")}
             manageUrl={new URL(`/m/${result.manageToken}`, config.baseUrl).href}
             planPath={`/p/${result.planId}`}
+            deletion={formatDate(result.deleteAt, result.timeZone, c.get("language"))}
           />,
           { title: c.get("t")("responded.heading") },
         );

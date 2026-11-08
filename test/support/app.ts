@@ -13,6 +13,7 @@ import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { type Config, loadConfig } from "../../src/config.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { FakeGeocoder } from "../fakes/geocoder.ts";
+import { FakePreviewRenderer } from "../fakes/preview-renderer.ts";
 import { fixtureNow } from "../fixtures/plans.ts";
 
 export function testConfig(env: Record<string, string> = {}): Config {
@@ -38,9 +39,11 @@ export async function createTestApp({
   const cipher = createFieldCipher(createKeyring(1, [[1, randomBytes(32)]]));
   const clock = new FakeClock(fixtureNow);
   const logs: string[] = [];
+  const previewRenderer = new FakePreviewRenderer();
   const app = createApp({
     config,
     geocoder: config.geocoder.enabled ? geocoder : undefined,
+    previewRenderer,
     csrfKey: randomBytes(32),
     logger: createLogger({ write: (line) => logs.push(line) }),
     planDeps: {
@@ -54,5 +57,5 @@ export async function createTestApp({
       limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
     },
   });
-  return { app, database, clock, logs, config, geocoder };
+  return { app, database, clock, logs, config, geocoder, previewRenderer };
 }

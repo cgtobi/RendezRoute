@@ -6,6 +6,7 @@ import { createLogger } from "../../../src/adapters/logging.ts";
 import { FakeClock } from "../../fakes/clock.ts";
 import { SequentialIdGenerator } from "../../fakes/ids.ts";
 import { createFakeRepositories } from "../../fakes/repositories.ts";
+import { FakePreviewRenderer } from "../../fakes/preview-renderer.ts";
 import { FakeRouteParser } from "../../fakes/route-parser.ts";
 import { FakeTokenService } from "../../fakes/tokens.ts";
 import { type Config, loadConfig } from "../../../src/config.ts";
@@ -16,6 +17,7 @@ const createApp = ({ config }: { config: Config }) =>
     csrfKey: randomBytes(32),
     logger: createLogger({ write: () => {} }),
     geocoder: undefined,
+    previewRenderer: new FakePreviewRenderer(),
     planDeps: {
       ...createFakeRepositories(),
       routeParser: new FakeRouteParser(),

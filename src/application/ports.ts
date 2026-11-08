@@ -2,6 +2,7 @@ import type { Plan } from "../domain/plan.ts";
 import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import type { Route, RouteError } from "../domain/route.ts";
+import type { PlanPreview } from "./plan-views.ts";
 
 // Driven ports (spec 2a). Use cases receive implementations as arguments;
 // adapters in src/adapters/out implement them, fakes live in test/fakes.
@@ -100,6 +101,10 @@ export interface PlanRepository {
   saveRoute(planId: string, route: Route): Promise<void>;
   /** Removes the plan's route, physically (spec 3.10). */
   deleteRoute(planId: string): Promise<void>;
+  /** The cached preview image of this plan version, if any; deleted with the plan (spec 3.10). */
+  findPreview(planId: string, version: string): Promise<Uint8Array | undefined>;
+  /** Replaces the plan's cached preview image. */
+  savePreview(planId: string, version: string, image: Uint8Array): Promise<void>;
 }
 
 export interface Device {
@@ -159,6 +164,16 @@ export type RouteParseError = RouteError | "route_too_large" | "route_unsafe" | 
 /** GPX → route, within the upload limits (spec 2a, 3.8). */
 export interface RouteParser {
   parse(file: Uint8Array): Result<Route, RouteParseError>;
+}
+
+/** Server-side map tiles for preview images (spec 2a); public data, cached at most 7 days. */
+export interface MapTiles {
+  tile(z: number, x: number, y: number): Promise<Uint8Array | undefined>;
+}
+
+/** Open Graph card image (spec 2a); "busy" when rendering capacity is exhausted. */
+export interface PreviewRenderer {
+  render(preview: PlanPreview): Promise<Result<Uint8Array, "busy">>;
 }
 
 export interface Place {

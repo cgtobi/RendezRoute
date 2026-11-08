@@ -2,13 +2,14 @@
 import { randomBytes } from "node:crypto";
 import type { Context } from "hono";
 import type { PlanDeps } from "../../../../application/plans.ts";
-import type { Geocoder } from "../../../../application/ports.ts";
+import type { Geocoder, PreviewRenderer } from "../../../../application/ports.ts";
 import type { ViewPlanResult } from "../../../../application/plans.ts";
 import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input.ts";
 import type { Config } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
 import { MapAssets, type MapSettings } from "../views/maps.tsx";
 import { PlanPage } from "../views/plan-page.tsx";
+import { PreviewTags } from "../views/preview-tags.tsx";
 import { themeVersion } from "../views/theme-css.ts";
 
 export interface RouteDeps {
@@ -16,6 +17,7 @@ export interface RouteDeps {
   planDeps: PlanDeps;
   /** Place search; undefined when the geocoder is disabled (spec 3.9). */
   geocoder: Geocoder | undefined;
+  previewRenderer: PreviewRenderer;
 }
 
 /** Tile settings for browser maps, or undefined when maps are disabled (spec 3.9). */
@@ -84,7 +86,7 @@ export function renderPlanPage(
   c.header("cache-control", "private, no-cache");
   const map = mapSettings(config);
   const showForm = result.kind === "viewer" && result.responsesOpen;
-  const { responsesOpen, ...audience } = result;
+  const { responsesOpen, preview: _preview, ...audience } = result;
   return c.render(
     <PlanPage
       t={c.get("t")}
@@ -103,6 +105,11 @@ export function renderPlanPage(
             href={`/p/${result.view.id}/theme.css?v=${themeVersion(result.view.colors)}`}
           />
           {map !== undefined && result.view.area.point !== undefined && <MapAssets />}
+          <PreviewTags
+            preview={result.preview}
+            baseUrl={config.baseUrl}
+            siteName={config.instanceName}
+          />
         </>
       ),
     },

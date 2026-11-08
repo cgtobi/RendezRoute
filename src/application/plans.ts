@@ -17,6 +17,8 @@ import {
   type PlanViewForPoster,
   type PlanViewForResponder,
   type PlanViewForViewer,
+  type PlanPreview,
+  previewOf,
   viewForParticipant,
   viewForPoster,
   viewForResponder,
@@ -141,7 +143,8 @@ export async function createPlan(
 }
 
 /** Whether new responses and switches are possible now (spec 3.1 Responding). */
-type Open = { responsesOpen: boolean };
+/** Shared by every audience: whether responses are open and the public link preview. */
+type Open = { responsesOpen: boolean; preview: PlanPreview };
 
 export type ViewPlanResult =
   | { kind: "not_found" }
@@ -158,27 +161,28 @@ export async function viewPlan(
   const plan = await deps.plans.findById(request.planId);
   if (plan === undefined) return { kind: "not_found" };
   const counts = await deps.responses.counts(plan.id);
-  const responsesOpen = canRespond(plan, deps.clock.now()).ok;
+  const shared: Open = {
+    responsesOpen: canRespond(plan, deps.clock.now()).ok,
+    preview: previewOf(plan),
+  };
   const device = await resolveDevice(deps, request.deviceToken);
-  if (device === undefined)
-    return { kind: "viewer", view: viewForViewer(plan, counts), responsesOpen };
+  if (device === undefined) return { kind: "viewer", view: viewForViewer(plan, counts), ...shared };
 
   if (await deps.devices.hasLink(device.id, { role: "host", planId: plan.id })) {
     const responses = await deps.responses.listByPlan(plan.id);
-    return { kind: "poster", view: viewForPoster(plan, counts, responses), responsesOpen };
+    return { kind: "poster", view: viewForPoster(plan, counts, responses), ...shared };
   }
   const own = await deps.responses.findForDevice(plan.id, device.id);
-  if (own === undefined)
-    return { kind: "viewer", view: viewForViewer(plan, counts), responsesOpen };
+  if (own === undefined) return { kind: "viewer", view: viewForViewer(plan, counts), ...shared };
   if (own.kind === "joined") {
     const responses = await deps.responses.listByPlan(plan.id);
     return {
       kind: "participant",
       view: viewForParticipant(plan, counts, own, responses),
-      responsesOpen,
+      ...shared,
     };
   }
-  return { kind: "responder", view: viewForResponder(plan, counts, own), responsesOpen };
+  return { kind: "responder", view: viewForResponder(plan, counts, own), ...shared };
 }
 
 /** The plan's colors for its theme stylesheet; public data (spec 3.1). */

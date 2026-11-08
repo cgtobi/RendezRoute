@@ -1,6 +1,6 @@
 // Plan persistence (spec 4). The exact start passes through FieldCipher; Kysely and
 // row types stay inside this adapter (spec 2a).
-import type { Insertable, Selectable } from "kysely";
+import { type Insertable, type Selectable, sql } from "kysely";
 import type { FieldCipher, PlanRepository } from "../../../application/ports.ts";
 import { type HexColor, parseHexColor } from "../../../domain/color.ts";
 import type { ExactStart } from "../../../domain/geo.ts";
@@ -263,6 +263,26 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     async deleteRoute(planId) {
       await database.db.deleteFrom("routes").where("plan_id", "=", planId).execute();
       checkpoint(database);
+    },
+
+    async findPreview(planId, version) {
+      const row = await database.db
+        .selectFrom("plan_previews")
+        .select("image")
+        .where("plan_id", "=", planId)
+        .where("version", "=", version)
+        .executeTakeFirst();
+      return row === undefined ? undefined : new Uint8Array(row.image);
+    },
+
+    async savePreview(planId, version, image) {
+      // In one statement with the existence check, so a plan deleted meanwhile stores nothing.
+      await sql`
+        insert into plan_previews (plan_id, version, image)
+        select ${planId}, ${version}, ${Buffer.from(image)}
+        where exists (select 1 from plans where id = ${planId})
+        on conflict (plan_id) do update set version = excluded.version, image = excluded.image
+      `.execute(database.db);
     },
 
     async findIdByCreationNonce(nonce) {

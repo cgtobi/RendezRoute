@@ -6,7 +6,7 @@ import { bodyLimit } from "hono/body-limit";
 import type { Child } from "hono/jsx";
 import { jsxRenderer } from "hono/jsx-renderer";
 import type { PlanDeps } from "../../../application/plans.ts";
-import type { Geocoder } from "../../../application/ports.ts";
+import type { Geocoder, PreviewRenderer } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
 import { type Language, negotiateLanguage, type Translate, translator } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
@@ -51,6 +51,8 @@ export interface AppDeps {
   planDeps: PlanDeps;
   /** Place search; undefined when the geocoder is disabled (spec 3.9). */
   geocoder: Geocoder | undefined;
+  /** Open Graph card images (spec 3.3). */
+  previewRenderer: PreviewRenderer;
 }
 
 /** Hono context variables set by the app middleware. */
@@ -58,7 +60,14 @@ export type AppEnv = {
   Variables: { language: Language; t: Translate; csrfToken: () => string; clientIp: string };
 };
 
-export function createApp({ config, csrfKey, logger, planDeps, geocoder }: AppDeps): Hono<AppEnv> {
+export function createApp({
+  config,
+  csrfKey,
+  logger,
+  planDeps,
+  geocoder,
+  previewRenderer,
+}: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   /** Works even before the language middleware ran, e.g. for early errors. */
@@ -134,7 +143,7 @@ export function createApp({ config, csrfKey, logger, planDeps, geocoder }: AppDe
     );
   });
 
-  const deps = { config, planDeps, geocoder };
+  const deps = { config, planDeps, geocoder, previewRenderer };
   registerPlanRoutes(app, deps);
   registerResponseRoutes(app, deps);
   registerSecretLinkRoutes(app, deps);

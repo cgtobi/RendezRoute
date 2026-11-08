@@ -88,6 +88,12 @@ export interface RoutesTable {
   geojson_enc: string;
 }
 
+export interface PlanPreviewsTable {
+  plan_id: string;
+  version: string;
+  image: Uint8Array;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -97,4 +103,5 @@ export interface DatabaseSchema {
   plan_creation_nonces: PlanCreationNoncesTable;
   responses: ResponsesTable;
   routes: RoutesTable;
+  plan_previews: PlanPreviewsTable;
 }

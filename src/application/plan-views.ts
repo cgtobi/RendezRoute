@@ -65,6 +65,46 @@ export interface PlanViewForPoster extends PlanViewForViewer {
   retentionDays: number;
 }
 
+/**
+ * Link previews: Open Graph tags and the card image (spec 3.3). Public fields only and the same
+ * for every requester, so a preview fetcher can never see more than a viewer; never the exact
+ * start or the route (spec 2b). The plan's language keeps cached images independent of who asks.
+ */
+export interface PlanPreview {
+  id: string;
+  title: string;
+  activity: ActivityType;
+  startsAt: Date;
+  timeZone: string;
+  areaLabel: string;
+  areaPoint: GeoPoint | undefined;
+  distanceMeters: number | undefined;
+  pace: PaceBand | undefined;
+  colors: { primary: HexColor; secondary: HexColor };
+  status: PlanStatus;
+  language: string;
+  /** Changes whenever the plan changes; versions the image URL and cache. */
+  version: string;
+}
+
+export function previewOf(plan: Plan): PlanPreview {
+  return {
+    id: plan.id,
+    title: plan.title,
+    activity: plan.activity,
+    startsAt: plan.startsAt,
+    timeZone: plan.timeZone,
+    areaLabel: plan.area.label,
+    areaPoint: plan.area.point,
+    distanceMeters: plan.distanceMeters,
+    pace: plan.pace,
+    colors: { primary: plan.colors.primary, secondary: plan.colors.secondary },
+    status: plan.status,
+    language: plan.posterLanguage,
+    version: plan.updatedAt.getTime().toString(36),
+  };
+}
+
 export function viewForViewer(plan: Plan, counts: Counts): PlanViewForViewer {
   return {
     id: plan.id,

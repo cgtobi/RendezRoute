@@ -9,6 +9,7 @@ export const en = {
   "error.csrf": "Your form expired or came from another site. Reload the page and try again.",
   "error.internal": "Something went wrong on our side. Please try again later.",
   "error.tooLarge": "This request is too large.",
+  "error.busy": "The server is busy. Please try again in a few seconds.",
   "error.badRequest": "The form could not be processed. Please reload the page and try again.",
 
   "activity.run": "Run",
@@ -134,6 +135,7 @@ export const en = {
   "plan.postedBy": "Posted by {name}",
   "plan.youAreHost": "You are the host of this plan.",
   "plan.when": "When",
+  "preview.cancelled": "Cancelled: {title}",
   "plan.timeZone": "{zone} time",
   "plan.where": "Meeting area",
   "plan.distance": "Distance",

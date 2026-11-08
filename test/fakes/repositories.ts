@@ -17,6 +17,7 @@ export function createFakeRepositories(): {
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
   const routes = new Map<string, Route>();
+  const previews = new Map<string, { version: string; image: Uint8Array }>();
   const planNonces = new Map<string, string>();
   const devices = new Map<string, { device: Device; tokenHash: string }>();
   const links = new Set<string>();
@@ -34,6 +35,7 @@ export function createFakeRepositories(): {
   const deletePlan = (id: string) => {
     plans.delete(id);
     routes.delete(id);
+    previews.delete(id);
     for (const [nonce, planId] of planNonces) if (planId === id) planNonces.delete(nonce);
     for (const [responseId, entry] of responses) {
       if (entry.response.planId !== id) continue;
@@ -81,6 +83,13 @@ export function createFakeRepositories(): {
         routes.set(planId, structuredClone(route));
         const entry = plans.get(planId);
         if (entry !== undefined) entry.plan = { ...entry.plan, hasRoute: true };
+      },
+      async findPreview(planId, version) {
+        const entry = previews.get(planId);
+        return entry?.version === version ? entry.image.slice() : undefined;
+      },
+      async savePreview(planId, version, image) {
+        if (plans.has(planId)) previews.set(planId, { version, image: image.slice() });
       },
       async deleteRoute(planId) {
         routes.delete(planId);

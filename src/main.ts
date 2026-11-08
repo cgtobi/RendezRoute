@@ -10,7 +10,7 @@ import {
   runRetentionSweep,
 } from "./application/maintenance.ts";
 import type { PlanDeps } from "./application/plans.ts";
-import type { Geocoder } from "./application/ports.ts";
+import type { Geocoder, PreviewRenderer } from "./application/ports.ts";
 import { createApp } from "./adapters/in/http/app.tsx";
 import { startScheduler } from "./adapters/in/scheduler.ts";
 import { createLogger, type Logger } from "./adapters/logging.ts";
@@ -22,6 +22,8 @@ import {
   createThrottle,
 } from "./adapters/out/geocoder/nominatim.ts";
 import { createOutboundHttp } from "./adapters/out/http/outbound-http.ts";
+import { createPreviewRenderer } from "./adapters/out/preview/renderer.ts";
+import { createMapTiles } from "./adapters/out/preview/tiles.ts";
 import { createIdGenerator } from "./adapters/out/ids.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
@@ -37,16 +39,20 @@ export const DEFAULT_PORT = 3000;
 const MINUTE_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 
-/** Place search (spec 3.9): at most one request per second, results cached for at most 7 days. */
-function createGeocoder(config: Config): Geocoder | undefined {
-  if (!config.geocoder.enabled || config.contactEmail === undefined) return undefined;
-  const http = createOutboundHttp({
-    userAgent: `RendezRoute (+${config.baseUrl.origin}; ${config.contactEmail})`,
+/** Outbound requests to tile and geocoding providers, identified as their policies require. */
+function outboundHttp(config: Config, contactEmail: string) {
+  return createOutboundHttp({
+    userAgent: `RendezRoute (+${config.baseUrl.origin}; ${contactEmail})`,
     // Decision C7: development may point providers at local fake servers.
     ...(config.allowInsecureDev ? { allowHttp: true, isBlocked: () => false } : {}),
   });
+}
+
+/** Place search (spec 3.9): at most one request per second, results cached for at most 7 days. */
+function createGeocoder(config: Config): Geocoder | undefined {
+  if (!config.geocoder.enabled || config.contactEmail === undefined) return undefined;
   const geocoder = createNominatimGeocoder({
-    http,
+    http: outboundHttp(config, config.contactEmail),
     baseUrl: config.geocoder.url,
     throttle: createThrottle({ minIntervalMs: 1000, maxWaitMs: 5000 }),
   });
@@ -54,6 +60,25 @@ function createGeocoder(config: Config): Geocoder | undefined {
     clock: systemClock,
     ttlMs: 7 * DAY_MS,
     maxEntries: 1000,
+  });
+}
+
+/** Link preview cards (spec 3.3), with a rough-area map when tiles may be fetched server-side. */
+function createRenderer(config: Config): PreviewRenderer {
+  const tiles =
+    config.maps.serverSideTiles && config.contactEmail !== undefined
+      ? createMapTiles({
+          http: outboundHttp(config, config.contactEmail),
+          tileUrl: config.maps.tileUrl,
+          clock: systemClock,
+          ttlMs: 7 * DAY_MS,
+          maxEntries: 500,
+        })
+      : undefined;
+  return createPreviewRenderer({
+    instanceName: config.instanceName,
+    attribution: config.maps.attribution,
+    tiles,
   });
 }
 
@@ -133,6 +158,7 @@ export async function startServer(
     logger,
     planDeps,
     geocoder: createGeocoder(config),
+    previewRenderer: createRenderer(config),
   });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));

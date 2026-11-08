@@ -3,6 +3,7 @@ import type { Context, Hono } from "hono";
 import { createPlan, viewPlan, viewPlanTheme } from "../../../../application/plans.ts";
 import { DEFAULT_COLORS } from "../../../../domain/color.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
+import { previewImage } from "../../../../application/previews.ts";
 import { routeForDownload } from "../../../../application/routes.ts";
 import { toGeoJson, toGpx } from "../../../out/gpx/write-gpx.ts";
 import type { AppEnv } from "../app.tsx";
@@ -42,7 +43,10 @@ export const TIME_ZONES = (() => {
   return zones.includes("UTC") ? zones : ["UTC", ...zones];
 })();
 
-export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps, geocoder }: RouteDeps) {
+export function registerPlanRoutes(
+  app: Hono<AppEnv>,
+  { config, planDeps, geocoder, previewRenderer }: RouteDeps,
+) {
   const emptyForm = (): PlanInput => ({
     ...planInput(() => ""),
     activity: "run",
@@ -148,6 +152,22 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps, geocod
     c.header("content-disposition", `attachment; filename="${fileName(result.title)}.gpx"`);
     c.header("cache-control", "private, no-store");
     return c.body(toGpx(result.route, result.title));
+  });
+
+  /** Card image for link previews (spec 3.3); public, cached per plan version. */
+  app.get("/p/:id/og.png", async (c) => {
+    const result = await previewImage(
+      { plans: planDeps.plans, renderer: previewRenderer },
+      { planId: c.req.param("id") },
+    );
+    if (result.kind === "not_found") return planGone(c);
+    if (result.kind === "busy") {
+      c.header("retry-after", "5");
+      return c.text(c.get("t")("error.busy"), 503);
+    }
+    c.header("content-type", "image/png");
+    c.header("cache-control", "public, max-age=3600");
+    return c.body(Uint8Array.from(result.image));
   });
 
   /** The route for the plan map; same audience as the GPX download (decision D12). */

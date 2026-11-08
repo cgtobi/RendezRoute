@@ -4,7 +4,8 @@ import type { Hono } from "hono";
 import { searchPlaces } from "../../../../application/places.ts";
 import type { Geocoder } from "../../../../application/ports.ts";
 import type { AppEnv } from "../app.tsx";
-import { clientOf, type RateLimits } from "./shared.tsx";
+import type { RateLimits } from "../rate-limit.ts";
+import { clientOf } from "./shared.tsx";
 
 export function registerPlaceRoutes(
   app: Hono<AppEnv>,

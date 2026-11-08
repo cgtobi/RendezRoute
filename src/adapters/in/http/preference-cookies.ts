@@ -3,8 +3,7 @@
 import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import type { Config } from "../../../config.ts";
-
-const MAX_AGE_SECONDS = 400 * 24 * 60 * 60;
+import { LONG_COOKIE_SECONDS } from "./cookie-lifetime.ts";
 
 export type Preference = "lang" | "units";
 
@@ -31,6 +30,6 @@ export function setPreference(
     secure: !config.allowInsecureDev,
     sameSite: "Lax",
     path: "/",
-    maxAge: MAX_AGE_SECONDS,
+    maxAge: LONG_COOKIE_SECONDS,
   });
 }

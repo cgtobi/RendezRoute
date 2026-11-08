@@ -28,8 +28,15 @@ const UNITS = [
 
 /** Strings that are the same in every language. */
 const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
-  de: [...UNITS, "plan.pace", "plan.route", "host.route"],
-  fr: [...UNITS, "form.date", "form.latitude", "form.longitude", "plan.distance"],
+  de: [...UNITS, "plan.pace", "plan.route", "host.route", "privacy.cookiesHeading"],
+  fr: [
+    ...UNITS,
+    "form.date",
+    "form.latitude",
+    "form.longitude",
+    "plan.distance",
+    "privacy.cookiesHeading",
+  ],
 };
 
 const english = catalogs.en as Readonly<Record<string, Message>>;

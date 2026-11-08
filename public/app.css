@@ -434,3 +434,9 @@ button.danger {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}

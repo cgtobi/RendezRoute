@@ -6,11 +6,61 @@ export const de: Messages = {
   "layout.poweredBy": "Betrieben mit {name}",
   "layout.devBanner":
     "Entwicklungsmodus: Unsichere Einstellungen sind aktiv. Nicht für den Produktivbetrieb.",
+  "layout.privacy": "Datenschutz",
+  "layout.imprint": "Impressum",
   "layout.language": "Sprache",
   "layout.change": "Ändern",
   "layout.units": "Einheiten",
   "units.metric": "Metrisch (km)",
   "units.imperial": "Imperial (Meilen)",
+
+  "privacy.title": "Datenschutz",
+  "privacy.intro":
+    "{instance} nutzt RendezRoute, eine Open-Source-Software zum Planen von Läufen und Ausfahrten. Dieser Hinweis wird aus den Einstellungen dieser Website erzeugt und beschreibt, was die Software tut.",
+  "privacy.contact": "Fragen zu deinen Daten:",
+  "privacy.storedHeading": "Was gespeichert wird",
+  "privacy.storedPlans":
+    "Wenn du ein Treffen erstellst: dein Name, die Angaben zum Treffen und optional eine Route. Name, Titel, Notiz, Treffgebiet, Zeit, Distanz und Pace sieht jede Person mit dem Link. Den genauen Treffpunkt und die Route sehen nur du und alle, die zusagen; sie werden verschlüsselt gespeichert.",
+  "privacy.storedResponses":
+    "Wenn du antwortest: der Name, den du angibst, deine Antwort und die Sprache der Seite, für Nachrichten zum Treffen. Dein Name wird verschlüsselt gespeichert; die Organisator:in sieht ihn und, wenn du zusagst, auch die anderen Teilnehmer:innen.",
+  "privacy.noTracking": "Es gibt keine Konten, keine Analyse und keine Werbung.",
+  "privacy.durationHeading": "Wie lange",
+  "privacy.retention":
+    "Jedes Treffen wird mit allen Antworten, Namen und seiner Route an dem Datum gelöscht, das auf der Seite des Treffens steht: 1 bis {days} Tage nach dem Treffen, wie die Organisator:in es wählt. Die Organisator:in kann es früher löschen, und du kannst deine Antwort jederzeit zurückziehen. Gelöschte Daten werden in der Datenbank überschrieben.",
+  "privacy.retentionLowered":
+    "Treffen, die erstellt wurden, bevor dieses Maximum gesenkt wurde, können ihren längeren Zeitraum behalten, höchstens {max} Tage.",
+  "privacy.devices":
+    "Die Verknüpfung deines Browsers mit deinen Treffen oder Antworten wird {unlinkedDays} Tage nach der letzten Nutzung gelöscht, sobald nichts mehr damit verknüpft ist, und in jedem Fall nach {unusedDays} Tagen ohne Nutzung.",
+  "privacy.operatorHeading": "Wer auf die Daten zugreifen kann",
+  "privacy.operator":
+    "Wer diese Website betreibt, kann technisch auf alles zugreifen, was hier gespeichert ist, auch auf verschlüsselte Daten. Die Verschlüsselung schützt Daten in geleakten Datenbanksicherungen, wenn der Schlüssel getrennt aufbewahrt wird, aber nicht vor den Betreiber:innen.",
+  "privacy.cookiesHeading": "Cookies",
+  "privacy.cookieDevice":
+    "Ein Geräte-Cookie, erst wenn du ein Treffen erstellst, antwortest oder einen privaten Link öffnest: ein Zufallswert, der diesen Browser damit verknüpft, {days} Tage lang gespeichert.",
+  "privacy.cookieCsrf":
+    "Ein Sitzungs-Cookie, das Formulare vor gefälschten Absendungen schützt. Browser löschen es beim Schließen, außer sie stellen deine letzte Sitzung wieder her.",
+  "privacy.cookiePreferences":
+    "Cookies für Sprache und Einheiten, nur wenn du unten auf einer Seite eine Sprache oder Einheiten wählst, {days} Tage lang gespeichert.",
+  "privacy.cookieOthers": "Keine anderen Cookies und keine von anderen Websites.",
+  "privacy.servicesHeading": "Andere Dienste",
+  "privacy.tiles":
+    "Karten lädt dein Browser direkt von {host}. Dieser Dienst sieht deine IP-Adresse und welchen Kartenausschnitt du ansiehst.",
+  "privacy.tilesServer":
+    "Für Vorschaubilder von Links lädt dieser Server außerdem Kartenbilder des ungefähren Treffgebiets; dabei wird nichts über dich übermittelt.",
+  "privacy.geocoder":
+    "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Suchanfragen und Ergebnisse bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit wiederholte Suchen keine neue Anfrage brauchen.",
+  "privacy.location":
+    "„Meinen Standort verwenden“ fragt deinen Browser nach deiner Position und füllt nur das Formular aus; gesendet wird sie erst, wenn du das Formular abschickst.",
+  "privacy.locationMap":
+    "Bei eingeschalteten Karten springt die Karte danach zu deiner Position, sodass dein Browser Kartenbilder dieser Gegend vom Kartendienst lädt.",
+  "privacy.share": "WhatsApp und X werden nur kontaktiert, wenn du ihre Teilen-Links benutzt.",
+  "privacy.previews":
+    "Wird ein Link zu einem Treffen in einer Chat-App geteilt, ruft die App Titel, Zeit, Treffgebiet, Distanz, Pace und ein Vorschaubild ab. Chat-Apps können diese Vorschau auch nach dem Löschen des Treffens behalten.",
+  "privacy.logsHeading": "Protokolle und Schutz vor Missbrauch",
+  "privacy.logs":
+    "Die Software protokolliert, welche Art von Seite aufgerufen wurde und ob es geklappt hat, nie Namen, private Links, genaue Orte oder IP-Adressen.",
+  "privacy.rateLimits":
+    "Zum Schutz vor Missbrauch zählt der Server Anfragen pro IP-Adresse (bei IPv6 pro Netz), nur im Arbeitsspeicher und höchstens etwa eine Stunde lang.",
 
   "home.intro":
     "Plane einen Lauf oder eine Ausfahrt, teile den Link und sieh, wer mitkommt. Kein Konto nötig.",

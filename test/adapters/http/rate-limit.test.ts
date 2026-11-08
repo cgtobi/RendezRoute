@@ -38,6 +38,28 @@ describe("rate limiter (decision I10)", () => {
     expect(limit.take("b").ok).toBe(true);
   });
 
+  it("forgets clients once their bucket is full again, so addresses are kept only briefly", () => {
+    const { limit, advance } = limiter();
+    limit.take("a");
+    advance(599);
+    limit.take("b");
+    expect(limit.size()).toBe(2);
+    advance(1);
+    limit.take("c");
+    // "a" has refilled after 600 s and is forgotten; "b" still owes a token.
+    expect(limit.size()).toBe(2);
+    limit.check("d");
+    expect(limit.size()).toBe(2);
+  });
+
+  it("forgets refilled clients on the periodic sweep, also without new requests", () => {
+    const { limit, advance } = limiter();
+    limit.take("a");
+    advance(600);
+    limit.sweep();
+    expect(limit.size()).toBe(0);
+  });
+
   it("forgets the oldest clients beyond the key limit, so memory stays bounded", () => {
     const { limit } = limiter(2);
     for (let i = 0; i < 3; i++) limit.take("a");

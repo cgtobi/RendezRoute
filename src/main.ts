@@ -12,6 +12,8 @@ import {
 import type { PlanDeps } from "./application/plans.ts";
 import type { Geocoder, PreviewRenderer } from "./application/ports.ts";
 import { createApp } from "./adapters/in/http/app.tsx";
+import { createRateLimits } from "./adapters/in/http/rate-limit.ts";
+import { SERVICE_CACHE_MS } from "./adapters/out/cache-lifetime.ts";
 import { startScheduler } from "./adapters/in/scheduler.ts";
 import { createLogger, type Logger } from "./adapters/logging.ts";
 import { type InstanceKeys, openInstanceKeys } from "./adapters/out/crypto/instance-keys.ts";
@@ -58,7 +60,7 @@ function createGeocoder(config: Config): Geocoder | undefined {
   });
   return createCachedGeocoder(geocoder, {
     clock: systemClock,
-    ttlMs: 7 * DAY_MS,
+    ttlMs: SERVICE_CACHE_MS,
     maxEntries: 1000,
   });
 }
@@ -71,7 +73,7 @@ function createRenderer(config: Config): PreviewRenderer {
           http: outboundHttp(config, config.contactEmail),
           tileUrl: config.maps.tileUrl,
           clock: systemClock,
-          ttlMs: 7 * DAY_MS,
+          ttlMs: SERVICE_CACHE_MS,
           maxEntries: 500,
         })
       : undefined;
@@ -142,12 +144,20 @@ export async function startServer(
   if (!opened.ok) return opened;
   const { config, database, keys, planDeps, warnings } = opened.instance;
 
+  const rateLimits = createRateLimits(() => planDeps.clock.now().getTime());
+  const sweepLimits = () => {
+    for (const limiter of Object.values(rateLimits)) limiter.sweep();
+    return Promise.resolve({});
+  };
+
   // The first sweep finishes before the server listens, so plans past their deletion
   // date are never served after downtime (spec 3.10: sweep at startup).
   const scheduler = await startScheduler(
     [
       { name: "retention_sweep", intervalMs: MINUTE_MS, run: () => runRetentionSweep(planDeps) },
       { name: "housekeeping", intervalMs: DAY_MS, run: () => runHousekeeping(planDeps) },
+      // Forgets client addresses whose limits have refilled, also when no requests come in.
+      { name: "rate_limit_sweep", intervalMs: MINUTE_MS, run: sweepLimits },
     ],
     { logger },
   );
@@ -159,6 +169,7 @@ export async function startServer(
     planDeps,
     geocoder: createGeocoder(config),
     previewRenderer: createRenderer(config),
+    rateLimits,
   });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));

@@ -5,11 +5,61 @@ import type { Message, Plural } from "./message.ts";
 export const en = {
   "layout.poweredBy": "Powered by {name}",
   "layout.devBanner": "Development mode: insecure settings are active. Not for production use.",
+  "layout.privacy": "Privacy",
+  "layout.imprint": "Imprint",
   "layout.language": "Language",
   "layout.change": "Change",
   "layout.units": "Units",
   "units.metric": "Metric (km)",
   "units.imperial": "Imperial (mi)",
+
+  "privacy.title": "Privacy",
+  "privacy.intro":
+    "{instance} runs RendezRoute, open-source software for planning runs and rides. This notice is generated from this site’s settings and describes what the software does.",
+  "privacy.contact": "Questions about your data:",
+  "privacy.storedHeading": "What is stored",
+  "privacy.storedPlans":
+    "When you create a plan: your name, the plan details you enter and an optional route. Name, title, note, meeting area, time, distance and pace are visible to anyone with the link. The exact start and the route are shown only to you and people who join, and are stored encrypted.",
+  "privacy.storedResponses":
+    "When you respond: the name you give, your choice and the language of the page, for messages about the plan. Your name is stored encrypted and shown to the host, and to the other participants if you join.",
+  "privacy.noTracking": "There are no accounts, no analytics and no advertising.",
+  "privacy.durationHeading": "How long",
+  "privacy.retention":
+    "Each plan is deleted with all responses, names and its route on the date shown on the plan page: 1 to {days} days after the run, as the host chooses. The host can delete it earlier, and you can withdraw your response at any time. Deleted data is overwritten in the database.",
+  "privacy.retentionLowered":
+    "Plans created before this maximum was lowered may keep their longer period, up to {max} days.",
+  "privacy.devices":
+    "The link between your browser and your plans or responses is deleted {unlinkedDays} days after its last use once nothing is linked to it anymore, and in any case after {unusedDays} days without use.",
+  "privacy.operatorHeading": "Who can access the data",
+  "privacy.operator":
+    "The operator of this site can technically access everything stored here, including encrypted data. Encryption protects data in leaked database backups when the key is kept separately, but not against the operator.",
+  "privacy.cookiesHeading": "Cookies",
+  "privacy.cookieDevice":
+    "A device cookie, only once you create a plan, respond or open a private link: a random value that links this browser to them, kept for {days} days.",
+  "privacy.cookieCsrf":
+    "A session cookie that protects forms against forged submissions. Browsers delete it when you close them, unless they restore your previous session.",
+  "privacy.cookiePreferences":
+    "Language and units cookies, only when you choose a language or units at the bottom of a page, kept for {days} days.",
+  "privacy.cookieOthers": "No other cookies, and none from other sites.",
+  "privacy.servicesHeading": "Other services",
+  "privacy.tiles":
+    "Maps are loaded by your browser directly from {host}. That service sees your IP address and which map area you look at.",
+  "privacy.tilesServer":
+    "For link preview images, this server also loads map images of the rough meeting area; this sends nothing about you.",
+  "privacy.geocoder":
+    "Place search goes through this server to {host}. That service sees what you search for, but not who you are. Searches and their results are kept in this server’s memory for up to {days} days, so repeated searches need no new request.",
+  "privacy.location":
+    "“Use my location” asks your browser for your position and only fills in the form; it is sent only when you submit the form.",
+  "privacy.locationMap":
+    "With maps on, the map then moves to your position, so your browser loads map images of that area from the map service.",
+  "privacy.share": "WhatsApp and X are contacted only when you use their share links.",
+  "privacy.previews":
+    "When a plan link is shared in a chat app, the app fetches the plan’s title, time, meeting area, distance, pace and a preview image. Chat apps may keep this preview after the plan is deleted.",
+  "privacy.logsHeading": "Logs and abuse protection",
+  "privacy.logs":
+    "The software logs which kind of page was requested and whether it worked, never names, private links, exact locations or IP addresses.",
+  "privacy.rateLimits":
+    "To prevent abuse, the server counts requests per IP address (for IPv6, per network) in memory only, for at most about an hour.",
 
   "home.intro": "Plan a run or ride, share the link, and see who joins. No account needed.",
   "home.cta": "Plan a run or ride",

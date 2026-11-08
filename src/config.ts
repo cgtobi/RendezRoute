@@ -25,6 +25,8 @@ export interface Config {
     tileUrl: string;
     /** Origin for the CSP `img-src` directive; `{s}` subdomains become `*`. */
     tileCspSource: string;
+    /** Host of the tile provider for people, e.g. "tile.openstreetmap.org" or "*.tiles.example.org". */
+    tileHost: string;
     attribution: string;
     /** Server-side tile fetching for preview images; needs CONTACT_EMAIL (provider policies). */
     serverSideTiles: boolean;
@@ -258,6 +260,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
         enabled: mapsEnabled,
         tileUrl,
         tileCspSource,
+        tileHost: tileCspSource.replace(/^[a-z]+:\/\//i, ""),
         attribution,
         serverSideTiles: mapsEnabled && contactEmail !== undefined,
       },

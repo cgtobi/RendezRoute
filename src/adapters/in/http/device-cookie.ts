@@ -3,8 +3,8 @@
 import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import type { Config } from "../../../config.ts";
+import { LONG_COOKIE_SECONDS } from "./cookie-lifetime.ts";
 
-const MAX_AGE_SECONDS = 400 * 24 * 60 * 60;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
 const cookieName = (config: Config) => (config.allowInsecureDev ? "rr-device" : "__Host-rr-device");
@@ -20,6 +20,6 @@ export function setDeviceToken(c: Context, config: Config, token: string): void 
     secure: !config.allowInsecureDev,
     sameSite: "Lax",
     path: "/",
-    maxAge: MAX_AGE_SECONDS,
+    maxAge: LONG_COOKIE_SECONDS,
   });
 }

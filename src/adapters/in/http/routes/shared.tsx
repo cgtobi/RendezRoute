@@ -5,7 +5,7 @@ import type { PlanDeps } from "../../../../application/plans.ts";
 import type { Geocoder, PreviewRenderer } from "../../../../application/ports.ts";
 import type { ViewPlanResult } from "../../../../application/plans.ts";
 import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input.ts";
-import { clientKey, type RateLimiter } from "../rate-limit.ts";
+import { clientKey, type RateLimits } from "../rate-limit.ts";
 import type { Config } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
 import { MapAssets, type MapSettings } from "../views/maps.tsx";
@@ -20,14 +20,6 @@ export interface RouteDeps {
   geocoder: Geocoder | undefined;
   previewRenderer: PreviewRenderer;
   limits: RateLimits;
-}
-
-/** Per-client limits (spec 5 feature 12, decision I32). */
-export interface RateLimits {
-  create: RateLimiter;
-  respond: RateLimiter;
-  geocode: RateLimiter;
-  preview: RateLimiter;
 }
 
 /** The rate-limit key of the request's client; never logged (decision I18). */

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vite-plus/test";
 import { createApp as createAppWithDeps } from "../../../src/adapters/in/http/app.tsx";
+import { createRateLimits } from "../../../src/adapters/in/http/rate-limit.ts";
 import { en } from "../../../src/adapters/i18n/messages/en.ts";
 import { createLogger } from "../../../src/adapters/logging.ts";
 import { FakeClock } from "../../fakes/clock.ts";
@@ -18,6 +19,7 @@ const createApp = ({ config }: { config: Config }) =>
     logger: createLogger({ write: () => {} }),
     geocoder: undefined,
     previewRenderer: new FakePreviewRenderer(),
+    rateLimits: createRateLimits(() => 0),
     planDeps: {
       ...createFakeRepositories(),
       routeParser: new FakeRouteParser(),

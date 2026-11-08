@@ -14,7 +14,7 @@ import type { Logger } from "../../logging.ts";
 import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
 import { readPreference } from "./preference-cookies.ts";
-import { createRateLimiter } from "./rate-limit.ts";
+import type { RateLimits } from "./rate-limit.ts";
 import { registerHostRoutes } from "./routes/host.tsx";
 import { registerPreferenceRoutes } from "./routes/preferences.ts";
 import { registerPlaceRoutes } from "./routes/places.ts";
@@ -22,6 +22,7 @@ import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
+import { PrivacyPage } from "./views/privacy-page.tsx";
 import { requestLogger } from "./request-logger.ts";
 import { securityHeaders } from "./security-headers.ts";
 
@@ -57,6 +58,8 @@ export interface AppDeps {
   geocoder: Geocoder | undefined;
   /** Open Graph card images (spec 3.3). */
   previewRenderer: PreviewRenderer;
+  /** Shared with the scheduler, which sweeps them every minute (decision I33). */
+  rateLimits: RateLimits;
 }
 
 /** Hono context variables set by the app middleware. */
@@ -77,6 +80,7 @@ export function createApp({
   planDeps,
   geocoder,
   previewRenderer,
+  rateLimits,
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -172,19 +176,18 @@ export function createApp({
     );
   });
 
-  const now = () => planDeps.clock.now().getTime();
-  const limits = {
-    create: createRateLimiter({ capacity: 5, perHour: 10, now }),
-    respond: createRateLimiter({ capacity: 10, perHour: 30, now }),
-    geocode: createRateLimiter({ capacity: 10, perHour: 600, now }),
-    preview: createRateLimiter({ capacity: 10, perHour: 60, now }),
-  };
-  const deps = { config, planDeps, geocoder, previewRenderer, limits };
+  app.get("/privacy", (c) => {
+    if (config.privacyUrl !== undefined) return c.redirect(config.privacyUrl.href, 302);
+    const t = c.get("t");
+    return c.render(<PrivacyPage t={t} config={config} />, { title: t("privacy.title") });
+  });
+
+  const deps = { config, planDeps, geocoder, previewRenderer, limits: rateLimits };
   registerPlanRoutes(app, deps);
   registerResponseRoutes(app, deps);
   registerSecretLinkRoutes(app, deps);
   registerHostRoutes(app, deps);
-  if (geocoder !== undefined) registerPlaceRoutes(app, { geocoder, limits });
+  if (geocoder !== undefined) registerPlaceRoutes(app, { geocoder, limits: rateLimits });
   registerPreferenceRoutes(app, { config });
 
   return app;

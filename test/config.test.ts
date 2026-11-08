@@ -35,6 +35,7 @@ describe("defaults (spec section 10)", () => {
       enabled: true,
       tileUrl: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       tileCspSource: "https://tile.openstreetmap.org",
+      tileHost: "tile.openstreetmap.org",
       attribution: "© OpenStreetMap contributors",
       serverSideTiles: true,
     });
@@ -250,6 +251,7 @@ describe("external services (spec 3.9)", () => {
       MAP_TILE_URL: "https://{s}.tiles.example.org/{z}/{x}/{y}.png",
     });
     expect(config.maps.tileCspSource).toBe("https://*.tiles.example.org");
+    expect(config.maps.tileHost).toBe("*.tiles.example.org");
   });
 
   it("wildcards the whole first host label when it contains {s}", () => {

@@ -83,6 +83,20 @@ export function Layout({
               />
             </>
           )}
+          <p class="footer-links">
+            {config.privacyUrl === undefined ? (
+              <a href="/privacy">{t("layout.privacy")}</a>
+            ) : (
+              <a href={config.privacyUrl.href} rel="noopener noreferrer">
+                {t("layout.privacy")}
+              </a>
+            )}
+            {config.imprintUrl !== undefined && (
+              <a href={config.imprintUrl.href} rel="noopener noreferrer">
+                {t("layout.imprint")}
+              </a>
+            )}
+          </p>
           {config.instanceName !== SOFTWARE_NAME && (
             <p>{t("layout.poweredBy", { name: SOFTWARE_NAME })}</p>
           )}

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts";
 import { createApp } from "../../src/adapters/in/http/app.tsx";
+import { createRateLimits } from "../../src/adapters/in/http/rate-limit.ts";
 import { createLogger } from "../../src/adapters/logging.ts";
 import { createFieldCipher } from "../../src/adapters/out/crypto/field-cipher.ts";
 import { createKeyring } from "../../src/adapters/out/crypto/keyring.ts";
@@ -44,6 +45,7 @@ export async function createTestApp({
     config,
     geocoder: config.geocoder.enabled ? geocoder : undefined,
     previewRenderer,
+    rateLimits: createRateLimits(() => clock.now().getTime()),
     csrfKey: randomBytes(32),
     logger: createLogger({ write: (line) => logs.push(line) }),
     planDeps: {

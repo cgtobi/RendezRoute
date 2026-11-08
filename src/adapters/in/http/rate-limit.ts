@@ -9,8 +9,32 @@ export interface RateLimiter {
   check(key: string): RateLimitResult;
   /** Takes a token if one is available. */
   take(key: string): RateLimitResult;
+  /** Forgets clients whose buckets are full again; run every minute so idle addresses go too. */
+  sweep(): void;
   /** Number of tracked clients (for tests). */
   size(): number;
+}
+
+/** Per-client limits of the app (spec 5 feature 12, decision I32). */
+export interface RateLimits {
+  create: RateLimiter;
+  respond: RateLimiter;
+  geocode: RateLimiter;
+  preview: RateLimiter;
+}
+
+/**
+ * Creating plans and responding count only successes; place search counts every request;
+ * previews count only renders. A client is forgotten once its bucket is full again, after at
+ * most 30 minutes (create: 5 tokens at 10 per hour).
+ */
+export function createRateLimits(now: () => number): RateLimits {
+  return {
+    create: createRateLimiter({ capacity: 5, perHour: 10, now }),
+    respond: createRateLimiter({ capacity: 10, perHour: 30, now }),
+    geocode: createRateLimiter({ capacity: 10, perHour: 600, now }),
+    preview: createRateLimiter({ capacity: 10, perHour: 60, now }),
+  };
 }
 
 interface Bucket {
@@ -35,18 +59,30 @@ export function createRateLimiter({
   const buckets = new Map<string, Bucket>();
   const msPerToken = 3_600_000 / perHour;
 
-  const current = (key: string): Bucket => {
-    const time = now();
+  const refill = (bucket: Bucket, time: number): Bucket => ({
+    tokens: Math.min(capacity, bucket.tokens + (time - bucket.updatedAt) / msPerToken),
+    updatedAt: time,
+  });
+
+  /** Drops the least recently used clients whose buckets are full again: they are like new ones. */
+  const forgetRefilled = (time: number) => {
+    for (const [key, bucket] of buckets) {
+      if (refill(bucket, time).tokens < capacity) break;
+      buckets.delete(key);
+    }
+  };
+
+  /** The client's bucket refilled to now, without storing it (a new client stays untracked). */
+  const peek = (key: string, time: number): Bucket => {
     const bucket = buckets.get(key);
+    return bucket === undefined ? { tokens: capacity, updatedAt: time } : refill(bucket, time);
+  };
+
+  /** The client's bucket refilled to now, stored as the most recently used. */
+  const touch = (key: string, time: number): Bucket => {
+    const refilled = peek(key, time);
     // Re-inserting keeps the Map in least-recently-used order.
     buckets.delete(key);
-    const refilled: Bucket =
-      bucket === undefined
-        ? { tokens: capacity, updatedAt: time }
-        : {
-            tokens: Math.min(capacity, bucket.tokens + (time - bucket.updatedAt) / msPerToken),
-            updatedAt: time,
-          };
     buckets.set(key, refilled);
     while (buckets.size > maxKeys) {
       const oldest = buckets.keys().next().value;
@@ -62,13 +98,20 @@ export function createRateLimiter({
       : { ok: false, retryAfterSeconds: Math.ceil(((1 - bucket.tokens) * msPerToken) / 1000) };
 
   return {
-    check: (key) => result(current(key)),
+    check: (key) => {
+      const time = now();
+      forgetRefilled(time);
+      return result(peek(key, time));
+    },
     take: (key) => {
-      const bucket = current(key);
+      const time = now();
+      forgetRefilled(time);
+      const bucket = touch(key, time);
       const outcome = result(bucket);
       if (outcome.ok) bucket.tokens -= 1;
       return outcome;
     },
+    sweep: () => forgetRefilled(now()),
     size: () => buckets.size,
   };
 }

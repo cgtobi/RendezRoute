@@ -8,11 +8,61 @@ export const fr: Messages = {
   "layout.poweredBy": "Propulsé par {name}",
   "layout.devBanner":
     "Mode développement : des réglages non sécurisés sont actifs. Ne pas utiliser en production.",
+  "layout.privacy": "Confidentialité",
+  "layout.imprint": "Mentions légales",
   "layout.language": "Langue",
   "layout.change": "Changer",
   "layout.units": "Unités",
   "units.metric": "Métrique (km)",
   "units.imperial": "Impérial (miles)",
+
+  "privacy.title": "Confidentialité",
+  "privacy.intro":
+    "{instance} utilise RendezRoute, un logiciel libre pour organiser des sorties course à pied et vélo. Cette notice est générée à partir des réglages de ce site et décrit ce que fait le logiciel.",
+  "privacy.contact": "Questions sur vos données :",
+  "privacy.storedHeading": "Ce qui est enregistré",
+  "privacy.storedPlans":
+    "Quand vous créez une sortie : votre nom, les informations de la sortie et un parcours facultatif. Le nom, le titre, la remarque, la zone de rendez-vous, l’heure, la distance et l’allure sont visibles par toute personne ayant le lien. Le point de départ exact et le parcours ne sont visibles que par vous et les personnes inscrites, et sont enregistrés chiffrés.",
+  "privacy.storedResponses":
+    "Quand vous répondez : le nom que vous indiquez, votre choix et la langue de la page, pour les messages concernant la sortie. Votre nom est enregistré chiffré et visible par l’organisateur·rice, ainsi que par les autres participant·e·s si vous vous inscrivez.",
+  "privacy.noTracking": "Il n’y a ni comptes, ni mesure d’audience, ni publicité.",
+  "privacy.durationHeading": "Durée de conservation",
+  "privacy.retention":
+    "Chaque sortie est supprimée avec toutes les réponses, tous les noms et son parcours à la date indiquée sur sa page, entre 1 et {days} jours après la sortie, selon le choix de l’organisateur·rice. L’organisateur·rice peut la supprimer plus tôt, et vous pouvez retirer votre réponse à tout moment. Les données supprimées sont écrasées dans la base de données.",
+  "privacy.retentionLowered":
+    "Les sorties créées avant que ce maximum soit abaissé peuvent garder leur durée plus longue, jusqu’à {max} jours.",
+  "privacy.devices":
+    "Le lien entre votre navigateur et vos sorties ou réponses est supprimé {unlinkedDays} jours après sa dernière utilisation dès que plus rien n’y est associé, et dans tous les cas après {unusedDays} jours sans utilisation.",
+  "privacy.operatorHeading": "Qui peut accéder aux données",
+  "privacy.operator":
+    "La personne qui exploite ce site peut techniquement accéder à tout ce qui y est enregistré, y compris aux données chiffrées. Le chiffrement protège les données en cas de fuite de sauvegardes de la base si la clé est conservée séparément, mais pas contre l’exploitant·e.",
+  "privacy.cookiesHeading": "Cookies",
+  "privacy.cookieDevice":
+    "Un cookie d’appareil, seulement après avoir créé une sortie, répondu ou ouvert un lien privé : une valeur aléatoire qui associe ce navigateur à ces éléments, conservée {days} jours.",
+  "privacy.cookieCsrf":
+    "Un cookie de session qui protège les formulaires contre les envois falsifiés. Les navigateurs le suppriment à leur fermeture, sauf s’ils restaurent votre session précédente.",
+  "privacy.cookiePreferences":
+    "Des cookies de langue et d’unités, seulement si vous choisissez une langue ou des unités en bas d’une page, conservés {days} jours.",
+  "privacy.cookieOthers": "Aucun autre cookie, et aucun cookie d’autres sites.",
+  "privacy.servicesHeading": "Autres services",
+  "privacy.tiles":
+    "Les cartes sont chargées par votre navigateur directement depuis {host}. Ce service voit votre adresse IP et la zone de carte que vous consultez.",
+  "privacy.tilesServer":
+    "Pour les images d’aperçu des liens, ce serveur charge aussi des images de carte de la zone de rendez-vous approximative, sans rien transmettre vous concernant.",
+  "privacy.geocoder":
+    "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Les recherches et leurs résultats restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes.",
+  "privacy.location":
+    "« Utiliser ma position » demande votre position à votre navigateur et remplit seulement le formulaire, qui ne l’envoie que si vous le validez.",
+  "privacy.locationMap":
+    "Si les cartes sont activées, la carte se déplace ensuite vers votre position, et votre navigateur charge donc des images de cette zone depuis le service de cartes.",
+  "privacy.share": "WhatsApp et X ne sont contactés que si vous utilisez leurs liens de partage.",
+  "privacy.previews":
+    "Quand le lien d’une sortie est partagé dans une messagerie, celle-ci récupère le titre, l’heure, la zone de rendez-vous, la distance, l’allure et une image d’aperçu. Les messageries peuvent conserver cet aperçu après la suppression de la sortie.",
+  "privacy.logsHeading": "Journaux et protection contre les abus",
+  "privacy.logs":
+    "Le logiciel journalise le type de page demandée et le résultat, jamais de noms, de liens privés, de lieux exacts ni d’adresses IP.",
+  "privacy.rateLimits":
+    "Pour éviter les abus, le serveur compte les requêtes par adresse IP (par réseau pour IPv6), uniquement en mémoire et pendant environ une heure au plus.",
 
   "home.intro":
     "Planifiez une course ou une sortie vélo, partagez le lien et voyez qui vient. Aucun compte nécessaire.",

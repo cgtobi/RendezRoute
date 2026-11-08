@@ -9,6 +9,8 @@ import { PLAN_LIMITS } from "../../../../domain/plan-input.ts";
 import { defaultRetentionDays } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
+import { MapTools, type MapSettings } from "./maps.tsx";
+import { RouteTrimField } from "./route-trim.tsx";
 
 const COLOR_PRESETS = [
   "#2E5BFF",
@@ -35,6 +37,12 @@ export interface PlanFormProps {
   submitLabel: string;
   /** Offer the optional GPX file field (create form only; the host page has its own route section). */
   withGpx: boolean;
+  /** Tile settings for the pick map; undefined when maps are disabled. */
+  map: MapSettings | undefined;
+  /** Offer place search (geocoder enabled). */
+  placeSearch: boolean;
+  /** The submitted "hide start and end" choice, kept when the form shows errors. */
+  routeTrim: string;
 }
 
 export function PlanForm({
@@ -49,6 +57,9 @@ export function PlanForm({
   heading,
   submitLabel,
   withGpx,
+  map,
+  placeSearch,
+  routeTrim,
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
   const id = (field: PlanField) => `field-${field}`;
@@ -160,6 +171,21 @@ export function PlanForm({
         {input("areaLabel", { required: true, maxlength: PLAN_LIMITS.areaLabel })}
       </Field>
 
+      <MapTools t={t} map={map} placeSearch={placeSearch} />
+
+      <details open={values.areaLat !== "" || values.areaLng !== ""}>
+        <summary>{t("form.areaCoordinates")}</summary>
+        <p class="hint">{t("form.areaCoordinatesHint")}</p>
+        <div class="field-row">
+          <Field field="areaLat" label={t("form.latitude")}>
+            {input("areaLat", { inputmode: "decimal" })}
+          </Field>
+          <Field field="areaLng" label={t("form.longitude")}>
+            {input("areaLng", { inputmode: "decimal" })}
+          </Field>
+        </div>
+      </details>
+
       <fieldset>
         <legend>{t("form.exactStart")}</legend>
         <p class="hint">{t("form.exactStartHint")}</p>
@@ -255,6 +281,7 @@ export function PlanForm({
             ))}
         </div>
       )}
+      {withGpx && <RouteTrimField t={t} id="field-gpxTrim" selected={routeTrim} />}
 
       <Field field="retentionDays" label={t("form.retention")}>
         <select id={id("retentionDays")} name="retentionDays">

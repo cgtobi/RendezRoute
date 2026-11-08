@@ -4,17 +4,20 @@ import { createPlan, viewPlan, viewPlanTheme } from "../../../../application/pla
 import { DEFAULT_COLORS } from "../../../../domain/color.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import { routeForDownload } from "../../../../application/routes.ts";
-import { toGpx } from "../../../out/gpx/write-gpx.ts";
+import { toGeoJson, toGpx } from "../../../out/gpx/write-gpx.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { formatDate } from "../views/format.ts";
 import { LinksPage } from "../views/links-page.tsx";
+import { MapAssets } from "../views/maps.tsx";
+import { ROUTE_TRIM_FIELD } from "../views/route-trim.tsx";
 import { PlanForm } from "../views/plan-form.tsx";
 import { themeCss } from "../views/theme-css.ts";
 import {
   badRequest,
   formField,
   formFile,
+  mapSettings,
   newNonce,
   planGone,
   planInput,
@@ -39,7 +42,7 @@ export const TIME_ZONES = (() => {
   return zones.includes("UTC") ? zones : ["UTC", ...zones];
 })();
 
-export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {
+export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps, geocoder }: RouteDeps) {
   const emptyForm = (): PlanInput => ({
     ...planInput(() => ""),
     activity: "run",
@@ -54,6 +57,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
     values: PlanInput,
     errors: readonly FieldError[],
     nonce: string,
+    routeTrim = "",
   ) =>
     c.render(
       <PlanForm
@@ -68,8 +72,11 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
         heading={c.get("t")("form.heading")}
         submitLabel={c.get("t")("form.submit")}
         withGpx
+        map={mapSettings(config)}
+        placeSearch={geocoder !== undefined}
+        routeTrim={routeTrim}
       />,
-      { title: c.get("t")("form.heading") },
+      { title: c.get("t")("form.heading"), head: <MapAssets /> },
     );
 
   app.get("/new", (c) => renderForm(c, emptyForm(), [], newNonce()));
@@ -86,6 +93,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
       creationNonce: formField(body, "nonce"),
       deviceToken: readDeviceToken(c, config),
       gpx: await formFile(body, "gpx"),
+      routeTrim: formField(body, ROUTE_TRIM_FIELD),
     });
 
     switch (result.kind) {
@@ -95,7 +103,13 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
         return c.redirect(`/p/${result.planId}`, 303);
       case "invalid":
         c.status(422);
-        return renderForm(c, values, result.errors, formField(body, "nonce"));
+        return renderForm(
+          c,
+          values,
+          result.errors,
+          formField(body, "nonce"),
+          formField(body, ROUTE_TRIM_FIELD),
+        );
       case "created": {
         if (result.newDeviceToken !== undefined) setDeviceToken(c, config, result.newDeviceToken);
         secretLinkHeaders(c);
@@ -136,11 +150,23 @@ export function registerPlanRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
     return c.body(toGpx(result.route, result.title));
   });
 
+  /** The route for the plan map; same audience as the GPX download (decision D12). */
+  app.get("/p/:id/route.geojson", async (c) => {
+    const result = await routeForDownload(planDeps, {
+      planId: c.req.param("id"),
+      deviceToken: readDeviceToken(c, config),
+    });
+    if (result.kind === "not_found") return planGone(c);
+    c.header("content-type", "application/geo+json");
+    c.header("cache-control", "private, no-store");
+    return c.body(JSON.stringify(toGeoJson(result.route)));
+  });
+
   app.get("/p/:id", async (c) => {
     const result = await viewPlan(planDeps, {
       planId: c.req.param("id"),
       deviceToken: readDeviceToken(c, config),
     });
-    return result.kind === "not_found" ? planGone(c) : renderPlanPage(c, result);
+    return result.kind === "not_found" ? planGone(c) : renderPlanPage(c, config, result);
   });
 }

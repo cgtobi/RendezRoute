@@ -1,4 +1,4 @@
-// Regenerated GPX downloads (decision D10): points, elevation and the plan title, nothing else.
+// Regenerated route files (decisions D10, D12): points, elevation and the plan title, nothing else.
 import type { Route } from "../../../domain/route.ts";
 
 const escapeXml = (text: string) =>
@@ -30,4 +30,16 @@ ${segments}
 </trk>
 </gpx>
 `;
+}
+
+/** GeoJSON for the plan map: one line per segment, positions as [lng, lat, ele?] (RFC 7946). */
+export function toGeoJson(route: Route): { type: "MultiLineString"; coordinates: number[][][] } {
+  return {
+    type: "MultiLineString",
+    coordinates: route.segments.map((segment) =>
+      segment.map((point) =>
+        point.ele === undefined ? [point.lng, point.lat] : [point.lng, point.lat, point.ele],
+      ),
+    ),
+  };
 }

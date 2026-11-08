@@ -222,3 +222,66 @@ describe("routeForDownload (spec 3.6: route only for participants and the host)"
     ).toEqual({ kind: "not_found" });
   });
 });
+
+describe("hiding the start and end of a route (decision D13)", () => {
+  /** 11 points about 111 m apart heading north from a front door. */
+  const fromHome: Route = {
+    segments: [
+      Array.from({ length: 11 }, (_, i) => ({
+        lat: Number((47.1 + i * 0.001).toFixed(3)),
+        lng: 10.9,
+      })),
+    ],
+  };
+  const create = (routeTrim: string, gpx = fakeGpx(fromHome)) =>
+    createPlan(deps, {
+      input: noExactPoint,
+      units: "metric",
+      language: "en",
+      creationNonce: nonce(),
+      deviceToken: undefined,
+      gpx,
+      routeTrim,
+    });
+
+  it("stores only the trimmed route and takes distance and exact start from it", async () => {
+    const result = await create("200");
+    if (result.kind !== "created") throw new Error(result.kind);
+    const stored = await repos.plans.findRoute(result.planId);
+    expect(stored?.segments[0]?.map((p) => p.lat)).toEqual([
+      47.102, 47.103, 47.104, 47.105, 47.106, 47.107, 47.108,
+    ]);
+    const plan = await repos.plans.findById(result.planId);
+    expect(plan?.exactStart?.point).toEqual({ lat: 47.102, lng: 10.9 });
+    expect(plan?.distanceMeters).toBe(667);
+  });
+
+  it("reports a route that trimming would remove entirely, and unknown distances", async () => {
+    expect(await create("1000")).toEqual({
+      kind: "invalid",
+      errors: [{ field: "gpx", code: "route_trimmed_away" }],
+    });
+    expect(await create("300")).toEqual({
+      kind: "invalid",
+      errors: [{ field: "gpx", code: "choice_invalid" }],
+    });
+  });
+
+  it("trims routes uploaded on the host page", async () => {
+    const plan = await created(sampleInput, null);
+    const request = {
+      planId: plan.planId,
+      deviceToken: plan.newDeviceToken,
+      gpx: fakeGpx(fromHome),
+    };
+    expect(await setRoute(deps, { ...request, routeTrim: "500" })).toEqual({
+      kind: "invalid",
+      code: "route_trimmed_away",
+    });
+    expect(await setRoute(deps, { ...request, routeTrim: "200" })).toEqual({ kind: "saved" });
+    expect((await repos.plans.findRoute(plan.planId))?.segments[0]?.[0]).toEqual({
+      lat: 47.102,
+      lng: 10.9,
+    });
+  });
+});

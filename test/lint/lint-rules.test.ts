@@ -131,6 +131,25 @@ describe("layer boundaries (spec 2a)", () => {
 
     expect(linesFor(diagnostics, file, rule)).toEqual([1, 2, 3]);
   });
+
+  it("lets browser code import only client modules and Leaflet (spec 2)", () => {
+    const file = "src/client/map.ts";
+    const diagnostics = lint({
+      [file]: [
+        'import { Hono } from "hono";',
+        'import { readFileSync } from "node:fs";',
+        'import { publicAreaFrom } from "../domain/geo.ts";',
+        'import { searchPlaces } from "../application/places.ts";',
+        'import { toGpx } from "../adapters/out/gpx/write-gpx.ts";',
+        'import L from "leaflet";',
+        'import "leaflet/dist/leaflet.css";',
+        'import { readCoordinate } from "./geo.ts";',
+        "export const all = [Hono, readFileSync, publicAreaFrom, searchPlaces, toGpx, L, readCoordinate];",
+      ].join("\n"),
+    });
+
+    expect(linesFor(diagnostics, file, rule)).toEqual([1, 2, 3, 4, 5]);
+  });
 });
 
 describe("no ambient time or randomness in domain and application (spec 2b)", () => {

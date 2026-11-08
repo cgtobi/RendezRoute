@@ -10,6 +10,7 @@
   --accent: #2e5bff;
   --on-accent: #ffffff;
   --danger: #b3261e;
+  --on-danger: #ffffff;
   --warning-bg: #fff4e5;
   --radius: 10px;
   color-scheme: light dark;
@@ -25,6 +26,7 @@
     --accent: #8ab4ff;
     --on-accent: #111111;
     --danger: #f2b8b5;
+    --on-danger: #111111;
     --warning-bg: #3a2c12;
   }
 }
@@ -33,6 +35,11 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Elements the map script reveals; author display rules must not show them early. */
+[hidden] {
+  display: none !important;
 }
 
 body {
@@ -77,7 +84,7 @@ main,
   margin: 0;
   padding: 8px 16px;
   background: var(--danger);
-  color: #ffffff;
+  color: var(--on-danger);
   text-align: center;
   font-weight: 600;
 }
@@ -286,7 +293,14 @@ button.secondary {
 
 button.danger {
   background: var(--danger);
-  color: #ffffff;
+  color: var(--on-danger);
+}
+
+/* Main buttons on plan pages use the plan's primary color (spec 3.1). */
+.plan .button,
+.plan button:not(.secondary, .danger) {
+  background: var(--plan-primary, var(--accent));
+  color: var(--plan-on-primary, var(--on-accent));
 }
 
 .respond,
@@ -349,4 +363,50 @@ button.danger {
 .danger-zone summary,
 .danger-zone a {
   color: var(--danger);
+}
+
+/* Maps (spec 3.9, decision D12) */
+
+.map {
+  height: 280px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.map-tools {
+  margin: 12px 0;
+}
+
+.map-tools > button {
+  margin: 4px 0;
+}
+
+.inline-input {
+  display: flex;
+  gap: 8px;
+}
+
+.inline-input input {
+  flex: 1;
+  min-width: 0;
+}
+
+.place-results {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-results button {
+  width: 100%;
+  margin: 4px 0;
+  text-align: left;
+}
+
+.plan-form .map-mode {
+  margin: 8px 0;
+  padding: 0;
+  border: 0;
 }

@@ -3,7 +3,13 @@ import { type PlanTheme, planTheme } from "../domain/color.ts";
 import type { Units } from "../domain/pace.ts";
 import type { Plan } from "../domain/plan.ts";
 import { type FieldError, type PlanInput, validatePlanInput } from "../domain/plan-input.ts";
-import { applyRouteDefaults, type Route, routeStats } from "../domain/route.ts";
+import {
+  applyRouteDefaults,
+  parseRouteTrim,
+  type Route,
+  routeStats,
+  trimRoute,
+} from "../domain/route.ts";
 import { canRespond } from "../domain/responding.ts";
 import { type DeviceDeps, ensureDevice, resolveDevice } from "./devices.ts";
 import {
@@ -16,7 +22,8 @@ import {
   viewForResponder,
   viewForViewer,
 } from "./plan-views.ts";
-import type { PlanRepository, ResponseRepository, RouteParser } from "./ports.ts";
+import type { Result } from "../domain/result.ts";
+import type { PlanRepository, ResponseRepository, RouteParseError, RouteParser } from "./ports.ts";
 
 export interface PlanDeps extends DeviceDeps {
   plans: PlanRepository;
@@ -41,6 +48,18 @@ export type CreatePlanResult =
   | { kind: "invalid"; errors: FieldError[] }
   | { kind: "bad_request" };
 
+/** Parses an upload and hides its ends as chosen; trimmed points are never stored (D13). */
+export function readRoute(
+  deps: Pick<PlanDeps, "routeParser">,
+  gpx: Uint8Array,
+  routeTrim: string | undefined,
+): Result<Route, RouteParseError | "route_trimmed_away" | "choice_invalid"> {
+  const trim = parseRouteTrim(routeTrim ?? "");
+  if (!trim.ok) return trim;
+  const parsed = deps.routeParser.parse(gpx);
+  return parsed.ok ? trimRoute(parsed.value, trim.value) : parsed;
+}
+
 export async function createPlan(
   deps: PlanDeps,
   request: {
@@ -53,6 +72,8 @@ export async function createPlan(
     deviceToken: string | undefined;
     /** Optional GPX upload; an empty file counts as none (spec 5 feature 2). */
     gpx?: Uint8Array | undefined;
+    /** Meters to hide at both ends of the route, as submitted (decision D13). */
+    routeTrim?: string | undefined;
   },
 ): Promise<CreatePlanResult> {
   if (!NONCE.test(request.creationNonce)) return { kind: "bad_request" };
@@ -62,7 +83,7 @@ export async function createPlan(
   let input = request.input;
   let route: Route | undefined;
   if (request.gpx !== undefined && request.gpx.byteLength > 0) {
-    const parsed = deps.routeParser.parse(request.gpx);
+    const parsed = readRoute(deps, request.gpx, request.routeTrim);
     if (!parsed.ok) return { kind: "invalid", errors: [{ field: "gpx", code: parsed.error }] };
     route = parsed.value;
     input = applyRouteDefaults(input, routeStats(route), "fill");

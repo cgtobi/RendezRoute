@@ -2,17 +2,27 @@
 import { randomBytes } from "node:crypto";
 import type { Context } from "hono";
 import type { PlanDeps } from "../../../../application/plans.ts";
+import type { Geocoder } from "../../../../application/ports.ts";
 import type { ViewPlanResult } from "../../../../application/plans.ts";
 import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input.ts";
 import type { Config } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
+import { MapAssets, type MapSettings } from "../views/maps.tsx";
 import { PlanPage } from "../views/plan-page.tsx";
 import { themeVersion } from "../views/theme-css.ts";
 
 export interface RouteDeps {
   config: Config;
   planDeps: PlanDeps;
+  /** Place search; undefined when the geocoder is disabled (spec 3.9). */
+  geocoder: Geocoder | undefined;
 }
+
+/** Tile settings for browser maps, or undefined when maps are disabled (spec 3.9). */
+export const mapSettings = (config: Config): MapSettings | undefined =>
+  config.maps.enabled
+    ? { tileUrl: config.maps.tileUrl, attribution: config.maps.attribution }
+    : undefined;
 
 /** One-time form value (decision I9). */
 export const newNonce = () => randomBytes(16).toString("base64url");
@@ -63,6 +73,7 @@ export function planGone(c: Context<AppEnv>) {
 /** Renders a found plan for its audience, with the response form for viewers. */
 export function renderPlanPage(
   c: Context<AppEnv>,
+  config: Config,
   result: Exclude<ViewPlanResult, { kind: "not_found" }>,
   form: { displayName: string; errorCode: string | undefined; nonce: string } = {
     displayName: "",
@@ -71,6 +82,7 @@ export function renderPlanPage(
   },
 ) {
   c.header("cache-control", "private, no-cache");
+  const map = mapSettings(config);
   const showForm = result.kind === "viewer" && result.responsesOpen;
   const { responsesOpen, ...audience } = result;
   return c.render(
@@ -80,14 +92,18 @@ export function renderPlanPage(
       audience={audience}
       responsesOpen={responsesOpen}
       respondForm={showForm ? { ...form, csrfToken: c.get("csrfToken")() } : undefined}
+      map={map}
     />,
     {
       title: result.view.title,
       head: (
-        <link
-          rel="stylesheet"
-          href={`/p/${result.view.id}/theme.css?v=${themeVersion(result.view.colors)}`}
-        />
+        <>
+          <link
+            rel="stylesheet"
+            href={`/p/${result.view.id}/theme.css?v=${themeVersion(result.view.colors)}`}
+          />
+          {map !== undefined && result.view.area.point !== undefined && <MapAssets />}
+        </>
       ),
     },
   );

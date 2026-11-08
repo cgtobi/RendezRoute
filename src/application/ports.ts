@@ -160,3 +160,14 @@ export type RouteParseError = RouteError | "route_too_large" | "route_unsafe" | 
 export interface RouteParser {
   parse(file: Uint8Array): Result<Route, RouteParseError>;
 }
+
+export interface Place {
+  label: string;
+  lat: number;
+  lng: number;
+}
+
+/** Place name → coordinates (spec 3.9). Throws when the service is unavailable. */
+export interface Geocoder {
+  search(query: string, options: { language: string }): Promise<Place[]>;
+}

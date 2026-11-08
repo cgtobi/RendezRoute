@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   applyRouteDefaults,
+  parseRouteTrim,
   ROUTE_LIMITS,
+  ROUTE_TRIM_OPTIONS,
   type Route,
   routeStats,
+  trimRoute,
   validateRoute,
 } from "../../src/domain/route.ts";
 import { sampleInput } from "../fixtures/plans.ts";
@@ -127,5 +130,64 @@ describe("applyRouteDefaults (decision P8, D10)", () => {
       exactLat: "48",
       exactLng: "11",
     });
+  });
+});
+
+describe("trimRoute (decision D13: hide where a recording started and ended)", () => {
+  /** Points 0.001° (about 111 m) apart along a meridian. */
+  const north = (from: number, count: number) =>
+    line(
+      ...Array.from({ length: count }, (_, i): [number, number] => [
+        Number((from + i * 0.001).toFixed(3)),
+        11,
+      ]),
+    );
+  const lats = (route: Route) => route.segments.map((segment) => segment.map((p) => p.lat));
+
+  it("leaves the route unchanged without trimming", () => {
+    const route: Route = { segments: [north(48, 3)] };
+    expect(trimRoute(route, 0)).toEqual({ ok: true, value: route });
+  });
+
+  it("drops the points near the first and the last point, by straight-line distance", () => {
+    const result = trimRoute({ segments: [north(48, 11)] }, 200);
+    if (!result.ok) throw new Error(result.error);
+    expect(lats(result.value)).toEqual([[48.002, 48.003, 48.004, 48.005, 48.006, 48.007, 48.008]]);
+  });
+
+  it("trims both ends of a loop that starts and ends at the same door", () => {
+    const out = north(48, 6);
+    const back = [...out].reverse().slice(1);
+    const result = trimRoute({ segments: [[...out, ...back]] }, 300);
+    if (!result.ok) throw new Error(result.error);
+    expect(lats(result.value)).toEqual([[48.003, 48.004, 48.005, 48.004, 48.003]]);
+  });
+
+  it("trims across segments and drops segments left with fewer than two points", () => {
+    // The first segment lies entirely in the start zone; the last keeps a single point.
+    const result = trimRoute({ segments: [north(48, 2), north(48.002, 4), north(48.006, 4)] }, 250);
+    if (!result.ok) throw new Error(result.error);
+    expect(lats(result.value)).toEqual([[48.003, 48.004, 48.005]]);
+  });
+
+  it("refuses to trim away the whole route", () => {
+    expect(trimRoute({ segments: [north(48, 5)] }, 500)).toEqual({
+      ok: false,
+      error: "route_trimmed_away",
+    });
+  });
+});
+
+describe("parseRouteTrim (decision D13)", () => {
+  it("accepts the offered distances and treats an empty value as no trimming", () => {
+    expect(ROUTE_TRIM_OPTIONS).toEqual([0, 200, 500, 1000]);
+    expect(parseRouteTrim("")).toEqual({ ok: true, value: 0 });
+    expect(parseRouteTrim("500")).toEqual({ ok: true, value: 500 });
+  });
+
+  it("rejects anything else", () => {
+    for (const value of ["300", "-200", "abc", "200.0"]) {
+      expect(parseRouteTrim(value)).toEqual({ ok: false, error: "choice_invalid" });
+    }
   });
 });

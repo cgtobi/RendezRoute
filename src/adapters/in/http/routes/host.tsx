@@ -12,11 +12,14 @@ import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
 import { DeleteConfirm, HostPage } from "../views/host-page.tsx";
+import { MapAssets } from "../views/maps.tsx";
+import { ROUTE_TRIM_FIELD } from "../views/route-trim.tsx";
 import { removeRoute, setRoute } from "../../../../application/routes.ts";
 import {
   badRequest,
   formField,
   formFile,
+  mapSettings,
   planGone,
   planInput,
   readForm,
@@ -24,7 +27,7 @@ import {
 } from "./shared.tsx";
 import { TIME_ZONES } from "./plans.tsx";
 
-export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {
+export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps, geocoder }: RouteDeps) {
   const request = (c: Context<AppEnv>) => ({
     planId: c.req.param("id") ?? "",
     deviceToken: readDeviceToken(c, config),
@@ -37,6 +40,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
       errors?: readonly FieldError[];
       confirmDeleteNow?: boolean;
       routeError?: string;
+      routeTrim?: string;
     } = {},
   ) => {
     const page = await viewHostPage(planDeps, request(c));
@@ -60,8 +64,12 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
         confirmDeleteNow={form.confirmDeleteNow ?? false}
         hasRoute={page.hasRoute}
         routeError={form.routeError}
+        routeTrim={form.routeTrim ?? ""}
+        map={mapSettings(config)}
+        placeSearch={geocoder !== undefined}
       />,
-      { title: c.get("t")("host.heading") },
+      // Map tools exist only in the full edit form.
+      { title: c.get("t")("host.heading"), head: page.scope === "all" ? <MapAssets /> : undefined },
     );
   };
 
@@ -135,10 +143,11 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps }: Rout
     if (body === undefined) return badRequest(c);
     const gpx = await formFile(body, "gpx");
     if (gpx === undefined) return c.redirect(`/p/${request(c).planId}/host`, 303);
-    const result = await setRoute(planDeps, { ...request(c), gpx });
+    const routeTrim = formField(body, ROUTE_TRIM_FIELD);
+    const result = await setRoute(planDeps, { ...request(c), gpx, routeTrim });
     if (result.kind === "invalid") {
       c.status(422);
-      return render(c, { routeError: result.code });
+      return render(c, { routeError: result.code, routeTrim });
     }
     return afterAction(c, result, `/p/${request(c).planId}/host?saved`);
   });

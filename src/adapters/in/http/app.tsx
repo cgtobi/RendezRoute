@@ -6,12 +6,14 @@ import { bodyLimit } from "hono/body-limit";
 import type { Child } from "hono/jsx";
 import { jsxRenderer } from "hono/jsx-renderer";
 import type { PlanDeps } from "../../../application/plans.ts";
+import type { Geocoder } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
 import { type Language, negotiateLanguage, type Translate, translator } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
 import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
 import { registerHostRoutes } from "./routes/host.tsx";
+import { registerPlaceRoutes } from "./routes/places.ts";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { registerSecretLinkRoutes } from "./routes/secret-links.tsx";
@@ -47,6 +49,8 @@ export interface AppDeps {
   csrfKey: Buffer;
   logger: Logger;
   planDeps: PlanDeps;
+  /** Place search; undefined when the geocoder is disabled (spec 3.9). */
+  geocoder: Geocoder | undefined;
 }
 
 /** Hono context variables set by the app middleware. */
@@ -54,7 +58,7 @@ export type AppEnv = {
   Variables: { language: Language; t: Translate; csrfToken: () => string; clientIp: string };
 };
 
-export function createApp({ config, csrfKey, logger, planDeps }: AppDeps): Hono<AppEnv> {
+export function createApp({ config, csrfKey, logger, planDeps, geocoder }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   /** Works even before the language middleware ran, e.g. for early errors. */
@@ -130,10 +134,12 @@ export function createApp({ config, csrfKey, logger, planDeps }: AppDeps): Hono<
     );
   });
 
-  registerPlanRoutes(app, { config, planDeps });
-  registerResponseRoutes(app, { config, planDeps });
-  registerSecretLinkRoutes(app, { config, planDeps });
-  registerHostRoutes(app, { config, planDeps });
+  const deps = { config, planDeps, geocoder };
+  registerPlanRoutes(app, deps);
+  registerResponseRoutes(app, deps);
+  registerSecretLinkRoutes(app, deps);
+  registerHostRoutes(app, deps);
+  if (geocoder !== undefined) registerPlaceRoutes(app, { geocoder });
 
   return app;
 }

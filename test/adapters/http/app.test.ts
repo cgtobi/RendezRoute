@@ -15,6 +15,7 @@ const createApp = ({ config }: { config: Config }) =>
     config,
     csrfKey: randomBytes(32),
     logger: createLogger({ write: () => {} }),
+    geocoder: undefined,
     planDeps: {
       ...createFakeRepositories(),
       routeParser: new FakeRouteParser(),

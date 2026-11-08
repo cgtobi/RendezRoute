@@ -12,6 +12,7 @@ import { createResponseRepository } from "../../src/adapters/out/sqlite/response
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { type Config, loadConfig } from "../../src/config.ts";
 import { FakeClock } from "../fakes/clock.ts";
+import { FakeGeocoder } from "../fakes/geocoder.ts";
 import { fixtureNow } from "../fixtures/plans.ts";
 
 export function testConfig(env: Record<string, string> = {}): Config {
@@ -28,7 +29,10 @@ export function testConfig(env: Record<string, string> = {}): Config {
 export async function createTestApp({
   databasePath = ":memory:",
   env = {},
-}: { databasePath?: string; env?: Record<string, string> } = {}) {
+  geocoder = new FakeGeocoder({
+    Flaucher: [{ label: "Flaucher, Isar, Munich", lat: 48.1107, lng: 11.5582 }],
+  }),
+}: { databasePath?: string; env?: Record<string, string>; geocoder?: FakeGeocoder } = {}) {
   const config = testConfig(env);
   const database: Database = await openDatabase(databasePath);
   const cipher = createFieldCipher(createKeyring(1, [[1, randomBytes(32)]]));
@@ -36,6 +40,7 @@ export async function createTestApp({
   const logs: string[] = [];
   const app = createApp({
     config,
+    geocoder: config.geocoder.enabled ? geocoder : undefined,
     csrfKey: randomBytes(32),
     logger: createLogger({ write: (line) => logs.push(line) }),
     planDeps: {
@@ -49,5 +54,5 @@ export async function createTestApp({
       limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
     },
   });
-  return { app, database, clock, logs, config };
+  return { app, database, clock, logs, config, geocoder };
 }

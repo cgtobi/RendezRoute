@@ -65,6 +65,30 @@ export default defineConfig({
         },
       },
       {
+        // Browser code: only other client modules and Leaflet; never server code or Node APIs.
+        files: ["src/client/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                {
+                  group: [
+                    ...onlyRelative,
+                    "!leaflet",
+                    "!leaflet/**",
+                    "**/adapters/**",
+                    "**/application/**",
+                    "**/domain/**",
+                  ],
+                  message: "Browser code may import only client modules and Leaflet (spec 2).",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
         // The composition root and the CLI are where the process talks to the console.
         files: ["src/main.ts", "src/cli.ts", "test/**"],
         rules: { "no-console": "off" },
@@ -74,6 +98,17 @@ export default defineConfig({
   fmt: {
     printWidth: 100,
     ignorePatterns: ["LICENSE"],
+  },
+  // Browser code (spec 2: bundled and served by the instance, never from a CDN). Fixed file
+  // names, so pages need no build manifest.
+  publicDir: false,
+  build: {
+    outDir: "public/build",
+    emptyOutDir: true,
+    rollupOptions: {
+      input: { map: "src/client/map.ts" },
+      output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
+    },
   },
   test: {
     include: ["test/**/*.test.{ts,tsx}"],

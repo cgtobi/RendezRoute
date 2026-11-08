@@ -45,6 +45,21 @@ export const en = {
   "form.coordinates": "Coordinates (optional)",
   "form.latitude": "Latitude",
   "form.longitude": "Longitude",
+  "form.areaCoordinates": "Map point of the meeting area (optional)",
+  "form.areaCoordinatesHint":
+    "Shown to everyone, rounded to about 1 km. Not needed when the exact start has coordinates.",
+  "map.search": "Find a place",
+  "map.searchButton": "Search",
+  "map.searchHint":
+    "Search results and your location set the meeting area; tap the map for the exact start. Searches go through this site, so the search service does not see who you are.",
+  "map.searchUnavailable": "Place search is not available right now.",
+  "map.noResults": "No places found.",
+  "map.locate": "Use my location",
+  "map.pickLegend": "Tapping the map sets",
+  "map.pickExact": "the exact start",
+  "map.pickArea": "the meeting area",
+  "map.pickLabel": "Map for choosing a point",
+  "map.planLabel": "Map of the meeting area",
   "form.distance": "Distance (km, optional)",
   "form.elevation": "Elevation gain (m, optional)",
   "form.pace": "Pace or speed (optional)",
@@ -62,6 +77,12 @@ export const en = {
   "form.retentionMany": "{days} days after the run",
   "form.submit": "Create plan",
   "form.gpx": "Route (GPX file, optional)",
+  "form.gpxTrim": "Hide the start and end of the route",
+  "form.gpxTrimHint":
+    "Removes the route near where your recording started and ended, for example your home. Removed parts are never stored.",
+  "form.gpxTrimOff": "Show the whole route",
+  "form.gpxTrimMeters": "Hide {meters} m at each end",
+  "form.gpxTrimKilometers": "Hide {km} km at each end",
   "form.gpxHint":
     "Fills in distance, elevation and the exact start. Only people who join can see and download the route. If the form shows an error, choose the file again.",
 
@@ -95,6 +116,8 @@ export const en = {
   "field.route_too_many_points": "The route has more than 50,000 points.",
   "field.route_invalid": "The file contains invalid coordinates.",
   "field.route_too_long": "The route is longer than 1,000 km.",
+  "field.route_trimmed_away":
+    "Hiding the start and end would remove the whole route. Choose a shorter distance.",
   "field.name_taken_by_host": "That's the host's name. Please use a different one.",
   "field.name_taken_by_response": "Someone who responded already uses this name.",
 

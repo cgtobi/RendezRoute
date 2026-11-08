@@ -19,6 +19,7 @@ import {
   formatTime,
 } from "./format.ts";
 import { Linkified } from "./linkify.tsx";
+import { type MapSettings, PlanMap } from "./maps.tsx";
 import { RespondForm, type RespondFormState } from "./respond-form.tsx";
 
 export type PlanPageAudience =
@@ -34,9 +35,12 @@ export function PlanPage(props: {
   responsesOpen: boolean;
   /** The response form's state; shown to viewers while responses are open. */
   respondForm: RespondFormState | undefined;
+  /** Tile settings; undefined when maps are disabled. */
+  map: MapSettings | undefined;
 }) {
-  const { t, language, audience } = props;
+  const { t, language, audience, map } = props;
   const { view } = audience;
+  const insider = audience.kind === "participant" || audience.kind === "poster";
 
   return (
     <article class="plan">
@@ -106,6 +110,16 @@ export function PlanPage(props: {
         <p class="note">
           <Linkified text={view.note} />
         </p>
+      )}
+
+      {map !== undefined && view.area.point !== undefined && (
+        <PlanMap
+          t={t}
+          map={map}
+          area={view.area.point}
+          exact={insider ? audience.view.exactStart?.point : undefined}
+          routeUrl={insider && audience.view.hasRoute ? `/p/${view.id}/route.geojson` : undefined}
+        />
       )}
 
       {(audience.kind === "participant" || audience.kind === "poster") && (

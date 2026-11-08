@@ -84,7 +84,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps }: 
         const view = await viewPlan(planDeps, { planId, deviceToken });
         if (view.kind === "not_found") return planGone(c);
         c.status(422);
-        return renderPlanPage(c, view, {
+        return renderPlanPage(c, config, view, {
           displayName: formField(body, "displayName"),
           errorCode: result.errors[0]?.code,
           nonce: formField(body, "nonce"),

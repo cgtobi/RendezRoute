@@ -56,6 +56,46 @@ function haversine(a: RoutePoint, b: RoutePoint): number {
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
 }
 
+/** Distances the host can hide at both ends of a route, in meters (decision D13). */
+export const ROUTE_TRIM_OPTIONS = [0, 200, 500, 1000] as const;
+export type RouteTrim = (typeof ROUTE_TRIM_OPTIONS)[number];
+
+/** The form value; empty means no trimming. */
+export function parseRouteTrim(value: string): Result<RouteTrim, "choice_invalid"> {
+  if (value === "") return ok(0);
+  const trim = ROUTE_TRIM_OPTIONS.find((option) => String(option) === value);
+  return trim === undefined ? err("choice_invalid") : ok(trim);
+}
+
+/**
+ * Hides where a recording started and ended (decision D13): drops the leading points within
+ * `meters` (straight line) of the first point and the trailing points within `meters` of the
+ * last point, across segments. Segments left with fewer than two points are dropped.
+ */
+export function trimRoute(route: Route, meters: number): Result<Route, "route_trimmed_away"> {
+  if (meters <= 0) return ok(route);
+  const points = route.segments.flatMap((segment, index) =>
+    segment.map((point) => ({ point, index })),
+  );
+  const first = points[0]?.point;
+  const last = points.at(-1)?.point;
+  if (first === undefined || last === undefined) return err("route_trimmed_away");
+  let start = 0;
+  while (start < points.length && haversine(first, points[start]!.point) <= meters) start++;
+  let end = points.length;
+  while (end > start && haversine(last, points[end - 1]!.point) <= meters) end--;
+
+  const segments: RoutePoint[][] = [];
+  let previous: number | undefined;
+  for (const { point, index } of points.slice(start, end)) {
+    if (index !== previous) segments.push([]);
+    segments.at(-1)!.push(point);
+    previous = index;
+  }
+  const kept = segments.filter((segment) => segment.length >= 2);
+  return kept.length === 0 ? err("route_trimmed_away") : ok({ segments: kept });
+}
+
 export interface RouteStats {
   distanceMeters: number;
   /** Undefined when the route has no elevation data. */

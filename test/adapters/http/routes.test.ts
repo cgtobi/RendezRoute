@@ -158,3 +158,63 @@ describe("routes on the host page (decision D10)", () => {
     expect(await response.text()).toContain(escaped(en["field.route_unreadable"]));
   });
 });
+
+describe("hiding the start and end of a route (decision D13)", () => {
+  const TRIM_OPTIONS = ["0", "200", "500", "1000"].map((m) => `<option value="${m}"`);
+
+  it("offers the choice next to both upload fields, off by default", async () => {
+    const { host, planId } = await setup();
+    for (const path of ["/new", `/p/${planId}/host`]) {
+      const html = await (await host.get(path)).text();
+      expect(html).toContain('name="gpxTrim"');
+      for (const option of TRIM_OPTIONS) expect(html).toContain(option);
+      expect(html).toContain('<option value="0" selected="">');
+    }
+  });
+
+  it("removes the trimmed points from the stored route, the download and the exact start", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const hidden = await host.hiddenFields("/new");
+    const created = await host.postMultipart(
+      "/new",
+      { ...hidden, ...planForm(noExactPoint), gpxTrim: "200" },
+      { gpx: { name: "run.gpx", content: sampleGpx({ count: 10 }) } },
+    );
+    const planId = /\/p\/([A-Za-z0-9_-]{22})/.exec(await created.text())?.[1] ?? "";
+    const gpx = await (await host.get(`/p/${planId}/route.gpx`)).text();
+    expect(gpx).not.toContain('lat="47.12345"');
+    expect(gpx).not.toContain('lat="47.12445"');
+    expect(gpx).toMatch(/<trkseg>\s*<trkpt lat="47.12545"/);
+    expect(gpx).not.toContain('lat="47.13245"');
+    expect(await (await host.get(`/p/${planId}`)).text()).toContain("47.12545, 10.98765");
+  });
+
+  it("explains a route trimmed away and keeps the chosen distance", async () => {
+    const test = await createTestApp();
+    const client = new TestClient(test.app);
+    const hidden = await client.hiddenFields("/new");
+    const response = await client.postMultipart(
+      "/new",
+      { ...hidden, ...planForm(noExactPoint), gpxTrim: "1000" },
+      { gpx: { name: "run.gpx", content: sampleGpx() } },
+    );
+    const html = await response.text();
+    expect(response.status).toBe(422);
+    expect(html).toContain(escaped(en["field.route_trimmed_away"]));
+    expect(html).toContain('<option value="1000" selected="">');
+  });
+
+  it("trims routes uploaded on the host page", async () => {
+    const { host, planId } = await setup();
+    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
+    const response = await host.postMultipart(
+      `/p/${planId}/host/route`,
+      { _csrf: csrf, gpxTrim: "200" },
+      { gpx: { name: "new.gpx", content: sampleGpx({ lat: 46.5, count: 10 }) } },
+    );
+    expect(response.status).toBe(303);
+    const gpx = await (await host.get(`/p/${planId}/route.gpx`)).text();
+    expect(gpx).toMatch(/<trkseg>\s*<trkpt lat="46.502"/);
+  });
+});

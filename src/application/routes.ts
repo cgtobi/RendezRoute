@@ -4,26 +4,29 @@ import { applyRouteDefaults, type Route, routeStats } from "../domain/route.ts";
 import { asHost, type Denied, isDenied } from "./host.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { RouteParseError } from "./ports.ts";
-import { viewPlan } from "./plans.ts";
+import { readRoute, viewPlan } from "./plans.ts";
 
 type HostRequest = { planId: string; deviceToken: string | undefined };
 
 /** Adds or replaces the route before the start; distance and elevation follow it (decision D10). */
 export async function setRoute(
   deps: PlanDeps,
-  request: HostRequest & { gpx: Uint8Array },
+  request: HostRequest & { gpx: Uint8Array; routeTrim?: string | undefined },
 ): Promise<
   | Denied
   | { kind: "saved" }
   | { kind: "not_allowed" }
-  | { kind: "invalid"; code: RouteParseError | "route_too_long" }
+  | {
+      kind: "invalid";
+      code: RouteParseError | "route_too_long" | "route_trimmed_away" | "choice_invalid";
+    }
 > {
   const plan = await asHost(deps, request.planId, request.deviceToken);
   if (isDenied(plan)) return plan;
   const now = deps.clock.now();
   if (editScope(plan, now) !== "all") return { kind: "not_allowed" };
 
-  const parsed = deps.routeParser.parse(request.gpx);
+  const parsed = readRoute(deps, request.gpx, request.routeTrim);
   if (!parsed.ok) return { kind: "invalid", code: parsed.error };
   const input = applyRouteDefaults(
     planToInput(plan, "metric"),

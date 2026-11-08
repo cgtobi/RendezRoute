@@ -22,10 +22,11 @@ jobs:
       - name: Format, lint and type-check
         run: npx vp check --deny-warnings
       - name: Type-check with tsc
-        run: npx tsc --noEmit
-      - name: Test
-        run: npx vp test
+        run: npm run typecheck
+      # Before the tests: they check the bundled assets for external references (spec 2b).
       - name: Build
         run: npm run build
+      - name: Test
+        run: npx vp test
       - name: Audit dependencies
         run: npm audit --audit-level=high

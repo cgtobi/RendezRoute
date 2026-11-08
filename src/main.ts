@@ -10,11 +10,18 @@ import {
   runRetentionSweep,
 } from "./application/maintenance.ts";
 import type { PlanDeps } from "./application/plans.ts";
+import type { Geocoder } from "./application/ports.ts";
 import { createApp } from "./adapters/in/http/app.tsx";
 import { startScheduler } from "./adapters/in/scheduler.ts";
 import { createLogger, type Logger } from "./adapters/logging.ts";
 import { type InstanceKeys, openInstanceKeys } from "./adapters/out/crypto/instance-keys.ts";
 import { KeyError } from "./adapters/out/crypto/keyring.ts";
+import {
+  createCachedGeocoder,
+  createNominatimGeocoder,
+  createThrottle,
+} from "./adapters/out/geocoder/nominatim.ts";
+import { createOutboundHttp } from "./adapters/out/http/outbound-http.ts";
 import { createIdGenerator } from "./adapters/out/ids.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
@@ -29,6 +36,26 @@ export const DEFAULT_PORT = 3000;
 
 const MINUTE_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
+
+/** Place search (spec 3.9): at most one request per second, results cached for at most 7 days. */
+function createGeocoder(config: Config): Geocoder | undefined {
+  if (!config.geocoder.enabled || config.contactEmail === undefined) return undefined;
+  const http = createOutboundHttp({
+    userAgent: `RendezRoute (+${config.baseUrl.origin}; ${config.contactEmail})`,
+    // Decision C7: development may point providers at local fake servers.
+    ...(config.allowInsecureDev ? { allowHttp: true, isBlocked: () => false } : {}),
+  });
+  const geocoder = createNominatimGeocoder({
+    http,
+    baseUrl: config.geocoder.url,
+    throttle: createThrottle({ minIntervalMs: 1000, maxWaitMs: 5000 }),
+  });
+  return createCachedGeocoder(geocoder, {
+    clock: systemClock,
+    ttlMs: 7 * DAY_MS,
+    maxEntries: 1000,
+  });
+}
 
 export interface RunningServer {
   url: URL;
@@ -100,7 +127,13 @@ export async function startServer(
     { logger },
   );
 
-  const app = createApp({ config, csrfKey: keys.csrfKey, logger, planDeps });
+  const app = createApp({
+    config,
+    csrfKey: keys.csrfKey,
+    logger,
+    planDeps,
+    geocoder: createGeocoder(config),
+  });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));
   });

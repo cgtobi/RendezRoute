@@ -2,6 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { type Database, openDatabase } from "../../../../src/adapters/out/sqlite/database.ts";
 import { ACTIVITY_TYPES } from "../../../../src/domain/activity.ts";
+import { JOB_TYPES } from "../../../../src/domain/jobs.ts";
 import {
   DROP_POLICIES,
   JOIN_MODES,
@@ -133,5 +134,24 @@ describe("device_links", () => {
     expect(link("host", "plan-x", "resp-x")).toThrow(/CHECK constraint failed/);
     expect(link("host", "plan-x", null)).not.toThrow();
     expect(link("manage", null, "resp-x")).not.toThrow();
+  });
+});
+
+describe("job_queue enum columns", () => {
+  it("type accepts exactly the domain values", () => {
+    const insert = (type: string) => {
+      try {
+        database.sqlite
+          .prepare(
+            "insert into job_queue (id, type, payload_enc, run_at) values (?, ?, 'x', '2026-01-01T00:00:00.000Z')",
+          )
+          .run(`job-${type}`, type);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    expect(JOB_TYPES.map(insert)).toEqual(JOB_TYPES.map(() => true));
+    expect(insert("unknown")).toBe(false);
   });
 });

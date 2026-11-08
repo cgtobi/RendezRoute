@@ -286,6 +286,21 @@ export const fr: Messages = {
   "plan.route": "Parcours",
   "plan.downloadGpx": "Télécharger le GPX",
 
+  "notify.accepted":
+    "Vous êtes inscrit·e. Le point de départ exact est maintenant sur la page de la sortie.",
+  "notify.rejected": "Votre demande n’a pas été acceptée pour cette sortie.",
+  "notify.removed": "L’organisateur·rice vous a retiré·e de cette sortie.",
+  "notify.changed": "La sortie a été modifiée. Consultez les détails.",
+  "notify.cancelled": "La sortie a été annulée.",
+  "notify.deleted": "L’organisateur·rice a supprimé la sortie.",
+  "notify.dayBefore": "Rappel : la sortie a lieu demain.",
+  "notify.deletionReminder":
+    "Cette sortie sera bientôt supprimée. Enregistrez ce que vous voulez garder.",
+  "notify.recapDeleted": "L’organisateur·rice a supprimé le récapitulatif de cette sortie.",
+  "notify.newResponse": "Quelqu’un a répondu à votre sortie.",
+  "notify.newRequest": "Quelqu’un demande à rejoindre votre sortie.",
+  "notify.withdrawn": "Quelqu’un a retiré sa réponse.",
+
   "host.route": "Parcours",
   "host.routeNone": "Pas encore de parcours.",
   "host.routePresent": "Cette sortie a un parcours.",

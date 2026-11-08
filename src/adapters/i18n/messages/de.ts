@@ -284,6 +284,20 @@ export const de: Messages = {
   "plan.route": "Route",
   "plan.downloadGpx": "GPX herunterladen",
 
+  "notify.accepted": "Du bist dabei. Der genaue Treffpunkt steht jetzt beim Treffen.",
+  "notify.rejected": "Deine Anfrage für dieses Treffen wurde nicht angenommen.",
+  "notify.removed": "Du wurdest aus diesem Treffen entfernt.",
+  "notify.changed": "Das Treffen wurde geändert. Sieh dir die Details an.",
+  "notify.cancelled": "Das Treffen wurde abgesagt.",
+  "notify.deleted": "Die Organisator:in hat das Treffen gelöscht.",
+  "notify.dayBefore": "Erinnerung: Das Treffen ist morgen.",
+  "notify.deletionReminder":
+    "Dieses Treffen wird bald gelöscht. Sichere, was du behalten möchtest.",
+  "notify.recapDeleted": "Die Organisator:in hat den Rückblick dieses Treffens gelöscht.",
+  "notify.newResponse": "Jemand hat auf dein Treffen geantwortet.",
+  "notify.newRequest": "Jemand möchte bei deinem Treffen mitmachen.",
+  "notify.withdrawn": "Jemand hat die Antwort zurückgezogen.",
+
   "host.route": "Route",
   "host.routeNone": "Noch keine Route.",
   "host.routePresent": "Dieses Treffen hat eine Route.",

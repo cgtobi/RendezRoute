@@ -9,6 +9,7 @@ import {
   runHousekeeping,
   runRetentionSweep,
 } from "./application/maintenance.ts";
+import { runDueJobs } from "./application/jobs.ts";
 import type { PlanDeps } from "./application/plans.ts";
 import type { Geocoder, PreviewRenderer } from "./application/ports.ts";
 import { createApp } from "./adapters/in/http/app.tsx";
@@ -28,6 +29,7 @@ import { createPreviewRenderer } from "./adapters/out/preview/renderer.ts";
 import { createMapTiles } from "./adapters/out/preview/tiles.ts";
 import { createIdGenerator } from "./adapters/out/ids.ts";
 import { backupDatabase, createBackupStore } from "./adapters/out/sqlite/backups.ts";
+import { createJobQueue } from "./adapters/out/sqlite/jobs.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "./adapters/out/sqlite/plans.ts";
@@ -40,6 +42,8 @@ import { type Config, type ConfigSource, loadConfig } from "./config.ts";
 export const DEFAULT_PORT = 3000;
 
 const MINUTE_MS = 60 * 1000;
+/** How often due background jobs run; short, so notifications arrive promptly. */
+const JOB_INTERVAL_MS = 10 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 
 /** Outbound requests to tile and geocoding providers, identified as their policies require. */
@@ -167,6 +171,16 @@ export async function startServer(
         name: "housekeeping",
         intervalMs: DAY_MS,
         run: () => runHousekeeping({ ...planDeps, backups: createBackupStore(backupDir(config)) }),
+      },
+      // Background jobs (spec 6 feature 12); job types get their handlers as features arrive.
+      {
+        name: "jobs",
+        intervalMs: JOB_INTERVAL_MS,
+        run: () =>
+          runDueJobs(
+            { jobs: createJobQueue(database, keys.cipher, planDeps.ids), clock: planDeps.clock },
+            {},
+          ),
       },
       // Forgets client addresses whose limits have refilled, also when no requests come in.
       { name: "rate_limit_sweep", intervalMs: MINUTE_MS, run: sweepLimits },

@@ -1,3 +1,5 @@
+import type { JobType } from "../domain/jobs.ts";
+import type { Notification } from "../domain/notification.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
@@ -191,4 +193,44 @@ export interface Geocoder {
 export interface BackupStore {
   /** Deletes backups created before the cutoff and returns how many. */
   deleteOlderThan(cutoff: Date): Promise<number>;
+}
+
+/** A job to run later (spec 4 job_queue); deleted with its plan or response by the database. */
+export interface NewJob {
+  type: JobType;
+  /** Stored encrypted; must be JSON. */
+  payload: unknown;
+  planId?: string | undefined;
+  responseId?: string | undefined;
+  runAt: Date;
+  /** Dropped unrun after this time. */
+  expiresAt?: Date | undefined;
+}
+
+export interface QueuedJob {
+  id: string;
+  type: string;
+  payload: unknown;
+  /** Failed attempts so far. */
+  attempts: number;
+  expiresAt: Date | undefined;
+}
+
+export interface JobQueue {
+  enqueue(job: NewJob): Promise<string>;
+  /** Jobs whose time has come, earliest first. */
+  due(now: Date, limit: number): Promise<QueuedJob[]>;
+  /** Removes a job that is done or given up. */
+  complete(id: string): Promise<void>;
+  /** Records a failure (error class only) and runs the job again at `runAt`. */
+  retry(id: string, runAt: Date, error: string): Promise<void>;
+  deleteExpired(now: Date): Promise<number>;
+}
+
+/** "gone": the channel no longer exists (e.g. an expired push subscription). */
+export type SendResult = "sent" | "gone" | "retry";
+
+/** Delivers a notification to one channel (spec 2a); one adapter per channel kind. */
+export interface Notifier {
+  send(channelId: string, notification: Notification): Promise<SendResult>;
 }

@@ -1,6 +1,8 @@
 // Table types for Kysely (spec section 4). Must match the migrations in ./migrations;
 // repository integration tests and the schema conformance test catch drift.
+import type { Generated } from "kysely";
 import type { ActivityType } from "../../../domain/activity.ts";
+import type { JobType } from "../../../domain/jobs.ts";
 import type { DropPolicy, JoinMode, PlanStatus, Visibility } from "../../../domain/plan.ts";
 import type { ResponseKind } from "../../../domain/response.ts";
 import type { RecapWindow } from "../../../domain/schedule.ts";
@@ -94,6 +96,18 @@ export interface PlanPreviewsTable {
   image: Uint8Array;
 }
 
+export interface JobQueueTable {
+  id: string;
+  type: JobType;
+  payload_enc: string;
+  plan_id: string | null;
+  response_id: string | null;
+  run_at: string;
+  expires_at: string | null;
+  attempts: Generated<number>;
+  last_error: string | null;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -104,4 +118,5 @@ export interface DatabaseSchema {
   responses: ResponsesTable;
   routes: RoutesTable;
   plan_previews: PlanPreviewsTable;
+  job_queue: JobQueueTable;
 }

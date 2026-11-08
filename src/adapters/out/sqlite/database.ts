@@ -2,6 +2,7 @@
 import BetterSqlite3 from "better-sqlite3";
 import { Kysely, SqliteDialect } from "kysely";
 import { Migrator } from "kysely/migration";
+import { createBackupStore } from "./backups.ts";
 import { migrations } from "./migrations/index.ts";
 import type { DatabaseSchema } from "./schema.ts";
 
@@ -12,7 +13,12 @@ export interface Database {
   close(): Promise<void>;
 }
 
-export async function openDatabase(path: string): Promise<Database> {
+export interface OpenOptions {
+  /** Where to back up an existing database before migrations change it (spec 11). */
+  backups?: { dir: string; now: () => Date } | undefined;
+}
+
+export async function openDatabase(path: string, options: OpenOptions = {}): Promise<Database> {
   const sqlite = new BetterSqlite3(path);
   // Set on every connection: deleted content is overwritten, not just unlinked.
   sqlite.pragma("secure_delete = ON");
@@ -29,6 +35,16 @@ export async function openDatabase(path: string): Promise<Database> {
     db,
     provider: { getMigrations: () => Promise.resolve(migrations) },
   });
+  if (options.backups !== undefined) {
+    const known = await migrator.getMigrations();
+    const upgrading =
+      known.some((migration) => migration.executedAt !== undefined) &&
+      known.some((migration) => migration.executedAt === undefined);
+    if (upgrading) {
+      await createBackupStore(options.backups.dir).write(sqlite, options.backups.now());
+    }
+  }
+
   const { error } = await migrator.migrateToLatest();
   if (error !== undefined) {
     await db.destroy();

@@ -42,6 +42,8 @@ export function Layout({
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{pageTitle}</title>
+        {/* No favicon yet; an empty one keeps browsers from requesting /favicon.ico. */}
+        <link rel="icon" href="data:," />
         <link rel="stylesheet" href="/static/app.css" />
         <script src="/static/build/app.js" defer></script>
         {head}

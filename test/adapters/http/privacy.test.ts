@@ -50,8 +50,8 @@ describe("privacy notice (spec 5 feature 13)", () => {
     );
   });
 
-  it("promises no pre-update backups before they exist (step 14)", async () => {
-    expect((await page()).html).not.toMatch(/software update/i);
+  it("states that pre-update backups are deleted after 7 days (spec 11)", async () => {
+    expect(text((await page()).html)).toContain(en("privacy.backups", { days: 7 }));
   });
 
   it("follows the retention maximum, noting longer periods kept from before it was lowered", async () => {

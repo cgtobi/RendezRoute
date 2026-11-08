@@ -12,6 +12,8 @@ import { createPlanRepository } from "../../src/adapters/out/sqlite/plans.ts";
 import { createResponseRepository } from "../../src/adapters/out/sqlite/responses.ts";
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { type Config, loadConfig } from "../../src/config.ts";
+import type { PlanDeps } from "../../src/application/plans.ts";
+import type { PreviewRenderer } from "../../src/application/ports.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { FakeGeocoder } from "../fakes/geocoder.ts";
 import { FakePreviewRenderer } from "../fakes/preview-renderer.ts";
@@ -34,30 +36,38 @@ export async function createTestApp({
   geocoder = new FakeGeocoder({
     Flaucher: [{ label: "Flaucher, Isar, Munich", lat: 48.1107, lng: 11.5582 }],
   }),
-}: { databasePath?: string; env?: Record<string, string>; geocoder?: FakeGeocoder } = {}) {
+  renderer,
+}: {
+  databasePath?: string;
+  env?: Record<string, string>;
+  geocoder?: FakeGeocoder;
+  /** A real renderer instead of the fake, for tests of the actual card image. */
+  renderer?: PreviewRenderer;
+} = {}) {
   const config = testConfig(env);
   const database: Database = await openDatabase(databasePath);
   const cipher = createFieldCipher(createKeyring(1, [[1, randomBytes(32)]]));
   const clock = new FakeClock(fixtureNow);
   const logs: string[] = [];
   const previewRenderer = new FakePreviewRenderer();
+  const planDeps: PlanDeps = {
+    plans: createPlanRepository(database, cipher),
+    devices: createDeviceRepository(database),
+    responses: createResponseRepository(database, cipher),
+    routeParser: createGpxRouteParser(),
+    tokens: createTokenService(),
+    ids: createIdGenerator(),
+    clock,
+    limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
+  };
   const app = createApp({
     config,
     geocoder: config.geocoder.enabled ? geocoder : undefined,
-    previewRenderer,
+    previewRenderer: renderer ?? previewRenderer,
     rateLimits: createRateLimits(() => clock.now().getTime()),
     csrfKey: randomBytes(32),
     logger: createLogger({ write: (line) => logs.push(line) }),
-    planDeps: {
-      plans: createPlanRepository(database, cipher),
-      devices: createDeviceRepository(database),
-      responses: createResponseRepository(database, cipher),
-      routeParser: createGpxRouteParser(),
-      tokens: createTokenService(),
-      ids: createIdGenerator(),
-      clock,
-      limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
-    },
+    planDeps,
   });
-  return { app, database, clock, logs, config, geocoder, previewRenderer };
+  return { app, database, clock, logs, config, geocoder, previewRenderer, planDeps };
 }

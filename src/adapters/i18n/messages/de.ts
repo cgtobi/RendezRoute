@@ -31,6 +31,8 @@ export const de: Messages = {
     "Treffen, die erstellt wurden, bevor dieses Maximum gesenkt wurde, können ihren längeren Zeitraum behalten, höchstens {max} Tage.",
   "privacy.devices":
     "Die Verknüpfung deines Browsers mit deinen Treffen oder Antworten wird {unlinkedDays} Tage nach der letzten Nutzung gelöscht, sobald nichts mehr damit verknüpft ist, und in jedem Fall nach {unusedDays} Tagen ohne Nutzung.",
+  "privacy.backups":
+    "Automatische Datenbanksicherungen vor Software-Updates werden nach {days} Tagen gelöscht.",
   "privacy.operatorHeading": "Wer auf die Daten zugreifen kann",
   "privacy.operator":
     "Wer diese Website betreibt, kann technisch auf alles zugreifen, was hier gespeichert ist, auch auf verschlüsselte Daten. Die Verschlüsselung schützt Daten in geleakten Datenbanksicherungen, wenn der Schlüssel getrennt aufbewahrt wird, aber nicht vor den Betreiber:innen.",

@@ -186,3 +186,9 @@ export interface Place {
 export interface Geocoder {
   search(query: string, options: { language: string }): Promise<Place[]>;
 }
+
+/** Pre-migration database backups (spec 11), deleted after 7 days by housekeeping. */
+export interface BackupStore {
+  /** Deletes backups created before the cutoff and returns how many. */
+  deleteOlderThan(cutoff: Date): Promise<number>;
+}

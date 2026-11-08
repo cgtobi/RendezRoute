@@ -1,6 +1,7 @@
 // Automatic retention and housekeeping (spec 3.10), run by the scheduler and the CLI.
-import { capRetention, deviceExpiryCutoffs } from "../domain/expiry.ts";
+import { backupExpiryCutoff, capRetention, deviceExpiryCutoffs } from "../domain/expiry.ts";
 import type { PlanDeps } from "./plans.ts";
+import type { BackupStore } from "./ports.ts";
 
 /** Hard-deletes every plan whose delete_at has passed, cancelled ones included. No notifications (spec 3.10). */
 export async function runRetentionSweep(deps: PlanDeps): Promise<{ deletedPlans: number }> {
@@ -10,10 +11,14 @@ export async function runRetentionSweep(deps: PlanDeps): Promise<{ deletedPlans:
   return { deletedPlans: due.length };
 }
 
-/** Daily expiry of devices; templates, caches and backups join in later steps (spec 3.10). */
-export async function runHousekeeping(deps: PlanDeps): Promise<{ deletedDevices: number }> {
-  const deletedDevices = await deps.devices.deleteInactive(deviceExpiryCutoffs(deps.clock.now()));
-  return { deletedDevices };
+/** Daily expiry of devices and pre-migration backups; templates join in v0.5 (spec 3.10, 11). */
+export async function runHousekeeping(
+  deps: PlanDeps & { backups: BackupStore },
+): Promise<{ deletedDevices: number; deletedBackups: number }> {
+  const now = deps.clock.now();
+  const deletedDevices = await deps.devices.deleteInactive(deviceExpiryCutoffs(now));
+  const deletedBackups = await deps.backups.deleteOlderThan(backupExpiryCutoff(now));
+  return { deletedDevices, deletedBackups };
 }
 
 /** Applies a lowered MAX_RETENTION_DAYS to existing plans (CLI `apply-retention-max`, spec 3.10). */

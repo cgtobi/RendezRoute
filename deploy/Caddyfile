@@ -1,0 +1,7 @@
+# Caddy in front of RendezRoute (spec 2 packaging).
+# Access logging stays off: secret-link paths (/a/..., /m/...) contain tokens, and logged client
+# addresses would undo the app's own care. If you need logs, redact the URI and client address.
+runs.example.org {
+	encode zstd gzip
+	reverse_proxy rendezroute:3000
+}

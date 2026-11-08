@@ -2,7 +2,11 @@
 // switched on are mentioned, and only features this version has.
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { Config } from "../../../../config.ts";
-import { DEVICE_UNLINKED_DAYS, DEVICE_UNUSED_DAYS } from "../../../../domain/expiry.ts";
+import {
+  BACKUP_DAYS,
+  DEVICE_UNLINKED_DAYS,
+  DEVICE_UNUSED_DAYS,
+} from "../../../../domain/expiry.ts";
 import { RETENTION_DAYS_LIMIT } from "../../../../domain/schedule.ts";
 import { SERVICE_CACHE_DAYS } from "../../../out/cache-lifetime.ts";
 import { LONG_COOKIE_DAYS } from "../cookie-lifetime.ts";
@@ -37,6 +41,7 @@ export function PrivacyPage({ t, config }: { t: Translate; config: Config }) {
           unusedDays: DEVICE_UNUSED_DAYS,
         })}
       </p>
+      <p>{t("privacy.backups", { days: BACKUP_DAYS })}</p>
 
       <h2>{t("privacy.operatorHeading")}</h2>
       <p>{t("privacy.operator")}</p>

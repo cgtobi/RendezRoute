@@ -1,0 +1,48 @@
+# Example deployment with Caddy for automatic HTTPS (spec 2 packaging). Replace runs.example.org
+# and the email address, then run: docker compose up -d
+services:
+  rendezroute:
+    image: ghcr.io/OWNER/rendezroute:latest
+    restart: unless-stopped
+    environment:
+      BASE_URL: https://runs.example.org
+      CONTACT_EMAIL: owner@example.org
+      INSTANCE_NAME: RendezRoute
+      # Caddy is the only proxy in front of the app. Without this, every visitor would share the
+      # proxy's address and so one rate limit; with it, the app uses the address Caddy appends to
+      # X-Forwarded-For. Never set it when the app is reachable without the proxy.
+      TRUST_PROXY: "true"
+    volumes:
+      - data:/data
+      # The encryption key on its own volume, so backups of the data volume do not include it
+      # (spec 3.11). Back it up separately: without it, encrypted data cannot be read.
+      - keys:/keys
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - rendezroute
+
+volumes:
+  data:
+  keys:
+  caddy-data:
+  caddy-config:

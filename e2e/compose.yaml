@@ -1,0 +1,72 @@
+# End-to-end environment (spec 2b definition of done): the built image on empty volumes, hardened
+# like production, once with default settings pointed at fake providers and once with maps,
+# geocoder and weather disabled. Started and stopped by global-setup.ts.
+name: rendezroute-e2e
+
+x-app: &app
+  image: rendezroute:e2e
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  depends_on:
+    fakes:
+      condition: service_healthy
+
+x-env: &env # Plain http for localhost and the fake services; production requires HTTPS.
+  ALLOW_INSECURE_DEV: "true"
+  CONTACT_EMAIL: e2e@example.org
+  MAP_TILE_URL: http://fakes:8080/tiles/{z}/{x}/{y}.png
+  MAP_ATTRIBUTION: Test tiles
+  GEOCODER_URL: http://fakes:8080
+  WEATHER_URL: http://fakes:8080
+
+services:
+  fakes:
+    image: node:26-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072
+    command: ["node", "/fakes/server.ts"]
+    volumes:
+      - ./fakes:/fakes:ro
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 2s
+      retries: 15
+
+  app-default:
+    <<: *app
+    build: ..
+    environment:
+      <<: *env
+      BASE_URL: http://localhost:3101
+    volumes:
+      - default-data:/data
+    ports:
+      - "3101:3000"
+
+  app-minimal:
+    <<: *app
+    environment:
+      <<: *env
+      BASE_URL: http://localhost:3102
+      MAPS_ENABLED: "false"
+      GEOCODER_ENABLED: "false"
+      WEATHER_ENABLED: "false"
+    volumes:
+      - minimal-data:/data
+    ports:
+      - "3102:3000"
+
+volumes:
+  default-data:
+  minimal-data:

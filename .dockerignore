@@ -1,0 +1,21 @@
+# Only what the build needs; never local data, keys or secrets.
+.git
+.github
+.vscode
+.idea
+node_modules
+dist
+public/build
+coverage
+playwright-report
+test-results
+data
+keys
+*.sqlite
+*.db
+.env
+.env.*
+docs
+rendezroute-spec.md
+deploy
+e2e

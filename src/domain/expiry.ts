@@ -18,6 +18,13 @@ export function deviceExpiryCutoffs(now: Date): {
   };
 }
 
+/** Pre-migration backups are deleted after 7 days, so they never outlive retention by more than a week (spec 11). */
+export const BACKUP_DAYS = 7;
+
+export function backupExpiryCutoff(now: Date): Date {
+  return new Date(now.getTime() - BACKUP_DAYS * DAY_MS);
+}
+
 export type CappedRetention =
   | { kind: "unchanged" }
   | { kind: "shortened"; retentionDays: number; recapWindow: RecapWindow; deleteAt: Date }

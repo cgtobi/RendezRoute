@@ -30,6 +30,8 @@ export const en = {
     "Plans created before this maximum was lowered may keep their longer period, up to {max} days.",
   "privacy.devices":
     "The link between your browser and your plans or responses is deleted {unlinkedDays} days after its last use once nothing is linked to it anymore, and in any case after {unusedDays} days without use.",
+  "privacy.backups":
+    "Automatic database backups made before software updates are deleted after {days} days.",
   "privacy.operatorHeading": "Who can access the data",
   "privacy.operator":
     "The operator of this site can technically access everything stored here, including encrypted data. Encryption protects data in leaked database backups when the key is kept separately, but not against the operator.",

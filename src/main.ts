@@ -27,6 +27,7 @@ import { createOutboundHttp } from "./adapters/out/http/outbound-http.ts";
 import { createPreviewRenderer } from "./adapters/out/preview/renderer.ts";
 import { createMapTiles } from "./adapters/out/preview/tiles.ts";
 import { createIdGenerator } from "./adapters/out/ids.ts";
+import { createBackupStore } from "./adapters/out/sqlite/backups.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "./adapters/out/sqlite/plans.ts";
@@ -102,6 +103,9 @@ interface Instance {
 }
 
 /** Configuration, database and keys, shared by the server and CLI commands. */
+/** Pre-migration backups live next to the database (spec 11). */
+const backupDir = (config: Config) => join(config.dataDir, "backups");
+
 async function openInstance(
   env: ConfigSource,
 ): Promise<{ ok: true; instance: Instance } | { ok: false; errors: string[] }> {
@@ -111,7 +115,9 @@ async function openInstance(
   const warnings = [...loaded.warnings];
 
   mkdirSync(config.dataDir, { recursive: true });
-  const database = await openDatabase(join(config.dataDir, "rendezroute.db"));
+  const database = await openDatabase(join(config.dataDir, "rendezroute.db"), {
+    backups: { dir: backupDir(config), now: () => systemClock.now() },
+  });
 
   let keys: InstanceKeys;
   try {
@@ -155,7 +161,11 @@ export async function startServer(
   const scheduler = await startScheduler(
     [
       { name: "retention_sweep", intervalMs: MINUTE_MS, run: () => runRetentionSweep(planDeps) },
-      { name: "housekeeping", intervalMs: DAY_MS, run: () => runHousekeeping(planDeps) },
+      {
+        name: "housekeeping",
+        intervalMs: DAY_MS,
+        run: () => runHousekeeping({ ...planDeps, backups: createBackupStore(backupDir(config)) }),
+      },
       // Forgets client addresses whose limits have refilled, also when no requests come in.
       { name: "rate_limit_sweep", intervalMs: MINUTE_MS, run: sweepLimits },
     ],

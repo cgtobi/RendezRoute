@@ -58,6 +58,7 @@ export function planToInput(plan: Plan, units: Units): PlanInput {
     paceFrom: pace === undefined ? "" : paceValue(style === "pace" ? pace.fastest : pace.slowest),
     paceTo: pace === undefined ? "" : paceValue(style === "pace" ? pace.slowest : pace.fastest),
     dropPolicy: plan.dropPolicy,
+    joinMode: plan.joinMode,
     primaryColor: plan.colors.primary,
     secondaryColor: plan.colors.secondary,
     retentionDays: String(plan.retentionDays),
@@ -126,13 +127,4 @@ export function removeResponse(
 ): Result<PlanResponse, "not_removable"> {
   if (response.kind !== "joined" && response.kind !== "interested") return err("not_removable");
   return ok({ ...response, kind: "removed", previousKind: response.kind, updatedAt: now });
-}
-
-/** Restores a removed person's previous state (spec 3.5). */
-export function undoRemoval(
-  response: PlanResponse,
-  now: Date,
-): Result<PlanResponse, "not_removed"> {
-  if (response.kind !== "removed" || response.previousKind === undefined) return err("not_removed");
-  return ok({ ...response, kind: response.previousKind, previousKind: undefined, updatedAt: now });
 }

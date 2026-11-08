@@ -119,7 +119,6 @@ export async function createPlan(
     id: deps.ids.planId(),
     posterLanguage: request.language,
     visibility: "link",
-    joinMode: "open",
     status: "active",
     hasRoute: route !== undefined,
     createdAt: now,
@@ -168,9 +167,10 @@ export async function viewPlan(
 ): Promise<ViewPlanResult> {
   const plan = await deps.plans.findById(request.planId);
   if (plan === undefined) return { kind: "not_found" };
+  const now = deps.clock.now();
   const counts = await deps.responses.counts(plan.id);
   const shared: Open = {
-    responsesOpen: canRespond(plan, deps.clock.now()).ok,
+    responsesOpen: canRespond(plan, now).ok,
     preview: previewOf(plan),
   };
   const device = await resolveDevice(deps, request.deviceToken);
@@ -192,12 +192,12 @@ export async function viewPlan(
     const responses = await deps.responses.listByPlan(plan.id);
     return {
       kind: "participant",
-      view: viewForParticipant(plan, counts, own, responses),
+      view: viewForParticipant(plan, counts, own, now, responses),
       ...shared,
     };
   }
   if (own !== undefined && canSee(audience, "ownResponseStatus")) {
-    return { kind: "responder", view: viewForResponder(plan, counts, own), ...shared };
+    return { kind: "responder", view: viewForResponder(plan, counts, own, now), ...shared };
   }
   return { kind: "viewer", view: viewForViewer(plan, counts), ...shared };
 }

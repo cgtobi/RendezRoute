@@ -4,7 +4,6 @@ import {
   editScope,
   planToInput,
   removeResponse,
-  undoRemoval,
   validatePlanEdit,
   validateRetentionEdit,
 } from "../../src/domain/plan-edit.ts";
@@ -214,13 +213,5 @@ describe("removal and undo (spec 3.5)", () => {
       ok: false,
       error: "not_removable",
     });
-  });
-
-  it("undoes a removal by restoring the previous kind", () => {
-    expect(undoRemoval(response("removed", "interested"), started)).toEqual({
-      ok: true,
-      value: { ...response("interested"), updatedAt: started },
-    });
-    expect(undoRemoval(response("joined"), started)).toEqual({ ok: false, error: "not_removed" });
   });
 });

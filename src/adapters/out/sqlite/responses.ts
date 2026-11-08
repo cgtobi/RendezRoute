@@ -6,6 +6,7 @@ import { checkpoint, type Database } from "./database.ts";
 import type { ResponsesTable } from "./schema.ts";
 
 const DISPLAY_NAME = "responses.display_name" as const;
+const REQUEST_NOTE = "responses.request_note" as const;
 
 export function createResponseRepository(
   database: Database,
@@ -16,11 +17,18 @@ export function createResponseRepository(
     planId: row.plan_id,
     kind: row.kind,
     displayName: cipher.decrypt(row.display_name_enc, DISPLAY_NAME),
+    requestNote:
+      row.request_note_enc === null
+        ? undefined
+        : cipher.decrypt(row.request_note_enc, REQUEST_NOTE),
     language: row.language,
     previousKind: row.previous_kind ?? undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   });
+
+  const encryptNote = (note: string | undefined) =>
+    note === undefined ? null : cipher.encrypt(note, REQUEST_NOTE);
 
   const selectResponses = () => database.db.selectFrom("responses").selectAll("responses");
 
@@ -34,6 +42,7 @@ export function createResponseRepository(
             plan_id: response.planId,
             kind: response.kind,
             display_name_enc: cipher.encrypt(response.displayName, DISPLAY_NAME),
+            request_note_enc: encryptNote(response.requestNote),
             manage_token_hash: manageTokenHash,
             device_id: deviceId ?? null,
             language: response.language,
@@ -113,6 +122,7 @@ export function createResponseRepository(
         .set({
           kind: response.kind,
           display_name_enc: cipher.encrypt(response.displayName, DISPLAY_NAME),
+          request_note_enc: encryptNote(response.requestNote),
           previous_kind: response.previousKind ?? null,
           updated_at: response.updatedAt.toISOString(),
         })

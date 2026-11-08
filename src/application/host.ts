@@ -7,12 +7,15 @@ import {
   editScope,
   planToInput,
   removeResponse,
-  undoRemoval,
   validatePlanEdit,
   validateRetentionEdit,
 } from "../domain/plan-edit.ts";
 import type { FieldError, PlanInput } from "../domain/plan-input.ts";
+import * as requests from "../domain/requests.ts";
+import { canRespond } from "../domain/responding.ts";
 import { isPosterName } from "../domain/responding.ts";
+import type { PlanResponse } from "../domain/response.ts";
+import type { Result } from "../domain/result.ts";
 import { resolveDevice } from "./devices.ts";
 import type { PlanDeps } from "./plans.ts";
 
@@ -43,6 +46,11 @@ export interface HostPerson {
   name: string;
 }
 
+/** A pending request with its note (spec 3.6: only the host sees requests and notes). */
+export interface HostRequest extends HostPerson {
+  note: string | undefined;
+}
+
 export type HostPageResult =
   | Denied
   | {
@@ -53,8 +61,16 @@ export type HostPageResult =
       input: PlanInput;
       scope: "all" | "retention";
       canCancel: boolean;
+      /** Whether pending requests can still be decided: before the start of an active plan (spec 3.1). */
+      requestsOpen: boolean;
       hasRoute: boolean;
-      people: { participants: HostPerson[]; interested: HostPerson[]; removed: HostPerson[] };
+      people: {
+        participants: HostPerson[];
+        interested: HostPerson[];
+        requests: HostRequest[];
+        rejected: HostPerson[];
+        removed: HostPerson[];
+      };
     };
 
 export async function viewHostPage(
@@ -65,7 +81,7 @@ export async function viewHostPage(
   if (isDenied(plan)) return plan;
   const now = deps.clock.now();
   const responses = await deps.responses.listByPlan(plan.id);
-  const people = (kind: "joined" | "interested" | "removed") =>
+  const people = (kind: "joined" | "interested" | "rejected" | "removed") =>
     responses
       .filter((r) => r.kind === kind)
       .map((r) => ({ responseId: r.id, name: r.displayName }));
@@ -76,10 +92,15 @@ export async function viewHostPage(
     input: planToInput(plan, request.units),
     scope: editScope(plan, now),
     canCancel: canCancel(plan, now).ok,
+    requestsOpen: canRespond(plan, now).ok,
     hasRoute: plan.hasRoute,
     people: {
       participants: people("joined"),
       interested: people("interested"),
+      requests: responses
+        .filter((r) => r.kind === "requested")
+        .map((r) => ({ responseId: r.id, name: r.displayName, note: r.requestNote })),
+      rejected: people("rejected"),
       removed: people("removed"),
     },
   };
@@ -91,6 +112,8 @@ export type EditPlanResult =
   | { kind: "invalid"; errors: FieldError[] }
   /** The retention edit would delete the plan now; ask "This will delete the plan now" first. */
   | { kind: "confirm_delete_now" }
+  /** Switching to open mode accepts pending requests; ask "N pending requests will be accepted" first (spec 3.4). */
+  | { kind: "confirm_accept_pending"; count: number }
   | { kind: "deleted" };
 
 export async function editPlan(
@@ -102,6 +125,8 @@ export async function editPlan(
     units: Units;
     /** Set after the host confirmed "This will delete the plan now". */
     confirmDeleteNow: boolean;
+    /** The N of a confirmed "N pending requests will be accepted"; asked again if it changed. */
+    confirmAcceptPending?: number | undefined;
   },
 ): Promise<EditPlanResult> {
   const plan = await asHost(deps, request.planId, request.deviceToken);
@@ -134,7 +159,16 @@ export async function editPlan(
   if (responses.some((response) => isPosterName(response.displayName, draft.value.posterName))) {
     return { kind: "invalid", errors: [{ field: "posterName", code: "name_taken_by_response" }] };
   }
+  // Approval → open accepts pending requests; the host confirms exactly how many (spec 3.4).
+  const pending = requests.requestsAcceptedBySwitch(plan.joinMode, draft.value.joinMode, responses);
+  if (pending.length > 0 && request.confirmAcceptPending !== pending.length) {
+    return { kind: "confirm_accept_pending", count: pending.length };
+  }
   await deps.plans.update({ ...plan, ...draft.value, updatedAt: now });
+  for (const response of pending) {
+    const accepted = requests.acceptRequest(response, plan, now);
+    if (accepted.ok) await deps.responses.update(accepted.value);
+  }
   return { kind: "updated" };
 }
 
@@ -167,30 +201,36 @@ export async function deletePlan(
 }
 
 type PersonRequest = { planId: string; deviceToken: string | undefined; responseId: string };
+type PersonChange = (response: PlanResponse, plan: Plan, now: Date) => Result<PlanResponse, string>;
 
-async function changePerson(
-  deps: PlanDeps,
-  request: PersonRequest,
-  change: typeof removeResponse | typeof undoRemoval,
-): Promise<Denied | { kind: "done" } | { kind: "not_allowed" }> {
-  const plan = await asHost(deps, request.planId, request.deviceToken);
-  if (isDenied(plan)) return plan;
-  const response = await deps.responses.findById(request.responseId);
-  if (response === undefined || response.planId !== plan.id) return { kind: "not_found" };
-  const changed = change(response, deps.clock.now());
-  if (!changed.ok) return { kind: "not_allowed" };
-  await deps.responses.update(changed.value);
-  return { kind: "done" };
+/** A host action on one person's response; refused changes leave it as it was. */
+function personAction<Done extends string>(change: PersonChange, done: Done) {
+  return async (
+    deps: PlanDeps,
+    request: PersonRequest,
+  ): Promise<Denied | { kind: Done } | { kind: "not_allowed" }> => {
+    const plan = await asHost(deps, request.planId, request.deviceToken);
+    if (isDenied(plan)) return plan;
+    const response = await deps.responses.findById(request.responseId);
+    if (response === undefined || response.planId !== plan.id) return { kind: "not_found" };
+    const changed = change(response, plan, deps.clock.now());
+    if (!changed.ok) return { kind: "not_allowed" };
+    await deps.responses.update(changed.value);
+    return { kind: done };
+  };
 }
 
 /** Removal works like rejection: no private details, no new response from that device (spec 3.5). */
-export async function removePerson(deps: PlanDeps, request: PersonRequest) {
-  const result = await changePerson(deps, request, removeResponse);
-  return result.kind === "done" ? { kind: "removed" as const } : result;
-}
+export const removePerson = personAction(
+  (response, _plan, now) => removeResponse(response, now),
+  "removed",
+);
 
-/** Undo of a removal: the person returns to their previous state (spec 3.5). */
-export async function restorePerson(deps: PlanDeps, request: PersonRequest) {
-  const result = await changePerson(deps, request, undoRemoval);
-  return result.kind === "done" ? { kind: "restored" as const } : result;
-}
+/** Undo of a rejection or removal (spec 3.5, decision I37). */
+export const restorePerson = personAction(requests.undoRejectionOrRemoval, "restored");
+
+/** A pending request becomes a participant, before the start only (spec 3.1, 3.4). */
+export const acceptRequest = personAction(requests.acceptRequest, "accepted");
+
+/** A rejected requester sees what interested people see and cannot request again (spec 3.5). */
+export const rejectRequest = personAction(requests.rejectRequest, "rejected");

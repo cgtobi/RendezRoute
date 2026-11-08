@@ -22,6 +22,7 @@ import {
 } from "./format.ts";
 import { Linkified } from "./linkify.tsx";
 import { type MapSettings, PlanMap } from "./maps.tsx";
+import { statusKey } from "./format.ts";
 import { RespondForm, type RespondFormState } from "./respond-form.tsx";
 
 export type PlanPageAudience =
@@ -66,6 +67,13 @@ export function PlanPage(props: {
       {audience.kind === "poster" && (
         <p class="notice">
           {t("plan.youAreHost")} <a href={`/p/${view.id}/host`}>{t("plan.managePlan")}</a>
+        </p>
+      )}
+      {audience.kind === "poster" && audience.view.pendingRequests > 0 && (
+        <p class="notice">
+          <a href={`/p/${view.id}/host`}>
+            {t("plan.pendingRequests", { count: audience.view.pendingRequests })}
+          </a>
         </p>
       )}
 
@@ -144,7 +152,7 @@ export function PlanPage(props: {
       {(audience.kind === "responder" || audience.kind === "participant") && (
         <section class="own-response">
           <h2>{t("plan.yourResponse")}</h2>
-          <p>{t(`status.${audience.view.ownResponse.kind}`)}</p>
+          <p>{t(statusKey(audience.view.ownResponse))}</p>
           <p>
             <a href={`/p/${view.id}/me`}>{t("plan.manageResponse")}</a>
           </p>
@@ -160,7 +168,7 @@ export function PlanPage(props: {
 
       {audience.kind === "viewer" &&
         (props.responsesOpen && props.respondForm !== undefined ? (
-          <RespondForm t={t} planId={view.id} state={props.respondForm} />
+          <RespondForm t={t} planId={view.id} joinMode={view.joinMode} state={props.respondForm} />
         ) : (
           <p class="notice">{t("respond.closed")}</p>
         ))}

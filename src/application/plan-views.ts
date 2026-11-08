@@ -4,7 +4,8 @@ import type { ActivityType } from "../domain/activity.ts";
 import type { HexColor } from "../domain/color.ts";
 import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { PaceBand } from "../domain/pace.ts";
-import type { DropPolicy, Plan, PlanStatus } from "../domain/plan.ts";
+import type { DropPolicy, JoinMode, Plan, PlanStatus } from "../domain/plan.ts";
+import { isNotAnswered } from "../domain/requests.ts";
 import type { PlanResponse, ResponseKind } from "../domain/response.ts";
 
 export interface Counts {
@@ -21,6 +22,8 @@ export interface PersonView {
 export interface OwnResponseView {
   kind: ResponseKind;
   displayName: string;
+  /** A request nobody decided before the start shows as "not answered" (spec 3.1). */
+  notAnswered: boolean;
 }
 
 /** Everyone: public details and counts. */
@@ -36,6 +39,8 @@ export interface PlanViewForViewer {
   elevationGainMeters: number | undefined;
   pace: PaceBand | undefined;
   dropPolicy: DropPolicy;
+  /** Decides whether people join directly or request to join (spec 3.4). */
+  joinMode: JoinMode;
   note: string | undefined;
   colors: { primary: HexColor; secondary: HexColor };
   status: PlanStatus;
@@ -62,6 +67,8 @@ export interface PlanViewForPoster extends PlanViewForViewer {
   hasRoute: boolean;
   participants: PersonView[];
   interested: PersonView[];
+  /** Requests waiting for the host's decision (spec 3.6: the host only). */
+  pendingRequests: number;
   retentionDays: number;
 }
 
@@ -118,6 +125,7 @@ export function viewForViewer(plan: Plan, counts: Counts): PlanViewForViewer {
     elevationGainMeters: plan.elevationGainMeters,
     pace: plan.pace,
     dropPolicy: plan.dropPolicy,
+    joinMode: plan.joinMode,
     note: plan.note,
     colors: plan.colors,
     status: plan.status,
@@ -126,9 +134,10 @@ export function viewForViewer(plan: Plan, counts: Counts): PlanViewForViewer {
   };
 }
 
-const ownResponse = (response: PlanResponse): OwnResponseView => ({
+export const ownResponse = (response: PlanResponse, plan: Plan, now: Date): OwnResponseView => ({
   kind: response.kind,
   displayName: response.displayName,
+  notAnswered: isNotAnswered(response, plan, now),
 });
 
 /** Host first, then joined people in response order. */
@@ -145,18 +154,20 @@ export function viewForResponder(
   plan: Plan,
   counts: Counts,
   response: PlanResponse,
+  now: Date,
 ): PlanViewForResponder {
-  return { ...viewForViewer(plan, counts), ownResponse: ownResponse(response) };
+  return { ...viewForViewer(plan, counts), ownResponse: ownResponse(response, plan, now) };
 }
 
 export function viewForParticipant(
   plan: Plan,
   counts: Counts,
   response: PlanResponse,
+  now: Date,
   responses: readonly PlanResponse[],
 ): PlanViewForParticipant {
   return {
-    ...viewForResponder(plan, counts, response),
+    ...viewForResponder(plan, counts, response, now),
     exactStart: plan.exactStart,
     hasRoute: plan.hasRoute,
     participants: participantsOf(plan, responses),
@@ -176,6 +187,7 @@ export function viewForPoster(
     interested: responses
       .filter((r) => r.kind === "interested")
       .map((r) => ({ name: r.displayName, isHost: false })),
+    pendingRequests: responses.filter((r) => r.kind === "requested").length,
     retentionDays: plan.retentionDays,
   };
 }

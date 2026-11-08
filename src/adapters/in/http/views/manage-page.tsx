@@ -1,9 +1,10 @@
 // Manage one's own response (spec 5 feature 6): change it, rename, or withdraw.
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { OwnResponseView } from "../../../../application/plan-views.ts";
-import { MAX_DISPLAY_NAME_LENGTH, OPEN_MODE_CHOICES } from "../../../../domain/responding.ts";
+import type { ResponseChoice } from "../../../../domain/requests.ts";
+import { MAX_DISPLAY_NAME_LENGTH } from "../../../../domain/responding.ts";
 import { CSRF_FIELD } from "../csrf.ts";
-import { fieldErrorMessage } from "./format.ts";
+import { fieldErrorMessage, statusKey } from "./format.ts";
 
 export function ManagePage(props: {
   t: Translate;
@@ -11,6 +12,8 @@ export function ManagePage(props: {
   planTitle: string;
   response: OwnResponseView;
   canChange: boolean;
+  /** Kinds offered for this plan's join mode (spec 3.4). */
+  choices: readonly ResponseChoice[];
   csrfToken: string;
   displayName: string;
   errorCode: string | undefined;
@@ -28,9 +31,8 @@ export function ManagePage(props: {
           {props.notice}
         </p>
       )}
-      {blocked ? (
-        <p class="notice">{t(`status.${response.kind}`)}</p>
-      ) : (
+      <p class="notice">{t(statusKey(response))}</p>
+      {blocked ? null : (
         <form method="post" action={`/p/${planId}/me`}>
           <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
           <div class={invalid ? "field field-invalid" : "field"}>
@@ -53,7 +55,7 @@ export function ManagePage(props: {
           {props.canChange ? (
             <fieldset>
               <legend>{t("manage.choice")}</legend>
-              {OPEN_MODE_CHOICES.map((choice) => (
+              {props.choices.map((choice) => (
                 <label class="choice">
                   <input
                     type="radio"
@@ -61,7 +63,10 @@ export function ManagePage(props: {
                     value={choice}
                     checked={response.kind === choice}
                   />
-                  {t(`status.${choice}`)}
+                  {/* "Request to join" until a request exists; then its status. */}
+                  {choice === "requested" && response.kind !== "requested"
+                    ? t("respond.request")
+                    : t(`status.${choice}`)}
                 </label>
               ))}
             </fieldset>

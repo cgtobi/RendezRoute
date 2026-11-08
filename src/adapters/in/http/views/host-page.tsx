@@ -1,6 +1,6 @@
 // Host page (spec 5 features 7–9): edit, people, cancel, delete.
 import type { Translate } from "../../../i18n/i18n.ts";
-import type { HostPerson } from "../../../../application/host.ts";
+import type { HostPerson, HostRequest } from "../../../../application/host.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
@@ -15,7 +15,13 @@ export interface HostPageProps {
   title: string;
   scope: "all" | "retention";
   canCancel: boolean;
-  people: { participants: HostPerson[]; interested: HostPerson[]; removed: HostPerson[] };
+  people: {
+    participants: HostPerson[];
+    interested: HostPerson[];
+    requests: HostRequest[];
+    rejected: HostPerson[];
+    removed: HostPerson[];
+  };
   values: PlanInput;
   errors: readonly FieldError[];
   csrfToken: string;
@@ -24,6 +30,10 @@ export interface HostPageProps {
   saved: boolean;
   /** A retention edit would delete the plan now and needs confirmation (spec 3.1). */
   confirmDeleteNow: boolean;
+  /** Whether pending requests can still be decided (spec 3.1: not after the start). */
+  requestsOpen: boolean;
+  /** Switching to open mode would accept this many pending requests; asks first (spec 3.4). */
+  confirmAcceptPending: number | undefined;
   hasRoute: boolean;
   /** Error code from the last route upload. */
   routeError: string | undefined;
@@ -66,6 +76,7 @@ export function HostPage(props: HostPageProps) {
           placeSearch={props.placeSearch}
           routeTrim=""
           units={props.units}
+          confirmAcceptPending={props.confirmAcceptPending}
         />
       ) : (
         <RetentionForm {...props} />
@@ -75,13 +86,17 @@ export function HostPage(props: HostPageProps) {
 
       <section class="people">
         <h2>{t("host.people")}</h2>
-        {props.people.participants.length +
-          props.people.interested.length +
-          props.people.removed.length ===
-        0 ? (
+        {Object.values(props.people).every((list) => list.length === 0) ? (
           <p>{t("host.noPeople")}</p>
         ) : (
           <>
+            <RequestList
+              t={t}
+              requests={props.people.requests}
+              open={props.requestsOpen}
+              planId={planId}
+              csrfToken={csrfToken}
+            />
             <p class="hint">{t("host.removeHint")}</p>
             <PeopleList
               t={t}
@@ -96,6 +111,15 @@ export function HostPage(props: HostPageProps) {
               heading={t("host.interested")}
               people={props.people.interested}
               action="remove"
+              planId={planId}
+              csrfToken={csrfToken}
+            />
+            <PeopleList
+              t={t}
+              heading={t("host.rejected")}
+              people={props.people.rejected}
+              action="restore"
+              label={t("host.undoReject")}
               planId={planId}
               csrfToken={csrfToken}
             />
@@ -214,11 +238,54 @@ function RetentionForm(props: HostPageProps) {
   );
 }
 
+/** Pending requests with their notes, each with Accept and Reject (spec 6 feature 1). */
+function RequestList(props: {
+  t: Translate;
+  requests: readonly HostRequest[];
+  /** Before the start only; afterwards requests stay unanswered (spec 3.1). */
+  open: boolean;
+  planId: string;
+  csrfToken: string;
+}) {
+  if (props.requests.length === 0) return null;
+  const { t } = props;
+  return (
+    <>
+      <h3>{t("host.requests")}</h3>
+      <ul class="people-actions requests">
+        {props.requests.map((request) => (
+          <li>
+            <span>{request.name}</span>
+            {request.note !== undefined && <p class="request-note">{request.note}</p>}
+            {props.open && (
+              <div class="buttons">
+                {(["accept", "reject"] as const).map((action) => (
+                  <form
+                    method="post"
+                    action={`/p/${props.planId}/host/people/${request.responseId}/${action}`}
+                  >
+                    <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+                    <button type="submit" class={action === "reject" ? "secondary" : undefined}>
+                      {t(action === "accept" ? "host.accept" : "host.reject")}
+                    </button>
+                  </form>
+                ))}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function PeopleList(props: {
   t: Translate;
   heading: string;
   people: readonly HostPerson[];
   action: "remove" | "restore";
+  /** Button text; defaults to "Remove" or "Undo removal". */
+  label?: string;
   planId: string;
   csrfToken: string;
 }) {
@@ -236,7 +303,7 @@ function PeopleList(props: {
             >
               <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
               <button type="submit" class={props.action === "remove" ? "secondary" : undefined}>
-                {props.t(props.action === "remove" ? "host.remove" : "host.restore")}
+                {props.label ?? props.t(props.action === "remove" ? "host.remove" : "host.restore")}
               </button>
             </form>
           </li>

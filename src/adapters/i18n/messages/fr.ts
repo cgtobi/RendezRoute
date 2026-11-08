@@ -116,7 +116,7 @@ export const fr: Messages = {
   "form.exactStart": "Point de départ exact (facultatif)",
   "form.exactStartHint": "Visible seulement par vous et les personnes inscrites.",
   "form.openModeWarning":
-    "Toute personne ayant le lien et qui s’inscrit verra le point de départ exact.",
+    "Toute personne ayant le lien et qui s’inscrit verra le point de départ exact. Choisissez « Seulement les personnes que j’accepte » pour décider qui le voit.",
   "form.exactDescription": "Où exactement ?",
   "form.coordinates": "Coordonnées (facultatif)",
   "form.latitude": "Latitude",
@@ -147,6 +147,11 @@ export const fr: Messages = {
     "Course à pied : allure par mile, par exemple 9:00 à 9:30. Vélo : vitesse en mph, par exemple 15 à 18.",
   "form.paceFrom": "De",
   "form.paceTo": "À",
+  "form.joinMode": "Qui peut participer",
+  "form.joinOpen": "Toute personne ayant le lien",
+  "form.joinApproval": "Seulement les personnes que j’accepte",
+  "form.joinModeHint":
+    "Avec « Seulement les personnes que j’accepte », les personnes envoient une demande et ne voient le point de départ exact qu’une fois acceptées.",
   "form.dropPolicy": "Règle du groupe",
   "form.note": "Remarque (facultatif)",
   "form.colors": "Couleurs de la sortie",
@@ -232,6 +237,10 @@ export const fr: Messages = {
   "plan.deletion": "Cette sortie sera supprimée le {date}.",
 
   "plan.counts": "Inscrit·e·s : {participants} · Intéressé·e·s : {interested}",
+  "plan.pendingRequests": {
+    one: "{count} demande vous attend.",
+    other: "{count} demandes vous attendent.",
+  },
   "plan.participants": "Qui vient",
   "plan.interestedPeople": "Intéressé·e·s",
   "plan.yourResponse": "Votre réponse",
@@ -241,6 +250,7 @@ export const fr: Messages = {
   "status.interested": "Intéressé·e",
   "status.joined": "Vous êtes inscrit·e",
   "status.requested": "Demande en attente",
+  "status.notAnswered": "Sans réponse : l’organisateur·rice n’a pas décidé avant le départ.",
   "status.rejected": "Non accepté·e pour cette sortie.",
   "status.removed": "L’organisateur·rice vous a retiré·e de cette sortie.",
 
@@ -252,6 +262,11 @@ export const fr: Messages = {
     "Toute personne ayant le lien et qui s’inscrit voit le point de départ exact et qui d’autre vient.",
   "respond.interested": "Intéressé·e",
   "respond.join": "Je viens",
+  "respond.request": "Demander à participer",
+  "respond.note": "Message à l’organisateur·rice (facultatif)",
+  "respond.noteHint": "Seul·e l’organisateur·rice le voit.",
+  "respond.approvalNote":
+    "L’organisateur·rice décide qui participe. Une fois accepté·e, vous voyez le point de départ exact et qui d’autre vient.",
   "respond.closed": "Les réponses sont closes pour cette sortie.",
   "respond.blocked": "Vous ne pouvez pas répondre à cette sortie.",
 
@@ -325,6 +340,16 @@ export const fr: Messages = {
   "host.restore": "Annuler le retrait",
   "host.removeHint":
     "Les personnes retirées perdent l’accès au point de départ exact et ne peuvent plus répondre depuis le même appareil.",
+  "host.requests": "Demandes",
+  "host.accept": "Accepter",
+  "host.reject": "Refuser",
+  "host.rejected": "Non accepté·e·s",
+  "host.undoReject": "Annuler le refus",
+  "host.acceptPendingWarning": {
+    one: "{count} demande en attente sera acceptée.",
+    other: "{count} demandes en attente seront acceptées.",
+  },
+  "host.acceptPendingConfirm": "Enregistrer et les accepter",
   "host.cancel": "Annuler la sortie…",
   "host.cancelExplain":
     "L’annulation est définitive. La sortie reste visible avec la mention « annulée » jusqu’à sa suppression. Pour la faire quand même, créez une nouvelle sortie.",

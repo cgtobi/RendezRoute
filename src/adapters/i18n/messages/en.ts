@@ -107,7 +107,8 @@ export const en = {
     "Don't put the exact meeting point here; it's public. Use “Exact start” instead.",
   "form.exactStart": "Exact start (optional)",
   "form.exactStartHint": "Only you and people who join can see this.",
-  "form.openModeWarning": "Anyone with the link who joins will see the exact start.",
+  "form.openModeWarning":
+    "Anyone with the link who joins will see the exact start. Choose “Only people I accept” to decide who sees it.",
   "form.exactDescription": "Where exactly?",
   "form.coordinates": "Coordinates (optional)",
   "form.latitude": "Latitude",
@@ -138,6 +139,11 @@ export const en = {
     "Runs: pace per mile, for example 9:00 to 9:30. Rides: speed in mph, for example 15 to 18.",
   "form.paceFrom": "From",
   "form.paceTo": "To",
+  "form.joinMode": "Who can join",
+  "form.joinOpen": "Anyone with the link",
+  "form.joinApproval": "Only people I accept",
+  "form.joinModeHint":
+    "With “Only people I accept”, people send a request and see the exact start only after you accept them.",
   "form.dropPolicy": "Group policy",
   "form.note": "Note (optional)",
   "form.colors": "Plan colors",
@@ -220,6 +226,10 @@ export const en = {
   "plan.deletion": "This plan will be deleted on {date}.",
 
   "plan.counts": "{participants} joined · {interested} interested",
+  "plan.pendingRequests": {
+    one: "{count} request is waiting for you.",
+    other: "{count} requests are waiting for you.",
+  },
   "plan.participants": "Who's coming",
   "plan.interestedPeople": "Interested",
   "plan.yourResponse": "Your response",
@@ -229,6 +239,7 @@ export const en = {
   "status.interested": "Interested",
   "status.joined": "You're in",
   "status.requested": "Request pending",
+  "status.notAnswered": "Not answered: the host did not decide before the start.",
   "status.rejected": "Not accepted for this plan.",
   "status.removed": "The host removed you from this plan.",
 
@@ -239,6 +250,11 @@ export const en = {
     "Anyone with the link who joins sees the exact start and who else is coming.",
   "respond.interested": "Interested",
   "respond.join": "I'm in",
+  "respond.request": "Request to join",
+  "respond.note": "Note to the host (optional)",
+  "respond.noteHint": "Only the host sees it.",
+  "respond.approvalNote":
+    "The host decides who joins. Once accepted, you see the exact start and who else is coming.",
   "respond.closed": "Responses are closed for this plan.",
   "respond.blocked": "You can't respond to this plan.",
 
@@ -309,6 +325,16 @@ export const en = {
   "host.restore": "Undo removal",
   "host.removeHint":
     "Removed people lose access to the exact start and can't respond again from the same device.",
+  "host.requests": "Requests",
+  "host.accept": "Accept",
+  "host.reject": "Reject",
+  "host.rejected": "Not accepted",
+  "host.undoReject": "Undo rejection",
+  "host.acceptPendingWarning": {
+    one: "{count} pending request will be accepted.",
+    other: "{count} pending requests will be accepted.",
+  },
+  "host.acceptPendingConfirm": "Save and accept them",
   "host.cancel": "Cancel plan…",
   "host.cancelExplain":
     "Cancelling is final. The plan stays visible with a “cancelled” banner until it is deleted. To run it after all, create a new plan.",

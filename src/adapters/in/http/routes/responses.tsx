@@ -56,6 +56,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, li
       planId,
       choice: formField(body, "choice"),
       displayName: formField(body, "displayName"),
+      requestNote: formField(body, "requestNote"),
       language: c.get("language"),
       creationNonce: formField(body, "nonce"),
       deviceToken,
@@ -93,9 +94,12 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, li
         const view = await viewPlan(planDeps, { planId, deviceToken });
         if (view.kind === "not_found") return planGone(c);
         c.status(422);
+        const codeFor = (field: string) => result.errors.find((e) => e.field === field)?.code;
         return renderPlanPage(c, config, view, {
           displayName: formField(body, "displayName"),
-          errorCode: result.errors[0]?.code,
+          requestNote: formField(body, "requestNote"),
+          errorCode: codeFor("displayName"),
+          noteErrorCode: codeFor("requestNote"),
           nonce: formField(body, "nonce"),
         });
       }
@@ -124,6 +128,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, li
         planTitle={result.planTitle}
         response={result.response}
         canChange={result.canChange}
+        choices={result.choices}
         csrfToken={c.get("csrfToken")()}
         displayName={form.displayName ?? result.response.displayName}
         errorCode={form.errorCode}

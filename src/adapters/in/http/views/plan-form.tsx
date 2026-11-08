@@ -3,7 +3,7 @@
 import type { Child } from "hono/jsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { ACTIVITY_TYPES } from "../../../../domain/activity.ts";
-import { DROP_POLICIES } from "../../../../domain/plan.ts";
+import { DROP_POLICIES, JOIN_MODES } from "../../../../domain/plan.ts";
 import type { FieldError, PlanField, PlanInput } from "../../../../domain/plan-input.ts";
 import { PLAN_LIMITS } from "../../../../domain/plan-input.ts";
 import { defaultRetentionDays } from "../../../../domain/schedule.ts";
@@ -48,6 +48,8 @@ export interface PlanFormProps {
   units: Units;
   /** The server's default zone, which the app script may replace with the poster's (decision P6). */
   detectZoneFrom?: string | undefined;
+  /** Pending requests that switching to open mode would accept; asks first (spec 3.4). */
+  confirmAcceptPending?: number | undefined;
 }
 
 export function PlanForm({
@@ -67,6 +69,7 @@ export function PlanForm({
   routeTrim,
   units,
   detectZoneFrom,
+  confirmAcceptPending,
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
   const id = (field: PlanField) => `field-${field}`;
@@ -259,6 +262,25 @@ export function PlanForm({
         )}
       </fieldset>
 
+      <fieldset>
+        <legend>{t("form.joinMode")}</legend>
+        <p class="hint">{t("form.joinModeHint")}</p>
+        {JOIN_MODES.map((mode) => (
+          <label class="choice">
+            <input
+              type="radio"
+              name="joinMode"
+              value={mode}
+              checked={(values.joinMode === "" ? "open" : values.joinMode) === mode}
+            />
+            {t(mode === "open" ? "form.joinOpen" : "form.joinApproval")}
+          </label>
+        ))}
+        {errorFor("joinMode") !== undefined && (
+          <p class="error">{fieldErrorMessage("choice_invalid", t)}</p>
+        )}
+      </fieldset>
+
       <Field field="note" label={t("form.note")} hint={t("form.publicHint")}>
         <textarea id={id("note")} name="note" rows={4} maxlength={PLAN_LIMITS.note}>
           {values.note}
@@ -306,7 +328,17 @@ export function PlanForm({
         </select>
       </Field>
 
-      <button type="submit">{submitLabel}</button>
+      {confirmAcceptPending !== undefined && (
+        <>
+          <input type="hidden" name="confirmAcceptPending" value={String(confirmAcceptPending)} />
+          <p class="warning" role="alert">
+            {t("host.acceptPendingWarning", { count: confirmAcceptPending })}
+          </p>
+        </>
+      )}
+      <button type="submit">
+        {confirmAcceptPending === undefined ? submitLabel : t("host.acceptPendingConfirm")}
+      </button>
     </form>
   );
 }

@@ -3,7 +3,6 @@ import {
   canChangeResponse,
   canRespond,
   isPosterName,
-  OPEN_MODE_CHOICES,
   validateDisplayName,
 } from "../../src/domain/responding.ts";
 
@@ -68,12 +67,6 @@ describe("validateDisplayName (spec 3.5, decision D7)", () => {
 
   it("rejects exactly the poster's name, so the host badge stays unambiguous", () => {
     expect(validateDisplayName("ANNA", "Anna")).toEqual({ ok: false, error: "name_taken_by_host" });
-  });
-});
-
-describe("open join mode (spec 3.4)", () => {
-  it("offers Interested and I'm in", () => {
-    expect(OPEN_MODE_CHOICES).toEqual(["interested", "joined"]);
   });
 });
 

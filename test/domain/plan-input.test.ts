@@ -22,6 +22,7 @@ const valid: PlanInput = {
   paceFrom: "5:30",
   paceTo: "6:00",
   dropPolicy: "no_drop",
+  joinMode: "open",
   primaryColor: "#2e5bff",
   secondaryColor: "#FF7A45",
   retentionDays: "",
@@ -54,6 +55,7 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
       elevationGainMeters: undefined,
       pace: { fastest: 330, slowest: 360 },
       dropPolicy: "no_drop",
+      joinMode: "open",
       colors: { primary: "#2E5BFF", secondary: "#FF7A45" },
       retentionDays: 14,
       recapWindow: "1w",
@@ -226,6 +228,14 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
   });
 
   describe("choices", () => {
+    it("takes the join mode, open when not given (spec 3.4)", () => {
+      expect(draft({ joinMode: "approval" }).joinMode).toBe("approval");
+      expect(draft({ joinMode: "" }).joinMode).toBe("open");
+      expect(errors({ joinMode: "invite" })).toEqual([
+        { field: "joinMode", code: "choice_invalid" },
+      ]);
+    });
+
     it("rejects unknown activities and drop policies", () => {
       expect(errors({ activity: "swim" })).toEqual([{ field: "activity", code: "choice_invalid" }]);
       expect(errors({ dropPolicy: "maybe" })).toEqual([

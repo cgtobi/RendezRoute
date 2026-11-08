@@ -4,13 +4,6 @@ import type { ResponseKind } from "./response.ts";
 import { err, ok, type Result } from "./result.ts";
 import { cleanText, type TextError } from "./text.ts";
 
-/** Choices in open join mode (spec 3.4): "Interested" and "I'm in". Approval mode arrives in v0.5. */
-export const OPEN_MODE_CHOICES = [
-  "interested",
-  "joined",
-] as const satisfies readonly ResponseKind[];
-export type OpenModeChoice = (typeof OPEN_MODE_CHOICES)[number];
-
 /** Same limit as the poster name (decision D7). */
 export const MAX_DISPLAY_NAME_LENGTH = 50;
 

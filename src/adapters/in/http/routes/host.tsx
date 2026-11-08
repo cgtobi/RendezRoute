@@ -4,6 +4,8 @@ import {
   cancelPlan,
   deletePlan,
   editPlan,
+  acceptRequest,
+  rejectRequest,
   removePerson,
   restorePerson,
   viewHostPage,
@@ -45,6 +47,7 @@ export function registerHostRoutes(
       values?: PlanInput;
       errors?: readonly FieldError[];
       confirmDeleteNow?: boolean;
+      confirmAcceptPending?: number;
       routeError?: string;
       routeTrim?: string;
     } = {},
@@ -60,6 +63,7 @@ export function registerHostRoutes(
         title={page.title}
         scope={page.scope}
         canCancel={page.canCancel}
+        requestsOpen={page.requestsOpen}
         people={page.people}
         values={form.values ?? localizedInput(page.input, c.get("language"))}
         units={c.get("units")}
@@ -69,6 +73,7 @@ export function registerHostRoutes(
         maxRetentionDays={config.maxRetentionDays}
         saved={c.req.query("saved") !== undefined}
         confirmDeleteNow={form.confirmDeleteNow ?? false}
+        confirmAcceptPending={form.confirmAcceptPending}
         hasRoute={page.hasRoute}
         routeError={form.routeError}
         routeTrim={form.routeTrim ?? ""}
@@ -101,6 +106,7 @@ export function registerHostRoutes(
       input: values,
       units: c.get("units"),
       confirmDeleteNow: formField(body, "confirmDeleteNow") === "1",
+      confirmAcceptPending: Number(formField(body, "confirmAcceptPending")) || undefined,
     });
     switch (result.kind) {
       case "updated":
@@ -109,6 +115,8 @@ export function registerHostRoutes(
         return c.redirect(`/p/${planId}`, 303);
       case "confirm_delete_now":
         return render(c, { values, confirmDeleteNow: true });
+      case "confirm_accept_pending":
+        return render(c, { values, confirmAcceptPending: result.count });
       case "invalid":
         c.status(422);
         return render(c, { values, errors: result.errors });
@@ -170,6 +178,8 @@ export function registerHostRoutes(
   for (const [action, change] of [
     ["remove", removePerson],
     ["restore", restorePerson],
+    ["accept", acceptRequest],
+    ["reject", rejectRequest],
   ] as const) {
     app.post(`/p/:id/host/people/:responseId/${action}`, async (c) => {
       const result = await change(planDeps, {

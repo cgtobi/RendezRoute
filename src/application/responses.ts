@@ -2,23 +2,20 @@
 import type { PlanResponse } from "../domain/response.ts";
 import type { FieldError } from "../domain/result.ts";
 import {
-  canChangeResponse,
-  canRespond,
-  OPEN_MODE_CHOICES,
-  type OpenModeChoice,
-  validateDisplayName,
-} from "../domain/responding.ts";
+  choicesFor,
+  isResponseChoice,
+  type ResponseChoice,
+  validateRequestNote,
+} from "../domain/requests.ts";
+import { canChangeResponse, canRespond, validateDisplayName } from "../domain/responding.ts";
 import { ensureDevice, resolveDevice } from "./devices.ts";
-import type { OwnResponseView } from "./plan-views.ts";
+import { type OwnResponseView, ownResponse as ownResponseView } from "./plan-views.ts";
 import type { PlanDeps } from "./plans.ts";
 
 const NONCE = /^[A-Za-z0-9_-]{16,64}$/;
 
 type Closed = { kind: "closed"; reason: "plan_started" | "plan_cancelled" };
-type Invalid = { kind: "invalid"; errors: FieldError<"displayName">[] };
-
-const isOpenModeChoice = (choice: string): choice is OpenModeChoice =>
-  (OPEN_MODE_CHOICES as readonly string[]).includes(choice);
+type Invalid = { kind: "invalid"; errors: FieldError<"displayName" | "requestNote">[] };
 
 export type RespondResult =
   | {
@@ -43,9 +40,11 @@ export async function respond(
   deps: PlanDeps,
   request: {
     planId: string;
-    /** "interested" or "joined" in open mode. */
+    /** "interested", plus "joined" in open mode or "requested" in approval mode. */
     choice: string;
     displayName: string;
+    /** Optional, with a request only (spec 6 feature 1). */
+    requestNote?: string | undefined;
     language: string;
     /** One-time value from the response form. */
     creationNonce: string;
@@ -57,7 +56,9 @@ export async function respond(
   if (plan === undefined) return { kind: "not_found" };
   if (await deps.responses.findIdByCreationNonce(request.creationNonce))
     return { kind: "duplicate", planId: plan.id };
-  if (plan.joinMode !== "open" || !isOpenModeChoice(request.choice)) return { kind: "bad_request" };
+  const noteText = request.requestNote ?? "";
+  if (!isResponseChoice(request.choice, plan.joinMode)) return { kind: "bad_request" };
+  if (request.choice !== "requested" && noteText.trim() !== "") return { kind: "bad_request" };
 
   const existingDevice = await resolveDevice(deps, request.deviceToken);
   if (existingDevice !== undefined) {
@@ -74,7 +75,16 @@ export async function respond(
   if (!open.ok) return { kind: "closed", reason: open.error };
 
   const name = validateDisplayName(request.displayName, plan.posterName);
-  if (!name.ok) return { kind: "invalid", errors: [{ field: "displayName", code: name.error }] };
+  const note = validateRequestNote(noteText);
+  if (!name.ok || !note.ok) {
+    return {
+      kind: "invalid",
+      errors: [
+        ...(name.ok ? [] : [{ field: "displayName" as const, code: name.error }]),
+        ...(note.ok ? [] : [{ field: "requestNote" as const, code: note.error }]),
+      ],
+    };
+  }
 
   const manageToken = deps.tokens.generate();
   const { device, newToken } = await ensureDevice(deps, request.deviceToken);
@@ -83,6 +93,7 @@ export async function respond(
     planId: plan.id,
     kind: request.choice,
     displayName: name.value,
+    requestNote: note.value,
     language: request.language,
     previousKind: undefined,
     createdAt: now,
@@ -129,8 +140,10 @@ export type ViewMyResponseResult =
       startsAt: Date;
       timeZone: string;
       response: OwnResponseView;
-      /** Whether switching between interested and joined is still possible. */
+      /** Whether changing the response is still possible. */
       canChange: boolean;
+      /** The kinds the response can be set to: this join mode's choices, plus the current one (spec 3.4). */
+      choices: readonly ResponseChoice[];
     };
 
 export async function viewMyResponse(
@@ -145,8 +158,10 @@ export async function viewMyResponse(
     planTitle: plan.title,
     startsAt: plan.startsAt,
     timeZone: plan.timeZone,
-    response: { kind: response.kind, displayName: response.displayName },
+    response: ownResponseView(response, plan, deps.clock.now()),
     canChange: canChangeResponse(response, plan, deps.clock.now()).ok,
+    // An accepted participant in approval mode keeps "joined" next to the mode's choices.
+    choices: choicesFor(plan.joinMode, response.kind),
   };
 }
 
@@ -167,7 +182,9 @@ export async function updateMyResponse(
   if (found === undefined) return { kind: "not_found" };
   const { plan, response } = found;
   if (response.kind === "removed" || response.kind === "rejected") return { kind: "blocked" };
-  if (!isOpenModeChoice(request.choice)) return { kind: "bad_request" };
+  if (!isResponseChoice(request.choice, plan.joinMode, response.kind)) {
+    return { kind: "bad_request" };
+  }
 
   const now = deps.clock.now();
   if (request.choice !== response.kind) {
@@ -183,6 +200,8 @@ export async function updateMyResponse(
   await deps.responses.update({
     ...response,
     kind: request.choice,
+    // A note belongs to a pending request; it goes when the person stops requesting (spec 3.6).
+    requestNote: request.choice === "requested" ? response.requestNote : undefined,
     displayName: name.value,
     updatedAt: now,
   });

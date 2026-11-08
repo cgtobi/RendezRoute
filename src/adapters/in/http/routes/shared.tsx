@@ -10,6 +10,7 @@ import type { Config } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
 import { MapAssets, type MapSettings } from "../views/maps.tsx";
 import { PlanPage } from "../views/plan-page.tsx";
+import type { RespondFormState } from "../views/respond-form.tsx";
 import { PreviewTags } from "../views/preview-tags.tsx";
 import { themeVersion } from "../views/theme-css.ts";
 
@@ -87,9 +88,11 @@ export function renderPlanPage(
   c: Context<AppEnv>,
   config: Config,
   result: Exclude<ViewPlanResult, { kind: "not_found" }>,
-  form: { displayName: string; errorCode: string | undefined; nonce: string } = {
+  form: Omit<RespondFormState, "csrfToken"> = {
     displayName: "",
+    requestNote: "",
     errorCode: undefined,
+    noteErrorCode: undefined,
     nonce: newNonce(),
   },
 ) {

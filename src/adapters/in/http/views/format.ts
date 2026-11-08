@@ -1,4 +1,5 @@
 // Display formatting for the plan's time zone and units (spec 3.1 Time, Pace).
+import type { OwnResponseView } from "../../../../application/plan-views.ts";
 import { localeOf as locale, type Translate } from "../../../i18n/i18n.ts";
 import { en, type MessageKey } from "../../../i18n/messages/en.ts";
 import { type ActivityType, paceStyleFor } from "../../../../domain/activity.ts";
@@ -90,4 +91,9 @@ export function retentionOptions(maxRetentionDays: number, current: string): str
   const options = Array.from({ length: maxRetentionDays }, (_, index) => String(index + 1));
   if (/^\d+$/.test(current) && Number(current) > maxRetentionDays) options.push(current);
   return options;
+}
+
+/** The status text of one's own response; an undecided request after the start is "not answered" (spec 3.1). */
+export function statusKey(response: OwnResponseView): MessageKey {
+  return response.notAnswered ? "status.notAnswered" : `status.${response.kind}`;
 }

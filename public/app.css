@@ -440,3 +440,15 @@ button.danger {
   flex-wrap: wrap;
   gap: 16px;
 }
+
+/* Pending requests on the host page (spec 6 feature 1): name, note, then the two buttons. */
+.people-actions.requests li {
+  flex-wrap: wrap;
+}
+
+.request-note {
+  flex-basis: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--muted);
+}

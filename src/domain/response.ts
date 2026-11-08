@@ -10,8 +10,10 @@ export interface PlanResponse {
   displayName: string;
   /** BCP 47 tag from the browser, for this person's notifications (spec 4). */
   language: string;
-  /** Kind before removal, so the host can undo it (spec 3.5). */
+  /** Kind before removal or rejection, so the host can undo it (spec 3.5). */
   previousKind: ResponseKind | undefined;
+  /** Optional note with a request to join (spec 6 feature 1); only the host sees it. */
+  requestNote?: string | undefined;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -112,7 +112,8 @@ export const de: Messages = {
     "Gib hier nicht den genauen Treffpunkt an, dieses Feld ist öffentlich. Dafür gibt es „Genauer Treffpunkt“.",
   "form.exactStart": "Genauer Treffpunkt (optional)",
   "form.exactStartHint": "Nur du und alle, die zusagen, sehen ihn.",
-  "form.openModeWarning": "Alle mit dem Link, die zusagen, sehen den genauen Treffpunkt.",
+  "form.openModeWarning":
+    "Alle mit dem Link, die zusagen, sehen den genauen Treffpunkt. Wähle „Nur, wen ich annehme“, um selbst zu entscheiden, wer ihn sieht.",
   "form.exactDescription": "Wo genau?",
   "form.coordinates": "Koordinaten (optional)",
   "form.latitude": "Breitengrad",
@@ -143,6 +144,11 @@ export const de: Messages = {
     "Läufe: Pace pro Meile, zum Beispiel 9:00 bis 9:30. Radfahrten: Tempo in mph, zum Beispiel 15 bis 18.",
   "form.paceFrom": "Von",
   "form.paceTo": "Bis",
+  "form.joinMode": "Wer mitkommen kann",
+  "form.joinOpen": "Alle mit dem Link",
+  "form.joinApproval": "Nur, wen ich annehme",
+  "form.joinModeHint":
+    "Bei „Nur, wen ich annehme“ schicken Leute eine Anfrage und sehen den genauen Treffpunkt erst, wenn du sie annimmst.",
   "form.dropPolicy": "Gruppenregel",
   "form.note": "Notiz (optional)",
   "form.colors": "Farben des Treffens",
@@ -229,6 +235,10 @@ export const de: Messages = {
   "plan.deletion": "Dieses Treffen wird am {date} gelöscht.",
 
   "plan.counts": "{participants} dabei · {interested} interessiert",
+  "plan.pendingRequests": {
+    one: "{count} Anfrage wartet auf dich.",
+    other: "{count} Anfragen warten auf dich.",
+  },
   "plan.participants": "Wer kommt",
   "plan.interestedPeople": "Interessiert",
   "plan.yourResponse": "Deine Antwort",
@@ -238,6 +248,8 @@ export const de: Messages = {
   "status.interested": "Interessiert",
   "status.joined": "Du bist dabei",
   "status.requested": "Anfrage ausstehend",
+  "status.notAnswered":
+    "Nicht beantwortet: Die Organisator:in hat vor dem Start nicht entschieden.",
   "status.rejected": "Für dieses Treffen nicht angenommen.",
   "status.removed": "Du wurdest aus diesem Treffen entfernt.",
 
@@ -249,6 +261,11 @@ export const de: Messages = {
     "Alle mit dem Link, die zusagen, sehen den genauen Treffpunkt und wer sonst noch kommt.",
   "respond.interested": "Interessiert",
   "respond.join": "Ich bin dabei",
+  "respond.request": "Anfrage senden",
+  "respond.note": "Nachricht an die Organisator:in (optional)",
+  "respond.noteHint": "Nur die Organisator:in sieht sie.",
+  "respond.approvalNote":
+    "Die Organisator:in entscheidet, wer mitkommt. Sobald du angenommen bist, siehst du den genauen Treffpunkt und wer sonst noch kommt.",
   "respond.closed": "Für dieses Treffen sind keine Antworten mehr möglich.",
   "respond.blocked": "Du kannst auf dieses Treffen nicht antworten.",
 
@@ -322,6 +339,16 @@ export const de: Messages = {
   "host.restore": "Entfernen rückgängig machen",
   "host.removeHint":
     "Entfernte Personen sehen den genauen Treffpunkt nicht mehr und können vom selben Gerät aus nicht erneut antworten.",
+  "host.requests": "Anfragen",
+  "host.accept": "Annehmen",
+  "host.reject": "Ablehnen",
+  "host.rejected": "Nicht angenommen",
+  "host.undoReject": "Ablehnung rückgängig machen",
+  "host.acceptPendingWarning": {
+    one: "{count} offene Anfrage wird angenommen.",
+    other: "{count} offene Anfragen werden angenommen.",
+  },
+  "host.acceptPendingConfirm": "Speichern und annehmen",
   "host.cancel": "Treffen absagen…",
   "host.cancelExplain":
     "Eine Absage ist endgültig. Das Treffen bleibt mit dem Hinweis „abgesagt“ sichtbar, bis es gelöscht wird. Wenn es doch stattfindet, erstelle ein neues Treffen.",

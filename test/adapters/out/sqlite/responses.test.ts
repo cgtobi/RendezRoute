@@ -56,6 +56,26 @@ async function seed() {
   return { plans, devices, responses };
 }
 
+describe("request notes (spec 6 feature 1)", () => {
+  it("are stored encrypted, kept on update and cleared with the response", async () => {
+    const { responses } = await seed();
+    await responses.create({
+      response: response({ id: "response-2", kind: "requested", requestNote: "SENTINEL-note" }),
+      manageTokenHash: "manage-hash-2",
+      creationNonce: "nonce-2",
+      deviceId: "device-2",
+    });
+    expect((await responses.findById("response-2"))?.requestNote).toBe("SENTINEL-note");
+    const raw = JSON.stringify(database.sqlite.prepare("select * from responses").all());
+    expect(raw).not.toContain("SENTINEL-note");
+
+    const stored = await responses.findById("response-2");
+    if (stored === undefined) throw new Error("missing");
+    await responses.update({ ...stored, kind: "joined" });
+    expect((await responses.findById("response-2"))?.requestNote).toBe("SENTINEL-note");
+  });
+});
+
 describe("ResponseRepository", () => {
   it("stores and loads responses unchanged", async () => {
     const { responses } = await seed();

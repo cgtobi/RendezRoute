@@ -1,4 +1,5 @@
-import { relative } from "node:path";
+import { readFile } from "node:fs/promises";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Context, Hono } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -16,6 +17,7 @@ import { csrf } from "./csrf.ts";
 import { readPreference } from "./preference-cookies.ts";
 import type { RateLimits } from "./rate-limit.ts";
 import { registerHostRoutes } from "./routes/host.tsx";
+import { registerNotificationRoutes } from "./routes/notifications.ts";
 import { registerPreferenceRoutes } from "./routes/preferences.ts";
 import { registerPlaceRoutes } from "./routes/places.ts";
 import { registerPlanRoutes } from "./routes/plans.tsx";
@@ -60,6 +62,8 @@ export interface AppDeps {
   previewRenderer: PreviewRenderer;
   /** Shared with the scheduler, which sweeps them every minute (decision I33). */
   rateLimits: RateLimits;
+  /** Given to browsers as the applicationServerKey for Web Push (spec 6 feature 3). */
+  vapidPublicKey: string;
 }
 
 /** Hono context variables set by the app middleware. */
@@ -81,6 +85,7 @@ export function createApp({
   geocoder,
   previewRenderer,
   rateLimits,
+  vapidPublicKey,
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -182,13 +187,28 @@ export function createApp({
     return c.render(<PrivacyPage t={t} config={config} />, { title: t("privacy.title") });
   });
 
-  const deps = { config, planDeps, geocoder, previewRenderer, limits: rateLimits };
+  /** The service worker must come from the site root to show this site's notifications (spec 6 feature 3). */
+  let serviceWorker: string | undefined;
+  app.get("/sw.js", async (c) => {
+    // Read once; a missing build is looked for again on the next request.
+    serviceWorker ??= await readFile(join(STATIC_ROOT, "build", "sw.js"), "utf8").catch(
+      () => undefined,
+    );
+    const script = serviceWorker;
+    if (script === undefined) return c.notFound();
+    c.header("content-type", "text/javascript; charset=utf-8");
+    c.header("cache-control", "no-cache");
+    return c.body(script);
+  });
+
+  const deps = { config, planDeps, geocoder, previewRenderer, limits: rateLimits, vapidPublicKey };
   registerPlanRoutes(app, deps);
   registerResponseRoutes(app, deps);
   registerSecretLinkRoutes(app, deps);
   registerHostRoutes(app, deps);
   if (geocoder !== undefined) registerPlaceRoutes(app, { geocoder, limits: rateLimits });
   registerPreferenceRoutes(app, { config });
+  registerNotificationRoutes(app, { config, planDeps, limits: rateLimits });
 
   return app;
 }

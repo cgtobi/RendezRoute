@@ -111,6 +111,40 @@ describe("OutboundHttp", () => {
     expect(hits[0]?.url).toBe("/path?q=1");
   });
 
+  it("posts a body with headers and returns the answer without following redirects", async () => {
+    const bodies: string[] = [];
+    const { port, hits } = await serve((req, res) => {
+      let body = "";
+      req.on("data", (chunk: Buffer) => (body += chunk.toString()));
+      req.on("end", () => {
+        bodies.push(body);
+        res.writeHead(201, { location: "http://evil.test/" }).end("created");
+      });
+    });
+    const response = await createOutboundHttp(testOptions).post(
+      new URL(`http://fine.test:${port}/push`),
+      {
+        headers: { ttl: "60" },
+        body: new TextEncoder().encode("ciphertext"),
+      },
+    );
+    expect(response.status).toBe(201);
+    expect(bodies).toEqual(["ciphertext"]);
+    expect(hits[0]?.method).toBe("POST");
+    expect(hits[0]?.headers.ttl).toBe("60");
+    expect(hits[0]?.headers["user-agent"]).toBe(testOptions.userAgent);
+  });
+
+  it("refuses hosts outside an allowlist before connecting (decision I36)", async () => {
+    const { port, hits } = await serve((_, res) => res.end("ok"));
+    const http = createOutboundHttp({ ...testOptions, allowHost: (host) => host === "push.test" });
+    await expect(
+      http.post(new URL(`http://fine.test:${port}/`), { body: new Uint8Array() }),
+    ).rejects.toThrow(OutboundError);
+    await expect(http.get(new URL(`http://fine.test:${port}/`))).rejects.toThrow(OutboundError);
+    expect(hits).toHaveLength(0);
+  });
+
   it("re-checks every redirect hop, by IP literal and by DNS", async () => {
     for (const target of ["127.0.0.2", "evil.test"]) {
       const { port } = await serve((_, res) => {

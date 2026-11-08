@@ -257,7 +257,28 @@ describe("manage page (spec 5 feature 6)", () => {
       }),
     ).toEqual({
       kind: "updated",
+      notifiedHost: false,
     });
+    expect(await viewMyResponse(deps, { planId, deviceToken: ben.newDeviceToken })).toMatchObject({
+      response: { kind: "interested", displayName: "Benjamin" },
+    });
+  });
+
+  it("refuses only a switch that would notify the host once the caller's limit is used up", async () => {
+    const ben = await joined();
+    const update = (choice: string, displayName: string) =>
+      updateMyResponse(deps, {
+        planId,
+        deviceToken: ben.newDeviceToken,
+        choice,
+        displayName,
+        mayNotifyHost: false,
+      });
+    expect(await update("interested", "Benjamin")).toEqual({
+      kind: "updated",
+      notifiedHost: false,
+    });
+    expect(await update("joined", "Benjamin")).toEqual({ kind: "limited" });
     expect(await viewMyResponse(deps, { planId, deviceToken: ben.newDeviceToken })).toMatchObject({
       response: { kind: "interested", displayName: "Benjamin" },
     });
@@ -286,6 +307,7 @@ describe("manage page (spec 5 feature 6)", () => {
       }),
     ).toEqual({
       kind: "updated",
+      notifiedHost: false,
     });
   });
 

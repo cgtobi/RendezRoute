@@ -10,6 +10,7 @@ import {
   runRetentionSweep,
 } from "./application/maintenance.ts";
 import { runDueJobs } from "./application/jobs.ts";
+import { notificationHandler } from "./application/notifications.ts";
 import type { PlanDeps } from "./application/plans.ts";
 import type { Geocoder, PreviewRenderer } from "./application/ports.ts";
 import { createApp } from "./adapters/in/http/app.tsx";
@@ -30,6 +31,10 @@ import { createMapTiles } from "./adapters/out/preview/tiles.ts";
 import { createIdGenerator } from "./adapters/out/ids.ts";
 import { backupDatabase, createBackupStore } from "./adapters/out/sqlite/backups.ts";
 import { createJobQueue } from "./adapters/out/sqlite/jobs.ts";
+import { createChannelRepository } from "./adapters/out/sqlite/channels.ts";
+import { loadOrCreateVapidKeys } from "./adapters/out/crypto/vapid-keys.ts";
+import { createWebPushNotifier } from "./adapters/out/push/notifier.ts";
+import { isPushServiceHost } from "./domain/push.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "./adapters/out/sqlite/plans.ts";
@@ -47,9 +52,17 @@ const JOB_INTERVAL_MS = 10 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 
 /** Outbound requests to tile and geocoding providers, identified as their policies require. */
-function outboundHttp(config: Config, contactEmail: string) {
+function outboundHttp(
+  config: Config,
+  contactEmail: string | undefined,
+  allowHost?: (hostname: string) => boolean,
+) {
   return createOutboundHttp({
-    userAgent: `RendezRoute (+${config.baseUrl.origin}; ${contactEmail})`,
+    userAgent:
+      contactEmail === undefined
+        ? `RendezRoute (+${config.baseUrl.origin})`
+        : `RendezRoute (+${config.baseUrl.origin}; ${contactEmail})`,
+    ...(allowHost === undefined ? {} : { allowHost }),
     // Decision C7: development may point providers at local fake servers.
     ...(config.allowInsecureDev ? { allowHttp: true, isBlocked: () => false } : {}),
   });
@@ -135,15 +148,20 @@ async function openInstance(
   }
   if (keys.warning !== undefined) warnings.push(keys.warning);
 
+  const ids = createIdGenerator();
   const planDeps: PlanDeps = {
     plans: createPlanRepository(database, keys.cipher),
     devices: createDeviceRepository(database),
     responses: createResponseRepository(database, keys.cipher),
     routeParser: createGpxRouteParser(),
     tokens: createTokenService(),
-    ids: createIdGenerator(),
+    ids,
     clock: systemClock,
     limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
+    notify: {
+      channels: createChannelRepository(database, keys.cipher, ids, () => systemClock.now()),
+      jobs: createJobQueue(database, keys.cipher, ids),
+    },
   };
   return { ok: true, instance: { config, database, keys, planDeps, warnings } };
 }
@@ -157,6 +175,27 @@ export async function startServer(
   const { config, database, keys, planDeps, warnings } = opened.instance;
 
   const rateLimits = createRateLimits(() => planDeps.clock.now().getTime());
+
+  // Web Push (spec 6 feature 3): the instance's VAPID keys live next to the encryption key.
+  const notify = planDeps.notify;
+  if (notify === undefined) throw new Error("notification dependencies missing");
+  const vapid = loadOrCreateVapidKeys(keys.directory);
+  const notifier = createWebPushNotifier({
+    channels: notify.channels,
+    // Only the browser vendors' push services; endpoints come from browsers (decision I36).
+    http: outboundHttp(config, config.contactEmail, isPushServiceHost),
+    vapid,
+    subject:
+      config.contactEmail === undefined ? config.baseUrl.href : `mailto:${config.contactEmail}`,
+    baseUrl: config.baseUrl,
+    now: () => planDeps.clock.now(),
+  });
+  const jobHandlers = {
+    notification: notificationHandler({
+      notifier,
+      onGone: (channelId) => notify.channels.delete(channelId),
+    }),
+  };
   const sweepLimits = () => {
     for (const limiter of Object.values(rateLimits)) limiter.sweep();
     return Promise.resolve({});
@@ -172,15 +211,11 @@ export async function startServer(
         intervalMs: DAY_MS,
         run: () => runHousekeeping({ ...planDeps, backups: createBackupStore(backupDir(config)) }),
       },
-      // Background jobs (spec 6 feature 12); job types get their handlers as features arrive.
+      // Background jobs (spec 6 feature 12): notifications, with retries.
       {
         name: "jobs",
         intervalMs: JOB_INTERVAL_MS,
-        run: () =>
-          runDueJobs(
-            { jobs: createJobQueue(database, keys.cipher, planDeps.ids), clock: planDeps.clock },
-            {},
-          ),
+        run: () => runDueJobs({ jobs: notify.jobs, clock: planDeps.clock }, jobHandlers),
       },
       // Forgets client addresses whose limits have refilled, also when no requests come in.
       { name: "rate_limit_sweep", intervalMs: MINUTE_MS, run: sweepLimits },
@@ -196,6 +231,7 @@ export async function startServer(
     geocoder: createGeocoder(config),
     previewRenderer: createRenderer(config),
     rateLimits,
+    vapidPublicKey: vapid.publicKey,
   });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));

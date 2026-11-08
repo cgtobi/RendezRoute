@@ -6,6 +6,7 @@ import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import type { MapSettings } from "./maps.tsx";
 import { PlanForm } from "./plan-form.tsx";
+import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
 import type { Units } from "../../../../domain/units.ts";
 
@@ -30,6 +31,7 @@ export interface HostPageProps {
   saved: boolean;
   /** A retention edit would delete the plan now and needs confirmation (spec 3.1). */
   confirmDeleteNow: boolean;
+  push: PushSettings;
   /** Whether pending requests can still be decided (spec 3.1: not after the start). */
   requestsOpen: boolean;
   /** Switching to open mode would accept this many pending requests; asks first (spec 3.4). */
@@ -86,6 +88,7 @@ export function HostPage(props: HostPageProps) {
 
       <section class="people">
         <h2>{t("host.people")}</h2>
+        <PushSwitch t={t} push={props.push} hint={t("push.hostHint")} />
         {Object.values(props.people).every((list) => list.length === 0) ? (
           <p>{t("host.noPeople")}</p>
         ) : (

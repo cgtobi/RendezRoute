@@ -53,6 +53,8 @@ export const fr: Messages = {
     "Pour les images d’aperçu des liens, ce serveur charge aussi des images de carte de la zone de rendez-vous approximative, sans rien transmettre vous concernant.",
   "privacy.geocoder":
     "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Les recherches et leurs résultats restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes.",
+  "privacy.push":
+    "Si vous activez les notifications, le service push de votre navigateur (de Google, Mozilla, Apple ou Microsoft) les distribue. Les messages sont chiffrés ; le service voit seulement qu’un message a été envoyé.",
   "privacy.location":
     "« Utiliser ma position » demande votre position à votre navigateur et remplit seulement le formulaire, qui ne l’envoie que si vous le validez.",
   "privacy.locationMap":
@@ -315,6 +317,15 @@ export const fr: Messages = {
   "notify.newResponse": "Quelqu’un a répondu à votre sortie.",
   "notify.newRequest": "Quelqu’un demande à rejoindre votre sortie.",
   "notify.withdrawn": "Quelqu’un a retiré sa réponse.",
+
+  "push.enable": "M’avertir pour cette sortie",
+  "push.disable": "Désactiver les notifications",
+  "push.on": "Les notifications pour cette sortie sont activées dans ce navigateur.",
+  "push.blocked": "Les notifications sont bloquées dans les réglages de ce navigateur.",
+  "push.failed": "Impossible d’activer les notifications. Veuillez réessayer.",
+  "push.hint":
+    "Seulement les nouvelles de cette sortie : modifications, annulation, votre demande et rappels.",
+  "push.hostHint": "Les nouvelles des réponses, des demandes et des retraits.",
 
   "host.route": "Parcours",
   "host.routeNone": "Pas encore de parcours.",

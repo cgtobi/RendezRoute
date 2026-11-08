@@ -106,7 +106,7 @@ export default defineConfig({
     outDir: "public/build",
     emptyOutDir: true,
     rollupOptions: {
-      input: { app: "src/client/app.ts", map: "src/client/map.ts" },
+      input: { app: "src/client/app.ts", map: "src/client/map.ts", sw: "src/client/sw.ts" },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },
   },

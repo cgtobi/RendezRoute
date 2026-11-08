@@ -45,7 +45,7 @@ export function notificationHandler(deps: {
     const result = await deps.notifier.send(payload.channelId, payload.notification);
     if (result === "sent") return "done";
     if (result === "retry") return "retry";
-    await deps.onGone?.(payload.channelId);
+    if (result === "gone") await deps.onGone?.(payload.channelId);
     return "drop";
   };
 }

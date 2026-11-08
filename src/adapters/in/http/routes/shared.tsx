@@ -21,6 +21,7 @@ export interface RouteDeps {
   geocoder: Geocoder | undefined;
   previewRenderer: PreviewRenderer;
   limits: RateLimits;
+  vapidPublicKey: string;
 }
 
 /** The rate-limit key of the request's client; never logged (decision I18). */

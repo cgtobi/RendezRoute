@@ -24,12 +24,16 @@ export interface RateLimits {
   geocode: RateLimiter;
   preview: RateLimiter;
   route: RateLimiter;
+  /** Turning notifications on (spec 3.11: limits on notification spam). */
+  notify: RateLimiter;
 }
 
 /**
  * Creating plans and responding reserve a token before any work and give it back when nothing was
  * created, so parallel requests cannot exceed the burst. Requests carrying a route file always
  * count (parsing is the costly part), as does every place search; previews count only renders.
+ * Switching to joined or requested on the manage page counts as responding, since it notifies the
+ * host; every attempt to turn notifications on counts too.
  * A client is forgotten once its bucket is full again, after at most 30 minutes (create: 5
  * tokens at 10 per hour).
  */
@@ -40,6 +44,7 @@ export function createRateLimits(now: () => number): RateLimits {
     geocode: createRateLimiter({ capacity: 10, perHour: 600, now }),
     preview: createRateLimiter({ capacity: 10, perHour: 60, now }),
     route: createRateLimiter({ capacity: 10, perHour: 30, now }),
+    notify: createRateLimiter({ capacity: 10, perHour: 30, now }),
   };
 }
 

@@ -51,6 +51,8 @@ export const de: Messages = {
     "Für Vorschaubilder von Links lädt dieser Server außerdem Kartenbilder des ungefähren Treffgebiets; dabei wird nichts über dich übermittelt.",
   "privacy.geocoder":
     "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Suchanfragen und Ergebnisse bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit wiederholte Suchen keine neue Anfrage brauchen.",
+  "privacy.push":
+    "Wenn du Benachrichtigungen einschaltest, stellt der Push-Dienst deines Browsers (von Google, Mozilla, Apple oder Microsoft) sie zu. Die Nachrichten sind verschlüsselt; der Dienst sieht nur, dass eine verschickt wurde.",
   "privacy.location":
     "„Meinen Standort verwenden“ fragt deinen Browser nach deiner Position und füllt nur das Formular aus; gesendet wird sie erst, wenn du das Formular abschickst.",
   "privacy.locationMap":
@@ -314,6 +316,16 @@ export const de: Messages = {
   "notify.newResponse": "Jemand hat auf dein Treffen geantwortet.",
   "notify.newRequest": "Jemand möchte bei deinem Treffen mitmachen.",
   "notify.withdrawn": "Jemand hat die Antwort zurückgezogen.",
+
+  "push.enable": "Benachrichtige mich zu diesem Treffen",
+  "push.disable": "Benachrichtigungen ausschalten",
+  "push.on": "Benachrichtigungen zu diesem Treffen sind in diesem Browser an.",
+  "push.blocked": "Benachrichtigungen sind in den Einstellungen dieses Browsers blockiert.",
+  "push.failed":
+    "Benachrichtigungen konnten nicht eingeschaltet werden. Bitte versuche es noch einmal.",
+  "push.hint":
+    "Nur Neuigkeiten zu diesem Treffen: Änderungen, Absage, deine Anfrage und Erinnerungen.",
+  "push.hostHint": "Neuigkeiten zu Antworten, Anfragen und zurückgezogenen Antworten.",
 
   "host.route": "Route",
   "host.routeNone": "Noch keine Route.",

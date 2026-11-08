@@ -34,7 +34,7 @@ import { TIME_ZONES } from "./plans.tsx";
 
 export function registerHostRoutes(
   app: Hono<AppEnv>,
-  { config, planDeps, geocoder, limits }: RouteDeps,
+  { config, planDeps, geocoder, limits, vapidPublicKey }: RouteDeps,
 ) {
   const request = (c: Context<AppEnv>) => ({
     planId: c.req.param("id") ?? "",
@@ -64,6 +64,7 @@ export function registerHostRoutes(
         scope={page.scope}
         canCancel={page.canCancel}
         requestsOpen={page.requestsOpen}
+        push={{ endpoint: `/p/${page.planId}/host/notifications`, vapidPublicKey }}
         people={page.people}
         values={form.values ?? localizedInput(page.input, c.get("language"))}
         units={c.get("units")}

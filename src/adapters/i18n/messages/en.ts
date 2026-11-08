@@ -50,6 +50,8 @@ export const en = {
     "For link preview images, this server also loads map images of the rough meeting area; this sends nothing about you.",
   "privacy.geocoder":
     "Place search goes through this server to {host}. That service sees what you search for, but not who you are. Searches and their results are kept in this server’s memory for up to {days} days, so repeated searches need no new request.",
+  "privacy.push":
+    "If you turn on notifications, your browser’s push service (from Google, Mozilla, Apple or Microsoft) delivers them. The messages are encrypted; the service only sees that one was sent.",
   "privacy.location":
     "“Use my location” asks your browser for your position and only fills in the form; it is sent only when you submit the form.",
   "privacy.locationMap":
@@ -300,6 +302,14 @@ export const en = {
   "notify.newResponse": "Someone responded to your plan.",
   "notify.newRequest": "Someone asked to join your plan.",
   "notify.withdrawn": "Someone withdrew their response.",
+
+  "push.enable": "Notify me about this plan",
+  "push.disable": "Turn off notifications",
+  "push.on": "Notifications for this plan are on in this browser.",
+  "push.blocked": "Notifications are blocked in this browser’s settings.",
+  "push.failed": "Notifications could not be turned on. Please try again.",
+  "push.hint": "Only news about this plan: changes, cancellation, your request and reminders.",
+  "push.hostHint": "News about responses, requests and withdrawals.",
 
   "host.route": "Route",
   "host.routeNone": "No route yet.",

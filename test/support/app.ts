@@ -2,6 +2,9 @@ import { randomBytes } from "node:crypto";
 import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts";
 import { createApp } from "../../src/adapters/in/http/app.tsx";
 import { createRateLimits } from "../../src/adapters/in/http/rate-limit.ts";
+import { generateVapidKeys } from "../../src/adapters/out/crypto/vapid-keys.ts";
+import { createChannelRepository } from "../../src/adapters/out/sqlite/channels.ts";
+import { createJobQueue } from "../../src/adapters/out/sqlite/jobs.ts";
 import { createLogger } from "../../src/adapters/logging.ts";
 import { createFieldCipher } from "../../src/adapters/out/crypto/field-cipher.ts";
 import { createKeyring } from "../../src/adapters/out/crypto/keyring.ts";
@@ -50,24 +53,42 @@ export async function createTestApp({
   const clock = new FakeClock(fixtureNow);
   const logs: string[] = [];
   const previewRenderer = new FakePreviewRenderer();
+  const ids = createIdGenerator();
+  const channels = createChannelRepository(database, cipher, ids, () => clock.now());
+  const jobs = createJobQueue(database, cipher, ids);
+  const vapidPublicKey = generateVapidKeys().publicKey;
   const planDeps: PlanDeps = {
     plans: createPlanRepository(database, cipher),
     devices: createDeviceRepository(database),
     responses: createResponseRepository(database, cipher),
     routeParser: createGpxRouteParser(),
     tokens: createTokenService(),
-    ids: createIdGenerator(),
+    ids,
     clock,
     limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
+    notify: { channels, jobs },
   };
   const app = createApp({
     config,
     geocoder: config.geocoder.enabled ? geocoder : undefined,
     previewRenderer: renderer ?? previewRenderer,
     rateLimits: createRateLimits(() => clock.now().getTime()),
+    vapidPublicKey,
     csrfKey: randomBytes(32),
     logger: createLogger({ write: (line) => logs.push(line) }),
     planDeps,
   });
-  return { app, database, clock, logs, config, geocoder, previewRenderer, planDeps };
+  return {
+    app,
+    database,
+    clock,
+    logs,
+    config,
+    geocoder,
+    previewRenderer,
+    planDeps,
+    channels,
+    jobs,
+    vapidPublicKey,
+  };
 }

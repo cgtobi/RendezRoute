@@ -26,13 +26,22 @@ import {
   viewForViewer,
 } from "./plan-views.ts";
 import type { Result } from "../domain/result.ts";
-import type { PlanRepository, ResponseRepository, RouteParseError, RouteParser } from "./ports.ts";
+import type {
+  ChannelRepository,
+  JobQueue,
+  PlanRepository,
+  ResponseRepository,
+  RouteParseError,
+  RouteParser,
+} from "./ports.ts";
 
 export interface PlanDeps extends DeviceDeps {
   plans: PlanRepository;
   responses: ResponseRepository;
   routeParser: RouteParser;
   limits: { horizonDays: number; maxRetentionDays: number };
+  /** Notification channels and the job queue that delivers to them (spec 6 feature 3). */
+  notify?: { channels: ChannelRepository; jobs: JobQueue } | undefined;
 }
 
 const NONCE = /^[A-Za-z0-9_-]{16,64}$/;

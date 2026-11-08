@@ -4,6 +4,7 @@ import { applyRouteDefaults, type Route, routeStats } from "../domain/route.ts";
 import { asHost, type Denied, isDenied } from "./host.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { RouteParseError } from "./ports.ts";
+import { notifyResponders } from "./notify.ts";
 import { readRoute, viewPlan } from "./plans.ts";
 
 type HostRequest = { planId: string; deviceToken: string | undefined };
@@ -37,7 +38,10 @@ export async function setRoute(
   if (!draft.ok) return { kind: "invalid", code: "route_too_long" };
 
   await deps.plans.saveRoute(plan.id, parsed.value);
-  await deps.plans.update({ ...plan, ...draft.value, hasRoute: true, updatedAt: now });
+  const updated = { ...plan, ...draft.value, hasRoute: true, updatedAt: now };
+  await deps.plans.update(updated);
+  // A new route is a change participants and interested people hear about (spec 3.1).
+  await notifyResponders(deps, updated, "changed");
   return { kind: "saved" };
 }
 
@@ -50,6 +54,7 @@ export async function removeRoute(
   if (isDenied(plan)) return plan;
   if (editScope(plan, deps.clock.now()) !== "all") return { kind: "not_allowed" };
   await deps.plans.deleteRoute(plan.id);
+  await notifyResponders(deps, plan, "changed");
   return { kind: "removed" };
 }
 

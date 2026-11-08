@@ -1,6 +1,7 @@
 // Startup key handling (spec 3.11): locate the key, check it against the fingerprint stored
 // in the database, and derive what the rest of the app needs.
 import { existsSync, readFileSync } from "node:fs";
+import { dirname } from "node:path";
 import type { FieldCipher } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
 import { type Database, hasEncryptedData } from "../sqlite/database.ts";
@@ -15,6 +16,8 @@ export interface InstanceKeys {
   csrfKey: Buffer;
   /** Set when the key is stored inside DATA_DIR. */
   warning: string | undefined;
+  /** Where the encryption key lives; other instance keys (VAPID) are kept next to it (spec 10). */
+  directory: string;
 }
 
 /** Throws KeyError when the app must not start. */
@@ -40,5 +43,6 @@ export async function openInstanceKeys(
     cipher: createFieldCipher(opened.keyring),
     csrfKey: deriveKey(opened.keyring, "csrf"),
     warning: location.warning,
+    directory: dirname(location.file),
   };
 }

@@ -1,10 +1,12 @@
 // The host page: edit, cancel, delete, remove and restore people (spec 5 features 7–9,
 // 3.1 Editing and Retention edits, 3.5, decision D8). Only devices linked as host may act.
 import type { Units } from "../domain/pace.ts";
+import type { NotificationKind } from "../domain/notification.ts";
 import type { Plan } from "../domain/plan.ts";
 import {
   canCancel,
   editScope,
+  isMaterialChange,
   planToInput,
   removeResponse,
   validatePlanEdit,
@@ -17,6 +19,7 @@ import { isPosterName } from "../domain/responding.ts";
 import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import { resolveDevice } from "./devices.ts";
+import { notifyResponders, notifyResponse } from "./notify.ts";
 import type { PlanDeps } from "./plans.ts";
 
 export type Denied = { kind: "not_found" } | { kind: "forbidden" };
@@ -164,11 +167,16 @@ export async function editPlan(
   if (pending.length > 0 && request.confirmAcceptPending !== pending.length) {
     return { kind: "confirm_accept_pending", count: pending.length };
   }
-  await deps.plans.update({ ...plan, ...draft.value, updatedAt: now });
+  const updated: Plan = { ...plan, ...draft.value, updatedAt: now };
+  await deps.plans.update(updated);
   for (const response of pending) {
     const accepted = requests.acceptRequest(response, plan, now);
-    if (accepted.ok) await deps.responses.update(accepted.value);
+    if (accepted.ok) {
+      await deps.responses.update(accepted.value);
+      await notifyResponse(deps, updated, accepted.value, "accepted");
+    }
   }
+  if (isMaterialChange(plan, updated)) await notifyResponders(deps, updated, "changed");
   return { kind: "updated" };
 }
 
@@ -185,7 +193,9 @@ export async function cancelPlan(
   const now = deps.clock.now();
   const allowed = canCancel(plan, now);
   if (!allowed.ok) return { kind: "not_allowed", reason: allowed.error };
-  await deps.plans.update({ ...plan, status: "cancelled", updatedAt: now });
+  const cancelled: Plan = { ...plan, status: "cancelled", updatedAt: now };
+  await deps.plans.update(cancelled);
+  await notifyResponders(deps, cancelled, "cancelled");
   return { kind: "cancelled" };
 }
 
@@ -204,7 +214,18 @@ type PersonRequest = { planId: string; deviceToken: string | undefined; response
 type PersonChange = (response: PlanResponse, plan: Plan, now: Date) => Result<PlanResponse, string>;
 
 /** A host action on one person's response; refused changes leave it as it was. */
-function personAction<Done extends string>(change: PersonChange, done: Done) {
+function personAction<Done extends string>(
+  change: PersonChange,
+  {
+    done,
+    notice,
+  }: {
+    /** The result's kind. */
+    done: Done;
+    /** What the person is told (spec 3.5: one notice on rejection or removal). */
+    notice?: NotificationKind;
+  },
+) {
   return async (
     deps: PlanDeps,
     request: PersonRequest,
@@ -216,21 +237,28 @@ function personAction<Done extends string>(change: PersonChange, done: Done) {
     const changed = change(response, plan, deps.clock.now());
     if (!changed.ok) return { kind: "not_allowed" };
     await deps.responses.update(changed.value);
+    if (notice !== undefined) await notifyResponse(deps, plan, changed.value, notice);
     return { kind: done };
   };
 }
 
 /** Removal works like rejection: no private details, no new response from that device (spec 3.5). */
-export const removePerson = personAction(
-  (response, _plan, now) => removeResponse(response, now),
-  "removed",
-);
+export const removePerson = personAction((response, _plan, now) => removeResponse(response, now), {
+  done: "removed",
+  notice: "removed",
+});
 
 /** Undo of a rejection or removal (spec 3.5, decision I37). */
-export const restorePerson = personAction(requests.undoRejectionOrRemoval, "restored");
+export const restorePerson = personAction(requests.undoRejectionOrRemoval, { done: "restored" });
 
 /** A pending request becomes a participant, before the start only (spec 3.1, 3.4). */
-export const acceptRequest = personAction(requests.acceptRequest, "accepted");
+export const acceptRequest = personAction(requests.acceptRequest, {
+  done: "accepted",
+  notice: "accepted",
+});
 
 /** A rejected requester sees what interested people see and cannot request again (spec 3.5). */
-export const rejectRequest = personAction(requests.rejectRequest, "rejected");
+export const rejectRequest = personAction(requests.rejectRequest, {
+  done: "rejected",
+  notice: "rejected",
+});

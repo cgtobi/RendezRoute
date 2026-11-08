@@ -7,6 +7,8 @@ type Answer =
 /** Answers configured URL prefixes (longest match wins) and refuses everything else, so tests never reach the network. */
 export class FakeOutboundHttp implements OutboundHttp {
   readonly requests: URL[] = [];
+  /** POSTs with their headers and bodies, for asserting what was sent. */
+  readonly posts: { url: URL; headers: Readonly<Record<string, string>>; body: Uint8Array }[] = [];
   readonly #answers = new Map<string, Answer>();
 
   respond(
@@ -25,6 +27,14 @@ export class FakeOutboundHttp implements OutboundHttp {
   fail(urlPrefix: string, error: Error): this {
     this.#answers.set(urlPrefix, { kind: "error", error });
     return this;
+  }
+
+  post(
+    url: URL,
+    { headers = {}, body }: { headers?: Readonly<Record<string, string>>; body: Uint8Array },
+  ): Promise<OutboundResponse> {
+    this.posts.push({ url, headers, body });
+    return this.get(url);
   }
 
   get(url: URL): Promise<OutboundResponse> {

@@ -9,6 +9,7 @@ import {
 } from "../domain/requests.ts";
 import { canChangeResponse, canRespond, validateDisplayName } from "../domain/responding.ts";
 import { ensureDevice, resolveDevice } from "./devices.ts";
+import { notifyHost, notifyHostOfArrival } from "./notify.ts";
 import { type OwnResponseView, ownResponse as ownResponseView } from "./plan-views.ts";
 import type { PlanDeps } from "./plans.ts";
 
@@ -112,6 +113,7 @@ export async function respond(
       return { kind: "duplicate", planId: plan.id };
     throw error;
   }
+  await notifyHostOfArrival(deps, plan, request.choice);
   return {
     kind: "created",
     planId: plan.id,
@@ -166,7 +168,10 @@ export async function viewMyResponse(
 }
 
 export type UpdateMyResponseResult =
-  | { kind: "updated" }
+  /** notifiedHost: the change was news for the host (a join or request). */
+  | { kind: "updated"; notifiedHost: boolean }
+  /** The change would notify the host, but the caller's limit for that is used up. */
+  | { kind: "limited" }
   | { kind: "blocked" }
   | Closed
   | Invalid
@@ -176,7 +181,14 @@ export type UpdateMyResponseResult =
 /** Changes the choice (interested ↔ joined, before the start) and the display name. */
 export async function updateMyResponse(
   deps: PlanDeps,
-  request: { planId: string; deviceToken: string | undefined; choice: string; displayName: string },
+  request: {
+    planId: string;
+    deviceToken: string | undefined;
+    choice: string;
+    displayName: string;
+    /** False once the caller's rate limit is used up: joining or requesting is refused then. */
+    mayNotifyHost?: boolean;
+  },
 ): Promise<UpdateMyResponseResult> {
   const found = await ownResponse(deps, request.planId, request.deviceToken);
   if (found === undefined) return { kind: "not_found" };
@@ -196,6 +208,9 @@ export async function updateMyResponse(
   }
   const name = validateDisplayName(request.displayName, plan.posterName);
   if (!name.ok) return { kind: "invalid", errors: [{ field: "displayName", code: name.error }] };
+  // Joining or requesting through the manage page is news for the host, like a new response.
+  const notifiedHost = request.choice !== response.kind && request.choice !== "interested";
+  if (notifiedHost && request.mayNotifyHost === false) return { kind: "limited" };
 
   await deps.responses.update({
     ...response,
@@ -205,7 +220,8 @@ export async function updateMyResponse(
     displayName: name.value,
     updatedAt: now,
   });
-  return { kind: "updated" };
+  if (notifiedHost) await notifyHostOfArrival(deps, plan, request.choice);
+  return { kind: "updated", notifiedHost };
 }
 
 /** Hard delete of the response, its name and any block on it (spec 3.5 Blocks and erasure). */
@@ -216,5 +232,6 @@ export async function withdrawMyResponse(
   const found = await ownResponse(deps, request.planId, request.deviceToken);
   if (found === undefined) return { kind: "not_found" };
   await deps.responses.delete(found.response.id);
+  await notifyHost(deps, found.plan, "withdrawn");
   return { kind: "withdrawn" };
 }

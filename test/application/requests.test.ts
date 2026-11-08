@@ -185,13 +185,13 @@ describe("changing one's own response in approval mode (spec 3.4)", () => {
     const { responseId, device } = await request("Ben", "interested");
     const update = (choice: string) =>
       updateMyResponse(deps, { planId, deviceToken: device, choice, displayName: "Ben" });
-    expect(await update("requested")).toEqual({ kind: "updated" });
+    expect(await update("requested")).toEqual({ kind: "updated", notifiedHost: true });
     expect(await kindOf(responseId)).toBe("requested");
     expect(await update("joined")).toEqual({ kind: "bad_request" });
     await acceptRequest(deps, as(responseId));
-    expect(await update("joined")).toEqual({ kind: "updated" });
-    expect(await update("interested")).toEqual({ kind: "updated" });
-    expect(await update("requested")).toEqual({ kind: "updated" });
+    expect(await update("joined")).toEqual({ kind: "updated", notifiedHost: false });
+    expect(await update("interested")).toEqual({ kind: "updated", notifiedHost: false });
+    expect(await update("requested")).toEqual({ kind: "updated", notifiedHost: true });
     expect(await kindOf(responseId)).toBe("requested");
   });
 });

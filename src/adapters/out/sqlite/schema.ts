@@ -108,6 +108,16 @@ export interface JobQueueTable {
   last_error: string | null;
 }
 
+export interface NotificationChannelsTable {
+  id: string;
+  response_id: string | null;
+  plan_id: string | null;
+  kind: "webpush";
+  config_enc: string;
+  verified: Generated<number>;
+  created_at: string;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -119,4 +129,5 @@ export interface DatabaseSchema {
   routes: RoutesTable;
   plan_previews: PlanPreviewsTable;
   job_queue: JobQueueTable;
+  notification_channels: NotificationChannelsTable;
 }

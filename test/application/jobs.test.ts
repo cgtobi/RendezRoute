@@ -100,6 +100,19 @@ describe("notifications (spec 6 feature 3, decision I36)", () => {
     expect(gone).toEqual(["channel-1"]);
   });
 
+  it("drop a message refused for good, keeping the channel", async () => {
+    const notifier = new FakeNotifier();
+    notifier.result = "failed";
+    const gone: string[] = [];
+    await enqueueNotification({ jobs, clock }, { channelId: "channel-1", notification });
+    const handler = notificationHandler({
+      notifier,
+      onGone: (id) => (gone.push(id), Promise.resolve()),
+    });
+    expect(await run({ notification: handler })).toMatchObject({ dropped: 1 });
+    expect(gone).toEqual([]);
+  });
+
   it("retry when the push service is unavailable, and drop malformed payloads", async () => {
     const notifier = new FakeNotifier();
     notifier.result = "retry";

@@ -65,6 +65,7 @@ export function PrivacyPage({ t, config }: { t: Translate; config: Config }) {
           {t("privacy.location")}
           {maps.enabled && ` ${t("privacy.locationMap")}`}
         </li>
+        <li>{t("privacy.push")}</li>
         <li>{t("privacy.share")}</li>
         <li>{t("privacy.previews")}</li>
       </ul>

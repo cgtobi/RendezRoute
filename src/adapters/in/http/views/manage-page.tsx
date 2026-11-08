@@ -5,6 +5,7 @@ import type { ResponseChoice } from "../../../../domain/requests.ts";
 import { MAX_DISPLAY_NAME_LENGTH } from "../../../../domain/responding.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, statusKey } from "./format.ts";
+import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 
 export function ManagePage(props: {
   t: Translate;
@@ -15,6 +16,8 @@ export function ManagePage(props: {
   /** Kinds offered for this plan's join mode (spec 3.4). */
   choices: readonly ResponseChoice[];
   csrfToken: string;
+  /** The notification switch; left out for rejected and removed people (spec 3.5). */
+  push: PushSettings;
   displayName: string;
   errorCode: string | undefined;
   notice: string | undefined;
@@ -79,6 +82,8 @@ export function ManagePage(props: {
           <button type="submit">{t("manage.save")}</button>
         </form>
       )}
+
+      <PushSwitch t={t} push={props.push} hint={t("push.hint")} offOnly={blocked} />
 
       <details class="withdraw">
         <summary>{t("manage.withdraw")}</summary>

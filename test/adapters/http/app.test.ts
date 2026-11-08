@@ -20,6 +20,7 @@ const createApp = ({ config }: { config: Config }) =>
     geocoder: undefined,
     previewRenderer: new FakePreviewRenderer(),
     rateLimits: createRateLimits(() => 0),
+    vapidPublicKey: "B" + "A".repeat(86),
     planDeps: {
       ...createFakeRepositories(),
       routeParser: new FakeRouteParser(),

@@ -76,6 +76,18 @@ describe("encryption key handling at startup (spec 3.11)", () => {
     expect(second.ok).toBe(true);
   });
 
+  it("keeps the VAPID keys in the key directory, never elsewhere in DATA_DIR (spec 2b)", async () => {
+    const vars = env();
+    const keys = keyDir();
+    vars.ENCRYPTION_KEY_FILE = join(keys, "field.key");
+    const result = await start(vars);
+    if (!result.ok) throw new Error(result.errors.join("; "));
+
+    expect(statSync(join(keys, "vapid.json")).mode & 0o777).toBe(0o600);
+    const dataFiles = readdirSync(vars.DATA_DIR ?? "", { recursive: true }).map(String);
+    expect(dataFiles.filter((name) => name.includes("vapid"))).toEqual([]);
+  });
+
   it("refuses to start when the key does not match the database", async () => {
     const vars = env();
     const keyFile = join(keyDir(), "field.key");

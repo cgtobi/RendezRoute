@@ -1,5 +1,6 @@
 import type { JobType } from "../domain/jobs.ts";
 import type { Notification } from "../domain/notification.ts";
+import type { PushSubscription } from "../domain/push.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
@@ -68,6 +69,16 @@ export interface OutboundHttp {
   get(
     url: URL,
     options?: { headers?: Readonly<Record<string, string>>; maxBytes?: number; timeoutMs?: number },
+  ): Promise<OutboundResponse>;
+  /** Sends a body; redirects are returned, not followed. */
+  post(
+    url: URL,
+    options: {
+      headers?: Readonly<Record<string, string>>;
+      body: Uint8Array;
+      maxBytes?: number;
+      timeoutMs?: number;
+    },
   ): Promise<OutboundResponse>;
 }
 
@@ -227,10 +238,34 @@ export interface JobQueue {
   deleteExpired(now: Date): Promise<number>;
 }
 
-/** "gone": the channel no longer exists (e.g. an expired push subscription). */
-export type SendResult = "sent" | "gone" | "retry";
+/**
+ * "gone": the channel no longer exists (e.g. an expired push subscription) and can be deleted;
+ * "failed": this message was refused for good, the channel stays.
+ */
+export type SendResult = "sent" | "gone" | "retry" | "failed";
 
 /** Delivers a notification to one channel (spec 2a); one adapter per channel kind. */
 export interface Notifier {
   send(channelId: string, notification: Notification): Promise<SendResult>;
+}
+
+/** Who a notification channel belongs to: a response, or the host of a plan (spec 4). */
+export type ChannelOwner = { responseId: string } | { planId: string };
+
+export interface NotificationChannel {
+  id: string;
+  owner: ChannelOwner;
+  subscription: PushSubscription;
+}
+
+/** Browser push subscriptions per response or hosted plan (spec 6 feature 3), stored encrypted. */
+export interface ChannelRepository {
+  /** Adds a subscription, or returns the existing channel with the same endpoint. */
+  add(owner: ChannelOwner, subscription: PushSubscription): Promise<string>;
+  remove(owner: ChannelOwner, endpoint: string): Promise<void>;
+  has(owner: ChannelOwner, endpoint: string): Promise<boolean>;
+  /** Oldest first. */
+  listFor(owner: ChannelOwner): Promise<NotificationChannel[]>;
+  findById(id: string): Promise<NotificationChannel | undefined>;
+  delete(id: string): Promise<void>;
 }

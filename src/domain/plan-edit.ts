@@ -128,3 +128,23 @@ export function removeResponse(
   if (response.kind !== "joined" && response.kind !== "interested") return err("not_removable");
   return ok({ ...response, kind: "removed", previousKind: response.kind, updatedAt: now });
 }
+
+/** What people who responded see and plan around; a save changing none of it notifies nobody (spec 6 feature 3). */
+export function isMaterialChange(before: Plan, after: Plan): boolean {
+  const seen = (plan: Plan) =>
+    JSON.stringify([
+      plan.title,
+      plan.activity,
+      plan.startsAt.getTime(),
+      plan.timeZone,
+      plan.area,
+      plan.exactStart,
+      plan.distanceMeters,
+      plan.elevationGainMeters,
+      plan.pace,
+      plan.dropPolicy,
+      plan.note,
+      plan.joinMode,
+    ]);
+  return seen(before) !== seen(after);
+}

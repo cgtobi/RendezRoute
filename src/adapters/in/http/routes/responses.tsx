@@ -24,7 +24,10 @@ import {
   secretLinkHeaders,
 } from "./shared.tsx";
 
-export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, limits }: RouteDeps) {
+export function registerResponseRoutes(
+  app: Hono<AppEnv>,
+  { config, planDeps, limits, vapidPublicKey }: RouteDeps,
+) {
   const message = (
     c: Context<AppEnv>,
     planId: string,
@@ -129,6 +132,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, li
         response={result.response}
         canChange={result.canChange}
         choices={result.choices}
+        push={{ endpoint: `/p/${planId}/me/notifications`, vapidPublicKey }}
         csrfToken={c.get("csrfToken")()}
         displayName={form.displayName ?? result.response.displayName}
         errorCode={form.errorCode}
@@ -144,13 +148,23 @@ export function registerResponseRoutes(app: Hono<AppEnv>, { config, planDeps, li
     const planId = c.req.param("id");
     const body = await readForm(c);
     if (body === undefined) return badRequest(c);
+    // A switch to joined or requested notifies the host, so it counts like a new response
+    // (spec 3.11); the token comes back for any other save, and renaming works without one.
+    const client = clientOf(c);
+    const allowed = limits.respond.take(client);
     const result = await updateMyResponse(planDeps, {
       planId,
       deviceToken: readDeviceToken(c, config),
       choice: formField(body, "choice"),
       displayName: formField(body, "displayName"),
+      mayNotifyHost: allowed.ok,
     });
+    if (allowed.ok && (result.kind !== "updated" || !result.notifiedHost)) {
+      limits.respond.refund(client);
+    }
     switch (result.kind) {
+      case "limited":
+        return tooManyRequests(c, allowed.ok ? 1 : allowed.retryAfterSeconds);
       case "updated":
         return c.redirect(`/p/${planId}/me`, 303);
       case "not_found":

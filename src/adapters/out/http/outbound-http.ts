@@ -1,7 +1,9 @@
 // Outbound HTTP with SSRF protection (spec 3.11): private, loopback, link-local and
 // metadata addresses are refused after DNS resolution, for IP literals and on every
-// redirect hop. The check runs inside the socket's DNS lookup, so the address that
-// was checked is the address that is connected to (no DNS rebinding window).
+// redirect hop of a GET (POSTs never follow redirects). The check runs inside the socket's
+// DNS lookup, so the address that was checked is the address that is connected to (no DNS
+// rebinding window). An optional host allowlist narrows a client further, e.g. to the push
+// services (decision I36).
 import { type LookupAddress, promises as dnsPromises } from "node:dns";
 import { BlockList, isIP } from "node:net";
 import { Agent, fetch } from "undici";
@@ -110,6 +112,8 @@ export interface OutboundHttpOptions {
   timeoutMs?: number;
   maxBytes?: number;
   maxRedirects?: number;
+  /** Restricts requests to these host names, e.g. the browser vendors' push services (decision I36). */
+  allowHost?: (hostname: string) => boolean;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -151,6 +155,9 @@ export function createOutboundHttp(options: OutboundHttpOptions): OutboundHttp {
       throw new OutboundError(`Only https URLs are allowed, got ${url.protocol}`);
     }
     const host = url.hostname.replace(/^\[|\]$/g, "");
+    if (options.allowHost !== undefined && !options.allowHost(host)) {
+      throw new OutboundError("Request blocked: host not allowed.");
+    }
     if (isIP(host) !== 0 && isBlocked(host)) {
       throw new OutboundError("Request blocked: forbidden address.");
     }
@@ -182,37 +189,65 @@ export function createOutboundHttp(options: OutboundHttpOptions): OutboundHttp {
             continue;
           }
 
-          const declared = Number(response.headers.get("content-length") ?? 0);
-          if (declared > limit) {
-            await response.body?.cancel();
-            throw new OutboundError(`Response too large (${declared} bytes, limit ${limit}).`);
-          }
-
-          const chunks: Uint8Array[] = [];
-          let total = 0;
-          if (response.body !== null) {
-            for await (const chunk of response.body) {
-              total += chunk.byteLength;
-              if (total > limit)
-                throw new OutboundError(`Response too large (limit ${limit} bytes).`);
-              chunks.push(chunk);
-            }
-          }
-
-          return {
-            status: response.status,
-            url,
-            headers: Object.fromEntries(response.headers),
-            body: Buffer.concat(chunks),
-          };
+          return await readResponse(response, url, limit);
         }
       } catch (error) {
-        if (error instanceof OutboundError) throw error;
-        if (signal.aborted) throw new OutboundError("Request timed out.", { cause: error });
-        const cause = (error as { cause?: unknown }).cause;
-        if (cause instanceof OutboundError) throw cause;
-        throw new OutboundError("Request failed.", { cause: error });
+        throw asOutboundError(error, signal);
+      }
+    },
+
+    async post(url, { headers = {}, body, maxBytes, timeoutMs }): Promise<OutboundResponse> {
+      const limit = maxBytes ?? options.maxBytes ?? DEFAULT_MAX_BYTES;
+      const signal = AbortSignal.timeout(timeoutMs ?? options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+      try {
+        checkUrl(url);
+        const response = await fetch(url, {
+          method: "POST",
+          dispatcher: agent,
+          redirect: "manual",
+          signal,
+          headers: { ...headers, "user-agent": options.userAgent },
+          body,
+        });
+        return await readResponse(response, url, limit);
+      } catch (error) {
+        throw asOutboundError(error, signal);
       }
     },
   };
+}
+
+async function readResponse(
+  response: Awaited<ReturnType<typeof fetch>>,
+  url: URL,
+  limit: number,
+): Promise<OutboundResponse> {
+  const declared = Number(response.headers.get("content-length") ?? 0);
+  if (declared > limit) {
+    await response.body?.cancel();
+    throw new OutboundError(`Response too large (${declared} bytes, limit ${limit}).`);
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  if (response.body !== null) {
+    for await (const chunk of response.body) {
+      total += chunk.byteLength;
+      if (total > limit) throw new OutboundError(`Response too large (limit ${limit} bytes).`);
+      chunks.push(chunk);
+    }
+  }
+  return {
+    status: response.status,
+    url,
+    headers: Object.fromEntries(response.headers),
+    body: Buffer.concat(chunks),
+  };
+}
+
+function asOutboundError(error: unknown, signal: AbortSignal): OutboundError {
+  if (error instanceof OutboundError) return error;
+  if (signal.aborted) return new OutboundError("Request timed out.", { cause: error });
+  const cause = (error as { cause?: unknown }).cause;
+  if (cause instanceof OutboundError) return cause;
+  return new OutboundError("Request failed.", { cause: error });
 }

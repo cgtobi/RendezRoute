@@ -24,10 +24,8 @@ import {
   secretLinkHeaders,
 } from "./shared.tsx";
 
-export function registerResponseRoutes(
-  app: Hono<AppEnv>,
-  { config, planDeps, limits, vapidPublicKey }: RouteDeps,
-) {
+export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
+  const { config, planDeps, limits, vapidPublicKey } = deps;
   const message = (
     c: Context<AppEnv>,
     planId: string,
@@ -98,7 +96,7 @@ export function registerResponseRoutes(
         if (view.kind === "not_found") return planGone(c);
         c.status(422);
         const codeFor = (field: string) => result.errors.find((e) => e.field === field)?.code;
-        return renderPlanPage(c, config, view, {
+        return renderPlanPage(c, deps, view, {
           displayName: formField(body, "displayName"),
           requestNote: formField(body, "requestNote"),
           errorCode: codeFor("displayName"),

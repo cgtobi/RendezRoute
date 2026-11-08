@@ -4,7 +4,13 @@ import { localeOf as locale, type Translate } from "../../../i18n/i18n.ts";
 import { en, type MessageKey } from "../../../i18n/messages/en.ts";
 import { type ActivityType, paceStyleFor } from "../../../../domain/activity.ts";
 import { formatPace, formatSpeed, type PaceBand } from "../../../../domain/pace.ts";
-import { metersToDistance, metersToElevation, type Units } from "../../../../domain/units.ts";
+import {
+  celsiusToTemperature,
+  kmhToSpeed,
+  metersToDistance,
+  metersToElevation,
+  type Units,
+} from "../../../../domain/units.ts";
 
 export function formatDay(date: Date, zone: string, language: string): string {
   return new Intl.DateTimeFormat(locale(language), { dateStyle: "full", timeZone: zone }).format(
@@ -46,6 +52,28 @@ export function formatElevation(
 ): string {
   const value = formatNumber(Math.round(metersToElevation(meters, units)), language);
   return `${value} ${t(units === "imperial" ? "unit.ft" : "unit.m")}`;
+}
+
+/** "14 °C" or "58 °F", whole degrees. */
+export function formatTemperature(
+  celsius: number,
+  units: Units,
+  language: string,
+  t: Translate,
+): string {
+  const value = formatNumber(Math.round(celsiusToTemperature(celsius, units)), language);
+  return `${value} ${t(units === "imperial" ? "unit.fahrenheit" : "unit.celsius")}`;
+}
+
+/** "12 km/h" or "7 mph". */
+export function formatWindSpeed(kmh: number, units: Units, language: string, t: Translate): string {
+  const value = formatNumber(Math.round(kmhToSpeed(kmh, units)), language);
+  return `${value} ${t(units === "imperial" ? "unit.mph" : "unit.kmh")}`;
+}
+
+/** "20%", "20 %" in German and French. */
+export function formatPercent(percent: number, language: string): string {
+  return new Intl.NumberFormat(locale(language), { style: "percent" }).format(percent / 100);
 }
 
 export function formatNumber(value: number, language: string): string {

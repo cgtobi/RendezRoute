@@ -52,6 +52,8 @@ export const en = {
     "Place search goes through this server to {host}. That service sees what you search for, but not who you are. Searches and their results are kept in this server’s memory for up to {days} days, so repeated searches need no new request.",
   "privacy.push":
     "If you turn on notifications, your browser’s push service (from Google, Mozilla, Apple or Microsoft) delivers them. The messages are encrypted; the service only sees that one was sent.",
+  "privacy.weather":
+    "For the weather forecast on plan pages, this server asks {host} about the rough meeting area and the start time. Nothing about you is sent. Forecasts are kept in this server’s memory for up to {minutes} minutes.",
   "privacy.calendar":
     "If you create a calendar link, your calendar app’s server fetches it. That server sees the public details of your plans and that you responded to them.",
   "privacy.location":
@@ -95,6 +97,8 @@ export const en = {
   "unit.mph": "mph",
   "unit.mi": "mi",
   "unit.ft": "ft",
+  "unit.celsius": "°C",
+  "unit.fahrenheit": "°F",
 
   "form.heading": "Plan a run or ride",
   "form.errors": "Please check the fields marked below.",
@@ -293,6 +297,7 @@ export const en = {
   "plan.downloadGpx": "Download GPX",
   "plan.addToCalendar": "Add to calendar",
   "plan.subscribeCalendar": "Subscribe to all your plans in your calendar",
+  "plan.weather": "Weather forecast",
 
   "notify.accepted": "You’re in. The exact start is now on the plan page.",
   "notify.rejected": "Your request was not accepted for this plan.",
@@ -307,6 +312,22 @@ export const en = {
   "notify.newResponse": "Someone responded to your plan.",
   "notify.newRequest": "Someone asked to join your plan.",
   "notify.withdrawn": "Someone withdrew their response.",
+
+  "weather.clear": "Clear",
+  "weather.mainlyClear": "Mostly clear",
+  "weather.partlyCloudy": "Partly cloudy",
+  "weather.overcast": "Overcast",
+  "weather.fog": "Fog",
+  "weather.drizzle": "Drizzle",
+  "weather.rain": "Rain",
+  "weather.snow": "Snow",
+  "weather.rainShowers": "Rain showers",
+  "weather.snowShowers": "Snow showers",
+  "weather.thunderstorm": "Thunderstorm",
+  "weather.rainChance": "{percent} chance of rain",
+  "weather.wind": "wind {speed}",
+  "weather.hint": "For the start time, near the meeting area.",
+  "weather.source": "Weather data:",
 
   "push.enable": "Notify me about this plan",
   "push.disable": "Turn off notifications",

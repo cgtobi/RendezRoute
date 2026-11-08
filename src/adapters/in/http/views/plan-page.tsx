@@ -18,10 +18,14 @@ import {
   formatDistance,
   formatElevation,
   formatPaceBand,
+  formatPercent,
+  formatTemperature,
   formatTime,
+  formatWindSpeed,
 } from "./format.ts";
 import { Linkified } from "./linkify.tsx";
 import { type MapSettings, PlanMap } from "./maps.tsx";
+import type { WeatherView } from "../../../../application/weather.ts";
 import { statusKey } from "./format.ts";
 import { RespondForm, type RespondFormState } from "./respond-form.tsx";
 
@@ -43,6 +47,8 @@ export function PlanPage(props: {
   map: MapSettings | undefined;
   /** The absolute public link, for the share helpers. */
   planUrl: string;
+  /** The forecast for the start, when weather is on and there is one (spec 6 feature 4). */
+  forecast?: WeatherView | undefined;
 }) {
   const { t, language, units, audience, map } = props;
   const { view } = audience;
@@ -115,6 +121,10 @@ export function PlanPage(props: {
         <dt>{t("plan.group")}</dt>
         <dd>{t(`drop.${view.dropPolicy}`)}</dd>
       </dl>
+
+      {props.forecast !== undefined && (
+        <WeatherSection t={t} language={language} units={units} forecast={props.forecast} />
+      )}
 
       <p class="counts">
         {t("plan.counts", {
@@ -192,6 +202,42 @@ export function PlanPage(props: {
         )}
       </p>
     </article>
+  );
+}
+
+/** The forecast for the start hour, with the attribution Open-Meteo asks for (CC BY 4.0). */
+function WeatherSection({
+  t,
+  language,
+  units,
+  forecast,
+}: {
+  t: Translate;
+  language: string;
+  units: Units;
+  forecast: WeatherView;
+}) {
+  const parts = [
+    forecast.condition === undefined ? undefined : t(`weather.${forecast.condition}`),
+    formatTemperature(forecast.temperatureC, units, language, t),
+    forecast.precipitationProbability === undefined
+      ? undefined
+      : t("weather.rainChance", {
+          percent: formatPercent(forecast.precipitationProbability, language),
+        }),
+    t("weather.wind", { speed: formatWindSpeed(forecast.windKmh, units, language, t) }),
+  ].filter((part) => part !== undefined);
+  return (
+    <section class="weather">
+      <h2>{t("plan.weather")}</h2>
+      <p>{parts.join(" · ")}</p>
+      <p class="hint">
+        {t("weather.hint")} {t("weather.source")}{" "}
+        <a href="https://open-meteo.com/" rel="noopener noreferrer">
+          Open-Meteo.com
+        </a>
+      </p>
+    </section>
   );
 }
 

@@ -8,11 +8,11 @@ import {
   DEVICE_UNUSED_DAYS,
 } from "../../../../domain/expiry.ts";
 import { RETENTION_DAYS_LIMIT } from "../../../../domain/schedule.ts";
-import { SERVICE_CACHE_DAYS } from "../../../out/cache-lifetime.ts";
+import { SERVICE_CACHE_DAYS, WEATHER_CACHE_MINUTES } from "../../../out/cache-lifetime.ts";
 import { LONG_COOKIE_DAYS } from "../cookie-lifetime.ts";
 
 export function PrivacyPage({ t, config }: { t: Translate; config: Config }) {
-  const { maps, geocoder } = config;
+  const { maps, geocoder, weather } = config;
   return (
     <section class="privacy">
       <h1>{t("privacy.title")}</h1>
@@ -60,6 +60,11 @@ export function PrivacyPage({ t, config }: { t: Translate; config: Config }) {
         {maps.serverSideTiles && <li>{t("privacy.tilesServer")}</li>}
         {geocoder.enabled && (
           <li>{t("privacy.geocoder", { host: geocoder.url.host, days: SERVICE_CACHE_DAYS })}</li>
+        )}
+        {weather.enabled && (
+          <li>
+            {t("privacy.weather", { host: weather.url.host, minutes: WEATHER_CACHE_MINUTES })}
+          </li>
         )}
         <li>
           {t("privacy.location")}

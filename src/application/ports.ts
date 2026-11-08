@@ -1,3 +1,4 @@
+import type { GeoPoint } from "../domain/geo.ts";
 import type { JobType } from "../domain/jobs.ts";
 import type { Notification } from "../domain/notification.ts";
 import type { PushSubscription } from "../domain/push.ts";
@@ -320,4 +321,22 @@ export interface CalendarFeedRepository {
   deleteForDevice(deviceId: string): Promise<void>;
   /** Deletes feeds whose device has nothing linked any more (spec 3.10); returns how many. */
   deleteUnlinked(): Promise<number>;
+}
+
+/** A forecast for one hour at one point, in metric units (spec 3.9). */
+export interface Forecast {
+  /** WMO weather interpretation code; undefined where the weather model has none. */
+  weatherCode: number | undefined;
+  temperatureC: number;
+  /** Percent; undefined where the weather model has none. */
+  precipitationProbability: number | undefined;
+  windKmh: number;
+}
+
+/**
+ * Weather (spec 2a, optional). Asked only for a public point and an hour, never about a person;
+ * undefined when the service has no forecast for that hour.
+ */
+export interface WeatherProvider {
+  forecast(point: GeoPoint, hour: Date): Promise<Forecast | undefined>;
 }

@@ -2,7 +2,8 @@
 import { randomBytes } from "node:crypto";
 import type { Context } from "hono";
 import type { PlanDeps } from "../../../../application/plans.ts";
-import type { Geocoder, PreviewRenderer } from "../../../../application/ports.ts";
+import type { Geocoder, PreviewRenderer, WeatherProvider } from "../../../../application/ports.ts";
+import { planWeather } from "../../../../application/weather.ts";
 import type { ViewPlanResult } from "../../../../application/plans.ts";
 import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input.ts";
 import { clientKey, type RateLimits } from "../rate-limit.ts";
@@ -20,6 +21,8 @@ export interface RouteDeps {
   /** Place search; undefined when the geocoder is disabled (spec 3.9). */
   geocoder: Geocoder | undefined;
   previewRenderer: PreviewRenderer;
+  /** Forecasts on plan pages; undefined when weather is disabled (spec 3.9). */
+  weather: WeatherProvider | undefined;
   limits: RateLimits;
   vapidPublicKey: string;
 }
@@ -85,9 +88,9 @@ export function planGone(c: Context<AppEnv>) {
 }
 
 /** Renders a found plan for its audience, with the response form for viewers. */
-export function renderPlanPage(
+export async function renderPlanPage(
   c: Context<AppEnv>,
-  config: Config,
+  { config, planDeps, weather }: Pick<RouteDeps, "config" | "planDeps" | "weather">,
   result: Exclude<ViewPlanResult, { kind: "not_found" }>,
   form: Omit<RespondFormState, "csrfToken"> = {
     displayName: "",
@@ -101,6 +104,7 @@ export function renderPlanPage(
   const map = mapSettings(config);
   const showForm = result.kind === "viewer" && result.responsesOpen;
   const { responsesOpen, preview: _preview, ...audience } = result;
+  const forecast = await planWeather({ weather, clock: planDeps.clock }, result.view);
   return c.render(
     <PlanPage
       t={c.get("t")}
@@ -111,6 +115,7 @@ export function renderPlanPage(
       respondForm={showForm ? { ...form, csrfToken: c.get("csrfToken")() } : undefined}
       map={map}
       planUrl={new URL(`/p/${result.view.id}`, config.baseUrl).href}
+      forecast={forecast}
     />,
     {
       title: result.view.title,

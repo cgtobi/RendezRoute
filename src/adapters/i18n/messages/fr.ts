@@ -55,6 +55,8 @@ export const fr: Messages = {
     "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Les recherches et leurs résultats restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes.",
   "privacy.push":
     "Si vous activez les notifications, le service push de votre navigateur (de Google, Mozilla, Apple ou Microsoft) les distribue. Les messages sont chiffrés ; le service voit seulement qu’un message a été envoyé.",
+  "privacy.weather":
+    "Pour les prévisions météo sur les pages des sorties, ce serveur interroge {host} sur la zone de rendez-vous approximative et l’heure de départ. Rien vous concernant n’est envoyé. Les prévisions restent jusqu’à {minutes} minutes dans la mémoire de ce serveur.",
   "privacy.calendar":
     "Si vous créez un lien de calendrier, le serveur de votre application de calendrier le récupère. Ce serveur voit les informations publiques de vos sorties et que vous y avez répondu.",
   "privacy.location":
@@ -102,6 +104,8 @@ export const fr: Messages = {
   "unit.mph": "mph",
   "unit.mi": "mi",
   "unit.ft": "ft",
+  "unit.celsius": "°C",
+  "unit.fahrenheit": "°F",
 
   "form.heading": "Planifier une course ou une sortie vélo",
   "form.errors": "Veuillez vérifier les champs signalés ci-dessous.",
@@ -306,6 +310,7 @@ export const fr: Messages = {
   "plan.downloadGpx": "Télécharger le GPX",
   "plan.addToCalendar": "Ajouter au calendrier",
   "plan.subscribeCalendar": "Abonner votre calendrier à toutes vos sorties",
+  "plan.weather": "Prévisions météo",
 
   "notify.accepted":
     "Vous êtes inscrit·e. Le point de départ exact est maintenant sur la page de la sortie.",
@@ -322,6 +327,22 @@ export const fr: Messages = {
   "notify.newResponse": "Quelqu’un a répondu à votre sortie.",
   "notify.newRequest": "Quelqu’un demande à rejoindre votre sortie.",
   "notify.withdrawn": "Quelqu’un a retiré sa réponse.",
+
+  "weather.clear": "Ciel dégagé",
+  "weather.mainlyClear": "Plutôt dégagé",
+  "weather.partlyCloudy": "Partiellement nuageux",
+  "weather.overcast": "Couvert",
+  "weather.fog": "Brouillard",
+  "weather.drizzle": "Bruine",
+  "weather.rain": "Pluie",
+  "weather.snow": "Neige",
+  "weather.rainShowers": "Averses de pluie",
+  "weather.snowShowers": "Averses de neige",
+  "weather.thunderstorm": "Orage",
+  "weather.rainChance": "{percent} de risque de pluie",
+  "weather.wind": "vent {speed}",
+  "weather.hint": "Pour l’heure de départ, près de la zone de rendez-vous.",
+  "weather.source": "Données météo :",
 
   "push.enable": "M’avertir pour cette sortie",
   "push.disable": "Désactiver les notifications",

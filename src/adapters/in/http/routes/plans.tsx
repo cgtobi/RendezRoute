@@ -45,10 +45,8 @@ export const TIME_ZONES = (() => {
   return zones.includes("UTC") ? zones : ["UTC", ...zones];
 })();
 
-export function registerPlanRoutes(
-  app: Hono<AppEnv>,
-  { config, planDeps, geocoder, previewRenderer, limits }: RouteDeps,
-) {
+export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
+  const { config, planDeps, geocoder, previewRenderer, limits } = deps;
   const emptyForm = (): PlanInput => ({
     ...planInput(() => ""),
     activity: "run",
@@ -214,6 +212,6 @@ export function registerPlanRoutes(
       planId: c.req.param("id"),
       deviceToken: readDeviceToken(c, config),
     });
-    return result.kind === "not_found" ? planGone(c) : renderPlanPage(c, config, result);
+    return result.kind === "not_found" ? planGone(c) : renderPlanPage(c, deps, result);
   });
 }

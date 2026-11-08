@@ -1,5 +1,5 @@
-// Fake external services for end-to-end tests (spec 2b): map tiles and a Nominatim-style place
-// search, so E2E runs never touch real providers. Runs with Node's type stripping.
+// Fake external services for end-to-end tests (spec 2b): map tiles, a Nominatim-style place
+// search and an Open-Meteo-style forecast, so E2E runs never touch real providers. Runs with Node's type stripping.
 import { createServer } from "node:http";
 import { deflateSync } from "node:zlib";
 
@@ -54,6 +54,21 @@ createServer((request, response) => {
     const query = url.searchParams.get("q") ?? "";
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify(query.toLowerCase().includes("flaucher") ? PLACES : []));
+  } else if (url.pathname === "/v1/forecast") {
+    // Partly cloudy, 14 °C, for whichever hour is asked.
+    const hour = url.searchParams.get("start_hour") ?? "";
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(
+      JSON.stringify({
+        hourly: {
+          time: [hour],
+          temperature_2m: [14],
+          precipitation_probability: [20],
+          weather_code: [2],
+          wind_speed_10m: [10],
+        },
+      }),
+    );
   } else if (url.pathname === "/healthz") {
     response.end("ok");
   } else {

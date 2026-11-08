@@ -13,10 +13,14 @@ import { runDueJobs } from "./application/jobs.ts";
 import { notificationHandler } from "./application/notifications.ts";
 import type { PlanDeps } from "./application/plans.ts";
 import { reminderStillDue, runReminders } from "./application/reminders.ts";
-import type { Geocoder, PreviewRenderer } from "./application/ports.ts";
+import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
 import { createApp } from "./adapters/in/http/app.tsx";
 import { createRateLimits } from "./adapters/in/http/rate-limit.ts";
-import { SERVICE_CACHE_MS } from "./adapters/out/cache-lifetime.ts";
+import {
+  SERVICE_CACHE_MS,
+  WEATHER_CACHE_MS,
+  WEATHER_FAILURE_CACHE_MS,
+} from "./adapters/out/cache-lifetime.ts";
 import { startScheduler } from "./adapters/in/scheduler.ts";
 import { createLogger, type Logger } from "./adapters/logging.ts";
 import { type InstanceKeys, openInstanceKeys } from "./adapters/out/crypto/instance-keys.ts";
@@ -28,6 +32,7 @@ import {
 } from "./adapters/out/geocoder/nominatim.ts";
 import { createOutboundHttp } from "./adapters/out/http/outbound-http.ts";
 import { createPreviewRenderer } from "./adapters/out/preview/renderer.ts";
+import { createCachedWeather, createOpenMeteoWeather } from "./adapters/out/weather/open-meteo.ts";
 import { createMapTiles } from "./adapters/out/preview/tiles.ts";
 import { createIdGenerator } from "./adapters/out/ids.ts";
 import { backupDatabase, createBackupStore } from "./adapters/out/sqlite/backups.ts";
@@ -83,6 +88,24 @@ function createGeocoder(config: Config): Geocoder | undefined {
     clock: systemClock,
     ttlMs: SERVICE_CACHE_MS,
     maxEntries: 1000,
+  });
+}
+
+/** Forecasts on plan pages (spec 3.9), cached in memory for an hour per point and hour. */
+function createWeather(config: Config, logger: Logger): WeatherProvider | undefined {
+  if (!config.weather.enabled) return undefined;
+  const weather = createOpenMeteoWeather({
+    http: outboundHttp(config, config.contactEmail),
+    baseUrl: config.weather.url,
+  });
+  return createCachedWeather(weather, {
+    clock: systemClock,
+    ttlMs: WEATHER_CACHE_MS,
+    failureTtlMs: WEATHER_FAILURE_CACHE_MS,
+    maxEntries: 1000,
+    // Error class only: messages may contain URLs (spec 3.8).
+    onError: (error) =>
+      logger.warn("weather_failed", { error: error instanceof Error ? error.name : "unknown" }),
   });
 }
 
@@ -238,6 +261,7 @@ export async function startServer(
     planDeps,
     geocoder: createGeocoder(config),
     previewRenderer: createRenderer(config),
+    weather: createWeather(config, logger),
     rateLimits,
     vapidPublicKey: vapid.publicKey,
   });

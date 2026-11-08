@@ -7,7 +7,7 @@ import { bodyLimit } from "hono/body-limit";
 import type { Child } from "hono/jsx";
 import { jsxRenderer } from "hono/jsx-renderer";
 import type { PlanDeps } from "../../../application/plans.ts";
-import type { Geocoder, PreviewRenderer } from "../../../application/ports.ts";
+import type { Geocoder, PreviewRenderer, WeatherProvider } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
 import { isUnits, type Units } from "../../../domain/units.ts";
 import { type Language, resolveLanguage, type Translate, translator } from "../../i18n/i18n.ts";
@@ -61,6 +61,8 @@ export interface AppDeps {
   geocoder: Geocoder | undefined;
   /** Open Graph card images (spec 3.3). */
   previewRenderer: PreviewRenderer;
+  /** Forecasts on plan pages; undefined when weather is disabled (spec 3.9). */
+  weather: WeatherProvider | undefined;
   /** Shared with the scheduler, which sweeps them every minute (decision I33). */
   rateLimits: RateLimits;
   /** Given to browsers as the applicationServerKey for Web Push (spec 6 feature 3). */
@@ -85,6 +87,7 @@ export function createApp({
   planDeps,
   geocoder,
   previewRenderer,
+  weather,
   rateLimits,
   vapidPublicKey,
 }: AppDeps): Hono<AppEnv> {
@@ -202,7 +205,15 @@ export function createApp({
     return c.body(script);
   });
 
-  const deps = { config, planDeps, geocoder, previewRenderer, limits: rateLimits, vapidPublicKey };
+  const deps = {
+    config,
+    planDeps,
+    geocoder,
+    previewRenderer,
+    weather,
+    limits: rateLimits,
+    vapidPublicKey,
+  };
   registerPlanRoutes(app, deps);
   registerResponseRoutes(app, deps);
   registerSecretLinkRoutes(app, deps);

@@ -24,6 +24,8 @@ const UNITS = [
   "unit.mph",
   "unit.mi",
   "unit.ft",
+  "unit.celsius",
+  "unit.fahrenheit",
 ];
 
 /** Strings that are the same in every language. */

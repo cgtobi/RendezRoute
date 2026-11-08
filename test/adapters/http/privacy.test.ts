@@ -77,9 +77,11 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect(noContact).toContain("tile.openstreetmap.org");
   });
 
-  it("mentions no features this version does not have (weather)", async () => {
-    const { html } = await page();
-    expect(html).not.toMatch(/weather|open-meteo/i);
+  it("says that weather is fetched for the rough area only, when weather is on", async () => {
+    expect(text((await page()).html)).toContain(
+      en("privacy.weather", { host: "api.open-meteo.com", minutes: 60 }),
+    );
+    expect((await page({ WEATHER_ENABLED: "false" })).html).not.toMatch(/weather|open-meteo/i);
   });
 
   it("is translated", async () => {

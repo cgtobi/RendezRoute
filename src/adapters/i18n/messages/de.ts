@@ -53,6 +53,8 @@ export const de: Messages = {
     "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Suchanfragen und Ergebnisse bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit wiederholte Suchen keine neue Anfrage brauchen.",
   "privacy.push":
     "Wenn du Benachrichtigungen einschaltest, stellt der Push-Dienst deines Browsers (von Google, Mozilla, Apple oder Microsoft) sie zu. Die Nachrichten sind verschlüsselt; der Dienst sieht nur, dass eine verschickt wurde.",
+  "privacy.weather":
+    "Für die Wettervorhersage auf den Seiten der Treffen fragt dieser Server bei {host} nach dem ungefähren Treffgebiet und der Startzeit. Über dich wird nichts gesendet. Vorhersagen bleiben bis zu {minutes} Minuten im Speicher dieses Servers.",
   "privacy.calendar":
     "Wenn du einen Kalender-Link erstellst, ruft der Server deiner Kalender-App ihn ab. Dieser Server sieht die öffentlichen Angaben deiner Treffen und dass du darauf geantwortet hast.",
   "privacy.location":
@@ -100,6 +102,8 @@ export const de: Messages = {
   "unit.mph": "mph",
   "unit.mi": "mi",
   "unit.ft": "ft",
+  "unit.celsius": "°C",
+  "unit.fahrenheit": "°F",
 
   "form.heading": "Lauf oder Ausfahrt planen",
   "form.errors": "Bitte prüfe die markierten Felder.",
@@ -306,6 +310,7 @@ export const de: Messages = {
   "plan.downloadGpx": "GPX herunterladen",
   "plan.addToCalendar": "Zum Kalender hinzufügen",
   "plan.subscribeCalendar": "Alle deine Treffen im Kalender abonnieren",
+  "plan.weather": "Wettervorhersage",
 
   "notify.accepted": "Du bist dabei. Der genaue Treffpunkt steht jetzt beim Treffen.",
   "notify.rejected": "Deine Anfrage für dieses Treffen wurde nicht angenommen.",
@@ -321,6 +326,22 @@ export const de: Messages = {
   "notify.newResponse": "Jemand hat auf dein Treffen geantwortet.",
   "notify.newRequest": "Jemand möchte bei deinem Treffen mitmachen.",
   "notify.withdrawn": "Jemand hat die Antwort zurückgezogen.",
+
+  "weather.clear": "Klar",
+  "weather.mainlyClear": "Überwiegend klar",
+  "weather.partlyCloudy": "Teilweise bewölkt",
+  "weather.overcast": "Bedeckt",
+  "weather.fog": "Nebel",
+  "weather.drizzle": "Nieselregen",
+  "weather.rain": "Regen",
+  "weather.snow": "Schnee",
+  "weather.rainShowers": "Regenschauer",
+  "weather.snowShowers": "Schneeschauer",
+  "weather.thunderstorm": "Gewitter",
+  "weather.rainChance": "Regenwahrscheinlichkeit {percent}",
+  "weather.wind": "Wind {speed}",
+  "weather.hint": "Für die Startzeit, in der Nähe des Treffgebiets.",
+  "weather.source": "Wetterdaten:",
 
   "push.enable": "Benachrichtige mich zu diesem Treffen",
   "push.disable": "Benachrichtigungen ausschalten",

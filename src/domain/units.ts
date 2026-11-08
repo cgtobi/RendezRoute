@@ -29,3 +29,13 @@ export function elevationToMeters(value: number, units: Units): number {
 export function metersToElevation(meters: number, units: Units): number {
   return units === "imperial" ? meters / METERS_PER_FOOT : meters;
 }
+
+/** Degrees Celsius to Celsius or Fahrenheit. */
+export function celsiusToTemperature(celsius: number, units: Units): number {
+  return units === "imperial" ? (celsius * 9) / 5 + 32 : celsius;
+}
+
+/** Kilometers per hour to km/h or mph. */
+export function kmhToSpeed(kmh: number, units: Units): number {
+  return units === "imperial" ? kmh / KM_PER_MILE : kmh;
+}

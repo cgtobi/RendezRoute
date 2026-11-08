@@ -23,15 +23,15 @@ async function person(browser: Browser, baseURL: string, problems: string[]) {
   return { context, page };
 }
 
-/** A date a week from now, as the date field expects it. */
-const nextWeek = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+/** A date five days from now, as the date field expects it: within the weather horizon. */
+const inFiveDays = () => new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
 async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: string }> {
   await host.goto("/");
   await host.getByRole("link", { name: "Plan a run or ride" }).click();
   await host.getByLabel("Your name").fill("Anna");
   await host.getByLabel("Title").fill("Sunday long run");
-  await host.getByLabel("Date").fill(nextWeek());
+  await host.getByLabel("Date").fill(inFiveDays());
   await host.getByLabel("Start time").fill("08:30");
 
   if (withMaps) {
@@ -86,6 +86,9 @@ test("A plan can be created, shared, joined, cancelled and deleted without any a
   expect(card.headers()["content-type"]).toBe("image/png");
   if (withMaps) await expect(viewer.locator("[data-plan-map] .leaflet-tile").first()).toBeVisible();
   else await expect(viewer.locator("[data-plan-map]")).toHaveCount(0);
+  // The fake weather service answers for the start hour; disabled weather shows nothing.
+  if (withMaps) await expect(viewer.getByText("Partly cloudy · 14 °C")).toBeVisible();
+  else await expect(viewer.getByRole("heading", { name: "Weather forecast" })).toHaveCount(0);
 
   // Join: the joiner then sees the exact start.
   await joiner.goto(planUrl);

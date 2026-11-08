@@ -18,7 +18,7 @@ import { createResponseRepository } from "../../src/adapters/out/sqlite/response
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { type Config, loadConfig } from "../../src/config.ts";
 import type { PlanDeps } from "../../src/application/plans.ts";
-import type { PreviewRenderer } from "../../src/application/ports.ts";
+import type { PreviewRenderer, WeatherProvider } from "../../src/application/ports.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { FakeGeocoder } from "../fakes/geocoder.ts";
 import { FakePreviewRenderer } from "../fakes/preview-renderer.ts";
@@ -42,12 +42,15 @@ export async function createTestApp({
     Flaucher: [{ label: "Flaucher, Isar, Munich", lat: 48.1107, lng: 11.5582 }],
   }),
   renderer,
+  weather,
 }: {
   databasePath?: string;
   env?: Record<string, string>;
   geocoder?: FakeGeocoder;
   /** A real renderer instead of the fake, for tests of the actual card image. */
   renderer?: PreviewRenderer;
+  /** Forecasts for plan pages; none by default, so tests never depend on weather. */
+  weather?: WeatherProvider;
 } = {}) {
   const config = testConfig(env);
   const database: Database = await openDatabase(databasePath);
@@ -75,6 +78,7 @@ export async function createTestApp({
     config,
     geocoder: config.geocoder.enabled ? geocoder : undefined,
     previewRenderer: renderer ?? previewRenderer,
+    weather: config.weather.enabled ? weather : undefined,
     rateLimits: createRateLimits(() => clock.now().getTime()),
     vapidPublicKey,
     csrfKey: randomBytes(32),

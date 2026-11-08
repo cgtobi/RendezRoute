@@ -19,6 +19,7 @@ const createApp = ({ config }: { config: Config }) =>
     logger: createLogger({ write: () => {} }),
     geocoder: undefined,
     previewRenderer: new FakePreviewRenderer(),
+    weather: undefined,
     rateLimits: createRateLimits(() => 0),
     vapidPublicKey: "B" + "A".repeat(86),
     planDeps: {

@@ -2,7 +2,7 @@
 import L from "leaflet";
 import { readCoordinate, roundCoordinate } from "./geo.ts";
 import { PLACE_EVENT, type PickedPlace, setField } from "./places.ts";
-import { AREA_RADIUS_M, themeColor, tileLayer } from "./tiles.ts";
+import { AREA_RADIUS_M, createMap, themeColor, tileLayer } from "./tiles.ts";
 
 type Mode = "area" | "exact";
 const FIELDS: Record<Mode, [string, string]> = {
@@ -17,7 +17,7 @@ export function initPickMaps(): void {
     if (form === null || container === null) continue;
     picker.hidden = false;
 
-    const map = L.map(container).setView([20, 0], 2);
+    const map = createMap(container, picker).setView([20, 0], 2);
     tileLayer(picker).addTo(map);
     const markers: Record<Mode, L.Circle | L.CircleMarker> = {
       area: L.circle([0, 0], {

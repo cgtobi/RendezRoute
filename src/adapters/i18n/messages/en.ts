@@ -1,7 +1,12 @@
-// English UI strings (spec section 2: all UI strings externalized, English first).
+// English UI strings (spec section 2: all UI strings externalized). The source catalog: German and
+// French must have the same keys, placeholders and plural shapes (decision I31).
+import type { Message, Plural } from "./message.ts";
+
 export const en = {
   "layout.poweredBy": "Powered by {name}",
   "layout.devBanner": "Development mode: insecure settings are active. Not for production use.",
+  "layout.language": "Language",
+  "layout.languageSubmit": "Change",
 
   "home.intro": "Plan a run or ride, share the link, and see who joins. No account needed.",
   "home.cta": "Plan a run or ride",
@@ -61,6 +66,8 @@ export const en = {
   "map.pickArea": "the meeting area",
   "map.pickLabel": "Map for choosing a point",
   "map.planLabel": "Map of the meeting area",
+  "map.zoomIn": "Zoom in",
+  "map.zoomOut": "Zoom out",
   "form.distance": "Distance (km, optional)",
   "form.elevation": "Elevation gain (m, optional)",
   "form.pace": "Pace or speed (optional)",
@@ -74,8 +81,7 @@ export const en = {
   "form.primaryColor": "Main color",
   "form.secondaryColor": "Accent color",
   "form.retention": "Delete the plan",
-  "form.retentionOne": "1 day after the run",
-  "form.retentionMany": "{days} days after the run",
+  "form.retentionDays": { one: "{count} day after the run", other: "{count} days after the run" },
   "form.submit": "Create plan",
   "form.gpx": "Route (GPX file, optional)",
   "form.gpxTrim": "Hide the start and end of the route",
@@ -226,8 +232,12 @@ export const en = {
   "host.cancelConfirm": "Cancel this plan",
   "host.delete": "Delete plan…",
   "host.deleteHeading": "Delete “{title}”?",
-  "host.deleteExplain":
-    "This deletes the plan, its exact start and all {count} responses with their names, right away and for good. It cannot be undone.",
+  "host.deleteExplain": {
+    zero: "This deletes the plan and its exact start, right away and for good. It cannot be undone.",
+    one: "This deletes the plan, its exact start and its {count} response with the name, right away and for good. It cannot be undone.",
+    other:
+      "This deletes the plan, its exact start and all {count} responses with their names, right away and for good. It cannot be undone.",
+  },
   "host.deleteConfirm": "Delete for good",
   "host.back": "Back to the plan",
 
@@ -240,7 +250,11 @@ export const en = {
   "hostLink.confirm": "Use on this device",
   "hostLink.invalid": "This link is not valid. It may have been replaced by a newer one.",
   "secretLink.confirm": "Use on this device",
-} as const;
+} as const satisfies Readonly<Record<string, Message>>;
 
 export type MessageKey = keyof typeof en;
-export type Messages = Readonly<Record<MessageKey, string>>;
+
+/** A translation of the English catalog: same keys, and plurals where English has them. */
+export type Messages = {
+  readonly [K in MessageKey]: (typeof en)[K] extends string ? string : Plural;
+};

@@ -2,7 +2,7 @@
 // server put them on the page, i.e. for participants and the host (spec 3.6).
 import L from "leaflet";
 import { readCoordinate } from "./geo.ts";
-import { AREA_RADIUS_M, themeColor, tileLayer } from "./tiles.ts";
+import { AREA_RADIUS_M, createMap, themeColor, tileLayer } from "./tiles.ts";
 
 export function initPlanMaps(): void {
   for (const element of document.querySelectorAll<HTMLElement>("[data-plan-map]")) {
@@ -11,7 +11,10 @@ export function initPlanMaps(): void {
     if (areaLat === undefined || areaLng === undefined) continue;
     element.hidden = false;
 
-    const map = L.map(element, { scrollWheelZoom: false }).setView([areaLat, areaLng], 14);
+    const map = createMap(element, element, { scrollWheelZoom: false }).setView(
+      [areaLat, areaLng],
+      14,
+    );
     tileLayer(element).addTo(map);
     const primary = themeColor("--plan-primary", "#2e5bff");
     L.circle([areaLat, areaLng], {

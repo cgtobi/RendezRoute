@@ -8,11 +8,13 @@ import { jsxRenderer } from "hono/jsx-renderer";
 import type { PlanDeps } from "../../../application/plans.ts";
 import type { Geocoder, PreviewRenderer } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
-import { type Language, negotiateLanguage, type Translate, translator } from "../../i18n/i18n.ts";
+import { type Language, resolveLanguage, type Translate, translator } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
 import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
+import { readLanguageCookie } from "./language-cookie.ts";
 import { registerHostRoutes } from "./routes/host.tsx";
+import { registerLanguageRoutes } from "./routes/language.ts";
 import { registerPlaceRoutes } from "./routes/places.ts";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
@@ -70,19 +72,29 @@ export function createApp({
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
+  /** The language cookie, else the browser's languages (decision D15). */
+  const requestLanguage = (c: Context): Language =>
+    resolveLanguage({
+      cookie: readLanguageCookie(c, config),
+      acceptLanguage: c.req.header("accept-language"),
+    });
   /** Works even before the language middleware ran, e.g. for early errors. */
-  const translate = (c: Context): Translate =>
-    translator(negotiateLanguage(c.req.header("accept-language")));
+  const translate = (c: Context): Translate => translator(requestLanguage(c));
 
   app.use(requestLogger(logger));
   app.use(securityHeaders(config));
   app.use(clientIp({ trustProxy: config.trustProxy }));
 
   app.use(async (c, next) => {
-    const language = negotiateLanguage(c.req.header("accept-language"));
+    const language = requestLanguage(c);
     c.set("language", language);
     c.set("t", translator(language));
     await next();
+    // Pages and plain-text errors are in the request's language; images, scripts and feeds are not.
+    if (/^text\/(html|plain)/.test(c.res.headers.get("content-type") ?? "")) {
+      c.res.headers.set("content-language", language);
+      c.res.headers.append("vary", "Accept-Language, Cookie");
+    }
   });
 
   // Before CSRF, which parses form bodies. Only the GPX upload routes accept more (spec 3.8).
@@ -104,6 +116,12 @@ export function createApp({
           t={c.get("t")}
           title={title}
           head={head}
+          languageSwitch={
+            // Pages answering a form post (e.g. links shown once) cannot be loaded again.
+            c.req.method === "GET"
+              ? { csrfToken: c.get("csrfToken")(), returnTo: localPath(c.req.url) }
+              : undefined
+          }
         >
           {children}
         </Layout>
@@ -149,6 +167,13 @@ export function createApp({
   registerSecretLinkRoutes(app, deps);
   registerHostRoutes(app, deps);
   if (geocoder !== undefined) registerPlaceRoutes(app, { geocoder });
+  registerLanguageRoutes(app, { config });
 
   return app;
 }
+
+/** Path and query of a request URL, for returning to the same page. */
+const localPath = (url: string) => {
+  const { pathname, search } = new URL(url);
+  return pathname + search;
+};

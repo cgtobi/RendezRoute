@@ -193,7 +193,7 @@ function RetentionForm(props: HostPageProps) {
             <select id="field-retentionDays" name="retentionDays">
               {retentionOptions(props.maxRetentionDays, props.values.retentionDays).map((days) => (
                 <option value={days} selected={props.values.retentionDays === days}>
-                  {days === "1" ? t("form.retentionOne") : t("form.retentionMany", { days })}
+                  {t("form.retentionDays", { count: Number(days) })}
                 </option>
               ))}
             </select>

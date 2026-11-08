@@ -1,12 +1,8 @@
 // Display formatting for the plan's time zone and units (spec 3.1 Time, Pace).
-import type { Translate } from "../../../i18n/i18n.ts";
+import { localeOf as locale, type Translate } from "../../../i18n/i18n.ts";
 import { en, type MessageKey } from "../../../i18n/messages/en.ts";
 import { type ActivityType, paceStyleFor } from "../../../../domain/activity.ts";
 import { formatPace, formatSpeed, type PaceBand, type Units } from "../../../../domain/pace.ts";
-
-/** Formatting locale per UI language: English uses day-month order and a 24-hour clock. */
-const LOCALES: Readonly<Record<string, string>> = { en: "en-GB" };
-const locale = (language: string) => LOCALES[language] ?? language;
 
 export function formatDay(date: Date, zone: string, language: string): string {
   return new Intl.DateTimeFormat(locale(language), { dateStyle: "full", timeZone: zone }).format(
@@ -34,6 +30,15 @@ export function formatKilometers(meters: number, language: string): string {
 
 export function formatNumber(value: number, language: string): string {
   return new Intl.NumberFormat(locale(language)).format(value);
+}
+
+/** A plain decimal like "12.5" written the language's way ("12,5"); the forms accept both. */
+export function localizeDecimal(value: string, language: string): string {
+  const separator =
+    new Intl.NumberFormat(locale(language))
+      .formatToParts(1.5)
+      .find((part) => part.type === "decimal")?.value ?? ".";
+  return value.replace(".", separator);
 }
 
 /** "5:30–6:00 min/km" for runs, "25–28 km/h" for rides (slower value first). */

@@ -61,6 +61,8 @@ export function MapTools({
           data-map-picker=""
           data-tile-url={map.tileUrl}
           data-attribution={map.attribution}
+          data-zoom-in={t("map.zoomIn")}
+          data-zoom-out={t("map.zoomOut")}
           hidden
         >
           <fieldset class="map-mode">
@@ -101,6 +103,8 @@ export function PlanMap({
       data-plan-map=""
       data-tile-url={map.tileUrl}
       data-attribution={map.attribution}
+      data-zoom-in={t("map.zoomIn")}
+      data-zoom-out={t("map.zoomOut")}
       data-area-lat={String(area.lat)}
       data-area-lng={String(area.lng)}
       data-exact-lat={exact === undefined ? undefined : String(exact.lat)}

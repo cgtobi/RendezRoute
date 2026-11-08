@@ -88,7 +88,7 @@ describe("page layout", () => {
     const response = await createApp({ config: config() }).request("/", {
       headers: { "accept-language": "fr,en;q=0.5" },
     });
-    expect(await response.text()).toContain('<html lang="en">');
+    expect(await response.text()).toContain('<html lang="fr">');
   });
 });
 

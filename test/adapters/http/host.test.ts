@@ -144,7 +144,7 @@ describe("deleting (spec 5 feature 9)", () => {
     await respondViaUi(newClient(), planId, "Ben", "joined");
     const confirm = await host.get(`/p/${planId}/host/delete`);
     const html = await confirm.text();
-    expect(html).toContain(escaped(en["host.deleteExplain"].replace("{count}", "1")));
+    expect(html).toContain(escaped(en["host.deleteExplain"].one.replace("{count}", "1")));
 
     const deleted = await host.postForm(`/p/${planId}/host/delete`, hiddenFields(html));
     expect(deleted.status).toBe(303);

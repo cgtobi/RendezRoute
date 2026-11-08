@@ -11,6 +11,7 @@ import {
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
+import { localizeDecimal } from "../views/format.ts";
 import { DeleteConfirm, HostPage } from "../views/host-page.tsx";
 import { MapAssets } from "../views/maps.tsx";
 import { ROUTE_TRIM_FIELD } from "../views/route-trim.tsx";
@@ -55,7 +56,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps, geocod
         scope={page.scope}
         canCancel={page.canCancel}
         people={page.people}
-        values={form.values ?? page.input}
+        values={form.values ?? localizedInput(page.input, c.get("language"))}
         errors={form.errors ?? []}
         csrfToken={c.get("csrfToken")()}
         timeZones={TIME_ZONES}
@@ -169,4 +170,9 @@ export function registerHostRoutes(app: Hono<AppEnv>, { config, planDeps, geocod
       return afterAction(c, result, `/p/${request(c).planId}/host`);
     });
   }
+}
+
+/** The stored distance with the language's decimal separator, e.g. "12,5" in German (decision I31). */
+function localizedInput(input: PlanInput, language: string): PlanInput {
+  return { ...input, distanceKm: localizeDecimal(input.distanceKm, language) };
 }

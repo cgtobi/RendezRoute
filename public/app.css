@@ -80,6 +80,19 @@ main,
   font-size: 0.875rem;
 }
 
+.language-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.language-switch select,
+.language-switch button {
+  width: auto;
+  font-size: inherit;
+}
+
 .dev-banner {
   margin: 0;
   padding: 8px 16px;

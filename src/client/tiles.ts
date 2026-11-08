@@ -9,6 +9,22 @@ export function tileLayer(element: HTMLElement): L.TileLayer {
   });
 }
 
+/** A map with zoom buttons titled in the page language (decision D15). */
+export function createMap(
+  element: HTMLElement,
+  settings: HTMLElement,
+  options: L.MapOptions = {},
+): L.Map {
+  const map = L.map(element, { ...options, zoomControl: false });
+  L.control
+    .zoom({
+      zoomInTitle: settings.dataset.zoomIn ?? "Zoom in",
+      zoomOutTitle: settings.dataset.zoomOut ?? "Zoom out",
+    })
+    .addTo(map);
+  return map;
+}
+
 /** A plan color from the theme stylesheet, for Leaflet's SVG presentation attributes. */
 export function themeColor(name: string, fallback: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;

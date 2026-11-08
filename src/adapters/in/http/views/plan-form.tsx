@@ -287,7 +287,7 @@ export function PlanForm({
         <select id={id("retentionDays")} name="retentionDays">
           {retentionOptions(maxRetentionDays, retentionDays).map((days) => (
             <option value={days} selected={retentionDays === days}>
-              {days === "1" ? t("form.retentionOne") : t("form.retentionMany", { days })}
+              {t("form.retentionDays", { count: Number(days) })}
             </option>
           ))}
         </select>

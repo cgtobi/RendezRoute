@@ -8,7 +8,12 @@ import type { Child } from "hono/jsx";
 import { jsxRenderer } from "hono/jsx-renderer";
 import type { PlanDeps } from "../../../application/plans.ts";
 import { listTemplates } from "../../../application/templates.ts";
-import type { Geocoder, PreviewRenderer, WeatherProvider } from "../../../application/ports.ts";
+import type {
+  AdminAuth,
+  Geocoder,
+  PreviewRenderer,
+  WeatherProvider,
+} from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
 import { isUnits, type Units } from "../../../domain/units.ts";
 import { type Language, resolveLanguage, type Translate, translator } from "../../i18n/i18n.ts";
@@ -29,6 +34,7 @@ import { registerTemplateRoutes } from "./routes/templates.tsx";
 import { registerLinkToolRoutes } from "./routes/link-tools.tsx";
 import { registerMyDataRoutes } from "./routes/my-data.tsx";
 import { registerRatingRoutes } from "./routes/ratings.tsx";
+import { registerAdminRoutes } from "./routes/admin.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
@@ -54,7 +60,12 @@ declare module "hono" {
   interface ContextRenderer {
     (
       content: string | Promise<string>,
-      props?: { title?: string | undefined; head?: Child | undefined },
+      props?: {
+        title?: string | undefined;
+        head?: Child | undefined;
+        /** Relative prefix for instance admin pages (spec 3.8 URLs). */
+        pathBase?: string | undefined;
+      },
     ): Response | Promise<Response>;
   }
 }
@@ -75,6 +86,8 @@ export interface AppDeps {
   rateLimits: RateLimits;
   /** Given to browsers as the applicationServerKey for Web Push (spec 6 feature 3). */
   vapidPublicKey: string;
+  /** The instance admin's authentication; undefined when none is configured (spec 7). */
+  adminAuth?: AdminAuth | undefined;
 }
 
 /** Hono context variables set by the app middleware. */
@@ -98,6 +111,7 @@ export function createApp({
   weather,
   rateLimits,
   vapidPublicKey,
+  adminAuth,
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -140,7 +154,7 @@ export function createApp({
 
   app.use(
     jsxRenderer(
-      ({ children, title, head }, c: Context<AppEnv>) => (
+      ({ children, title, head, pathBase }, c: Context<AppEnv>) => (
         <Layout
           config={config}
           language={c.get("language")}
@@ -149,11 +163,13 @@ export function createApp({
           head={head}
           units={c.get("units")}
           languageSwitch={
-            // Pages answering a form post (e.g. links shown once) cannot be loaded again.
-            c.req.method === "GET"
+            // Pages answering a form post (e.g. links shown once) cannot be loaded again; admin
+            // pages keep only relative links, and the switch posts to absolute paths.
+            c.req.method === "GET" && pathBase === undefined
               ? { csrfToken: c.get("csrfToken")(), returnTo: localPath(c.req.url) }
               : undefined
           }
+          pathBase={pathBase}
         >
           {children}
         </Layout>
@@ -207,7 +223,9 @@ export function createApp({
   app.get("/privacy", (c) => {
     if (config.privacyUrl !== undefined) return c.redirect(config.privacyUrl.href, 302);
     const t = c.get("t");
-    return c.render(<PrivacyPage t={t} config={config} />, { title: t("privacy.title") });
+    return c.render(<PrivacyPage t={t} config={config} adminLogin={adminAuth !== undefined} />, {
+      title: t("privacy.title"),
+    });
   });
 
   /** The service worker must come from the site root to show this site's notifications (spec 6 feature 3). */
@@ -246,6 +264,9 @@ export function createApp({
   registerLinkToolRoutes(app, deps);
   registerMyDataRoutes(app, deps);
   registerRatingRoutes(app, deps);
+  if (adminAuth !== undefined) {
+    registerAdminRoutes(app, { config, adminDeps: { ...planDeps, adminAuth }, limits: rateLimits });
+  }
 
   return app;
 }

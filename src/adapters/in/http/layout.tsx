@@ -22,6 +22,11 @@ interface LayoutProps {
   units: Units;
   /** The footer language and units forms; left out of pages that cannot be loaded again (decision D15). */
   languageSwitch?: { csrfToken: string; returnTo: string } | undefined;
+  /**
+   * Prefix for the app's own links: "/" on public pages; relative ("../") on instance admin pages,
+   * which must work under any path prefix (spec 3.8, Home Assistant Ingress later).
+   */
+  pathBase?: string | undefined;
   children?: Child;
 }
 
@@ -33,6 +38,7 @@ export function Layout({
   head,
   units,
   languageSwitch,
+  pathBase = "/",
   children,
 }: LayoutProps) {
   const pageTitle = title === undefined ? config.instanceName : `${title} · ${config.instanceName}`;
@@ -44,8 +50,8 @@ export function Layout({
         <title>{pageTitle}</title>
         {/* No favicon yet; an empty one keeps browsers from requesting /favicon.ico. */}
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="/static/app.css" />
-        <script src="/static/build/app.js" defer></script>
+        <link rel="stylesheet" href={`${pathBase}static/app.css`} />
+        <script src={`${pathBase}static/build/app.js`} defer></script>
         {head}
       </head>
       <body>
@@ -55,7 +61,7 @@ export function Layout({
           </p>
         )}
         <header class="site-header">
-          <a href="/">{config.instanceName}</a>
+          <a href={pathBase}>{config.instanceName}</a>
         </header>
         <main>{children}</main>
         <footer class="site-footer">
@@ -87,13 +93,13 @@ export function Layout({
           )}
           <p class="footer-links">
             {config.privacyUrl === undefined ? (
-              <a href="/privacy">{t("layout.privacy")}</a>
+              <a href={`${pathBase}privacy`}>{t("layout.privacy")}</a>
             ) : (
               <a href={config.privacyUrl.href} rel="noopener noreferrer">
                 {t("layout.privacy")}
               </a>
             )}
-            <a href="/my-data">{t("layout.myData")}</a>
+            <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
             {config.imprintUrl !== undefined && (
               <a href={config.imprintUrl.href} rel="noopener noreferrer">
                 {t("layout.imprint")}

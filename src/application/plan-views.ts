@@ -64,6 +64,23 @@ export interface PlanViewForViewer {
   counts: Counts;
 }
 
+/**
+ * What the instance admin sees of a plan (spec 3.6, Instance admin column): a few public fields,
+ * named one by one, so a field added to the public view never reaches the admin unasked.
+ */
+export interface PlanViewForInstanceAdmin {
+  id: string;
+  title: string;
+  activity: ActivityType;
+  posterName: string;
+  startsAt: Date;
+  timeZone: string;
+  areaLabel: string;
+  status: PlanStatus;
+  deleteAt: Date;
+  counts: Counts;
+}
+
 /** Interested, pending, rejected and removed people: viewer content plus their own status. */
 export interface PlanViewForResponder extends PlanViewForViewer {
   ownResponse: OwnResponseView;

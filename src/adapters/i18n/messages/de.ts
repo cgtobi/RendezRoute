@@ -45,6 +45,8 @@ export const de: Messages = {
     "Ein Sitzungs-Cookie, das Formulare vor gefälschten Absendungen schützt. Browser löschen es beim Schließen, außer sie stellen deine letzte Sitzung wieder her.",
   "privacy.cookiePreferences":
     "Cookies für Sprache und Einheiten, nur wenn du unten auf einer Seite eine Sprache oder Einheiten wählst, {days} Tage lang gespeichert.",
+  "privacy.cookieAdmin":
+    "Die Administration erhält nach der Anmeldung ein eigenes Login-Cookie, das {hours} Stunden gilt. Besucher:innen erhalten es nie.",
   "privacy.cookieOthers": "Keine anderen Cookies und keine von anderen Websites.",
   "privacy.servicesHeading": "Andere Dienste",
   "privacy.tiles":
@@ -634,4 +636,24 @@ export const de: Messages = {
   },
   "rating.resultTooFew":
     "Bei Treffen mit weniger als 3 Teilnehmer:innen werden keine Bewertungen gezeigt.",
+  "admin.title": "Instanz-Administration",
+  "admin.loginHeading": "Anmeldung für die Administration",
+  "admin.token": "Admin-Token",
+  "admin.tokenHint": "Das ADMIN_TOKEN dieser Instanz.",
+  "admin.login": "Anmelden",
+  "admin.loginFailed": "Dieses Token stimmt nicht.",
+  "admin.logout": "Abmelden",
+  "admin.findPlan": "Treffen finden",
+  "admin.findPlanHint": "Füge den Link oder die ID des Treffens ein.",
+  "admin.findPlanSubmit": "Treffen finden",
+  "admin.planNotFound": "Es gibt kein Treffen mit diesem Link oder dieser ID.",
+  "admin.planHeading": "Treffen: {title}",
+  "admin.planPublic": "Hier werden nur die öffentlichen Angaben des Treffens gezeigt.",
+  "admin.postedBy": "Organisator:in: {name}",
+  "admin.counts": "{participants} Teilnehmer:innen, {interested} interessiert",
+  "admin.deleteExplain":
+    "Löscht das Treffen für alle, sofort und endgültig. Wer bei einem bevorstehenden Treffen dabei ist, wird informiert. Es wird keine Vorlage behalten.",
+  "admin.deleteConfirm": "Treffen endgültig löschen",
+  "admin.deleted": "Das Treffen wurde gelöscht.",
+  "admin.back": "Zurück zur Administration",
 };

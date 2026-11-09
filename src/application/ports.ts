@@ -174,6 +174,19 @@ export interface RatingRepository {
   deleteForResponse(responseId: string): Promise<void>;
 }
 
+/**
+ * Authenticates the instance admin (spec 2a, 7 Moderation): `ADMIN_TOKEN` now; an OIDC admin group
+ * and Home Assistant Ingress later.
+ */
+export interface AdminAuth {
+  /** Whether the presented secret is the admin's; never leaks how close a guess was. */
+  checkToken(candidate: string): boolean;
+  /** A new session value for an admin who just authenticated, valid until `expiresAt`. */
+  startSession(now: Date): { value: string; expiresAt: Date };
+  /** Whether a session value is one this instance issued and has not expired. */
+  hasSession(value: string, now: Date): boolean;
+}
+
 /** One-time form values that were used (decision I44); kept for a day. */
 export interface FormNonceRepository {
   /** True the first time a value is claimed, false when the form was sent again. */

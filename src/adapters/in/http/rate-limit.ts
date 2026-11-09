@@ -30,6 +30,8 @@ export interface RateLimits {
   calendar: RateLimiter;
   /** Adding recap contributions (spec 3.11: abuse limits). */
   recap: RateLimiter;
+  /** Instance admin login attempts, against guessing ADMIN_TOKEN (spec 7 Moderation). */
+  adminLogin: RateLimiter;
 }
 
 /**
@@ -51,6 +53,7 @@ export function createRateLimits(now: () => number): RateLimits {
     notify: createRateLimiter({ capacity: 10, perHour: 30, now }),
     calendar: createRateLimiter({ capacity: 5, perHour: 10, now }),
     recap: createRateLimiter({ capacity: 10, perHour: 30, now }),
+    adminLogin: createRateLimiter({ capacity: 5, perHour: 10, now }),
   };
 }
 

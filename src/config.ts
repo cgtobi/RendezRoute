@@ -34,6 +34,8 @@ export interface Config {
   geocoder: { enabled: boolean; url: URL };
   weather: { enabled: boolean; url: URL };
   allowInsecureDev: boolean;
+  /** The instance admin's login secret (spec 7 Moderation); admin pages exist only when set. */
+  adminToken: string | undefined;
 }
 
 export type ConfigResult =
@@ -53,6 +55,7 @@ const DEFAULTS = {
 } as const;
 
 const MAX_INSTANCE_NAME_LENGTH = 60;
+const MIN_ADMIN_TOKEN_LENGTH = 32;
 
 export function loadConfig(env: ConfigSource): ConfigResult {
   const errors: string[] = [];
@@ -239,6 +242,12 @@ export function loadConfig(env: ConfigSource): ConfigResult {
   );
   const trustProxy = bool("TRUST_PROXY", false);
 
+  // ADMIN_TOKEN: at least 32 characters, or the app refuses to start (spec 7 Moderation).
+  const adminToken = read("ADMIN_TOKEN") || undefined;
+  if (adminToken !== undefined && adminToken.length < MIN_ADMIN_TOKEN_LENGTH) {
+    errors.push(`ADMIN_TOKEN must be at least ${MIN_ADMIN_TOKEN_LENGTH} characters.`);
+  }
+
   if (errors.length > 0) return { ok: false, errors };
 
   return {
@@ -267,6 +276,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       geocoder: { enabled: geocoderSetting && contactEmail !== undefined, url: geocoderUrl },
       weather: { enabled: weatherEnabled, url: weatherUrl },
       allowInsecureDev,
+      adminToken,
     },
   };
 }

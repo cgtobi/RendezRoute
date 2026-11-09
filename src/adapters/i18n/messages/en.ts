@@ -44,6 +44,8 @@ export const en = {
     "A session cookie that protects forms against forged submissions. Browsers delete it when you close them, unless they restore your previous session.",
   "privacy.cookiePreferences":
     "Language and units cookies, only when you choose a language or units at the bottom of a page, kept for {days} days.",
+  "privacy.cookieAdmin":
+    "The instance admin, after logging in, gets a separate login cookie that lasts {hours} hours. Visitors never get it.",
   "privacy.cookieOthers": "No other cookies, and none from other sites.",
   "privacy.servicesHeading": "Other services",
   "privacy.tiles":
@@ -610,6 +612,26 @@ export const en = {
     other: "{count} of {participants} rated: {up} up, {down} down",
   },
   "rating.resultTooFew": "Plans with fewer than 3 participants show no ratings.",
+  "admin.title": "Instance admin",
+  "admin.loginHeading": "Instance admin login",
+  "admin.token": "Admin token",
+  "admin.tokenHint": "The ADMIN_TOKEN set for this instance.",
+  "admin.login": "Log in",
+  "admin.loginFailed": "That token is not right.",
+  "admin.logout": "Log out",
+  "admin.findPlan": "Find a plan",
+  "admin.findPlanHint": "Paste the plan’s link or its ID.",
+  "admin.findPlanSubmit": "Find plan",
+  "admin.planNotFound": "There is no plan with this link or ID.",
+  "admin.planHeading": "Plan: {title}",
+  "admin.planPublic": "Only the plan’s public details are shown here.",
+  "admin.postedBy": "Host: {name}",
+  "admin.counts": "{participants} participants, {interested} interested",
+  "admin.deleteExplain":
+    "Deletes the plan for everyone, right away and for good. People still in an upcoming plan are told. No template is kept.",
+  "admin.deleteConfirm": "Delete plan for good",
+  "admin.deleted": "The plan was deleted.",
+  "admin.back": "Back to the admin page",
 } as const satisfies Readonly<Record<string, Message>>;
 
 export type MessageKey = keyof typeof en;

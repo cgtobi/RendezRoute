@@ -31,6 +31,7 @@ describe("defaults (spec section 10)", () => {
     expect(config.maxPlanHorizonDays).toBe(180);
     expect(config.defaultTimezone).toBe("UTC");
     expect(config.allowInsecureDev).toBe(false);
+    expect(config.adminToken).toBeUndefined();
     expect(config.maps).toEqual({
       enabled: true,
       tileUrl: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -50,6 +51,19 @@ describe("defaults (spec section 10)", () => {
   it("reports every problem at once", () => {
     const found = errors({ BASE_URL: "nope", MAX_RETENTION_DAYS: "99", TRUST_PROXY: "yes" });
     expect(found).toHaveLength(3);
+  });
+});
+
+describe("ADMIN_TOKEN (spec 7 Moderation)", () => {
+  it("is optional, and taken as given when long enough", () => {
+    const token = "x".repeat(32);
+    expect(ok({ ...minimal, ADMIN_TOKEN: token }).config.adminToken).toBe(token);
+  });
+
+  it("must be at least 32 characters, or the app refuses to start", () => {
+    expect(errors({ ...minimal, ADMIN_TOKEN: "x".repeat(31) })).toEqual([
+      "ADMIN_TOKEN must be at least 32 characters.",
+    ]);
   });
 });
 

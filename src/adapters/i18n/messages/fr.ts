@@ -47,6 +47,8 @@ export const fr: Messages = {
     "Un cookie de session qui protège les formulaires contre les envois falsifiés. Les navigateurs le suppriment à leur fermeture, sauf s’ils restaurent votre session précédente.",
   "privacy.cookiePreferences":
     "Des cookies de langue et d’unités, seulement si vous choisissez une langue ou des unités en bas d’une page, conservés {days} jours.",
+  "privacy.cookieAdmin":
+    "L’administration reçoit, après connexion, un cookie de connexion distinct valable {hours} heures. Les visiteur·euse·s ne le reçoivent jamais.",
   "privacy.cookieOthers": "Aucun autre cookie, et aucun cookie d’autres sites.",
   "privacy.servicesHeading": "Autres services",
   "privacy.tiles":
@@ -630,4 +632,24 @@ export const fr: Messages = {
     other: "{count} sur {participants} ont évalué : {up} bien, {down} pas bien",
   },
   "rating.resultTooFew": "Les sorties de moins de 3 participant·e·s n’affichent pas d’évaluations.",
+  "admin.title": "Administration de l’instance",
+  "admin.loginHeading": "Connexion à l’administration",
+  "admin.token": "Jeton d’administration",
+  "admin.tokenHint": "L’ADMIN_TOKEN de cette instance.",
+  "admin.login": "Se connecter",
+  "admin.loginFailed": "Ce jeton n’est pas le bon.",
+  "admin.logout": "Se déconnecter",
+  "admin.findPlan": "Trouver une sortie",
+  "admin.findPlanHint": "Collez le lien ou l’identifiant de la sortie.",
+  "admin.findPlanSubmit": "Trouver la sortie",
+  "admin.planNotFound": "Aucune sortie ne correspond à ce lien ou à cet identifiant.",
+  "admin.planHeading": "Sortie : {title}",
+  "admin.planPublic": "Seules les informations publiques de la sortie sont affichées ici.",
+  "admin.postedBy": "Organisateur·rice : {name}",
+  "admin.counts": "{participants} participant·e·s, {interested} intéressé·e·s",
+  "admin.deleteExplain":
+    "Supprime la sortie pour tout le monde, immédiatement et définitivement. Les personnes encore inscrites à une sortie à venir sont prévenues. Aucun modèle n’est gardé.",
+  "admin.deleteConfirm": "Supprimer définitivement la sortie",
+  "admin.deleted": "La sortie a été supprimée.",
+  "admin.back": "Retour à l’administration",
 };

@@ -1,5 +1,6 @@
 // Privacy notice (spec 5 feature 13), generated from the configuration: only services that are
 // switched on are mentioned, and only features this version has.
+import { ADMIN_SESSION_HOURS } from "../../../../application/admin.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { Config } from "../../../../config.ts";
 import {
@@ -11,7 +12,16 @@ import { RETENTION_DAYS_LIMIT } from "../../../../domain/schedule.ts";
 import { SERVICE_CACHE_DAYS, WEATHER_CACHE_MINUTES } from "../../../out/cache-lifetime.ts";
 import { LONG_COOKIE_DAYS } from "../cookie-lifetime.ts";
 
-export function PrivacyPage({ t, config }: { t: Translate; config: Config }) {
+export function PrivacyPage({
+  t,
+  config,
+  adminLogin,
+}: {
+  t: Translate;
+  config: Config;
+  /** Instance admin login is configured (spec 7 Moderation). */
+  adminLogin: boolean;
+}) {
   const { maps, geocoder, weather } = config;
   return (
     <section class="privacy">
@@ -57,6 +67,7 @@ export function PrivacyPage({ t, config }: { t: Translate; config: Config }) {
         <li>{t("privacy.cookieDevice", { days: LONG_COOKIE_DAYS })}</li>
         <li>{t("privacy.cookieCsrf")}</li>
         <li>{t("privacy.cookiePreferences", { days: LONG_COOKIE_DAYS })}</li>
+        {adminLogin && <li>{t("privacy.cookieAdmin", { hours: ADMIN_SESSION_HOURS })}</li>}
       </ul>
       <p>{t("privacy.cookieOthers")}</p>
 

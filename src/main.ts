@@ -15,6 +15,7 @@ import type { PlanDeps } from "./application/plans.ts";
 import { reminderStillDue, runReminders } from "./application/reminders.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
 import { createApp } from "./adapters/in/http/app.tsx";
+import { createTokenAdminAuth } from "./adapters/out/admin/token-admin-auth.ts";
 import { createRateLimits } from "./adapters/in/http/rate-limit.ts";
 import {
   SERVICE_CACHE_MS,
@@ -272,6 +273,8 @@ export async function startServer(
     weather: createWeather(config, logger),
     rateLimits,
     vapidPublicKey: vapid.publicKey,
+    adminAuth:
+      config.adminToken === undefined ? undefined : createTokenAdminAuth(config.adminToken),
   });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));

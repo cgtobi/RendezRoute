@@ -88,6 +88,12 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect((await page({ WEATHER_ENABLED: "false" })).html).not.toMatch(/weather|open-meteo/i);
   });
 
+  it("mentions the admin login cookie only when admin login is configured (spec 7)", async () => {
+    expect(text((await page()).html)).not.toContain(en("privacy.cookieAdmin", { hours: 12 }));
+    const withAdmin = await page({ ADMIN_TOKEN: "admin-token-for-tests-0123456789abcdef" });
+    expect(text(withAdmin.html)).toContain(en("privacy.cookieAdmin", { hours: 12 }));
+  });
+
   it("is translated", async () => {
     const { html } = await page({}, { "accept-language": "fr" });
     expect(html).toContain(`<h1>${translator("fr")("privacy.title")}</h1>`);

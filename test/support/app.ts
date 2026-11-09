@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts";
 import { createApp } from "../../src/adapters/in/http/app.tsx";
+import { createTokenAdminAuth } from "../../src/adapters/out/admin/token-admin-auth.ts";
 import { createRateLimits } from "../../src/adapters/in/http/rate-limit.ts";
 import { generateVapidKeys } from "../../src/adapters/out/crypto/vapid-keys.ts";
 import { createCalendarFeedRepository } from "../../src/adapters/out/sqlite/calendar-feeds.ts";
@@ -89,6 +90,8 @@ export async function createTestApp({
     weather: config.weather.enabled ? weather : undefined,
     rateLimits: createRateLimits(() => clock.now().getTime()),
     vapidPublicKey,
+    adminAuth:
+      config.adminToken === undefined ? undefined : createTokenAdminAuth(config.adminToken),
     csrfKey: randomBytes(32),
     logger: createLogger({ write: (line) => logs.push(line) }),
     planDeps,

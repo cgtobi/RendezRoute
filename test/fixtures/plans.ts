@@ -48,6 +48,7 @@ export function samplePlan(overrides: Partial<Plan> = {}, input: Partial<PlanInp
     hasRoute: false,
     recapWindowSetAt: undefined,
     recapClosedAt: undefined,
+    ratingsClosedAt: undefined,
     createdAt: fixtureNow,
     updatedAt: fixtureNow,
     ...overrides,

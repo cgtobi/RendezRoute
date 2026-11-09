@@ -544,6 +544,8 @@ export const de: Messages = {
     "Mach nur auf deinem eigenen Gerät weiter: Alle, die diesen Browser nutzen, können danach die Vorlage verwenden.",
   "privacy.myData":
     "Alles, was mit deinem Browser verknüpft ist, kannst du jederzeit selbst ansehen, exportieren und löschen:",
+  "privacy.ratings":
+    "Nach einem Treffen können Teilnehmer:innen es mit Daumen hoch oder runter und einer optionalen Nachricht bewerten. Nur die Organisator:in sieht Bewertungen, wenn der Rückblick geschlossen ist und nur bei Treffen mit mindestens 3 Teilnehmer:innen; Nachrichten zeigen den Namen ihrer Verfasser:in. Bewertungen werden mit verschlüsselter Nachricht gespeichert und mit dem Treffen, der Antwort oder deinen Daten gelöscht.",
   "privacy.templates":
     "Wenn die Organisator:in „Als wiederholbare Vorlage behalten“ wählt oder eine Vorlage speichert, werden die Angaben des Treffens samt ihrem Namen als Vorlage behalten; nie seine Antworten, die Namen der Teilnehmer:innen oder der Rückblick. Genauer Treffpunkt und Route werden nur behalten, wenn die Organisator:in sie einschließt, und dann verschlüsselt. Eine Vorlage wird gelöscht, wenn sie 90 Tage lang weder wiederholt noch bearbeitet wurde.",
   "linkTools.heading": "Privater Link",
@@ -608,4 +610,17 @@ export const de: Messages = {
   "myData.deleteConfirm": "Alles endgültig löschen",
   "myData.back": "Zurück zu meinen Daten",
   "myData.deleted": "Deine Daten auf diesem Gerät wurden gelöscht.",
+  "rating.heading": "Treffen bewerten",
+  "rating.question": "Wie war es?",
+  "rating.up": "War gut",
+  "rating.down": "War nicht so gut",
+  "rating.note": "Nachricht an die Organisator:in (optional)",
+  "rating.submit": "Bewertung speichern",
+  "rating.remove": "Meine Bewertung entfernen",
+  "rating.yours": "Deine Bewertung:",
+  "rating.closed": "Die Bewertung ist geschlossen.",
+  "rating.closedNow": "Die Bewertung für dieses Treffen ist geschlossen.",
+  "rating.honesty":
+    "Nur die Organisator:in sieht Bewertungen. In einer kleinen Gruppe kann sie erraten, wer bewertet hat. Nachrichten zeigen deinen Namen.",
+  "rating.back": "Zurück zum Treffen",
 };

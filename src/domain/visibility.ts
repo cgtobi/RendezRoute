@@ -24,6 +24,9 @@ export const PLAN_CONTENT = [
   "pendingRequests",
   "recapSummary",
   "recapContributions",
+  // v0.6 (spec 6a): a participant's own rating; the host's result, after the close (decision D20).
+  "ownRating",
+  "ratingResult",
 ] as const;
 export type PlanContent = (typeof PLAN_CONTENT)[number];
 
@@ -47,6 +50,8 @@ const MATRIX: Readonly<Record<PlanContent, ReadonlySet<Audience>>> = {
   recapSummary: new Set(everyone),
   // Instance admins see contributions only as attached to a report by the reporter, never via plan views.
   recapContributions: new Set(["accepted", "poster"]),
+  ownRating: new Set(["accepted"]),
+  ratingResult: new Set(["poster"]),
 };
 
 export function canSee(audience: Audience, content: PlanContent): boolean {

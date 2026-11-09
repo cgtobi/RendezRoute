@@ -28,6 +28,7 @@ import { registerRecapRoutes } from "./routes/recap.tsx";
 import { registerTemplateRoutes } from "./routes/templates.tsx";
 import { registerLinkToolRoutes } from "./routes/link-tools.tsx";
 import { registerMyDataRoutes } from "./routes/my-data.tsx";
+import { registerRatingRoutes } from "./routes/ratings.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
@@ -244,6 +245,7 @@ export function createApp({
   registerTemplateRoutes(app, deps);
   registerLinkToolRoutes(app, deps);
   registerMyDataRoutes(app, deps);
+  registerRatingRoutes(app, deps);
 
   return app;
 }

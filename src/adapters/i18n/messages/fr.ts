@@ -541,6 +541,8 @@ export const fr: Messages = {
     "Ne continuez que sur votre propre appareil : toute personne utilisant ce navigateur pourra ensuite utiliser le modèle.",
   "privacy.myData":
     "Vous pouvez à tout moment consulter, exporter et supprimer vous-même tout ce qui est associé à votre navigateur :",
+  "privacy.ratings":
+    "Après une sortie, les participant·e·s peuvent l’évaluer d’un pouce levé ou baissé, avec un message facultatif. Seul·e l’organisateur·rice voit les évaluations, une fois le récapitulatif clos et seulement pour les sorties d’au moins 3 participant·e·s ; les messages affichent le nom de leur auteur·rice. Les évaluations sont enregistrées avec le message chiffré et supprimées avec la sortie, la réponse ou vos données.",
   "privacy.templates":
     "Si l’organisateur·rice choisit « Garder comme modèle réutilisable » ou enregistre un modèle, les informations de la sortie, y compris le nom de l’organisateur·rice, sont gardées comme modèle, jamais ses réponses, les noms des participant·e·s ni son récapitulatif. Le point de départ exact et le parcours ne sont gardés que si l’organisateur·rice les inclut, et alors chiffrés. Un modèle est supprimé après 90 jours sans être répété ni modifié.",
   "linkTools.heading": "Lien privé",
@@ -605,4 +607,17 @@ export const fr: Messages = {
   "myData.deleteConfirm": "Tout supprimer définitivement",
   "myData.back": "Retour à mes données",
   "myData.deleted": "Vos données sur cet appareil ont été supprimées.",
+  "rating.heading": "Évaluer la sortie",
+  "rating.question": "Comment ça s’est passé ?",
+  "rating.up": "Bien passé",
+  "rating.down": "Pas très bien passé",
+  "rating.note": "Message à l’organisateur·rice (facultatif)",
+  "rating.submit": "Enregistrer l’évaluation",
+  "rating.remove": "Retirer mon évaluation",
+  "rating.yours": "Votre évaluation :",
+  "rating.closed": "L’évaluation est close.",
+  "rating.closedNow": "L’évaluation de cette sortie est close.",
+  "rating.honesty":
+    "Seul·e l’organisateur·rice voit les évaluations et, dans un petit groupe, peut deviner qui en a donné une. Les messages affichent votre nom.",
+  "rating.back": "Retour à la sortie",
 };

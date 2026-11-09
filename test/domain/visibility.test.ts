@@ -40,6 +40,8 @@ const expected = {
     "instanceAdmin",
   ],
   recapContributions: ["accepted", "poster"],
+  ownRating: ["accepted"],
+  ratingResult: ["poster"],
 } as const;
 
 describe("canSee (spec 3.6 What each audience sees)", () => {

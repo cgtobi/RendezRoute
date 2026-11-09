@@ -27,6 +27,8 @@ export interface Plan extends PlanDraft {
   recapWindowSetAt: Date | undefined;
   /** Set when the host closed the recap after the start. */
   recapClosedAt: Date | undefined;
+  /** Set when a host reopens a closed recap: ratings stay closed from then on (spec 6a). */
+  ratingsClosedAt: Date | undefined;
   createdAt: Date;
   updatedAt: Date;
 }

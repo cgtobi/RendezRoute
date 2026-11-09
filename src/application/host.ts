@@ -13,6 +13,7 @@ import {
   validateRetentionEdit,
 } from "../domain/plan-edit.ts";
 import type { FieldError, PlanInput } from "../domain/plan-input.ts";
+import { ratingsClosedAtAfter } from "../domain/rating.ts";
 import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
 import type { RecapWindow } from "../domain/schedule.ts";
 import * as requests from "../domain/requests.ts";
@@ -157,6 +158,8 @@ export async function editPlan(
       edit.value;
     await deps.plans.update({
       ...plan,
+      // A recap that had closed keeps ratings closed, even if this reopens it (decision D20).
+      ratingsClosedAt: ratingsClosedAtAfter(plan, now),
       template,
       retentionDays,
       recapWindow,
@@ -245,7 +248,7 @@ function personAction<Done extends string>(
     done: Done;
     /** What the person is told (spec 3.5: one notice on rejection or removal). */
     notice?: NotificationKind;
-    /** Removal deletes the person's recap contributions (spec 3.5). */
+    /** Removal deletes the person's recap contributions and rating (spec 3.5, 6a). */
     deletesContributions?: boolean;
   },
 ) {
@@ -260,7 +263,10 @@ function personAction<Done extends string>(
     const changed = change(response, plan, deps.clock.now());
     if (!changed.ok) return { kind: "not_allowed" };
     await deps.responses.update(changed.value);
-    if (deletesContributions) await deps.recap.deleteForResponse(response.id);
+    if (deletesContributions) {
+      await deps.recap.deleteForResponse(response.id);
+      await deps.ratings.deleteForResponse(response.id);
+    }
     if (notice !== undefined) await notifyResponse(deps, plan, changed.value, notice);
     return { kind: done };
   };

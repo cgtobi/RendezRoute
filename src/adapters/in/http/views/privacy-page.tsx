@@ -27,6 +27,7 @@ export function PrivacyPage({ t, config }: { t: Translate; config: Config }) {
       <p>{t("privacy.storedPlans")}</p>
       <p>{t("privacy.storedResponses")}</p>
       <p>{t("privacy.storedRecap")}</p>
+      <p>{t("privacy.ratings")}</p>
       <p>{t("privacy.templates")}</p>
       <p>{t("privacy.noTracking")}</p>
       <p>

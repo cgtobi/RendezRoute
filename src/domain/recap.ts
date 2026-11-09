@@ -56,7 +56,10 @@ export function hasRecap(plan: { startsAt: Date; status: PlanStatus }, now: Date
 }
 
 /** Contributions are taken from the start until the window closes, never for cancelled plans. */
-export function isRecapOpen(plan: RecapTiming & { status: PlanStatus }, now: Date): boolean {
+/** A plan's recap timing with its status, as the recap and rating rules need it. */
+export type RecapState = RecapTiming & { status: PlanStatus };
+
+export function isRecapOpen(plan: RecapState, now: Date): boolean {
   return hasRecap(plan, now) && now.getTime() < recapClosesAt(plan).getTime();
 }
 

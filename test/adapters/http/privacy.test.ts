@@ -33,6 +33,7 @@ describe("privacy notice (spec 5 feature 13)", () => {
       "privacy.previews",
       "privacy.calendar",
       "privacy.storedRecap",
+      "privacy.ratings",
       "privacy.templates",
       "privacy.myData",
     ] as const) {

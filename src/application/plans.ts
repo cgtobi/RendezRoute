@@ -37,6 +37,7 @@ import type {
   CalendarFeedRepository,
   ChannelRepository,
   FormNonceRepository,
+  RatingRepository,
   JobQueue,
   PlanRepository,
   RecapRepository,
@@ -60,6 +61,8 @@ export interface PlanDeps extends DeviceDeps {
   templates: TemplateRepository;
   /** One-time values of "Get a new link" forms (decision I44). */
   formNonces: FormNonceRepository;
+  /** Plan ratings (spec 6a). */
+  ratings: RatingRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
   notify?:
     | { channels: ChannelRepository; jobs: JobQueue; reminders: SentReminderRepository }
@@ -194,6 +197,7 @@ export async function storeNewPlan(
     hasRoute: request.route !== undefined,
     recapWindowSetAt: undefined,
     recapClosedAt: undefined,
+    ratingsClosedAt: undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -277,9 +281,12 @@ export async function viewPlan(
     const contributions = canSee(audience, "recapContributions")
       ? await deps.recap.listByPlan(plan.id)
       : [];
+    const ownRating = canSee(audience, "ownRating")
+      ? await deps.ratings.findByResponse(own.id)
+      : undefined;
     return {
       kind: "participant",
-      view: viewForParticipant(plan, counts, own, now, responses, contributions),
+      view: viewForParticipant(plan, counts, own, now, responses, contributions, ownRating),
       ...shared,
     };
   }

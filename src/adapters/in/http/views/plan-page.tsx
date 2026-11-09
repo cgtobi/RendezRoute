@@ -27,6 +27,7 @@ import { Linkified } from "./linkify.tsx";
 import { type MapSettings, PlanMap } from "./maps.tsx";
 import type { WeatherView } from "../../../../application/weather.ts";
 import { statusKey } from "./format.ts";
+import { RatingSection } from "./rating.tsx";
 import { RecapSection } from "./recap.tsx";
 import { RespondForm, type RespondFormState } from "./respond-form.tsx";
 
@@ -203,6 +204,14 @@ export function PlanPage(props: {
           participants={view.counts.participants}
           recap={insider ? audience.view.recap : undefined}
           isHost={audience.kind === "poster"}
+          csrfToken={props.csrfToken}
+        />
+      )}
+      {audience.kind === "participant" && audience.view.rating !== undefined && (
+        <RatingSection
+          t={t}
+          planId={view.id}
+          rating={audience.view.rating}
           csrfToken={props.csrfToken}
         />
       )}

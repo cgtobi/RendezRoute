@@ -11,11 +11,13 @@ import type {
   ResponseRepository,
   TemplateRepository,
   FormNonceRepository,
+  RatingRepository,
 } from "../../src/application/ports.ts";
 import type { Plan } from "../../src/domain/plan.ts";
 import type { RecapContribution } from "../../src/domain/recap.ts";
 import type { PlanResponse } from "../../src/domain/response.ts";
 import type { Route } from "../../src/domain/route.ts";
+import type { PlanRating } from "../../src/domain/rating.ts";
 import type { PlanTemplate } from "../../src/domain/template.ts";
 
 /** In-memory repositories sharing one store, like the SQLite adapters share a database. */
@@ -27,6 +29,7 @@ export function createFakeRepositories(): {
   recap: RecapRepository;
   templates: TemplateRepository;
   formNonces: FormNonceRepository;
+  ratings: RatingRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
   const routes = new Map<string, Route>();
@@ -42,6 +45,8 @@ export function createFakeRepositories(): {
   const feeds = new Map<string, CalendarFeed & { tokenHash: string }>();
   const contributions = new Map<string, RecapContribution>();
   const usedNonces = new Map<string, Date>();
+  /** By response ID: one rating per response. */
+  const ratings = new Map<string, PlanRating>();
   const templates = new Map<
     string,
     {
@@ -108,6 +113,8 @@ export function createFakeRepositories(): {
     plans.delete(id);
     routes.delete(id);
     deleteContributions((c) => c.planId === id);
+    for (const [responseId, rating] of ratings)
+      if (rating.planId === id) ratings.delete(responseId);
     previews.delete(id);
     for (const [nonce, planId] of planNonces) if (planId === id) planNonces.delete(nonce);
     for (const [responseId, entry] of responses) {
@@ -217,6 +224,31 @@ export function createFakeRepositories(): {
       async deleteMany(ids, kept = []) {
         for (const template of kept) insertTemplate(template);
         for (const id of ids) deletePlan(id);
+      },
+    },
+
+    ratings: {
+      async findByResponse(responseId) {
+        return structuredClone(ratings.get(responseId));
+      },
+      async save(rating) {
+        const existing = ratings.get(rating.responseId);
+        ratings.set(
+          rating.responseId,
+          structuredClone(
+            existing === undefined
+              ? rating
+              : {
+                  ...existing,
+                  value: rating.value,
+                  note: rating.note,
+                  updatedAt: rating.updatedAt,
+                },
+          ),
+        );
+      },
+      async deleteForResponse(responseId) {
+        ratings.delete(responseId);
       },
     },
 
@@ -408,6 +440,7 @@ export function createFakeRepositories(): {
       },
       async delete(id) {
         responses.delete(id);
+        ratings.delete(id);
         deleteContributions((c) => c.responseId === id);
         for (const key of links) if (key.endsWith(`|manage|${id}`)) links.delete(key);
       },

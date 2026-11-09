@@ -5,6 +5,7 @@ import type { HexColor } from "../domain/color.ts";
 import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { PaceBand } from "../domain/pace.ts";
 import type { DropPolicy, JoinMode, Plan, PlanStatus } from "../domain/plan.ts";
+import { canRate, type PlanRating } from "../domain/rating.ts";
 import {
   CONTRIBUTION_LIMITS,
   hasRecap,
@@ -83,6 +84,13 @@ export interface RecapView {
   contributions: ContributionView[];
 }
 
+/** A participant's own rating of the plan (spec 6a); nobody else's is ever in a view. */
+export interface RatingView {
+  /** The recap is open: the rating can be given, changed or removed. */
+  canRate: boolean;
+  own: Pick<PlanRating, "value" | "note"> | undefined;
+}
+
 /** Accepted participants: plus exact start, participant names and the recap. */
 export interface PlanViewForParticipant extends PlanViewForResponder {
   exactStart: ExactStart | undefined;
@@ -91,6 +99,8 @@ export interface PlanViewForParticipant extends PlanViewForResponder {
   participants: PersonView[];
   /** From the start on, for active plans. */
   recap: RecapView | undefined;
+  /** From the start on, for active plans, like the recap. */
+  rating: RatingView | undefined;
 }
 
 /** The poster: plus interested names. */
@@ -239,6 +249,7 @@ export function viewForParticipant(
   now: Date,
   responses: readonly PlanResponse[],
   contributions: readonly RecapContribution[],
+  ownRating: PlanRating | undefined,
 ): PlanViewForParticipant {
   return {
     ...viewForResponder(plan, counts, response, now),
@@ -252,6 +263,13 @@ export function viewForParticipant(
       { kind: "participant", responseId: response.id },
       now,
     ),
+    rating: hasRecap(plan, now)
+      ? {
+          canRate: canRate(plan, response.kind, now).ok,
+          own:
+            ownRating === undefined ? undefined : { value: ownRating.value, note: ownRating.note },
+        }
+      : undefined,
   };
 }
 

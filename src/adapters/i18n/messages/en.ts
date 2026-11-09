@@ -522,6 +522,8 @@ export const en = {
     "Only continue on your own device: anyone using this browser can then use the template.",
   "privacy.myData":
     "You can see, export and delete everything linked to your browser yourself, at any time:",
+  "privacy.ratings":
+    "After a plan, participants can rate it with a thumbs up or down and an optional note. Only the host sees ratings, once the recap has closed and only for plans with at least 3 participants; notes show their author’s name. Ratings are stored with the note encrypted and deleted with the plan, the response or your data.",
   "privacy.templates":
     "If a host chooses “Keep as repeatable template” or saves a template, the plan’s details, including the host’s name, are kept as a template; never its responses, participants’ names or recap. The exact start and route are kept only if the host includes them, and then encrypted. A template is deleted after 90 days without being repeated or edited.",
   "linkTools.heading": "Private link",
@@ -585,6 +587,19 @@ export const en = {
   "myData.deleteConfirm": "Delete everything for good",
   "myData.back": "Back to my data",
   "myData.deleted": "Your data on this device was deleted.",
+  "rating.heading": "Rate this plan",
+  "rating.question": "How did it go?",
+  "rating.up": "Went well",
+  "rating.down": "Didn’t go well",
+  "rating.note": "Note to the host (optional)",
+  "rating.submit": "Save rating",
+  "rating.remove": "Remove my rating",
+  "rating.yours": "Your rating:",
+  "rating.closed": "Rating has closed.",
+  "rating.closedNow": "Rating has closed for this plan.",
+  "rating.honesty":
+    "Only the host sees ratings. In a small group they may guess who gave one. Notes show your name.",
+  "rating.back": "Back to the plan",
 } as const satisfies Readonly<Record<string, Message>>;
 
 export type MessageKey = keyof typeof en;

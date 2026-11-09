@@ -49,6 +49,7 @@ import { createPlanRepository } from "./adapters/out/sqlite/plans.ts";
 import { createRecapRepository } from "./adapters/out/sqlite/recap.ts";
 import { createTemplateRepository } from "./adapters/out/sqlite/templates.ts";
 import { createFormNonceRepository } from "./adapters/out/sqlite/form-nonces.ts";
+import { createRatingRepository } from "./adapters/out/sqlite/ratings.ts";
 import { createResponseRepository } from "./adapters/out/sqlite/responses.ts";
 import { systemClock } from "./adapters/out/system-clock.ts";
 import { createTokenService } from "./adapters/out/tokens.ts";
@@ -191,6 +192,7 @@ async function openInstance(
     recap: createRecapRepository(database, keys.cipher),
     templates: createTemplateRepository(database, keys.cipher),
     formNonces: createFormNonceRepository(database),
+    ratings: createRatingRepository(database, keys.cipher),
     notify: {
       channels: createChannelRepository(database, keys.cipher, ids, () => systemClock.now()),
       jobs: createJobQueue(database, keys.cipher, ids),

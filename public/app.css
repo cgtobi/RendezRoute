@@ -526,3 +526,8 @@ button.danger {
   padding: 6px 0;
   border-bottom: 1px solid var(--border);
 }
+
+/* Ratings (spec 6a): the own note keeps its line breaks. */
+.rating-note {
+  white-space: pre-line;
+}

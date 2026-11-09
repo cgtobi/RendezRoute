@@ -1,5 +1,6 @@
 // Table types for Kysely (spec section 4). Must match the migrations in ./migrations;
 // repository integration tests and the schema conformance test catch drift.
+import type { RatingValue } from "../../../domain/rating.ts";
 import type { Generated } from "kysely";
 import type { ActivityType } from "../../../domain/activity.ts";
 import type { JobType } from "../../../domain/jobs.ts";
@@ -40,6 +41,7 @@ export interface PlansTable {
   recap_window: RecapWindow;
   recap_window_set_at: string | null;
   recap_closed_at: string | null;
+  ratings_closed_at: string | null;
   retention_days: number;
   delete_at: string;
   keep_as_template: number;
@@ -196,6 +198,17 @@ export interface DatabaseSchema {
   recap_contributions: RecapContributionsTable;
   plan_templates: PlanTemplatesTable;
   used_form_nonces: UsedFormNoncesTable;
+  plan_ratings: PlanRatingsTable;
+}
+
+export interface PlanRatingsTable {
+  id: string;
+  plan_id: string;
+  response_id: string;
+  value: RatingValue;
+  note_enc: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface UsedFormNoncesTable {

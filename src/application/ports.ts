@@ -2,6 +2,7 @@ import type { GeoPoint } from "../domain/geo.ts";
 import type { JobType } from "../domain/jobs.ts";
 import type { Notification } from "../domain/notification.ts";
 import type { PushSubscription } from "../domain/push.ts";
+import type { PlanRating } from "../domain/rating.ts";
 import type { RecapContribution } from "../domain/recap.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { ReminderKind } from "../domain/reminders.ts";
@@ -43,6 +44,7 @@ export const ENCRYPTED_FIELDS = [
   "responses.remote_actor",
   "recap_contributions.body",
   "recap_contributions.link_url",
+  "plan_ratings.note",
   "notification_channels.config",
   "job_queue.payload",
   "reports.details",
@@ -159,6 +161,15 @@ export interface NewTemplate {
   hostsOfPlan: string;
   /** One-time value from the "Save as template" form; detects resubmission (decision I9). */
   creationNonce?: string | undefined;
+}
+
+/** Plan ratings (spec 6a); the note encrypted at rest. */
+export interface RatingRepository {
+  findByResponse(responseId: string): Promise<PlanRating | undefined>;
+  /** Adds or replaces the response's one rating. */
+  save(rating: PlanRating): Promise<void>;
+  /** Physical delete (spec 3.10). */
+  deleteForResponse(responseId: string): Promise<void>;
 }
 
 /** One-time form values that were used (decision I44); kept for a day. */

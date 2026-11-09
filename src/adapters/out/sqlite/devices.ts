@@ -70,6 +70,11 @@ export function createDeviceRepository(database: Database): DeviceRepository {
       return row !== undefined;
     },
 
+    async delete(id) {
+      await database.db.deleteFrom("devices").where("id", "=", id).execute();
+      checkpoint(database);
+    },
+
     async unlinkOthers(target, keepDeviceId) {
       const result = await database.db
         .deleteFrom("device_links")

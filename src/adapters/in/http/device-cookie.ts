@@ -14,12 +14,20 @@ export function readDeviceToken(c: Context, config: Config): string | undefined 
   return value !== undefined && TOKEN.test(value) ? value : undefined;
 }
 
-export function setDeviceToken(c: Context, config: Config, token: string): void {
-  setCookie(c, cookieName(config), token, {
+const cookieOptions = (config: Config, maxAge: number) =>
+  ({
     httpOnly: true,
     secure: !config.allowInsecureDev,
     sameSite: "Lax",
     path: "/",
-    maxAge: LONG_COOKIE_SECONDS,
-  });
+    maxAge,
+  }) as const;
+
+export function setDeviceToken(c: Context, config: Config, token: string): void {
+  setCookie(c, cookieName(config), token, cookieOptions(config, LONG_COOKIE_SECONDS));
+}
+
+/** "Delete my data": the browser forgets the device, whose row is gone (spec 3.7). */
+export function clearDeviceToken(c: Context, config: Config): void {
+  setCookie(c, cookieName(config), "", cookieOptions(config, 0));
 }

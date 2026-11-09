@@ -317,6 +317,11 @@ export function createFakeRepositories(): {
       async hasLink(deviceId, target) {
         return links.has(linkKey(deviceId, target));
       },
+      async delete(id) {
+        devices.delete(id);
+        feeds.delete(id);
+        for (const key of links) if (key.startsWith(`${id}|`)) links.delete(key);
+      },
       async unlinkOthers(target, keepDeviceId) {
         const suffix = `|${target.role}|${targetId(target)}`;
         if (!links.has(`${keepDeviceId}${suffix}`)) return 0;

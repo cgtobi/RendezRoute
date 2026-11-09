@@ -520,6 +520,8 @@ export const en = {
   "templateLink.body": "This link lets you repeat, change or delete the template “{title}”.",
   "templateLink.sharedWarning":
     "Only continue on your own device: anyone using this browser can then use the template.",
+  "privacy.myData":
+    "You can see, export and delete everything linked to your browser yourself, at any time:",
   "privacy.templates":
     "If a host chooses “Keep as repeatable template” or saves a template, the plan’s details, including the host’s name, are kept as a template; never its responses, participants’ names or recap. The exact start and route are kept only if the host includes them, and then encrypted. A template is deleted after 90 days without being repeated or edited.",
   "linkTools.heading": "Private link",
@@ -542,6 +544,47 @@ export const en = {
   "linkTools.alreadyIssued":
     "This link was already shown, so nothing changed. If you didn’t save it, get a new one.",
   "linkTools.back": "Back",
+  "layout.myData": "My data",
+  "export.plan": "Export this plan (ZIP)",
+  "export.template": "Export this template (ZIP)",
+  "export.response": "Export my response (ZIP)",
+  "export.recapHeading": "Your recap contributions: {title}",
+  "export.hiddenByHost": "Hidden by the host",
+  "myData.heading": "My data on this device",
+  "myData.intro":
+    "Everything this browser is linked to. You can turn notifications on or off, replace a private link, sign out other devices, export or delete it all.",
+  "myData.empty": "Nothing is linked to this device.",
+  "myData.hosted": "Plans you host",
+  "myData.responses": "Your responses",
+  "myData.templates": "Your templates",
+  "myData.cancelled": "cancelled",
+  "myData.export": "Export (ZIP)",
+  "myData.calendar": "Calendar feed",
+  "myData.calendarOn": "This device has a calendar feed.",
+  "myData.calendarOff": "This device has no calendar feed.",
+  "myData.calendarManage": "Manage the calendar feed",
+  "myData.exportHeading": "Export or delete",
+  "myData.exportHint":
+    "The export is a ZIP file with your plans, responses and templates: the details as data.json, calendar files, routes as GPX and your own recap contributions. Other people appear only by name.",
+  "myData.exportAll": "Export everything (ZIP)",
+  "myData.delete": "Delete my data",
+  "myData.deleteHeading": "Delete everything on this device?",
+  "myData.deleteExplain": "This deletes right away and for good:",
+  "myData.deletePlans": {
+    one: "{count} plan you host, for everyone; people still in an upcoming plan are told",
+    other: "{count} plans you host, for everyone; people still in an upcoming plan are told",
+  },
+  "myData.deleteResponses": {
+    one: "{count} response, as if you had withdrawn it",
+    other: "{count} responses, as if you had withdrawn them",
+  },
+  "myData.deleteTemplates": { one: "{count} template", other: "{count} templates" },
+  "myData.deleteFeed": "the calendar feed",
+  "myData.deleteDevice": "this browser’s link to all of it",
+  "myData.deleteNoTemplates": "No templates are kept from the deleted plans.",
+  "myData.deleteConfirm": "Delete everything for good",
+  "myData.back": "Back to my data",
+  "myData.deleted": "Your data on this device was deleted.",
 } as const satisfies Readonly<Record<string, Message>>;
 
 export type MessageKey = keyof typeof en;

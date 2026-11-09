@@ -188,6 +188,9 @@ export function TemplatePage(props: TemplatePageProps) {
       <p>
         <a class="button secondary" href={`${base}/edit`}>
           {t("template.edit")}
+        </a>{" "}
+        <a class="button secondary" href={`${base}/export.zip`}>
+          {t("export.template")}
         </a>
       </p>
       {template.hasRoute && (

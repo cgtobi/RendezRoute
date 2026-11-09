@@ -514,13 +514,15 @@ button.danger {
 
 /* Templates (spec 3.10): the home page list and the template page's summary. */
 .templates ul,
-.template-facts {
+.template-facts,
+.my-data-items {
   padding: 0;
   list-style: none;
 }
 
 .templates li,
-.template-facts li {
+.template-facts li,
+.my-data-items > li {
   padding: 6px 0;
   border-bottom: 1px solid var(--border);
 }

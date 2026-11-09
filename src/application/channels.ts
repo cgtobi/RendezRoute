@@ -1,6 +1,7 @@
 // "Notify me about this plan" (spec 6 feature 3, decision D17): one switch per response for the
 // person who responded, one per hosted plan for the host. Each browser subscribes on its own.
 import { MAX_CHANNELS_PER_OWNER, parsePushSubscription } from "../domain/push.ts";
+import { isBlocked } from "../domain/response.ts";
 import { resolveDevice } from "./devices.ts";
 import { asHost, type Denied, isDenied } from "./host.ts";
 import type { PlanDeps } from "./plans.ts";
@@ -31,7 +32,7 @@ async function ownerFor(
   if (device === undefined || plan === undefined) return { kind: "not_found" };
   const response = await deps.responses.findForDevice(plan.id, device.id);
   if (response === undefined) return { kind: "not_found" };
-  const blocked = response.kind === "rejected" || response.kind === "removed";
+  const blocked = isBlocked(response.kind);
   if (blocked && purpose === "subscribe") return { kind: "forbidden" };
   return { responseId: response.id };
 }

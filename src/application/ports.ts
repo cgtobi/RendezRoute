@@ -206,6 +206,8 @@ export interface DeviceRepository {
    * each other (spec 3.2).
    */
   unlinkOthers(target: DeviceLinkTarget, keepDeviceId: string): Promise<number>;
+  /** "Delete my data": the device with its links and calendar feed, physically (spec 3.7). */
+  delete(id: string): Promise<void>;
   /** Deletes devices without links last seen before the first cutoff, and any device before the second. */
   deleteInactive(cutoffs: {
     unlinkedLastSeenBefore: Date;

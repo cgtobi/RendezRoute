@@ -3,6 +3,9 @@
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 
+/** The field that sends both actions back to "My data" instead of the item's page (I45). */
+export const FROM_MY_DATA = { name: "from", value: "my-data" } as const;
+
 export function LinkTools({
   t,
   base,
@@ -10,6 +13,8 @@ export function LinkTools({
   signedOut,
   notifications,
   nonce,
+  compact = false,
+  returnToMyData = false,
 }: {
   t: Translate;
   /** The page's path; the actions are `<base>/link` and `<base>/sign-out`. */
@@ -21,19 +26,23 @@ export function LinkTools({
   notifications: boolean;
   /** One-time value, so a resent form issues no second link (decision I44). */
   nonce: string;
+  /** Folded into one line, for lists. */
+  compact?: boolean;
+  /** Both actions come back to "My data" instead of the item's page (decision I45). */
+  returnToMyData?: boolean;
 }) {
-  const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
-  return (
-    <section class="link-tools">
-      <h2>{t("linkTools.heading")}</h2>
-      {signedOut !== undefined && (
-        <p class="notice" role="status">
-          {t("linkTools.signedOut", { count: signedOut })}
-        </p>
+  const hidden = (
+    <>
+      <input type="hidden" name={CSRF_FIELD} value={csrfToken} />
+      {returnToMyData && (
+        <input type="hidden" name={FROM_MY_DATA.name} value={FROM_MY_DATA.value} />
       )}
-      <p>{t("linkTools.explain")}</p>
+    </>
+  );
+  const forms = (
+    <>
       <form method="post" action={`${base}/link`}>
-        {csrf}
+        {hidden}
         <input type="hidden" name="nonce" value={nonce} />
         <button type="submit" class="secondary">
           {t("linkTools.newLink")}
@@ -44,12 +53,32 @@ export function LinkTools({
         <p>{t("linkTools.signOutExplain")}</p>
         {notifications && <p>{t("linkTools.signOutNotifications")}</p>}
         <form method="post" action={`${base}/sign-out`}>
-          {csrf}
+          {hidden}
           <button type="submit" class="danger">
             {t("linkTools.signOutConfirm")}
           </button>
         </form>
       </details>
+    </>
+  );
+  if (compact) {
+    return (
+      <details class="link-tools">
+        <summary>{t("linkTools.heading")}</summary>
+        {forms}
+      </details>
+    );
+  }
+  return (
+    <section class="link-tools">
+      <h2>{t("linkTools.heading")}</h2>
+      {signedOut !== undefined && (
+        <p class="notice" role="status">
+          {t("linkTools.signedOut", { count: signedOut })}
+        </p>
+      )}
+      <p>{t("linkTools.explain")}</p>
+      {forms}
     </section>
   );
 }

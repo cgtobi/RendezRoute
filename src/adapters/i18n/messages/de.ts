@@ -542,6 +542,8 @@ export const de: Messages = {
     "Mit diesem Link kannst du die Vorlage „{title}“ wiederholen, ändern oder löschen.",
   "templateLink.sharedWarning":
     "Mach nur auf deinem eigenen Gerät weiter: Alle, die diesen Browser nutzen, können danach die Vorlage verwenden.",
+  "privacy.myData":
+    "Alles, was mit deinem Browser verknüpft ist, kannst du jederzeit selbst ansehen, exportieren und löschen:",
   "privacy.templates":
     "Wenn die Organisator:in „Als wiederholbare Vorlage behalten“ wählt oder eine Vorlage speichert, werden die Angaben des Treffens samt ihrem Namen als Vorlage behalten; nie seine Antworten, die Namen der Teilnehmer:innen oder der Rückblick. Genauer Treffpunkt und Route werden nur behalten, wenn die Organisator:in sie einschließt, und dann verschlüsselt. Eine Vorlage wird gelöscht, wenn sie 90 Tage lang weder wiederholt noch bearbeitet wurde.",
   "linkTools.heading": "Privater Link",
@@ -564,4 +566,46 @@ export const de: Messages = {
   "linkTools.alreadyIssued":
     "Dieser Link wurde schon angezeigt, daher hat sich nichts geändert. Wenn du ihn nicht gespeichert hast, erstelle einen neuen.",
   "linkTools.back": "Zurück",
+  "layout.myData": "Meine Daten",
+  "export.plan": "Dieses Treffen exportieren (ZIP)",
+  "export.template": "Diese Vorlage exportieren (ZIP)",
+  "export.response": "Meine Antwort exportieren (ZIP)",
+  "export.recapHeading": "Deine Beiträge zum Rückblick: {title}",
+  "export.hiddenByHost": "Von der Organisator:in ausgeblendet",
+  "myData.heading": "Meine Daten auf diesem Gerät",
+  "myData.intro":
+    "Alles, womit dieser Browser verknüpft ist. Du kannst Benachrichtigungen ein- und ausschalten, einen privaten Link ersetzen, andere Geräte abmelden und alles exportieren oder löschen.",
+  "myData.empty": "Mit diesem Gerät ist nichts verknüpft.",
+  "myData.hosted": "Treffen, die du organisierst",
+  "myData.responses": "Deine Antworten",
+  "myData.templates": "Deine Vorlagen",
+  "myData.cancelled": "abgesagt",
+  "myData.export": "Exportieren (ZIP)",
+  "myData.calendar": "Kalender-Abo",
+  "myData.calendarOn": "Dieses Gerät hat ein Kalender-Abo.",
+  "myData.calendarOff": "Dieses Gerät hat kein Kalender-Abo.",
+  "myData.calendarManage": "Kalender-Abo verwalten",
+  "myData.exportHeading": "Exportieren oder löschen",
+  "myData.exportHint":
+    "Der Export ist eine ZIP-Datei mit deinen Treffen, Antworten und Vorlagen: die Angaben als data.json, Kalenderdateien, Routen als GPX und deine eigenen Beiträge zum Rückblick. Andere Personen erscheinen nur mit ihrem Namen.",
+  "myData.exportAll": "Alles exportieren (ZIP)",
+  "myData.delete": "Meine Daten löschen",
+  "myData.deleteHeading": "Alles auf diesem Gerät löschen?",
+  "myData.deleteExplain": "Damit wird sofort und endgültig gelöscht:",
+  "myData.deletePlans": {
+    one: "{count} Treffen, das du organisierst, für alle; wer bei einem bevorstehenden Treffen dabei ist, wird informiert",
+    other:
+      "{count} Treffen, die du organisierst, für alle; wer bei einem bevorstehenden Treffen dabei ist, wird informiert",
+  },
+  "myData.deleteResponses": {
+    one: "{count} Antwort, als hättest du sie zurückgezogen",
+    other: "{count} Antworten, als hättest du sie zurückgezogen",
+  },
+  "myData.deleteTemplates": { one: "{count} Vorlage", other: "{count} Vorlagen" },
+  "myData.deleteFeed": "das Kalender-Abo",
+  "myData.deleteDevice": "die Verknüpfung dieses Browsers mit allem",
+  "myData.deleteNoTemplates": "Von den gelöschten Treffen werden keine Vorlagen behalten.",
+  "myData.deleteConfirm": "Alles endgültig löschen",
+  "myData.back": "Zurück zu meinen Daten",
+  "myData.deleted": "Deine Daten auf diesem Gerät wurden gelöscht.",
 };

@@ -4,7 +4,7 @@ import type { Context, Hono } from "hono";
 import { getNewLink, signOutOtherDevices } from "../../../../application/links.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
-import { AlreadyIssuedPage, NewLinkPage } from "../views/link-tools.tsx";
+import { AlreadyIssuedPage, FROM_MY_DATA, NewLinkPage } from "../views/link-tools.tsx";
 import { linkKinds } from "./link-kinds.ts";
 import {
   badRequest,
@@ -24,6 +24,9 @@ export function registerLinkToolRoutes(app: Hono<AppEnv>, { config, planDeps }: 
       deviceToken: readDeviceToken(c, config),
     });
     const page = (c: Context<AppEnv>) => settings.toolsPage.replace(":id", request(c).id);
+    /** The item's page, or "My data" when the tools were used there (a fixed path, no redirect target). */
+    const backTo = (c: Context<AppEnv>, from: string) =>
+      from === FROM_MY_DATA.value ? "/my-data" : page(c);
     // As elsewhere: templates have no public page, plans send others back to theirs.
     const denied = (c: Context<AppEnv>, result: "not_found" | "forbidden") => {
       if (kind === "template") return templateGone(c);
@@ -33,6 +36,7 @@ export function registerLinkToolRoutes(app: Hono<AppEnv>, { config, planDeps }: 
     app.post(`${settings.toolsPage}/link`, async (c) => {
       const body = await readForm(c);
       if (body === undefined) return badRequest(c);
+      const back = backTo(c, formField(body, FROM_MY_DATA.name));
       const result = await getNewLink(planDeps, {
         ...request(c),
         formNonce: formField(body, "nonce"),
@@ -47,7 +51,7 @@ export function registerLinkToolRoutes(app: Hono<AppEnv>, { config, planDeps }: 
         case "already_issued":
           // A resent form: the link shown the first time keeps working.
           c.header("cache-control", "no-store");
-          return c.render(<AlreadyIssuedPage t={t} backPath={page(c)} />, {
+          return c.render(<AlreadyIssuedPage t={t} backPath={back} />, {
             title: t("linkTools.newHeading"),
           });
         case "issued":
@@ -58,7 +62,7 @@ export function registerLinkToolRoutes(app: Hono<AppEnv>, { config, planDeps }: 
               label={t(settings.newLinkTexts.label)}
               url={new URL(`${settings.secretPath}/${result.token}`, config.baseUrl).href}
               warning={t(settings.newLinkTexts.warning)}
-              backPath={page(c)}
+              backPath={back}
             />,
             { title: t("linkTools.newHeading") },
           );
@@ -66,9 +70,12 @@ export function registerLinkToolRoutes(app: Hono<AppEnv>, { config, planDeps }: 
     });
 
     app.post(`${settings.toolsPage}/sign-out`, async (c) => {
+      const body = await readForm(c);
+      if (body === undefined) return badRequest(c);
       const result = await signOutOtherDevices(planDeps, request(c));
       if (result.kind !== "signed_out") return denied(c, result.kind);
-      return c.redirect(`${page(c)}?signedOut=${result.devices}`, 303);
+      const back = backTo(c, formField(body, FROM_MY_DATA.name));
+      return c.redirect(`${back}?signedOut=${result.devices}`, 303);
     });
   }
 }

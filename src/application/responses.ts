@@ -1,5 +1,6 @@
 // Responding and managing one's own response (spec 5 features 5 and 6, 3.5).
-import type { PlanResponse } from "../domain/response.ts";
+import type { Plan } from "../domain/plan.ts";
+import { isBlocked, type PlanResponse } from "../domain/response.ts";
 import type { FieldError } from "../domain/result.ts";
 import {
   choicesFor,
@@ -193,7 +194,7 @@ export async function updateMyResponse(
   const found = await ownResponse(deps, request.planId, request.deviceToken);
   if (found === undefined) return { kind: "not_found" };
   const { plan, response } = found;
-  if (response.kind === "removed" || response.kind === "rejected") return { kind: "blocked" };
+  if (isBlocked(response.kind)) return { kind: "blocked" };
   if (!isResponseChoice(request.choice, plan.joinMode, response.kind)) {
     return { kind: "bad_request" };
   }
@@ -231,7 +232,19 @@ export async function withdrawMyResponse(
 ): Promise<{ kind: "withdrawn" } | { kind: "not_found" }> {
   const found = await ownResponse(deps, request.planId, request.deviceToken);
   if (found === undefined) return { kind: "not_found" };
-  await deps.responses.delete(found.response.id);
-  await notifyHost(deps, found.plan, "withdrawn");
+  await withdrawResponse(deps, found.plan, found.response);
   return { kind: "withdrawn" };
+}
+
+/**
+ * Deletes a response; the host is told, unless they had rejected or removed the person, for whom
+ * a withdrawal is no news (decision I45).
+ */
+export async function withdrawResponse(
+  deps: PlanDeps,
+  plan: Plan,
+  response: PlanResponse,
+): Promise<void> {
+  await deps.responses.delete(response.id);
+  if (!isBlocked(response.kind)) await notifyHost(deps, plan, "withdrawn");
 }

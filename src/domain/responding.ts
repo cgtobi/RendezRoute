@@ -1,6 +1,6 @@
 // Who may respond, and with which name (spec 3.1 Responding, 3.5).
 import type { PlanStatus } from "./plan.ts";
-import type { ResponseKind } from "./response.ts";
+import { isBlocked, type ResponseKind } from "./response.ts";
 import { err, ok, type Result } from "./result.ts";
 import { cleanText, type TextError } from "./text.ts";
 
@@ -46,6 +46,6 @@ export function canChangeResponse(
   plan: { startsAt: Date; status: PlanStatus },
   now: Date,
 ): Result<true, "plan_started" | "plan_cancelled" | "blocked"> {
-  if (response.kind === "removed" || response.kind === "rejected") return err("blocked");
+  if (isBlocked(response.kind)) return err("blocked");
   return canRespond(plan, now);
 }

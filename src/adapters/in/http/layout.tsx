@@ -93,6 +93,7 @@ export function Layout({
                 {t("layout.privacy")}
               </a>
             )}
+            <a href="/my-data">{t("layout.myData")}</a>
             {config.imprintUrl !== undefined && (
               <a href={config.imprintUrl.href} rel="noopener noreferrer">
                 {t("layout.imprint")}

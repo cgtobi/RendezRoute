@@ -27,6 +27,7 @@ import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerRecapRoutes } from "./routes/recap.tsx";
 import { registerTemplateRoutes } from "./routes/templates.tsx";
 import { registerLinkToolRoutes } from "./routes/link-tools.tsx";
+import { registerMyDataRoutes } from "./routes/my-data.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
@@ -186,6 +187,11 @@ export function createApp({
     if (templates.length > 0) c.header("cache-control", "private, no-store");
     return c.render(
       <section class="home">
+        {c.req.query("dataDeleted") !== undefined && (
+          <p class="notice" role="status">
+            {t("myData.deleted")}
+          </p>
+        )}
         <p>{t("home.intro")}</p>
         <p>
           <a class="button" href="/new">
@@ -237,6 +243,7 @@ export function createApp({
   registerRecapRoutes(app, deps);
   registerTemplateRoutes(app, deps);
   registerLinkToolRoutes(app, deps);
+  registerMyDataRoutes(app, deps);
 
   return app;
 }

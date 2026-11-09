@@ -2,6 +2,11 @@
 export const RESPONSE_KINDS = ["interested", "requested", "rejected", "joined", "removed"] as const;
 export type ResponseKind = (typeof RESPONSE_KINDS)[number];
 
+/** Rejected and removed people: blocked from responding again, told nothing more (spec 3.5). */
+export function isBlocked(kind: ResponseKind): boolean {
+  return kind === "rejected" || kind === "removed";
+}
+
 /** A person's response to a plan (spec 3.5). */
 export interface PlanResponse {
   id: string;

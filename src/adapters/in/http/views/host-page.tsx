@@ -155,6 +155,12 @@ export function HostPage(props: HostPageProps) {
         )}
       </section>
 
+      <p>
+        <a class="button secondary" href={`/p/${planId}/host/export.zip`}>
+          {t("export.plan")}
+        </a>
+      </p>
+
       <LinkTools
         t={t}
         base={`/p/${planId}/host`}

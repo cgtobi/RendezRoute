@@ -29,6 +29,9 @@ export function PrivacyPage({ t, config }: { t: Translate; config: Config }) {
       <p>{t("privacy.storedRecap")}</p>
       <p>{t("privacy.templates")}</p>
       <p>{t("privacy.noTracking")}</p>
+      <p>
+        {t("privacy.myData")} <a href="/my-data">{t("myData.heading")}</a>
+      </p>
 
       <h2>{t("privacy.durationHeading")}</h2>
       <p>

@@ -2,6 +2,7 @@
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { OwnResponseView } from "../../../../application/plan-views.ts";
 import type { ResponseChoice } from "../../../../domain/requests.ts";
+import { isBlocked } from "../../../../domain/response.ts";
 import { MAX_DISPLAY_NAME_LENGTH } from "../../../../domain/responding.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, statusKey } from "./format.ts";
@@ -28,7 +29,7 @@ export function ManagePage(props: {
   linkNonce: string;
 }) {
   const { t, planId, response } = props;
-  const blocked = response.kind === "removed" || response.kind === "rejected";
+  const blocked = isBlocked(response.kind);
   const invalid = props.errorCode !== undefined;
 
   return (
@@ -89,6 +90,12 @@ export function ManagePage(props: {
       )}
 
       <PushSwitch t={t} push={props.push} hint={t("push.hint")} offOnly={blocked} />
+
+      <p>
+        <a class="button secondary" href={`/p/${planId}/me/export.zip`}>
+          {t("export.response")}
+        </a>
+      </p>
 
       <LinkTools
         t={t}

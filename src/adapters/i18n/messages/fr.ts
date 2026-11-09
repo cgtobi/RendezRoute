@@ -539,6 +539,8 @@ export const fr: Messages = {
     "Ce lien vous permet de répéter, modifier ou supprimer le modèle « {title} ».",
   "templateLink.sharedWarning":
     "Ne continuez que sur votre propre appareil : toute personne utilisant ce navigateur pourra ensuite utiliser le modèle.",
+  "privacy.myData":
+    "Vous pouvez à tout moment consulter, exporter et supprimer vous-même tout ce qui est associé à votre navigateur :",
   "privacy.templates":
     "Si l’organisateur·rice choisit « Garder comme modèle réutilisable » ou enregistre un modèle, les informations de la sortie, y compris le nom de l’organisateur·rice, sont gardées comme modèle, jamais ses réponses, les noms des participant·e·s ni son récapitulatif. Le point de départ exact et le parcours ne sont gardés que si l’organisateur·rice les inclut, et alors chiffrés. Un modèle est supprimé après 90 jours sans être répété ni modifié.",
   "linkTools.heading": "Lien privé",
@@ -561,4 +563,46 @@ export const fr: Messages = {
   "linkTools.alreadyIssued":
     "Ce lien a déjà été affiché, rien n’a donc changé. Si vous ne l’avez pas enregistré, obtenez-en un nouveau.",
   "linkTools.back": "Retour",
+  "layout.myData": "Mes données",
+  "export.plan": "Exporter cette sortie (ZIP)",
+  "export.template": "Exporter ce modèle (ZIP)",
+  "export.response": "Exporter ma réponse (ZIP)",
+  "export.recapHeading": "Vos contributions au récapitulatif : {title}",
+  "export.hiddenByHost": "Masqué par l’organisateur·rice",
+  "myData.heading": "Mes données sur cet appareil",
+  "myData.intro":
+    "Tout ce à quoi ce navigateur est associé. Vous pouvez activer ou désactiver les notifications, remplacer un lien privé, déconnecter les autres appareils, tout exporter ou tout supprimer.",
+  "myData.empty": "Rien n’est associé à cet appareil.",
+  "myData.hosted": "Sorties que vous organisez",
+  "myData.responses": "Vos réponses",
+  "myData.templates": "Vos modèles",
+  "myData.cancelled": "annulée",
+  "myData.export": "Exporter (ZIP)",
+  "myData.calendar": "Abonnement d’agenda",
+  "myData.calendarOn": "Cet appareil a un abonnement d’agenda.",
+  "myData.calendarOff": "Cet appareil n’a pas d’abonnement d’agenda.",
+  "myData.calendarManage": "Gérer l’abonnement d’agenda",
+  "myData.exportHeading": "Exporter ou supprimer",
+  "myData.exportHint":
+    "L’export est un fichier ZIP avec vos sorties, réponses et modèles : les informations dans data.json, des fichiers d’agenda, les parcours en GPX et vos propres contributions au récapitulatif. Les autres personnes n’apparaissent que par leur nom.",
+  "myData.exportAll": "Tout exporter (ZIP)",
+  "myData.delete": "Supprimer mes données",
+  "myData.deleteHeading": "Tout supprimer sur cet appareil ?",
+  "myData.deleteExplain": "Cela supprime immédiatement et définitivement :",
+  "myData.deletePlans": {
+    one: "{count} sortie que vous organisez, pour tout le monde ; les personnes encore inscrites à une sortie à venir sont prévenues",
+    other:
+      "{count} sorties que vous organisez, pour tout le monde ; les personnes encore inscrites à une sortie à venir sont prévenues",
+  },
+  "myData.deleteResponses": {
+    one: "{count} réponse, comme si vous l’aviez retirée",
+    other: "{count} réponses, comme si vous les aviez retirées",
+  },
+  "myData.deleteTemplates": { one: "{count} modèle", other: "{count} modèles" },
+  "myData.deleteFeed": "l’abonnement d’agenda",
+  "myData.deleteDevice": "l’association de ce navigateur à tout cela",
+  "myData.deleteNoTemplates": "Aucun modèle n’est gardé des sorties supprimées.",
+  "myData.deleteConfirm": "Tout supprimer définitivement",
+  "myData.back": "Retour à mes données",
+  "myData.deleted": "Vos données sur cet appareil ont été supprimées.",
 };

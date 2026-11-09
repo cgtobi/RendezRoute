@@ -7,6 +7,7 @@ import { previewImage } from "../../../../application/previews.ts";
 import { routeForDownload } from "../../../../application/routes.ts";
 import { toGeoJson, toGpx } from "../../../out/gpx/write-gpx.ts";
 import type { AppEnv } from "../app.tsx";
+import { fileName } from "../file-names.ts";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { formatDate } from "../views/format.ts";
 import { LinksPage } from "../views/links-page.tsx";
@@ -30,16 +31,6 @@ import {
   secretLinkHeaders,
   TIME_ZONES,
 } from "./shared.tsx";
-
-/** ASCII file name from a title, e.g. "Easy Sunday run" → "easy-sunday-run". */
-const fileName = (title: string) =>
-  title
-    .normalize("NFKD")
-    .replace(/[^\x20-\x7E]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "route";
 
 export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
   const { config, planDeps, geocoder, previewRenderer, limits } = deps;
@@ -161,7 +152,10 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     });
     if (result.kind === "not_found") return planGone(c);
     c.header("content-type", "application/gpx+xml; charset=utf-8");
-    c.header("content-disposition", `attachment; filename="${fileName(result.title)}.gpx"`);
+    c.header(
+      "content-disposition",
+      `attachment; filename="${fileName(result.title, "route")}.gpx"`,
+    );
     c.header("cache-control", "private, no-store");
     return c.body(toGpx(result.route, result.title));
   });

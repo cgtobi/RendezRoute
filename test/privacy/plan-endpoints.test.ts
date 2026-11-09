@@ -3,6 +3,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { strFromU8, unzipSync } from "fflate";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { checkpoint } from "../../src/adapters/out/sqlite/database.ts";
 import { createTestApp } from "../support/app.ts";
@@ -106,6 +107,15 @@ async function audiences() {
   };
 }
 
+/** A response's body; ZIP exports unpacked, so sentinels are searched in every file (spec 3.7). */
+async function bodyOf(response: Response): Promise<string> {
+  if (response.headers.get("content-type") !== "application/zip") return response.text();
+  const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
+  return Object.entries(files)
+    .map(([name, content]) => `${name}\n${strFromU8(content)}`)
+    .join("\n");
+}
+
 async function pages(client: TestClient, planId: string): Promise<string> {
   const paths = [
     `/p/${planId}`,
@@ -113,8 +123,12 @@ async function pages(client: TestClient, planId: string): Promise<string> {
     `/p/${planId}/host`,
     `/p/${planId}/host/delete`,
     `/p/${planId}/calendar.ics`,
+    "/my-data",
+    "/my-data/export.zip",
+    `/p/${planId}/me/export.zip`,
+    `/p/${planId}/host/export.zip`,
   ];
-  const bodies = await Promise.all(paths.map(async (path) => (await client.get(path)).text()));
+  const bodies = await Promise.all(paths.map(async (path) => bodyOf(await client.get(path))));
   return bodies.join("\n");
 }
 
@@ -254,6 +268,19 @@ describe("recap contributions (spec 3.6, acceptance criterion v0.5)", () => {
       expect(body).not.toContain("SENTINEL-recap");
       expect(body).not.toContain("SENTINEL-host-recap");
     }
+  });
+
+  it("are exported only to their own author (user decision 2026-11-09)", async () => {
+    const setup = await audiences();
+    setup.clock.set(AFTER_START);
+    await contribute(setup.joined, setup.planId, RECAP_BODY, RECAP_LINK);
+    await contribute(setup.host, setup.planId, "SENTINEL-host-recap");
+    const joinedExport = await bodyOf(await setup.joined.get("/my-data/export.zip"));
+    expect(joinedExport).toContain(RECAP_BODY);
+    expect(joinedExport).not.toContain("SENTINEL-host-recap");
+    const hostExport = await bodyOf(await setup.host.get("/my-data/export.zip"));
+    expect(hostExport).toContain("SENTINEL-host-recap");
+    expect(hostExport).not.toContain(RECAP_BODY);
   });
 
   it("are absent from calendar files, feeds, previews and logs", async () => {

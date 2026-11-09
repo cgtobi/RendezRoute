@@ -43,7 +43,7 @@ interface EntrySource {
 }
 
 /** Built field by field, so nothing else of the plan can slip into a calendar. */
-function entryOf(
+export function entryOf(
   source: EntrySource,
   { hosting, exactStart }: { hosting: boolean; exactStart?: ExactStart | undefined },
 ): CalendarEntry {

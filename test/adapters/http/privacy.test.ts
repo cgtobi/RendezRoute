@@ -34,6 +34,7 @@ describe("privacy notice (spec 5 feature 13)", () => {
       "privacy.calendar",
       "privacy.storedRecap",
       "privacy.templates",
+      "privacy.myData",
     ] as const) {
       expect(text(html)).toContain(en(key));
     }

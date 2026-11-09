@@ -13,7 +13,7 @@ import {
   validateRetentionEdit,
 } from "../domain/plan-edit.ts";
 import type { FieldError, PlanInput } from "../domain/plan-input.ts";
-import { ratingsClosedAtAfter } from "../domain/rating.ts";
+import { ratingsClosed, ratingsClosedAtAfter } from "../domain/rating.ts";
 import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
 import type { RecapWindow } from "../domain/schedule.ts";
 import * as requests from "../domain/requests.ts";
@@ -23,6 +23,8 @@ import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import { resolveDevice } from "./devices.ts";
 import { deletionNotices, notifyResponders, notifyResponse } from "./notify.ts";
+import { ratingResultDue, ratingResultFor, type RatingResultView } from "./plan-views.ts";
+import { freezeRatingTally } from "./ratings.ts";
 import type { PlanDeps } from "./plans.ts";
 import { deletePlansKeepingTemplates } from "./templates.ts";
 
@@ -74,6 +76,8 @@ export type HostPageResult =
       hasRoute: boolean;
       /** Contributions in the recap, from the start of an active plan on (spec 6 feature 7). */
       recapContributions: number | undefined;
+      /** From the start of an active plan on (spec 6a): whether ratings closed, and the result once due. */
+      rating: { closed: boolean; result: RatingResultView | undefined } | undefined;
       people: {
         participants: HostPerson[];
         interested: HostPerson[];
@@ -105,6 +109,15 @@ export async function viewHostPage(
     requestsOpen: canRespond(plan, now).ok,
     hasRoute: plan.hasRoute,
     recapContributions: hasRecap(plan, now) ? await deps.recap.countByPlan(plan.id) : undefined,
+    rating: hasRecap(plan, now)
+      ? {
+          closed: ratingsClosed(plan, now),
+          // Notes are decrypted only once the result is due (decision D20).
+          result: ratingResultDue(plan, responses, now)
+            ? ratingResultFor(plan, await deps.ratings.listByPlan(plan.id), responses, now)
+            : undefined,
+        }
+      : undefined,
     people: {
       participants: people("joined"),
       interested: people("interested"),
@@ -262,6 +275,8 @@ function personAction<Done extends string>(
     if (response === undefined || response.planId !== plan.id) return { kind: "not_found" };
     const changed = change(response, plan, deps.clock.now());
     if (!changed.ok) return { kind: "not_allowed" };
+    // A changed participant list after the close must not change the host's counts (D20).
+    await freezeRatingTally(deps, plan);
     await deps.responses.update(changed.value);
     if (deletesContributions) {
       await deps.recap.deleteForResponse(response.id);

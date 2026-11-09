@@ -620,4 +620,13 @@ export const fr: Messages = {
   "rating.honesty":
     "Seul·e l’organisateur·rice voit les évaluations et, dans un petit groupe, peut deviner qui en a donné une. Les messages affichent votre nom.",
   "rating.back": "Retour à la sortie",
+  "rating.resultHeading": "Évaluations",
+  "rating.resultLater":
+    "Les participant·e·s peuvent évaluer la sortie tant que le récapitulatif est ouvert. Vous voyez le résultat ici une fois qu’il est clos, pour les sorties d’au moins 3 participant·e·s.",
+  "rating.result": {
+    zero: "Aucun·e des {participants} participant·e·s n’a évalué la sortie.",
+    one: "{count} sur {participants} a évalué : {up} bien, {down} pas bien",
+    other: "{count} sur {participants} ont évalué : {up} bien, {down} pas bien",
+  },
+  "rating.resultTooFew": "Les sorties de moins de 3 participant·e·s n’affichent pas d’évaluations.",
 };

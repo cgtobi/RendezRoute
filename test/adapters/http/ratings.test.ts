@@ -105,3 +105,39 @@ describe("the rating section (spec 6a)", () => {
     expect(forged.status).toBe(403);
   });
 });
+
+describe("the host's result (spec 6a, step 2)", () => {
+  const result = (html: string) =>
+    /<section class="rating-result"[\s\S]*?<\/section>/.exec(html)?.[0] ?? "";
+
+  it("shows a hint until the recap closes, then counts and signed, linked notes", async () => {
+    const { host, ben, lea, app, planId, clock } = await setup();
+    await respondViaUi(new TestClient(app), planId, "Max", "joined");
+    clock.set(AFTER_START);
+    await rate(ben, planId, "down", `${NOTE} https://example.org/too-fast`);
+    await rate(lea, planId, "up");
+    expect(text(result(await (await host.get(`/p/${planId}/host`)).text()))).toContain(
+      en("rating.resultLater"),
+    );
+    expect(await (await host.get(`/p/${planId}`)).text()).not.toContain("rating-result");
+
+    clock.set(CLOSED);
+    for (const path of [`/p/${planId}/host`, `/p/${planId}`]) {
+      const shown = text(result(await (await host.get(path)).text()));
+      expect(shown).toContain(en("rating.result", { count: 2, participants: 3, up: 1, down: 1 }));
+      expect(shown).toContain("<strong>Ben</strong>");
+      expect(shown).toContain(NOTE);
+      expect(shown).toContain('href="https://example.org/too-fast"');
+    }
+  });
+
+  it("says plans with fewer than 3 participants show no ratings", async () => {
+    const { host, ben, planId, clock } = await setup();
+    clock.set(AFTER_START);
+    await rate(ben, planId, "up", NOTE);
+    clock.set(CLOSED);
+    const page = text(result(await (await host.get(`/p/${planId}/host`)).text()));
+    expect(page).toContain(en("rating.resultTooFew"));
+    expect(page).not.toContain(NOTE);
+  });
+});

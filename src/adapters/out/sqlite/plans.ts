@@ -8,6 +8,7 @@ import type {
   PlanRepository,
 } from "../../../application/ports.ts";
 import type { Plan } from "../../../domain/plan.ts";
+import type { RatingResult } from "../../../domain/rating.ts";
 import type { Route } from "../../../domain/route.ts";
 import { checkpoint, type Database } from "./database.ts";
 import {
@@ -54,6 +55,7 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     recap_window_set_at: plan.recapWindowSetAt === undefined ? null : iso(plan.recapWindowSetAt),
     recap_closed_at: plan.recapClosedAt === undefined ? null : iso(plan.recapClosedAt),
     ratings_closed_at: plan.ratingsClosedAt === undefined ? null : iso(plan.ratingsClosedAt),
+    rating_tally: plan.ratingTally === undefined ? null : JSON.stringify(plan.ratingTally),
     retention_days: plan.retentionDays,
     delete_at: iso(plan.deleteAt),
     keep_as_template: plan.template.keep ? 1 : 0,
@@ -88,6 +90,8 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       row.recap_window_set_at === null ? undefined : new Date(row.recap_window_set_at),
     recapClosedAt: row.recap_closed_at === null ? undefined : new Date(row.recap_closed_at),
     ratingsClosedAt: row.ratings_closed_at === null ? undefined : new Date(row.ratings_closed_at),
+    ratingTally:
+      row.rating_tally === null ? undefined : (JSON.parse(row.rating_tally) as RatingResult),
     retentionDays: row.retention_days,
     deleteAt: new Date(row.delete_at),
     template: {

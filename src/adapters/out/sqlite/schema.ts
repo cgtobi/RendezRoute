@@ -42,6 +42,7 @@ export interface PlansTable {
   recap_window_set_at: string | null;
   recap_closed_at: string | null;
   ratings_closed_at: string | null;
+  rating_tally: string | null;
   retention_days: number;
   delete_at: string;
   keep_as_template: number;

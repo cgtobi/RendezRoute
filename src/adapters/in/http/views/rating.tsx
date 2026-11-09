@@ -1,6 +1,6 @@
 // Rating the plan (spec 6a, decision D20): for participants, under the recap, while it is open,
 // with the honesty line right under the choice; afterwards their own rating stays visible to them.
-import type { RatingView } from "../../../../application/plan-views.ts";
+import type { RatingResultView, RatingView } from "../../../../application/plan-views.ts";
 import { RATING_LIMITS, RATING_VALUES, type RatingValue } from "../../../../domain/rating.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { MessageKey } from "../../../i18n/messages/en.ts";
@@ -125,6 +125,53 @@ export function RatingSection({
                 {t("rating.remove")}
               </button>
             </form>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * The host's result (spec 6a): counts against participants and the signed notes, once due; before
+ * that, when it will show, and after the close for small plans, that it never will.
+ */
+export function RatingResultSection({
+  t,
+  closed,
+  result,
+}: {
+  t: Translate;
+  /** Ratings can no longer be given. */
+  closed: boolean;
+  result: RatingResultView | undefined;
+}) {
+  return (
+    <section class="rating-result" id="rating-result">
+      <h2>{t("rating.resultHeading")}</h2>
+      {result === undefined ? (
+        <p class="hint">{t(closed ? "rating.resultTooFew" : "rating.resultLater")}</p>
+      ) : (
+        <>
+          <p>
+            {t("rating.result", {
+              count: result.rated,
+              participants: result.participants,
+              up: result.up,
+              down: result.down,
+            })}
+          </p>
+          {result.notes.length > 0 && (
+            <ul class="rating-notes">
+              {result.notes.map((note) => (
+                <li>
+                  <strong>{note.authorName}</strong> (<ValueLabel t={t} value={note.value} />)
+                  <p class="rating-note">
+                    <Linkified text={note.note} />
+                  </p>
+                </li>
+              ))}
+            </ul>
           )}
         </>
       )}

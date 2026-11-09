@@ -5,7 +5,14 @@ import type { HexColor } from "../domain/color.ts";
 import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { PaceBand } from "../domain/pace.ts";
 import type { DropPolicy, JoinMode, Plan, PlanStatus } from "../domain/plan.ts";
-import { canRate, type PlanRating } from "../domain/rating.ts";
+import {
+  canRate,
+  type PlanRating,
+  type RatingResult,
+  ratingResult,
+  ratingResultVisible,
+  type RatingValue,
+} from "../domain/rating.ts";
 import {
   CONTRIBUTION_LIMITS,
   hasRecap,
@@ -91,6 +98,64 @@ export interface RatingView {
   own: Pick<PlanRating, "value" | "note"> | undefined;
 }
 
+/** The host's view of the ratings (spec 6a): counts and signed notes, once due (decision D20). */
+export interface RatingResultView extends RatingResult {
+  notes: { authorName: string; value: RatingValue; note: string }[];
+}
+
+/** The participants, and the ratings that count: those of people still in (spec 3.5). */
+export function countedRatings(
+  ratings: readonly PlanRating[],
+  responses: readonly PlanResponse[],
+): { participants: PlanResponse[]; counted: PlanRating[] } {
+  const participants = responses.filter((r) => r.kind === "joined");
+  const ids = new Set(participants.map((r) => r.id));
+  return { participants, counted: ratings.filter((rating) => ids.has(rating.responseId)) };
+}
+
+/** Whether the host's result is due: ratings closed, and at least 3 participants (D20). */
+export function ratingResultDue(
+  plan: Plan,
+  responses: readonly PlanResponse[],
+  now: Date,
+): boolean {
+  const participants = responses.filter((r) => r.kind === "joined").length;
+  return ratingResultVisible(plan, participants, now);
+}
+
+/**
+ * The result for the host, once due; `ratings` are undefined when not loaded. A stored tally
+ * keeps the counts fixed; notes are signed, so they follow the people still in.
+ */
+export function ratingResultFor(
+  plan: Plan,
+  ratings: readonly PlanRating[] | undefined,
+  responses: readonly PlanResponse[],
+  now: Date,
+): RatingResultView | undefined {
+  if (ratings === undefined || !ratingResultDue(plan, responses, now)) return undefined;
+  const { participants, counted } = countedRatings(ratings, responses);
+  const names = new Map(participants.map((r) => [r.id, r.displayName]));
+  return {
+    ...(plan.ratingTally ??
+      ratingResult(
+        counted.map((rating) => rating.value),
+        participants.length,
+      )),
+    notes: counted.flatMap((rating) =>
+      rating.note === undefined
+        ? []
+        : [
+            {
+              authorName: names.get(rating.responseId) ?? "",
+              value: rating.value,
+              note: rating.note,
+            },
+          ],
+    ),
+  };
+}
+
 /** Accepted participants: plus exact start, participant names and the recap. */
 export interface PlanViewForParticipant extends PlanViewForResponder {
   exactStart: ExactStart | undefined;
@@ -113,6 +178,8 @@ export interface PlanViewForPoster extends PlanViewForViewer {
   pendingRequests: number;
   retentionDays: number;
   recap: RecapView | undefined;
+  /** Counts and signed notes, once due (spec 6a); the host only. */
+  ratingResult: RatingResultView | undefined;
 }
 
 /**
@@ -278,6 +345,8 @@ export function viewForPoster(
   counts: Counts,
   responses: readonly PlanResponse[],
   contributions: readonly RecapContribution[],
+  /** Undefined unless loaded for the plan page (decision D20: decrypted only where shown). */
+  ratings: readonly PlanRating[] | undefined,
   now: Date,
 ): PlanViewForPoster {
   return {
@@ -291,5 +360,6 @@ export function viewForPoster(
     pendingRequests: responses.filter((r) => r.kind === "requested").length,
     retentionDays: plan.retentionDays,
     recap: recapViewFor(plan, contributions, responses, { kind: "host" }, now),
+    ratingResult: ratingResultFor(plan, ratings, responses, now),
   };
 }

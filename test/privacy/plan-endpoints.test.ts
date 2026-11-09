@@ -207,6 +207,19 @@ async function feedPath(client: TestClient): Promise<string> {
   return /https:\/\/runs\.example\.org(\/c\/[A-Za-z0-9_-]{43})/.exec(html)?.[1] ?? "/c/missing";
 }
 
+/** Fetches feeds like a calendar server, checking each is a real calendar so absence means something. */
+async function realFeeds(client: TestClient, paths: readonly string[]): Promise<string[]> {
+  const bodies: string[] = [];
+  for (const path of paths) {
+    const response = await client.get(path);
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("BEGIN:VCALENDAR");
+    bodies.push(body);
+  }
+  return bodies;
+}
+
 describe("calendar feeds (spec 6 feature 2: public fields only)", () => {
   it("never contain the exact start or anyone's name, for any audience", async () => {
     const { host, joined, interested, pending, viewer, planId } = await audiences();
@@ -289,13 +302,88 @@ describe("recap contributions (spec 3.6, acceptance criterion v0.5)", () => {
     setup.clock.set(AFTER_START);
     await contribute(setup.joined, setup.planId, RECAP_BODY, RECAP_LINK);
     const bodies = await Promise.all(
-      [`/p/${setup.planId}/calendar.ics`, `/p/${setup.planId}/og.png`, ...feeds].map(async (path) =>
+      [`/p/${setup.planId}/calendar.ics`, `/p/${setup.planId}/og.png`].map(async (path) =>
         (await setup.joined.get(path)).text(),
       ),
     );
-    for (const body of [...bodies, setup.logs.join("\n")]) {
+    const feedBodies = await realFeeds(setup.viewer, feeds);
+    for (const body of [...bodies, ...feedBodies, setup.logs.join("\n")]) {
       expect(body).not.toContain("SENTINEL-recap");
     }
+  });
+});
+
+const RATING_NOTE = "SENTINEL-rating-note";
+const AFTER_CLOSE = "2026-06-14T05:30:00Z";
+
+describe("ratings (spec 6a, acceptance criterion v0.6)", () => {
+  /** The audiences, plus two more participants so the plan reaches 3; the first one rates. */
+  async function rated() {
+    const setup = await audiences();
+    const lea = setup.client();
+    await respondViaUi(lea, setup.planId, "Lea", "joined");
+    await respondViaUi(setup.client(), setup.planId, "Max", "joined");
+    setup.clock.set(AFTER_START);
+    const csrf = hiddenFieldsOf(await (await setup.joined.get(`/p/${setup.planId}`)).text())._csrf;
+    const saved = await setup.joined.postForm(`/p/${setup.planId}/rating`, {
+      _csrf: csrf ?? "",
+      value: "down",
+      note: RATING_NOTE,
+    });
+    expect(saved.status).toBe(303);
+    return { ...setup, lea };
+  }
+
+  it("Nobody but the host ever receives ratings or rating notes, and the host only after the recap closed for plans with at least 3 participants", async () => {
+    const setup = await rated();
+    // Everyone but the author and the host, including another participant.
+    const others = [
+      setup.lea,
+      setup.viewer,
+      setup.interested,
+      setup.pending,
+      setup.rejected,
+      setup.removed,
+    ];
+    // While the recap is open: nobody but the author, not even the host.
+    expect(await pages(setup.joined, setup.planId)).toContain(RATING_NOTE);
+    for (const client of [setup.host, ...others]) {
+      expect(await pages(client, setup.planId)).not.toContain(RATING_NOTE);
+    }
+    setup.clock.set(AFTER_CLOSE);
+    expect(await pages(setup.host, setup.planId)).toContain(RATING_NOTE);
+    for (const client of others) {
+      expect(await pages(client, setup.planId)).not.toContain(RATING_NOTE);
+    }
+  });
+
+  it("are absent from calendar files, feeds, previews and logs", async () => {
+    const setup = await rated();
+    setup.clock.set(AFTER_CLOSE);
+    const feeds = [await feedPath(setup.host), await feedPath(setup.joined)];
+    const bodies = await Promise.all(
+      [`/p/${setup.planId}/calendar.ics`, `/p/${setup.planId}/og.png`].map(async (path) =>
+        (await setup.host.get(path)).text(),
+      ),
+    );
+    const feedBodies = await realFeeds(setup.viewer, feeds);
+    for (const body of [...bodies, ...feedBodies, setup.logs.join("\n")]) {
+      expect(body).not.toContain(RATING_NOTE);
+    }
+  });
+
+  it("are not shown to the host either for plans with fewer than 3 participants", async () => {
+    const setup = await audiences();
+    setup.clock.set(AFTER_START);
+    const csrf = hiddenFieldsOf(await (await setup.joined.get(`/p/${setup.planId}`)).text())._csrf;
+    await setup.joined.postForm(`/p/${setup.planId}/rating`, {
+      _csrf: csrf ?? "",
+      value: "down",
+      note: RATING_NOTE,
+    });
+    expect(await pages(setup.joined, setup.planId)).toContain(RATING_NOTE);
+    setup.clock.set(AFTER_CLOSE);
+    expect(await pages(setup.host, setup.planId)).not.toContain(RATING_NOTE);
   });
 });
 

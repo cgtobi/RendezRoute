@@ -202,6 +202,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     const result = await viewPlan(planDeps, {
       planId: c.req.param("id"),
       deviceToken: readDeviceToken(c, config),
+      withRatingResult: true,
     });
     return result.kind === "not_found" ? planGone(c) : renderPlanPage(c, deps, result);
   });

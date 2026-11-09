@@ -1,11 +1,18 @@
 // Plan ratings (spec 6a, decision D20): participants rate the plan while the recap is open, and
 // may change or remove their rating until it closes. The host never rates.
-import { canRate, type RatingError, validateRating } from "../domain/rating.ts";
+import {
+  canRate,
+  type RatingError,
+  ratingsClosed,
+  ratingTallyBeforeChange,
+  validateRating,
+} from "../domain/rating.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { PlanResponse } from "../domain/response.ts";
 import { audienceFor, canSee } from "../domain/visibility.ts";
 import { resolveDevice } from "./devices.ts";
 import { type Denied, isDenied } from "./host.ts";
+import { countedRatings } from "./plan-views.ts";
 import type { PlanDeps } from "./plans.ts";
 
 type Request = { planId: string; deviceToken: string | undefined };
@@ -67,4 +74,26 @@ export async function removeRating(
   if (!isOpen(deps, found)) return { kind: "closed" };
   await deps.ratings.deleteForResponse(found.response.id);
   return { kind: "removed" };
+}
+
+/**
+ * Stores the rating counts before anything changes them after the close (a removal, a restored
+ * person, a withdrawal, own-data deletion), so the host can never compare tallies around one
+ * person (decision D20). Does nothing while ratings are open or once stored.
+ */
+export async function freezeRatingTally(deps: PlanDeps, plan: Plan): Promise<void> {
+  const now = deps.clock.now();
+  if (plan.ratingTally !== undefined || !ratingsClosed(plan, now)) return;
+  const responses = await deps.responses.listByPlan(plan.id);
+  const { participants, counted } = countedRatings(
+    await deps.ratings.listByPlan(plan.id),
+    responses,
+  );
+  const ratingTally = ratingTallyBeforeChange(
+    plan,
+    counted.map((rating) => rating.value),
+    participants.length,
+    now,
+  );
+  await deps.plans.update({ ...plan, ratingTally });
 }

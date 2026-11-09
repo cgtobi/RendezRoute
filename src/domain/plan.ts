@@ -1,4 +1,5 @@
 import type { PlanDraft } from "./plan-input.ts";
+import type { RatingResult } from "./rating.ts";
 
 // Plan-level enumerations (spec section 4). Changing a list requires a migration.
 export const VISIBILITIES = ["link", "followers", "public"] as const;
@@ -29,6 +30,8 @@ export interface Plan extends PlanDraft {
   recapClosedAt: Date | undefined;
   /** Set when a host reopens a closed recap: ratings stay closed from then on (spec 6a). */
   ratingsClosedAt: Date | undefined;
+  /** The rating counts, stored before anything changes them after the close (spec 6a). */
+  ratingTally: RatingResult | undefined;
   createdAt: Date;
   updatedAt: Date;
 }

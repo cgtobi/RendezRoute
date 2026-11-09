@@ -166,6 +166,8 @@ export interface NewTemplate {
 /** Plan ratings (spec 6a); the note encrypted at rest. */
 export interface RatingRepository {
   findByResponse(responseId: string): Promise<PlanRating | undefined>;
+  /** Oldest first; only for the host's result once it is due (decision D20). */
+  listByPlan(planId: string): Promise<PlanRating[]>;
   /** Adds or replaces the response's one rating. */
   save(rating: PlanRating): Promise<void>;
   /** Physical delete (spec 3.10). */

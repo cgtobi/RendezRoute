@@ -13,6 +13,7 @@ import { ensureDevice, resolveDevice } from "./devices.ts";
 import { notifyHost, notifyHostOfArrival } from "./notify.ts";
 import { type OwnResponseView, ownResponse as ownResponseView } from "./plan-views.ts";
 import type { PlanDeps } from "./plans.ts";
+import { freezeRatingTally } from "./ratings.ts";
 
 const NONCE = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -245,6 +246,8 @@ export async function withdrawResponse(
   plan: Plan,
   response: PlanResponse,
 ): Promise<void> {
+  // A participant leaving after the close must not change the host's counts (decision D20).
+  await freezeRatingTally(deps, plan);
   await deps.responses.delete(response.id);
   if (!isBlocked(response.kind)) await notifyHost(deps, plan, "withdrawn");
 }

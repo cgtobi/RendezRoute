@@ -82,6 +82,7 @@ export function registerHostRoutes(
         confirmAcceptPending={form.confirmAcceptPending}
         hasRoute={page.hasRoute}
         recapContributions={page.recapContributions}
+        rating={page.rating}
         templateNonce={newNonce()}
         signedOut={signedOutCount(c)}
         linkNonce={newNonce()}

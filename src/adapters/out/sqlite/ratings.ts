@@ -1,12 +1,24 @@
 // Plan ratings in SQLite (spec 6a, decision D20): the note passes through FieldCipher.
+import type { Selectable } from "kysely";
 import type { FieldCipher, RatingRepository } from "../../../application/ports.ts";
+import type { PlanRating } from "../../../domain/rating.ts";
 import { checkpoint, type Database } from "./database.ts";
+import type { PlanRatingsTable } from "./schema.ts";
 import { iso } from "./shared-fields.ts";
 
 const NOTE = "plan_ratings.note" as const;
 
 export function createRatingRepository(database: Database, cipher: FieldCipher): RatingRepository {
   const { db } = database;
+  const fromRow = (row: Selectable<PlanRatingsTable>): PlanRating => ({
+    id: row.id,
+    planId: row.plan_id,
+    responseId: row.response_id,
+    value: row.value,
+    note: row.note_enc === null ? undefined : cipher.decrypt(row.note_enc, NOTE),
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  });
   return {
     async findByResponse(responseId) {
       const row = await db
@@ -14,17 +26,18 @@ export function createRatingRepository(database: Database, cipher: FieldCipher):
         .selectAll()
         .where("response_id", "=", responseId)
         .executeTakeFirst();
-      return row === undefined
-        ? undefined
-        : {
-            id: row.id,
-            planId: row.plan_id,
-            responseId: row.response_id,
-            value: row.value,
-            note: row.note_enc === null ? undefined : cipher.decrypt(row.note_enc, NOTE),
-            createdAt: new Date(row.created_at),
-            updatedAt: new Date(row.updated_at),
-          };
+      return row === undefined ? undefined : fromRow(row);
+    },
+
+    async listByPlan(planId) {
+      const rows = await db
+        .selectFrom("plan_ratings")
+        .selectAll()
+        .where("plan_id", "=", planId)
+        .orderBy("created_at")
+        .orderBy("id")
+        .execute();
+      return rows.map(fromRow);
     },
 
     async save(rating) {

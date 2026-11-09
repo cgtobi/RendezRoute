@@ -32,11 +32,20 @@ export interface PlanRating {
  * Recap timing plus when ratings were frozen: set when a host reopens a closed recap, so the
  * result never changes after it was first due (decision D20).
  */
-export type RatedPlan = RecapState & { ratingsClosedAt: Date | undefined };
+export type RatedPlan = RecapState & {
+  ratingsClosedAt: Date | undefined;
+  /** The counts as they stood when something first changed after the close (decision D20). */
+  ratingTally: RatingResult | undefined;
+};
+
+/** Ratings can no longer be given: the recap has closed, or ratings were frozen by a reopen. */
+export function ratingsClosed(plan: RatedPlan, now: Date): boolean {
+  return hasRecap(plan, now) && (plan.ratingsClosedAt !== undefined || !isRecapOpen(plan, now));
+}
 
 /** Participants rate, change and remove their rating while the recap is open, until frozen. */
 export function canRate(
-  plan: RatedPlan,
+  plan: Pick<RatedPlan, keyof RecapState | "ratingsClosedAt">,
   kind: ResponseKind,
   now: Date,
 ): Result<true, "not_participant" | "rating_closed"> {
@@ -67,22 +76,40 @@ export function validateRating(input: {
 }
 
 /**
- * The host sees the result once the recap has closed, so a change in the tally cannot be matched
- * to a person, and only for plans with at least 3 participants (decision D20).
+ * The host sees the result once ratings have closed, so a change in the tally cannot be matched
+ * to a person, and only for plans with at least 3 participants (decision D20); once frozen, the
+ * stored participant count decides.
  */
 export function ratingResultVisible(plan: RatedPlan, participants: number, now: Date): boolean {
   return (
-    hasRecap(plan, now) &&
-    (plan.ratingsClosedAt !== undefined || !isRecapOpen(plan, now)) &&
-    participants >= RATING_LIMITS.participantsForResult
+    ratingsClosed(plan, now) &&
+    (plan.ratingTally?.participants ?? participants) >= RATING_LIMITS.participantsForResult
   );
+}
+
+/**
+ * The counts to store before anything changes them after the close (a removal, a restored
+ * person, a withdrawal, own-data deletion), so the host can never compare tallies around one
+ * person (decision D20); undefined while ratings are open, and kept once stored.
+ */
+export function ratingTallyBeforeChange(
+  plan: RatedPlan,
+  values: readonly RatingValue[],
+  participants: number,
+  now: Date,
+): RatingResult | undefined {
+  if (plan.ratingTally !== undefined || !ratingsClosed(plan, now)) return plan.ratingTally;
+  return ratingResult(values, participants);
 }
 
 /**
  * When a change to the recap window is saved: a recap that had already closed freezes the ratings
  * at that close, even if the change reopens the recap for comments (decision D20).
  */
-export function ratingsClosedAtAfter(plan: RatedPlan, now: Date): Date | undefined {
+export function ratingsClosedAtAfter(
+  plan: Pick<RatedPlan, keyof RecapState | "ratingsClosedAt">,
+  now: Date,
+): Date | undefined {
   if (plan.ratingsClosedAt !== undefined || !hasRecap(plan, now)) return plan.ratingsClosedAt;
   return isRecapOpen(plan, now) ? undefined : recapClosesAt(plan);
 }

@@ -27,6 +27,7 @@ import {
   type PlanViewForViewer,
   type PlanPreview,
   previewOf,
+  ratingResultDue,
   viewForParticipant,
   viewForPoster,
   viewForResponder,
@@ -198,6 +199,7 @@ export async function storeNewPlan(
     recapWindowSetAt: undefined,
     recapClosedAt: undefined,
     ratingsClosedAt: undefined,
+    ratingTally: undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -244,7 +246,12 @@ export type ViewPlanResult =
 /** The plan as the requesting device may see it (spec 3.6). */
 export async function viewPlan(
   deps: PlanDeps,
-  request: { planId: string; deviceToken: string | undefined },
+  request: {
+    planId: string;
+    deviceToken: string | undefined;
+    /** The plan page shows the host's rating result; downloads and exports need not decrypt it. */
+    withRatingResult?: boolean;
+  },
 ): Promise<ViewPlanResult> {
   const plan = await deps.plans.findById(request.planId);
   if (plan === undefined) return { kind: "not_found" };
@@ -270,9 +277,16 @@ export async function viewPlan(
   if (canSee(audience, "interestedNames")) {
     const responses = await deps.responses.listByPlan(plan.id);
     const contributions = await deps.recap.listByPlan(plan.id);
+    // Notes are decrypted only where shown, and only once the result is due (decision D20).
+    const ratings =
+      request.withRatingResult === true &&
+      canSee(audience, "ratingResult") &&
+      ratingResultDue(plan, responses, now)
+        ? await deps.ratings.listByPlan(plan.id)
+        : undefined;
     return {
       kind: "poster",
-      view: viewForPoster(plan, counts, responses, contributions, now),
+      view: viewForPoster(plan, counts, responses, contributions, ratings, now),
       ...shared,
     };
   }

@@ -231,6 +231,12 @@ export function createFakeRepositories(): {
       async findByResponse(responseId) {
         return structuredClone(ratings.get(responseId));
       },
+      async listByPlan(planId) {
+        return [...ratings.values()]
+          .filter((rating) => rating.planId === planId)
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))
+          .map((rating) => structuredClone(rating));
+      },
       async save(rating) {
         const existing = ratings.get(rating.responseId);
         ratings.set(

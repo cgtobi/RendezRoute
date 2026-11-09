@@ -623,4 +623,14 @@ export const de: Messages = {
   "rating.honesty":
     "Nur die Organisator:in sieht Bewertungen. In einer kleinen Gruppe kann sie erraten, wer bewertet hat. Nachrichten zeigen deinen Namen.",
   "rating.back": "Zurück zum Treffen",
+  "rating.resultHeading": "Bewertungen",
+  "rating.resultLater":
+    "Teilnehmer:innen können das Treffen bewerten, solange der Rückblick offen ist. Das Ergebnis siehst du hier, sobald er geschlossen ist, bei Treffen mit mindestens 3 Teilnehmer:innen.",
+  "rating.result": {
+    zero: "Keine:r der {participants} Teilnehmer:innen hat bewertet.",
+    one: "{count} von {participants} hat bewertet: {up} × gut, {down} × nicht so gut",
+    other: "{count} von {participants} haben bewertet: {up} × gut, {down} × nicht so gut",
+  },
+  "rating.resultTooFew":
+    "Bei Treffen mit weniger als 3 Teilnehmer:innen werden keine Bewertungen gezeigt.",
 };

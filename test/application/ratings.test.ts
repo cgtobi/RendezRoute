@@ -1,11 +1,12 @@
 // Plan ratings (spec 6a, decision D20), step 1: participants rate while the recap is open.
 import { beforeEach, describe, expect, it } from "vite-plus/test";
-import { acceptRequest, editPlan, removePerson } from "../../src/application/host.ts";
+import { acceptRequest, editPlan, removePerson, viewHostPage } from "../../src/application/host.ts";
 import { confirmHostLink } from "../../src/application/secret-links.ts";
 import { planToInput } from "../../src/domain/plan-edit.ts";
+import { countedRatings } from "../../src/application/plan-views.ts";
 import { createPlan, type PlanDeps, viewPlan } from "../../src/application/plans.ts";
 import { ratePlan, removeRating } from "../../src/application/ratings.ts";
-import { respond } from "../../src/application/responses.ts";
+import { respond, withdrawMyResponse } from "../../src/application/responses.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { createFakeRepositories } from "../fakes/repositories.ts";
@@ -193,5 +194,127 @@ describe("ratings and the host's actions (spec 3.5, 6.6, 6a)", () => {
     });
     expect(await rate(ben, "down")).toEqual({ kind: "closed" });
     expect(await ownRating(ben)).toEqual({ canRate: false, own: { value: "up", note: undefined } });
+  });
+});
+
+describe("the host's result (spec 6a: after the close, from 3 participants)", () => {
+  const hostResult = async () => {
+    const page = await viewHostPage(deps, { planId, deviceToken: host, units: "metric" });
+    const plan = await viewPlan(deps, { planId, deviceToken: host, withRatingResult: true });
+    if (page.kind !== "found" || plan.kind !== "poster") throw new Error("not the host");
+    expect(plan.view.ratingResult).toEqual(page.rating?.result);
+    return page.rating?.result;
+  };
+
+  it("shows counts against participants and the signed notes once the recap has closed", async () => {
+    const [ben, lea] = [await person("Ben", "joined"), await person("Lea", "joined")];
+    await person("Max", "joined");
+    await person("Ida", "interested");
+    clock.set(STARTED);
+    await rate(ben, "down", "Too fast for me.");
+    await rate(lea, "up");
+    expect(await hostResult()).toBeUndefined();
+    clock.set(CLOSED);
+    expect(await hostResult()).toEqual({
+      participants: 3,
+      rated: 2,
+      up: 1,
+      down: 1,
+      notes: [{ authorName: "Ben", value: "down", note: "Too fast for me." }],
+    });
+  });
+
+  it("stays hidden for plans with fewer than 3 participants", async () => {
+    const ben = await person("Ben", "joined");
+    await person("Lea", "joined");
+    clock.set(STARTED);
+    await rate(ben, "up");
+    clock.set(CLOSED);
+    expect(await hostResult()).toBeUndefined();
+  });
+
+  it("is never in anyone else's view", async () => {
+    const [ben, lea] = [await person("Ben", "joined"), await person("Lea", "joined")];
+    await person("Max", "joined");
+    const ida = await person("Ida", "interested");
+    clock.set(STARTED);
+    await rate(ben, "down", "SENTINEL-ben-note");
+    clock.set(CLOSED);
+    for (const device of [lea, ida, undefined]) {
+      const body = JSON.stringify(await viewPlan(deps, { planId, deviceToken: device }));
+      expect(body).not.toContain("SENTINEL");
+      expect(body).not.toContain("ratingResult");
+    }
+  });
+});
+
+describe("the host's counts stay fixed after the close (decision D20)", () => {
+  async function closedWithFour() {
+    const devices = [];
+    for (const name of ["Ben", "Lea", "Max", "Tom"]) devices.push(await person(name, "joined"));
+    const [ben, lea, max] = devices;
+    clock.set(STARTED);
+    await rate(ben, "down");
+    await rate(lea, "up");
+    await rate(max, "up");
+    clock.set(CLOSED);
+    return { ben, lea };
+  }
+  const hostResult = async () => {
+    const page = await viewHostPage(deps, { planId, deviceToken: host, units: "metric" });
+    return page.kind === "found" ? page.rating?.result : undefined;
+  };
+  const responseOf = async (name: string) =>
+    (await repos.responses.listByPlan(planId)).find((r) => r.displayName === name)?.id ?? "";
+
+  it("when the host removes someone who rated", async () => {
+    await closedWithFour();
+    expect(await hostResult()).toMatchObject({ participants: 4, rated: 3, up: 2, down: 1 });
+    await removePerson(deps, { planId, deviceToken: host, responseId: await responseOf("Ben") });
+    expect(await hostResult()).toMatchObject({ participants: 4, rated: 3, up: 2, down: 1 });
+  });
+
+  it("when a participant withdraws, and below 3 remaining participants", async () => {
+    const { ben, lea } = await closedWithFour();
+    await withdrawMyResponse(deps, { planId, deviceToken: ben });
+    await withdrawMyResponse(deps, { planId, deviceToken: lea });
+    expect(await hostResult()).toMatchObject({ participants: 4, rated: 3, up: 2, down: 1 });
+  });
+
+  it("are shown while a closed recap is reopened for comments", async () => {
+    await closedWithFour();
+    clock.set("2026-06-15T10:00:00Z");
+    const plan = await repos.plans.findById(planId);
+    if (plan === undefined) throw new Error("missing plan");
+    await editPlan(deps, {
+      planId,
+      deviceToken: host,
+      input: { ...planToInput(plan, "metric"), recapWindow: "1d" },
+      units: "metric",
+      confirmDeleteNow: false,
+    });
+    expect(await hostResult()).toMatchObject({ participants: 4, rated: 3, up: 2, down: 1 });
+  });
+});
+
+describe("countedRatings", () => {
+  it("counts only ratings of people still in, against the participants", async () => {
+    const ben = await person("Ben", "joined");
+    await person("Lea", "joined");
+    clock.set(STARTED);
+    await rate(ben, "down");
+    const responses = await repos.responses.listByPlan(planId);
+    const rating = await repos.ratings.findByResponse(
+      responses.find((r) => r.displayName === "Ben")?.id ?? "",
+    );
+    if (rating === undefined) throw new Error("no rating");
+    const benLeft = responses.map((r) =>
+      r.displayName === "Ben" ? { ...r, kind: "interested" as const } : r,
+    );
+    expect(countedRatings([rating], responses)).toMatchObject({ counted: [rating] });
+    expect(countedRatings([rating], benLeft)).toMatchObject({
+      participants: [{ displayName: "Lea" }],
+      counted: [],
+    });
   });
 });

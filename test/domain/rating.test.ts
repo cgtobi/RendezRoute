@@ -4,7 +4,9 @@ import {
   RATING_LIMITS,
   ratingResult,
   ratingResultVisible,
+  type RatingResult,
   ratingsClosedAtAfter,
+  ratingTallyBeforeChange,
   validateRating,
 } from "../../src/domain/rating.ts";
 import type { RecapWindow } from "../../src/domain/schedule.ts";
@@ -17,6 +19,7 @@ const plan = (
     status?: "active" | "cancelled";
     recapWindow?: RecapWindow;
     ratingsClosedAt?: Date;
+    ratingTally?: RatingResult;
   } = {},
 ) => ({
   startsAt: start,
@@ -25,6 +28,7 @@ const plan = (
   recapWindowSetAt: undefined,
   recapClosedAt: undefined,
   ratingsClosedAt: undefined as Date | undefined,
+  ratingTally: undefined as RatingResult | undefined,
   deleteAt: at(14 * DAY),
   ...overrides,
 });
@@ -97,6 +101,22 @@ describe("ratingResultVisible (spec 6a: the host, after the close, from 3 partic
     expect(ratingResultVisible(plan(), 3, at(7 * DAY - 1))).toBe(false);
     expect(ratingResultVisible(plan(), 2, at(8 * DAY))).toBe(false);
     expect(ratingResultVisible(plan({ status: "cancelled" }), 5, at(8 * DAY))).toBe(false);
+  });
+});
+
+describe("the stored tally (decision D20: fixed once anything changes after the close)", () => {
+  it("is taken only once ratings have closed, and then kept", () => {
+    expect(ratingTallyBeforeChange(plan(), ["up"], 3, at(DAY))).toBeUndefined();
+    const tally = { participants: 4, rated: 2, up: 1, down: 1 };
+    expect(ratingTallyBeforeChange(plan(), ["up", "down"], 4, at(8 * DAY))).toEqual(tally);
+    expect(ratingTallyBeforeChange(plan({ ratingTally: tally }), ["up"], 3, at(9 * DAY))).toEqual(
+      tally,
+    );
+  });
+
+  it("decides the 3-participant rule once stored", () => {
+    const tally = { participants: 3, rated: 1, up: 1, down: 0 };
+    expect(ratingResultVisible(plan({ ratingTally: tally }), 2, at(8 * DAY))).toBe(true);
   });
 });
 

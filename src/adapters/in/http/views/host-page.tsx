@@ -10,6 +10,8 @@ import { PlanForm } from "./plan-form.tsx";
 import { RecapShortenedNotice, RecapWindowSelect } from "./recap.tsx";
 import { TemplateOptions } from "./templates.tsx";
 import { LinkTools } from "./link-tools.tsx";
+import { RatingResultSection } from "./rating.tsx";
+import type { RatingResultView } from "../../../../application/plan-views.ts";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
 import type { Units } from "../../../../domain/units.ts";
@@ -52,6 +54,8 @@ export interface HostPageProps {
   units: Units;
   /** Contributions in the recap, from the start of an active plan on (spec 6 feature 7). */
   recapContributions: number | undefined;
+  /** From the start of an active plan on (spec 6a): whether ratings closed, and the result once due. */
+  rating: { closed: boolean; result: RatingResultView | undefined } | undefined;
   /** One-time value for "Save as template" (decision I9). */
   templateNonce: string;
   /** Other devices removed by "Sign out all other devices", right after it (spec 3.2). */
@@ -102,6 +106,8 @@ export function HostPage(props: HostPageProps) {
       )}
 
       {props.scope === "all" && <RouteSection {...props} />}
+
+      {props.rating !== undefined && <RatingResultSection t={t} {...props.rating} />}
 
       <section class="people">
         <h2>{t("host.people")}</h2>

@@ -49,6 +49,7 @@ export function samplePlan(overrides: Partial<Plan> = {}, input: Partial<PlanInp
     recapWindowSetAt: undefined,
     recapClosedAt: undefined,
     ratingsClosedAt: undefined,
+    ratingTally: undefined,
     createdAt: fixtureNow,
     updatedAt: fixtureNow,
     ...overrides,

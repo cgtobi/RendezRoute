@@ -77,6 +77,12 @@ describe("SQLite plan ratings (spec 6a, section 4)", () => {
     );
   });
 
+  it("are listed per plan, oldest first", async () => {
+    await ratings().save(rating());
+    expect(await ratings().listByPlan("plan-1")).toEqual([rating()]);
+    expect(await ratings().listByPlan("plan-2")).toEqual([]);
+  });
+
   it("are deleted on request, and with their response or plan", async () => {
     await ratings().save(rating());
     await ratings().deleteForResponse("response-1");

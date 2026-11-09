@@ -600,6 +600,15 @@ export const en = {
   "rating.honesty":
     "Only the host sees ratings. In a small group they may guess who gave one. Notes show your name.",
   "rating.back": "Back to the plan",
+  "rating.resultHeading": "Ratings",
+  "rating.resultLater":
+    "Participants can rate the plan while the recap is open. You see the result here once it has closed, for plans with at least 3 participants.",
+  "rating.result": {
+    zero: "None of the {participants} participants rated the plan.",
+    one: "{count} of {participants} rated: {up} up, {down} down",
+    other: "{count} of {participants} rated: {up} up, {down} down",
+  },
+  "rating.resultTooFew": "Plans with fewer than 3 participants show no ratings.",
 } as const satisfies Readonly<Record<string, Message>>;
 
 export type MessageKey = keyof typeof en;

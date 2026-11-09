@@ -1,13 +1,13 @@
-// Day-before and deletion reminders (spec 6 feature 3, 3.10, decision I39), sent by a sweep every
-// minute. Each reminder is remembered per recipient with the moment it was due, so a moved start
-// or deletion date gives a new one, and people who join or turn notifications on later still get
-// it. A queued reminder is checked again before it is sent.
+// Day-before and deletion reminders (spec 6 feature 3, 3.10, decisions I39, I42), sent by a sweep
+// every minute. Each reminder is remembered per recipient with what it is about: the day-before
+// moment, or the deletion date. So a moved start or deletion date gives a new one, a changed recap
+// window does not, and people who join or turn notifications on later still get it. A queued
+// reminder is checked again before it is sent.
 import type { NotificationKind } from "../domain/notification.ts";
 import type { Plan } from "../domain/plan.ts";
 import {
   dayBeforeReminderAt,
   dayBeforeReminderDue,
-  deletionReminderAt,
   deletionReminderDue,
   type ReminderKind,
   reminderWindows,
@@ -73,11 +73,11 @@ async function sendDayBefore(deps: PlanDeps, plan: Plan, now: Date): Promise<num
 
 /** To the host and participants (spec 3.10). */
 async function sendDeletionReminder(deps: PlanDeps, plan: Plan, now: Date): Promise<number> {
-  const dueAt = deletionReminderDue(plan, now);
-  if (dueAt === undefined) return 0;
+  if (deletionReminderDue(plan, now) === undefined) return 0;
   const participants = await responsesStillIn(deps, plan, RECIPIENTS.deletionReminder);
   return remind(deps, plan, [hostOf(plan), ...participants.map(responderOf)], {
-    reminder: { kind: "deletionReminder", dueAt },
+    // Once per deletion date: a recap window changed later moves the moment, not the date.
+    reminder: { kind: "deletionReminder", dueAt: plan.deleteAt },
     notice: "deletionReminder",
     expiresAt: plan.deleteAt,
   });
@@ -121,14 +121,13 @@ async function remind(
 }
 
 /**
- * Whether a queued reminder should still go out: its plan is active, its due moment is unchanged
- * and its recipient is still among the people it is for (spec 3.5: nothing after removal).
+ * Whether a queued reminder should still go out: its plan is active, its day-before moment or
+ * deletion date is unchanged and its recipient is still among the people it is for (spec 3.5: nothing after removal).
  */
 export async function reminderStillDue(deps: PlanDeps, reminder: SentReminder): Promise<boolean> {
   const plan = await deps.plans.findById(reminder.planId);
   if (plan === undefined || plan.status !== "active") return false;
-  const dueAt =
-    reminder.kind === "dayBefore" ? dayBeforeReminderAt(plan) : deletionReminderAt(plan);
+  const dueAt = reminder.kind === "dayBefore" ? dayBeforeReminderAt(plan) : plan.deleteAt;
   if (dueAt?.getTime() !== reminder.dueAt.getTime()) return false;
   if (reminder.responseId === undefined) return true; // the host
   const response = await deps.responses.findById(reminder.responseId);

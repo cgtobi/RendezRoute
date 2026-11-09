@@ -140,6 +140,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
             title={result.title}
             hostUrl={new URL(`/a/${result.hostToken}`, config.baseUrl).href}
             deletion={formatDate(result.deleteAt, result.timeZone, c.get("language"))}
+            recapWindowShortened={result.recapWindowShortened}
           />,
           { title: c.get("t")("links.heading") },
         );

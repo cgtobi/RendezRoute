@@ -134,6 +134,17 @@ export interface CalendarFeedsTable {
   created_at: string;
 }
 
+export interface RecapContributionsTable {
+  id: string;
+  plan_id: string;
+  response_id: string | null;
+  body_enc: string | null;
+  link_url_enc: string | null;
+  hidden_by_poster: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -148,4 +159,5 @@ export interface DatabaseSchema {
   notification_channels: NotificationChannelsTable;
   sent_reminders: SentRemindersTable;
   calendar_feeds: CalendarFeedsTable;
+  recap_contributions: RecapContributionsTable;
 }

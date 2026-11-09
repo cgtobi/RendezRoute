@@ -3,6 +3,8 @@ import { type PlanTheme, planTheme } from "../domain/color.ts";
 import type { Units } from "../domain/pace.ts";
 import type { Plan } from "../domain/plan.ts";
 import { type FieldError, type PlanInput, validatePlanInput } from "../domain/plan-input.ts";
+import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
+import type { RecapWindow } from "../domain/schedule.ts";
 import { audienceFor, canSee } from "../domain/visibility.ts";
 import {
   applyRouteDefaults,
@@ -31,6 +33,7 @@ import type {
   ChannelRepository,
   JobQueue,
   PlanRepository,
+  RecapRepository,
   ResponseRepository,
   RouteParseError,
   RouteParser,
@@ -44,6 +47,8 @@ export interface PlanDeps extends DeviceDeps {
   limits: { horizonDays: number; maxRetentionDays: number };
   /** Personal calendar feeds (spec 6 feature 2). */
   calendarFeeds: CalendarFeedRepository;
+  /** Recap contributions (spec 6 feature 5). */
+  recap: RecapRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
   notify?:
     | { channels: ChannelRepository; jobs: JobQueue; reminders: SentReminderRepository }
@@ -63,6 +68,8 @@ export type CreatePlanResult =
       deleteAt: Date;
       /** Canonical IANA zone of the plan, for displaying dates. */
       timeZone: string;
+      /** The recap window, if the chosen one was shortened to fit the retention (spec 3.10). */
+      recapWindowShortened: RecapWindow | undefined;
     }
   | { kind: "duplicate"; planId: string }
   | { kind: "invalid"; errors: FieldError[] }
@@ -136,6 +143,8 @@ export async function createPlan(
     visibility: "link",
     status: "active",
     hasRoute: route !== undefined,
+    recapWindowSetAt: undefined,
+    recapClosedAt: undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -162,11 +171,17 @@ export async function createPlan(
     newDeviceToken: newToken,
     deleteAt: plan.deleteAt,
     timeZone: plan.timeZone,
+    recapWindowShortened: shortenedRecapWindow(request.input.recapWindow, plan.recapWindow),
   };
 }
 
 /** Shared by every audience: whether responses are open and the public link preview. */
-type Open = { responsesOpen: boolean; preview: PlanPreview };
+type Open = {
+  responsesOpen: boolean;
+  /** An active plan that has started: the public recap layer shows "took place" (spec 6 feature 5). */
+  hasRecap: boolean;
+  preview: PlanPreview;
+};
 
 export type ViewPlanResult =
   | { kind: "not_found" }
@@ -186,6 +201,7 @@ export async function viewPlan(
   const counts = await deps.responses.counts(plan.id);
   const shared: Open = {
     responsesOpen: canRespond(plan, now).ok,
+    hasRecap: hasRecap(plan, now),
     preview: previewOf(plan),
   };
   const device = await resolveDevice(deps, request.deviceToken);
@@ -199,15 +215,24 @@ export async function viewPlan(
 
   // The visibility matrix decides which read model an audience gets (spec 3.6).
   const audience = audienceFor(isHost ? "poster" : own);
+  // Recap contributions are loaded only for audiences that may see them (spec 3.6).
   if (canSee(audience, "interestedNames")) {
     const responses = await deps.responses.listByPlan(plan.id);
-    return { kind: "poster", view: viewForPoster(plan, counts, responses), ...shared };
+    const contributions = await deps.recap.listByPlan(plan.id);
+    return {
+      kind: "poster",
+      view: viewForPoster(plan, counts, responses, contributions, now),
+      ...shared,
+    };
   }
   if (own !== undefined && canSee(audience, "exactStartAndRoute")) {
     const responses = await deps.responses.listByPlan(plan.id);
+    const contributions = canSee(audience, "recapContributions")
+      ? await deps.recap.listByPlan(plan.id)
+      : [];
     return {
       kind: "participant",
-      view: viewForParticipant(plan, counts, own, now, responses),
+      view: viewForParticipant(plan, counts, own, now, responses, contributions),
       ...shared,
     };
   }

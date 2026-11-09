@@ -23,6 +23,10 @@ export interface Plan extends PlanDraft {
   status: PlanStatus;
   /** The route itself is loaded separately, only where it may be shown (spec 3.6). */
   hasRoute: boolean;
+  /** Set when the recap window was changed after the start (spec 6 feature 6). */
+  recapWindowSetAt: Date | undefined;
+  /** Set when the host closed the recap after the start. */
+  recapClosedAt: Date | undefined;
   createdAt: Date;
   updatedAt: Date;
 }

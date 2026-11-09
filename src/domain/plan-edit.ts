@@ -4,6 +4,7 @@ import { formatPace, formatSpeed } from "./pace.ts";
 import { metersToDistance, metersToElevation, type Units } from "./units.ts";
 import type { Plan } from "./plan.ts";
 import {
+  type FieldError,
   type PlanDraft,
   type PlanInput,
   type PlanRules,
@@ -12,7 +13,14 @@ import {
 } from "./plan-input.ts";
 import type { PlanResponse } from "./response.ts";
 import { err, ok, type Result } from "./result.ts";
-import { defaultRecapWindow, deleteAt, type RecapWindow, validateRetention } from "./schedule.ts";
+import { changeRecapWindow, fitRecapWindow } from "./recap.ts";
+import {
+  defaultRecapWindow,
+  deleteAt,
+  RECAP_WINDOWS,
+  type RecapWindow,
+  validateRetention,
+} from "./schedule.ts";
 import { instantToLocal } from "./timezone.ts";
 
 /** Everything before the start of an active plan; afterwards, or once cancelled, only retention. */
@@ -62,6 +70,7 @@ export function planToInput(plan: Plan, units: Units): PlanInput {
     primaryColor: plan.colors.primary,
     secondaryColor: plan.colors.secondary,
     retentionDays: String(plan.retentionDays),
+    recapWindow: plan.recapWindow,
   };
 }
 
@@ -81,33 +90,48 @@ export function validatePlanEdit(
 export interface RetentionEdit {
   retentionDays: number;
   recapWindow: RecapWindow;
+  recapWindowSetAt: Date | undefined;
+  recapClosedAt: Date | undefined;
   deleteAt: Date;
   /** The new deletion date has passed: the UI must confirm "This will delete the plan now". */
   deletesNow: boolean;
 }
 
 /**
- * Retention can change at any time; delete_at is always recomputed (spec 3.1 Retention edits).
- * An unchanged retention stays valid above a lowered maximum (spec 3.10).
+ * Retention and the recap window can change at any time; delete_at is always recomputed (spec 3.1
+ * Retention edits). An unchanged retention stays valid above a lowered maximum (spec 3.10). The
+ * window is shortened to fit the retention (decision D4) and, after the start, measured from the
+ * change (spec 6 feature 6).
  */
 export function validateRetentionEdit(
-  value: string,
-  plan: Pick<Plan, "startsAt" | "retentionDays">,
+  input: { retentionDays: string; recapWindow: string },
+  plan: Pick<
+    Plan,
+    "startsAt" | "retentionDays" | "recapWindow" | "recapWindowSetAt" | "recapClosedAt" | "deleteAt"
+  >,
   now: Date,
   maxRetentionDays: number,
-): Result<RetentionEdit, "retention_out_of_range" | "retention_shorter_than_recap_window"> {
-  const days = /^\d+$/.test(value.trim()) ? Number(value.trim()) : Number.NaN;
-  const recapWindow = defaultRecapWindow(days);
+): { ok: true; value: RetentionEdit } | { ok: false; errors: FieldError[] } {
+  const value = input.retentionDays.trim();
+  const days = /^\d+$/.test(value) ? Number(value) : Number.NaN;
   const max = days === plan.retentionDays ? Math.max(maxRetentionDays, days) : maxRetentionDays;
-  const checked = validateRetention(days, recapWindow, max);
-  if (!checked.ok) return checked;
+  const checked = validateRetention(days, defaultRecapWindow(days), max);
+  if (!checked.ok) return { ok: false, errors: [{ field: "retentionDays", code: checked.error }] };
+  const window = input.recapWindow.trim();
+  if (window !== "" && !(RECAP_WINDOWS as readonly string[]).includes(window)) {
+    return { ok: false, errors: [{ field: "recapWindow", code: "choice_invalid" }] };
+  }
+  const requested = window === "" ? plan.recapWindow : (window as RecapWindow);
   const newDeleteAt = deleteAt(plan.startsAt, checked.value);
-  return ok({
-    retentionDays: checked.value,
-    recapWindow,
-    deleteAt: newDeleteAt,
-    deletesNow: newDeleteAt.getTime() <= now.getTime(),
-  });
+  return {
+    ok: true,
+    value: {
+      retentionDays: checked.value,
+      ...changeRecapWindow(plan, fitRecapWindow(requested, checked.value), now),
+      deleteAt: newDeleteAt,
+      deletesNow: newDeleteAt.getTime() <= now.getTime(),
+    },
+  };
 }
 
 /** Cancelling is final and only possible before the start (decision D8). */

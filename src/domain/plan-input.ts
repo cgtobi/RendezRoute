@@ -12,10 +12,12 @@ import {
 import { type PaceBand, paceFromSpeed, parsePace, validatePaceBand } from "./pace.ts";
 import { distanceToMeters, elevationToMeters, type Units } from "./units.ts";
 import { DROP_POLICIES, type DropPolicy, JOIN_MODES, type JoinMode } from "./plan.ts";
+import { fitRecapWindow } from "./recap.ts";
 import {
   defaultRecapWindow,
   defaultRetentionDays,
   deleteAt,
+  RECAP_WINDOWS,
   type RecapWindow,
   validateRetention,
   validateStartsAt,
@@ -50,6 +52,8 @@ export const PLAN_INPUT_FIELDS = [
   "primaryColor",
   "secondaryColor",
   "retentionDays",
+  // "now", "1d" or "1w" (spec 6 feature 6); empty means the largest that fits the retention.
+  "recapWindow",
 ] as const;
 
 /** Raw form values; empty strings mean "not given". */
@@ -126,10 +130,12 @@ export function validatePlanInput(
     return result.value;
   };
 
-  const choice = <T extends string>(field: PlanField, options: readonly T[]): T | undefined =>
-    (options as readonly string[]).includes(input[field])
-      ? (input[field] as T)
-      : fail(field, "choice_invalid");
+  const choice = <T extends string>(
+    field: PlanField,
+    options: readonly T[],
+    value: string = input[field],
+  ): T | undefined =>
+    (options as readonly string[]).includes(value) ? (value as T) : fail(field, "choice_invalid");
 
   const coordinates = (latField: PlanField, lngField: PlanField): GeoPoint | undefined => {
     const [lat, lng] = [input[latField].trim(), input[lngField].trim()];
@@ -257,6 +263,11 @@ export function validatePlanInput(
   );
   if (checkedRetention.ok) retentionDays = checkedRetention.value;
   else fail("retentionDays", checkedRetention.error);
+  // A window longer than the retention is shortened to fit, never lengthened (decision D4).
+  const chosenWindow =
+    input.recapWindow.trim() === ""
+      ? undefined
+      : choice("recapWindow", RECAP_WINDOWS, input.recapWindow.trim());
 
   if (
     errors.length > 0 ||
@@ -293,7 +304,10 @@ export function validatePlanInput(
       joinMode,
       colors: { primary: primary.value, secondary: secondary.value },
       retentionDays,
-      recapWindow: defaultRecapWindow(retentionDays),
+      recapWindow:
+        chosenWindow === undefined
+          ? defaultRecapWindow(retentionDays)
+          : fitRecapWindow(chosenWindow, retentionDays),
       deleteAt: deleteAt(startsAt, retentionDays),
     },
   };

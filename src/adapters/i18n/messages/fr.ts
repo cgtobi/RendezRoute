@@ -25,6 +25,8 @@ export const fr: Messages = {
     "Quand vous créez une sortie : votre nom, les informations de la sortie et un parcours facultatif. Le nom, le titre, la remarque, la zone de rendez-vous, l’heure, la distance et l’allure sont visibles par toute personne ayant le lien. Le point de départ exact et le parcours ne sont visibles que par vous et les personnes inscrites, et sont enregistrés chiffrés.",
   "privacy.storedResponses":
     "Quand vous répondez : le nom que vous indiquez, votre choix et la langue de la page, pour les messages concernant la sortie. Votre nom est enregistré chiffré et visible par l’organisateur·rice, ainsi que par les autres participant·e·s si vous vous inscrivez.",
+  "privacy.storedRecap":
+    "Après une sortie, les participant·e·s et l’organisateur·rice peuvent ajouter des commentaires et des liens à son récapitulatif. Ils sont enregistrés chiffrés, visibles uniquement par les participant·e·s et l’organisateur·rice, et supprimés avec la sortie. Les liens sont affichés comme simples liens ; rien n’est chargé depuis ceux-ci.",
   "privacy.noTracking": "Il n’y a ni comptes, ni mesure d’audience, ni publicité.",
   "privacy.durationHeading": "Durée de conservation",
   "privacy.retention":
@@ -170,6 +172,14 @@ export const fr: Messages = {
     one: "{count} jour après la sortie",
     other: "{count} jours après la sortie",
   },
+  "form.recapWindow": "Récapitulatif",
+  "form.recapWindowNow": "Pas de nouveaux commentaires ni liens",
+  "form.recapWindow1d": "Ouvert 1 jour après le départ",
+  "form.recapWindow1w": "Ouvert 1 semaine après le départ",
+  "form.recapWindowShortened":
+    "Le récapitulatif a été raccourci pour tenir dans la durée de conservation : {window}.",
+  "form.recapWindowHint":
+    "Après la sortie, les participant·e·s peuvent ajouter des commentaires et des liens pendant cette durée. Elle ne peut pas dépasser la durée de conservation de la sortie ; un choix plus long est raccourci.",
   "form.submit": "Créer la sortie",
   "form.gpx": "Parcours (fichier GPX, facultatif)",
   "form.gpxTrim": "Masquer le début et la fin du parcours",
@@ -183,6 +193,10 @@ export const fr: Messages = {
     "Remplit la distance, le dénivelé et le point de départ exact. Seules les personnes inscrites peuvent voir et télécharger le parcours. Si le formulaire affiche une erreur, choisissez à nouveau le fichier.",
 
   "field.invalid": "Cette valeur n’est pas valide.",
+  "field.contribution_empty": "Écrivez un commentaire ou ajoutez un lien.",
+  "field.contribution_too_long": "{max} caractères au maximum, s’il vous plaît.",
+  "field.link_invalid": "Saisissez une adresse web complète, commençant par https.",
+  "field.link_too_long": "Ce lien est trop long.",
   "field.required": "Veuillez remplir ce champ.",
   "field.too_long": "C’est trop long.",
   "field.invalid_characters": "Ce champ contient des caractères non autorisés.",
@@ -344,6 +358,33 @@ export const fr: Messages = {
   "weather.hint": "Pour l’heure de départ, près de la zone de rendez-vous.",
   "weather.source": "Données météo :",
 
+  "recap.heading": "Récapitulatif",
+  "recap.tookPlace": {
+    one: "Cette sortie a eu lieu. {count} personne y a participé.",
+    other: "Cette sortie a eu lieu. {count} personnes y ont participé.",
+  },
+  "recap.private": "Seules les personnes inscrites à cette sortie voient ceci.",
+  "recap.openUntil": "Ouvert aux commentaires et aux liens jusqu’au {date}.",
+  "recap.closed": "Fermé aux nouveaux commentaires et liens.",
+  "recap.empty": "Pas encore de commentaires ni de liens.",
+  "recap.add": "Ajouter au récapitulatif",
+  "recap.body": "Commentaire",
+  "recap.link": "Lien",
+  "recap.linkHint":
+    "Par exemple votre activité ou vos photos. Affiché comme simple lien, rien n’est chargé depuis celui-ci.",
+  "recap.submit": "Ajouter",
+  "recap.edit": "Modifier",
+  "recap.delete": "Supprimer",
+  "recap.hide": "Masquer",
+  "recap.show": "Afficher à nouveau",
+  "recap.hidden": "Masqué par l’organisateur·rice : seul·e·s vous et l’organisateur·rice le voyez.",
+  "recap.hiddenForHost": "Masqué pour les participant·e·s.",
+  "recap.editHeading": "Modifier votre commentaire",
+  "recap.save": "Enregistrer",
+  "recap.back": "Retour à la sortie",
+  "recap.limit": "Vous avez atteint la limite de {count} commentaires et liens pour cette sortie.",
+  "recap.closedNow": "Le récapitulatif est fermé aux nouveaux commentaires et liens.",
+
   "push.enable": "M’avertir pour cette sortie",
   "push.disable": "Désactiver les notifications",
   "push.on": "Les notifications pour cette sortie sont activées dans ce navigateur.",
@@ -417,6 +458,16 @@ export const fr: Messages = {
     "L’annulation est définitive. La sortie reste visible avec la mention « annulée » jusqu’à sa suppression. Pour la faire quand même, créez une nouvelle sortie.",
   "host.cancelConfirm": "Annuler cette sortie",
   "host.delete": "Supprimer la sortie…",
+  "host.recap": "Récapitulatif",
+  "host.recapWindowHint":
+    "Après le départ, une modification compte à partir de maintenant. Les commentaires et liens existants restent.",
+  "host.recapDelete": "Supprimer le récapitulatif",
+  "host.recapDeleteExplain": {
+    one: "Cela supprime le {count} commentaire ou lien du récapitulatif, pour tout le monde. Les participant·e·s qui ont activé les notifications sont prévenu·e·s.",
+    other:
+      "Cela supprime les {count} commentaires et liens du récapitulatif, pour tout le monde. Les participant·e·s qui ont activé les notifications sont prévenu·e·s.",
+  },
+  "host.recapDeleteConfirm": "Supprimer le récapitulatif",
   "host.deleteHeading": "Supprimer « {title} » ?",
   "host.deleteExplain": {
     zero: "Cela supprime immédiatement et définitivement la sortie et son point de départ exact. C’est irréversible.",

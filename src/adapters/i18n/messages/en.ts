@@ -22,6 +22,8 @@ export const en = {
     "When you create a plan: your name, the plan details you enter and an optional route. Name, title, note, meeting area, time, distance and pace are visible to anyone with the link. The exact start and the route are shown only to you and people who join, and are stored encrypted.",
   "privacy.storedResponses":
     "When you respond: the name you give, your choice and the language of the page, for messages about the plan. Your name is stored encrypted and shown to the host, and to the other participants if you join.",
+  "privacy.storedRecap":
+    "After a plan, participants and the host can add comments and links to its recap. They are stored encrypted, shown only to participants and the host, and deleted with the plan. Links are shown as plain links; nothing is loaded from them.",
   "privacy.noTracking": "There are no accounts, no analytics and no advertising.",
   "privacy.durationHeading": "How long",
   "privacy.retention":
@@ -159,6 +161,14 @@ export const en = {
   "form.secondaryColor": "Accent color",
   "form.retention": "Delete the plan",
   "form.retentionDays": { one: "{count} day after the run", other: "{count} days after the run" },
+  "form.recapWindow": "Recap",
+  "form.recapWindowNow": "No new comments or links",
+  "form.recapWindow1d": "Open for 1 day after the start",
+  "form.recapWindow1w": "Open for 1 week after the start",
+  "form.recapWindowShortened":
+    "The recap was shortened to fit how long the plan is kept: {window}.",
+  "form.recapWindowHint":
+    "After the run, participants can add comments and links for this long. It can’t be longer than the plan is kept; a longer choice is shortened to fit.",
   "form.submit": "Create plan",
   "form.gpx": "Route (GPX file, optional)",
   "form.gpxTrim": "Hide the start and end of the route",
@@ -172,6 +182,10 @@ export const en = {
     "Fills in distance, elevation and the exact start. Only people who join can see and download the route. If the form shows an error, choose the file again.",
 
   "field.invalid": "This value is not valid.",
+  "field.contribution_empty": "Write a comment or add a link.",
+  "field.contribution_too_long": "Please keep it to {max} characters.",
+  "field.link_invalid": "Enter a web address starting with https://.",
+  "field.link_too_long": "This link is too long.",
   "field.required": "Please fill this in.",
   "field.too_long": "This is too long.",
   "field.invalid_characters": "This contains characters that are not allowed.",
@@ -329,6 +343,33 @@ export const en = {
   "weather.hint": "For the start time, near the meeting area.",
   "weather.source": "Weather data:",
 
+  "recap.heading": "Recap",
+  "recap.tookPlace": {
+    one: "This plan took place. {count} person joined.",
+    other: "This plan took place. {count} people joined.",
+  },
+  "recap.private": "Only people who joined this plan can see this.",
+  "recap.openUntil": "Open for comments and links until {date}.",
+  "recap.closed": "Closed for new comments and links.",
+  "recap.empty": "No comments or links yet.",
+  "recap.add": "Add to the recap",
+  "recap.body": "Comment",
+  "recap.link": "Link",
+  "recap.linkHint":
+    "For example your activity or photos. Shown as a plain link, nothing is loaded from it.",
+  "recap.submit": "Add",
+  "recap.edit": "Edit",
+  "recap.delete": "Delete",
+  "recap.hide": "Hide",
+  "recap.show": "Show again",
+  "recap.hidden": "Hidden by the host: only you and the host see this.",
+  "recap.hiddenForHost": "Hidden from participants.",
+  "recap.editHeading": "Edit your comment",
+  "recap.save": "Save",
+  "recap.back": "Back to the plan",
+  "recap.limit": "You’ve reached the limit of {count} comments and links for this plan.",
+  "recap.closedNow": "The recap is closed for new comments and links.",
+
   "push.enable": "Notify me about this plan",
   "push.disable": "Turn off notifications",
   "push.on": "Notifications for this plan are on in this browser.",
@@ -401,6 +442,16 @@ export const en = {
     "Cancelling is final. The plan stays visible with a “cancelled” banner until it is deleted. To run it after all, create a new plan.",
   "host.cancelConfirm": "Cancel this plan",
   "host.delete": "Delete plan…",
+  "host.recap": "Recap",
+  "host.recapWindowHint":
+    "After the start, a change counts from now. Existing comments and links stay.",
+  "host.recapDelete": "Delete the recap",
+  "host.recapDeleteExplain": {
+    one: "This deletes the {count} comment or link in the recap, for everyone. Participants with notifications on are told.",
+    other:
+      "This deletes all {count} comments and links in the recap, for everyone. Participants with notifications on are told.",
+  },
+  "host.recapDeleteConfirm": "Delete the recap",
   "host.deleteHeading": "Delete “{title}”?",
   "host.deleteExplain": {
     zero: "This deletes the plan and its exact start, right away and for good. It cannot be undone.",

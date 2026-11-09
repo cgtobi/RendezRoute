@@ -2,6 +2,7 @@ import type { GeoPoint } from "../domain/geo.ts";
 import type { JobType } from "../domain/jobs.ts";
 import type { Notification } from "../domain/notification.ts";
 import type { PushSubscription } from "../domain/push.ts";
+import type { RecapContribution } from "../domain/recap.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { ReminderKind } from "../domain/reminders.ts";
 import type { PlanResponse, ResponseKind } from "../domain/response.ts";
@@ -273,6 +274,7 @@ export interface SentReminder {
   kind: ReminderKind;
   planId: string;
   responseId?: string | undefined;
+  /** What it is about: the day-before moment, or the deletion date of a deletion reminder. */
   dueAt: Date;
 }
 
@@ -339,4 +341,21 @@ export interface Forecast {
  */
 export interface WeatherProvider {
   forecast(point: GeoPoint, hour: Date): Promise<Forecast | undefined>;
+}
+
+/** Recap contributions (spec 6 feature 5); comment and link encrypted at rest. */
+export interface RecapRepository {
+  create(contribution: RecapContribution): Promise<void>;
+  /** Stores comment, link, hidden flag and update time. */
+  update(contribution: RecapContribution): Promise<void>;
+  findById(id: string): Promise<RecapContribution | undefined>;
+  /** Oldest first. */
+  listByPlan(planId: string): Promise<RecapContribution[]>;
+  countByPlan(planId: string): Promise<number>;
+  /** Contributions of one response, or of the host for undefined. */
+  countByAuthor(planId: string, responseId: string | undefined): Promise<number>;
+  /** Physical deletes (spec 3.10); deleting a plan's returns how many. */
+  delete(id: string): Promise<void>;
+  deleteForResponse(responseId: string): Promise<void>;
+  deleteForPlan(planId: string): Promise<number>;
 }

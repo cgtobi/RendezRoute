@@ -26,6 +26,7 @@ export const sampleInput: PlanInput = {
   primaryColor: "#2E5BFF",
   secondaryColor: "#FF7A45",
   retentionDays: "",
+  recapWindow: "",
 };
 
 export function samplePlan(overrides: Partial<Plan> = {}, input: Partial<PlanInput> = {}): Plan {
@@ -43,6 +44,8 @@ export function samplePlan(overrides: Partial<Plan> = {}, input: Partial<PlanInp
     joinMode: "open",
     status: "active",
     hasRoute: false,
+    recapWindowSetAt: undefined,
+    recapClosedAt: undefined,
     createdAt: fixtureNow,
     updatedAt: fixtureNow,
     ...overrides,

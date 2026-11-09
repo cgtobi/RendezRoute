@@ -278,6 +278,17 @@ describe("the deletion reminder (spec 3.10)", () => {
     await sweepAt("2026-06-25T05:30:00Z");
     expect(takeQueued()).toEqual(["deletionReminder anna"]);
   });
+
+  it("comes once per deletion date, even when the recap window changes after it went out", async () => {
+    await subscribeHost();
+    await sweepAt(DELETION_REMINDER);
+    expect(takeQueued()).toEqual(["deletionReminder anna"]);
+    // Measured from now after the start: the recap now closes on 20 June, before the deletion.
+    await edit({ recapWindow: "1d" });
+    takeQueued();
+    await sweepAt("2026-06-20T05:30:00Z");
+    expect(takeQueued()).toEqual([]);
+  });
 });
 
 describe("queued reminders (decision I39)", () => {

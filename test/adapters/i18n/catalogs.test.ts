@@ -30,7 +30,7 @@ const UNITS = [
 
 /** Strings that are the same in every language. */
 const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
-  de: [...UNITS, "plan.pace", "plan.route", "host.route", "privacy.cookiesHeading"],
+  de: [...UNITS, "plan.pace", "plan.route", "host.route", "privacy.cookiesHeading", "recap.link"],
   fr: [
     ...UNITS,
     "form.date",

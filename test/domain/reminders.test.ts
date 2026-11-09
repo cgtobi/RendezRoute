@@ -4,10 +4,10 @@ import {
   dayBeforeReminderDue,
   deletionReminderAt,
   deletionReminderDue,
-  recapClosesAt,
   reminderWindows,
   startsToday,
 } from "../../src/domain/reminders.ts";
+import { recapClosesAt } from "../../src/domain/recap.ts";
 import type { RecapWindow } from "../../src/domain/schedule.ts";
 
 const HOUR = 60 * 60 * 1000;
@@ -28,6 +28,8 @@ const plan = (
     timeZone,
     status,
     recapWindow,
+    recapWindowSetAt: undefined,
+    recapClosedAt: undefined,
     deleteAt: new Date(start.getTime() + retentionDays * DAY),
   };
 };

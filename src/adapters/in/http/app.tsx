@@ -22,6 +22,7 @@ import { registerNotificationRoutes } from "./routes/notifications.ts";
 import { registerPreferenceRoutes } from "./routes/preferences.ts";
 import { registerPlaceRoutes } from "./routes/places.ts";
 import { registerPlanRoutes } from "./routes/plans.tsx";
+import { registerRecapRoutes } from "./routes/recap.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
@@ -222,6 +223,7 @@ export function createApp({
   registerPreferenceRoutes(app, { config });
   registerNotificationRoutes(app, { config, planDeps, limits: rateLimits });
   registerCalendarRoutes(app, deps);
+  registerRecapRoutes(app, deps);
 
   return app;
 }

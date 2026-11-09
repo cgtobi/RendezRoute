@@ -217,6 +217,61 @@ describe("calendar feeds (spec 6 feature 2: public fields only)", () => {
   });
 });
 
+const RECAP_BODY = "SENTINEL-recap-body";
+const RECAP_LINK = "https://www.strava.com/activities/SENTINEL-recap-link";
+const AFTER_START = "2026-06-07T06:00:00Z";
+
+/** Adds a recap contribution through the plan page form. */
+async function contribute(client: TestClient, planId: string, body: string, linkUrl = "") {
+  const hidden = hiddenFieldsOf(await (await client.get(`/p/${planId}`)).text());
+  const response = await client.postForm(`/p/${planId}/recap`, {
+    _csrf: hidden._csrf ?? "",
+    body,
+    linkUrl,
+  });
+  expect(response.status).toBe(303);
+}
+
+describe("recap contributions (spec 3.6, acceptance criterion v0.5)", () => {
+  it("never reach viewers, interested, pending, rejected or removed people", async () => {
+    const setup = await audiences();
+    setup.clock.set(AFTER_START);
+    await contribute(setup.joined, setup.planId, RECAP_BODY, RECAP_LINK);
+    await contribute(setup.host, setup.planId, "SENTINEL-host-recap");
+    for (const client of [setup.joined, setup.host]) {
+      const body = await pages(client, setup.planId);
+      expect(body).toContain(RECAP_BODY);
+      expect(body).toContain(RECAP_LINK);
+    }
+    for (const client of [
+      setup.viewer,
+      setup.interested,
+      setup.pending,
+      setup.rejected,
+      setup.removed,
+    ]) {
+      const body = await pages(client, setup.planId);
+      expect(body).not.toContain("SENTINEL-recap");
+      expect(body).not.toContain("SENTINEL-host-recap");
+    }
+  });
+
+  it("are absent from calendar files, feeds, previews and logs", async () => {
+    const setup = await audiences();
+    const feeds = [await feedPath(setup.host), await feedPath(setup.joined)];
+    setup.clock.set(AFTER_START);
+    await contribute(setup.joined, setup.planId, RECAP_BODY, RECAP_LINK);
+    const bodies = await Promise.all(
+      [`/p/${setup.planId}/calendar.ics`, `/p/${setup.planId}/og.png`, ...feeds].map(async (path) =>
+        (await setup.joined.get(path)).text(),
+      ),
+    );
+    for (const body of [...bodies, setup.logs.join("\n")]) {
+      expect(body).not.toContain("SENTINEL-recap");
+    }
+  });
+});
+
 describe("host link (spec 3.2: shown once on creation)", () => {
   it("appears on no page after the links page, not even for the host", async () => {
     const { app } = await createTestApp();
@@ -234,13 +289,17 @@ describe("data at rest (spec 2b)", () => {
     const dir = mkdtempSync(join(tmpdir(), "rendezroute-privacy-"));
     dirs.push(dir);
     const path = join(dir, "rendezroute.db");
-    const { app, database } = await createTestApp({ databasePath: path });
+    const { app, database, clock } = await createTestApp({ databasePath: path });
     const host = new TestClient(app);
     const { planId, hostPath } = await createPlanViaUi(host, exactStart);
     const joined = new TestClient(app);
     const { managePath } = await respondViaUi(joined, planId, JOINED_NAME, "joined");
     const feed = await feedPath(host);
+    clock.set(AFTER_START);
+    await contribute(joined, planId, RECAP_BODY, RECAP_LINK);
     const secrets = [
+      RECAP_BODY,
+      RECAP_LINK,
       feed.slice("/c/".length),
       SENTINEL_DESCRIPTION,
       SENTINEL_LAT,

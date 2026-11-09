@@ -13,6 +13,8 @@ import {
   validateRetentionEdit,
 } from "../domain/plan-edit.ts";
 import type { FieldError, PlanInput } from "../domain/plan-input.ts";
+import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
+import type { RecapWindow } from "../domain/schedule.ts";
 import * as requests from "../domain/requests.ts";
 import { canRespond } from "../domain/responding.ts";
 import { isPosterName } from "../domain/responding.ts";
@@ -42,7 +44,8 @@ export async function asHost(
   return plan;
 }
 
-export const isDenied = (value: Plan | Denied): value is Denied => "kind" in value;
+export const isDenied = <T extends object>(value: T | Denied): value is Denied =>
+  "kind" in value && (value.kind === "not_found" || value.kind === "forbidden");
 
 export interface HostPerson {
   responseId: string;
@@ -67,6 +70,8 @@ export type HostPageResult =
       /** Whether pending requests can still be decided: before the start of an active plan (spec 3.1). */
       requestsOpen: boolean;
       hasRoute: boolean;
+      /** Contributions in the recap, from the start of an active plan on (spec 6 feature 7). */
+      recapContributions: number | undefined;
       people: {
         participants: HostPerson[];
         interested: HostPerson[];
@@ -97,6 +102,7 @@ export async function viewHostPage(
     canCancel: canCancel(plan, now).ok,
     requestsOpen: canRespond(plan, now).ok,
     hasRoute: plan.hasRoute,
+    recapContributions: hasRecap(plan, now) ? await deps.recap.countByPlan(plan.id) : undefined,
     people: {
       participants: people("joined"),
       interested: people("interested"),
@@ -111,7 +117,8 @@ export async function viewHostPage(
 
 export type EditPlanResult =
   | Denied
-  | { kind: "updated" }
+  /** With the recap window, if the chosen one was shortened to fit the retention (spec 3.10). */
+  | { kind: "updated"; recapWindowShortened: RecapWindow | undefined }
   | { kind: "invalid"; errors: FieldError[] }
   /** The retention edit would delete the plan now; ask "This will delete the plan now" first. */
   | { kind: "confirm_delete_now" }
@@ -137,23 +144,28 @@ export async function editPlan(
   const now = deps.clock.now();
 
   if (editScope(plan, now) === "retention") {
-    const edit = validateRetentionEdit(
-      request.input.retentionDays,
-      plan,
-      now,
-      deps.limits.maxRetentionDays,
-    );
-    if (!edit.ok)
-      return { kind: "invalid", errors: [{ field: "retentionDays", code: edit.error }] };
+    const edit = validateRetentionEdit(request.input, plan, now, deps.limits.maxRetentionDays);
+    if (!edit.ok) return { kind: "invalid", errors: edit.errors };
     if (edit.value.deletesNow) {
       if (!request.confirmDeleteNow) return { kind: "confirm_delete_now" };
       // Same path as retention deletion; templates and notifications arrive in v0.5.
       await deps.plans.delete(plan.id);
       return { kind: "deleted" };
     }
-    const { retentionDays, recapWindow, deleteAt } = edit.value;
-    await deps.plans.update({ ...plan, retentionDays, recapWindow, deleteAt, updatedAt: now });
-    return { kind: "updated" };
+    const { retentionDays, recapWindow, recapWindowSetAt, recapClosedAt, deleteAt } = edit.value;
+    await deps.plans.update({
+      ...plan,
+      retentionDays,
+      recapWindow,
+      recapWindowSetAt,
+      recapClosedAt,
+      deleteAt,
+      updatedAt: now,
+    });
+    return {
+      kind: "updated",
+      recapWindowShortened: shortenedRecapWindow(request.input.recapWindow, recapWindow),
+    };
   }
 
   const draft = validatePlanEdit(request.input, plan, { now, ...deps.limits }, request.units);
@@ -177,7 +189,10 @@ export async function editPlan(
     }
   }
   if (isMaterialChange(plan, updated)) await notifyResponders(deps, updated, "changed");
-  return { kind: "updated" };
+  return {
+    kind: "updated",
+    recapWindowShortened: shortenedRecapWindow(request.input.recapWindow, updated.recapWindow),
+  };
 }
 
 export async function cancelPlan(
@@ -221,11 +236,14 @@ function personAction<Done extends string>(
   {
     done,
     notice,
+    deletesContributions = false,
   }: {
     /** The result's kind. */
     done: Done;
     /** What the person is told (spec 3.5: one notice on rejection or removal). */
     notice?: NotificationKind;
+    /** Removal deletes the person's recap contributions (spec 3.5). */
+    deletesContributions?: boolean;
   },
 ) {
   return async (
@@ -239,6 +257,7 @@ function personAction<Done extends string>(
     const changed = change(response, plan, deps.clock.now());
     if (!changed.ok) return { kind: "not_allowed" };
     await deps.responses.update(changed.value);
+    if (deletesContributions) await deps.recap.deleteForResponse(response.id);
     if (notice !== undefined) await notifyResponse(deps, plan, changed.value, notice);
     return { kind: done };
   };
@@ -248,6 +267,7 @@ function personAction<Done extends string>(
 export const removePerson = personAction((response, _plan, now) => removeResponse(response, now), {
   done: "removed",
   notice: "removed",
+  deletesContributions: true,
 });
 
 /** Undo of a rejection or removal (spec 3.5, decision I37). */

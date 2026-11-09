@@ -23,6 +23,8 @@ export const de: Messages = {
     "Wenn du ein Treffen erstellst: dein Name, die Angaben zum Treffen und optional eine Route. Name, Titel, Notiz, Treffgebiet, Zeit, Distanz und Pace sieht jede Person mit dem Link. Den genauen Treffpunkt und die Route sehen nur du und alle, die zusagen; sie werden verschlüsselt gespeichert.",
   "privacy.storedResponses":
     "Wenn du antwortest: der Name, den du angibst, deine Antwort und die Sprache der Seite, für Nachrichten zum Treffen. Dein Name wird verschlüsselt gespeichert; die Organisator:in sieht ihn und, wenn du zusagst, auch die anderen Teilnehmer:innen.",
+  "privacy.storedRecap":
+    "Nach einem Treffen können Teilnehmer:innen und die Organisator:in Kommentare und Links zum Rückblick hinzufügen. Sie werden verschlüsselt gespeichert, nur Teilnehmer:innen und der Organisator:in gezeigt und mit dem Treffen gelöscht. Links werden als einfache Links gezeigt; es wird nichts von ihnen geladen.",
   "privacy.noTracking": "Es gibt keine Konten, keine Analyse und keine Werbung.",
   "privacy.durationHeading": "Wie lange",
   "privacy.retention":
@@ -167,6 +169,14 @@ export const de: Messages = {
     one: "{count} Tag nach dem Treffen",
     other: "{count} Tage nach dem Treffen",
   },
+  "form.recapWindow": "Rückblick",
+  "form.recapWindowNow": "Keine neuen Kommentare oder Links",
+  "form.recapWindow1d": "1 Tag nach dem Start offen",
+  "form.recapWindow1w": "1 Woche nach dem Start offen",
+  "form.recapWindowShortened":
+    "Der Rückblick wurde gekürzt, damit er in die Aufbewahrungszeit passt: {window}.",
+  "form.recapWindowHint":
+    "Nach dem Treffen können Teilnehmer:innen so lange Kommentare und Links hinzufügen. Das geht nicht länger, als das Treffen aufbewahrt wird; eine längere Wahl wird passend gekürzt.",
   "form.submit": "Treffen erstellen",
   "form.gpx": "Route (GPX-Datei, optional)",
   "form.gpxTrim": "Anfang und Ende der Route ausblenden",
@@ -180,6 +190,10 @@ export const de: Messages = {
     "Füllt Distanz, Höhenmeter und den genauen Treffpunkt aus. Nur wer zusagt, kann die Route sehen und herunterladen. Wenn das Formular einen Fehler zeigt, wähle die Datei noch einmal aus.",
 
   "field.invalid": "Dieser Wert ist ungültig.",
+  "field.contribution_empty": "Schreib einen Kommentar oder füge einen Link hinzu.",
+  "field.contribution_too_long": "Bitte höchstens {max} Zeichen.",
+  "field.link_invalid": "Gib eine Webadresse ein, die mit https:// beginnt.",
+  "field.link_too_long": "Dieser Link ist zu lang.",
   "field.required": "Bitte fülle dieses Feld aus.",
   "field.too_long": "Das ist zu lang.",
   "field.invalid_characters": "Das enthält nicht erlaubte Zeichen.",
@@ -343,6 +357,34 @@ export const de: Messages = {
   "weather.hint": "Für die Startzeit, in der Nähe des Treffgebiets.",
   "weather.source": "Wetterdaten:",
 
+  "recap.heading": "Rückblick",
+  "recap.tookPlace": {
+    one: "Dieses Treffen hat stattgefunden. {count} Person war dabei.",
+    other: "Dieses Treffen hat stattgefunden. {count} Personen waren dabei.",
+  },
+  "recap.private": "Das sehen nur Leute, die bei diesem Treffen dabei waren.",
+  "recap.openUntil": "Offen für Kommentare und Links bis {date}.",
+  "recap.closed": "Geschlossen für neue Kommentare und Links.",
+  "recap.empty": "Noch keine Kommentare oder Links.",
+  "recap.add": "Zum Rückblick hinzufügen",
+  "recap.body": "Kommentar",
+  "recap.link": "Link",
+  "recap.linkHint":
+    "Zum Beispiel deine Aktivität oder Fotos. Wird als einfacher Link gezeigt, es wird nichts davon geladen.",
+  "recap.submit": "Hinzufügen",
+  "recap.edit": "Bearbeiten",
+  "recap.delete": "Löschen",
+  "recap.hide": "Ausblenden",
+  "recap.show": "Wieder zeigen",
+  "recap.hidden": "Von der Organisator:in ausgeblendet: Nur du und die Organisator:in seht das.",
+  "recap.hiddenForHost": "Für Teilnehmer:innen ausgeblendet.",
+  "recap.editHeading": "Kommentar bearbeiten",
+  "recap.save": "Speichern",
+  "recap.back": "Zurück zum Treffen",
+  "recap.limit":
+    "Du hast die Grenze von {count} Kommentaren und Links für dieses Treffen erreicht.",
+  "recap.closedNow": "Der Rückblick ist für neue Kommentare und Links geschlossen.",
+
   "push.enable": "Benachrichtige mich zu diesem Treffen",
   "push.disable": "Benachrichtigungen ausschalten",
   "push.on": "Benachrichtigungen zu diesem Treffen sind in diesem Browser an.",
@@ -417,6 +459,16 @@ export const de: Messages = {
     "Eine Absage ist endgültig. Das Treffen bleibt mit dem Hinweis „abgesagt“ sichtbar, bis es gelöscht wird. Wenn es doch stattfindet, erstelle ein neues Treffen.",
   "host.cancelConfirm": "Dieses Treffen absagen",
   "host.delete": "Treffen löschen…",
+  "host.recap": "Rückblick",
+  "host.recapWindowHint":
+    "Nach dem Start zählt eine Änderung ab jetzt. Vorhandene Kommentare und Links bleiben.",
+  "host.recapDelete": "Rückblick löschen",
+  "host.recapDeleteExplain": {
+    one: "Damit wird der {count} Kommentar oder Link im Rückblick für alle gelöscht. Teilnehmer:innen mit eingeschalteten Benachrichtigungen erfahren es.",
+    other:
+      "Damit werden alle {count} Kommentare und Links im Rückblick für alle gelöscht. Teilnehmer:innen mit eingeschalteten Benachrichtigungen erfahren es.",
+  },
+  "host.recapDeleteConfirm": "Rückblick löschen",
   "host.deleteHeading": "„{title}“ löschen?",
   "host.deleteExplain": {
     zero: "Damit werden das Treffen und sein genauer Treffpunkt sofort und endgültig gelöscht. Das lässt sich nicht rückgängig machen.",

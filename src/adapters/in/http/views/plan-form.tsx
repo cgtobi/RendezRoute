@@ -6,10 +6,11 @@ import { ACTIVITY_TYPES } from "../../../../domain/activity.ts";
 import { DROP_POLICIES, JOIN_MODES } from "../../../../domain/plan.ts";
 import type { FieldError, PlanField, PlanInput } from "../../../../domain/plan-input.ts";
 import { PLAN_LIMITS } from "../../../../domain/plan-input.ts";
-import { defaultRetentionDays } from "../../../../domain/schedule.ts";
+import { defaultRecapWindow, defaultRetentionDays } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import { MapTools, type MapSettings } from "./maps.tsx";
+import { RecapWindowSelect } from "./recap.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
 import type { Units } from "../../../../domain/units.ts";
 
@@ -326,6 +327,14 @@ export function PlanForm({
             </option>
           ))}
         </select>
+      </Field>
+
+      <Field field="recapWindow" label={t("form.recapWindow")} hint={t("form.recapWindowHint")}>
+        <RecapWindowSelect
+          t={t}
+          id={id("recapWindow")}
+          selected={values.recapWindow || defaultRecapWindow(Number(retentionDays))}
+        />
       </Field>
 
       {confirmAcceptPending !== undefined && (

@@ -8,6 +8,7 @@ import * as m0006 from "./0006-job-queue.ts";
 import * as m0007 from "./0007-notification-channels.ts";
 import * as m0008 from "./0008-sent-reminders.ts";
 import * as m0009 from "./0009-calendar-feeds.ts";
+import * as m0010 from "./0010-recap-contributions.ts";
 
 /** Statically imported so migrations work identically from src/ and dist/. Keys sort in order. */
 export const migrations: Readonly<Record<string, Migration>> = {
@@ -20,4 +21,5 @@ export const migrations: Readonly<Record<string, Migration>> = {
   "0007-notification-channels": m0007,
   "0008-sent-reminders": m0008,
   "0009-calendar-feeds": m0009,
+  "0010-recap-contributions": m0010,
 };

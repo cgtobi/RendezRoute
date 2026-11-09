@@ -27,6 +27,7 @@ import { Linkified } from "./linkify.tsx";
 import { type MapSettings, PlanMap } from "./maps.tsx";
 import type { WeatherView } from "../../../../application/weather.ts";
 import { statusKey } from "./format.ts";
+import { RecapSection } from "./recap.tsx";
 import { RespondForm, type RespondFormState } from "./respond-form.tsx";
 
 export type PlanPageAudience =
@@ -49,6 +50,10 @@ export function PlanPage(props: {
   planUrl: string;
   /** The forecast for the start, when weather is on and there is one (spec 6 feature 4). */
   forecast?: WeatherView | undefined;
+  /** An active plan that has started: the recap's public layer is shown (spec 6 feature 5). */
+  hasRecap: boolean;
+  /** For the recap forms. */
+  csrfToken: string;
 }) {
   const { t, language, units, audience, map } = props;
   const { view } = audience;
@@ -188,6 +193,19 @@ export function PlanPage(props: {
         ) : (
           <p class="notice">{t("respond.closed")}</p>
         ))}
+
+      {props.hasRecap && (
+        <RecapSection
+          t={t}
+          language={language}
+          planId={view.id}
+          timeZone={view.timeZone}
+          participants={view.counts.participants}
+          recap={insider ? audience.view.recap : undefined}
+          isHost={audience.kind === "poster"}
+          csrfToken={props.csrfToken}
+        />
+      )}
 
       <p class="deletion">
         {t("plan.deletion", { date: formatDate(view.deleteAt, view.timeZone, language) })}

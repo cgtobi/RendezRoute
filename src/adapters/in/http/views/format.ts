@@ -104,10 +104,14 @@ export function formatPaceBand(
   return `${from === to ? from : `${from}–${to}`} ${t(units === "imperial" ? "unit.mph" : "unit.kmh")}`;
 }
 
-/** Message for a domain or form error code, with a generic fallback. */
-export function fieldErrorMessage(code: string, t: Translate): string {
+/** Message for a domain or form error code, with a generic fallback; params fill its placeholders. */
+export function fieldErrorMessage(
+  code: string,
+  t: Translate,
+  params?: Readonly<Record<string, string | number>>,
+): string {
   const key = `field.${code}`;
-  return isMessageKey(key) ? t(key) : t("field.invalid");
+  return isMessageKey(key) ? t(key, params) : t("field.invalid");
 }
 
 function isMessageKey(key: string): key is MessageKey {

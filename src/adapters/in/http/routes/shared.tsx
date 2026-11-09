@@ -103,7 +103,7 @@ export async function renderPlanPage(
   c.header("cache-control", "private, no-cache");
   const map = mapSettings(config);
   const showForm = result.kind === "viewer" && result.responsesOpen;
-  const { responsesOpen, preview: _preview, ...audience } = result;
+  const { responsesOpen, hasRecap, preview: _preview, ...audience } = result;
   const forecast = await planWeather({ weather, clock: planDeps.clock }, result.view);
   return c.render(
     <PlanPage
@@ -116,6 +116,8 @@ export async function renderPlanPage(
       map={map}
       planUrl={new URL(`/p/${result.view.id}`, config.baseUrl).href}
       forecast={forecast}
+      hasRecap={hasRecap}
+      csrfToken={c.get("csrfToken")()}
     />,
     {
       title: result.view.title,

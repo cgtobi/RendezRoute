@@ -93,6 +93,8 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     join_mode: plan.joinMode,
     status: plan.status,
     recap_window: plan.recapWindow,
+    recap_window_set_at: plan.recapWindowSetAt === undefined ? null : iso(plan.recapWindowSetAt),
+    recap_closed_at: plan.recapClosedAt === undefined ? null : iso(plan.recapClosedAt),
     retention_days: plan.retentionDays,
     delete_at: iso(plan.deleteAt),
     // Templates arrive in v0.5.
@@ -133,6 +135,9 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     status: row.status,
     hasRoute: Boolean(row.has_route),
     recapWindow: row.recap_window,
+    recapWindowSetAt:
+      row.recap_window_set_at === null ? undefined : new Date(row.recap_window_set_at),
+    recapClosedAt: row.recap_closed_at === null ? undefined : new Date(row.recap_closed_at),
     retentionDays: row.retention_days,
     deleteAt: new Date(row.delete_at),
     createdAt: new Date(row.created_at),

@@ -15,8 +15,10 @@ import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
 import { localizeDecimal } from "../views/format.ts";
 import { DeleteConfirm, HostPage } from "../views/host-page.tsx";
+import { recapWindowParam } from "../views/recap.tsx";
 import { MapAssets } from "../views/maps.tsx";
 import { ROUTE_TRIM_FIELD } from "../views/route-trim.tsx";
+import { deleteRecap } from "../../../../application/recap.ts";
 import { removeRoute, setRoute } from "../../../../application/routes.ts";
 import {
   badRequest,
@@ -73,9 +75,11 @@ export function registerHostRoutes(
         timeZones={TIME_ZONES}
         maxRetentionDays={config.maxRetentionDays}
         saved={c.req.query("saved") !== undefined}
+        recapWindowShortened={recapWindowParam(c.req.query("recapShortened"))}
         confirmDeleteNow={form.confirmDeleteNow ?? false}
         confirmAcceptPending={form.confirmAcceptPending}
         hasRoute={page.hasRoute}
+        recapContributions={page.recapContributions}
         routeError={form.routeError}
         routeTrim={form.routeTrim ?? ""}
         map={mapSettings(config)}
@@ -110,8 +114,13 @@ export function registerHostRoutes(
       confirmAcceptPending: Number(formField(body, "confirmAcceptPending")) || undefined,
     });
     switch (result.kind) {
-      case "updated":
-        return c.redirect(`/p/${planId}/host?saved`, 303);
+      case "updated": {
+        const shortened = result.recapWindowShortened;
+        return c.redirect(
+          `/p/${planId}/host?saved${shortened === undefined ? "" : `&recapShortened=${shortened}`}`,
+          303,
+        );
+      }
       case "deleted":
         return c.redirect(`/p/${planId}`, 303);
       case "confirm_delete_now":
@@ -129,6 +138,12 @@ export function registerHostRoutes(
   app.post("/p/:id/host/cancel", async (c) => {
     const result = await cancelPlan(planDeps, request(c));
     return afterAction(c, result, `/p/${request(c).planId}/host`);
+  });
+
+  /** "Delete recap" (spec 6 feature 7); the host page asks first. */
+  app.post("/p/:id/host/recap/delete", async (c) => {
+    const result = await deleteRecap(planDeps, request(c));
+    return afterAction(c, result, `/p/${request(c).planId}#recap`);
   });
 
   app.get("/p/:id/host/delete", async (c) => {

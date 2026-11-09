@@ -1,7 +1,7 @@
 // When reminders are due (spec 6 feature 3, 3.10, decision I39). Each reminder belongs to the
 // moment it was due, so moving the start or the deletion date gives a new one.
 import type { PlanStatus } from "./plan.ts";
-import { type RecapWindow, recapWindowDays } from "./schedule.ts";
+import { type RecapTiming, recapClosesAt } from "./recap.ts";
 import { instantToLocal, localToInstant } from "./timezone.ts";
 
 export const REMINDER_KINDS = ["dayBefore", "deletionReminder"] as const;
@@ -27,10 +27,7 @@ interface Timing {
   status: PlanStatus;
 }
 
-interface Retention {
-  startsAt: Date;
-  deleteAt: Date;
-  recapWindow: RecapWindow;
+interface Retention extends RecapTiming {
   status: PlanStatus;
 }
 
@@ -57,16 +54,6 @@ export function dayBeforeReminderDue(plan: Timing, now: Date): Date | undefined 
 /** Whether the start is on today's date in the plan's zone, for "today" instead of "tomorrow". */
 export function startsToday({ startsAt, timeZone }: Omit<Timing, "status">, now: Date): boolean {
   return instantToLocal(now, timeZone).date === instantToLocal(startsAt, timeZone).date;
-}
-
-/** End of the recap window, measured from the start, never beyond deletion (spec 6 feature 6). */
-export function recapClosesAt({
-  startsAt,
-  deleteAt,
-  recapWindow,
-}: Omit<Retention, "status">): Date {
-  const closes = startsAt.getTime() + recapWindowDays[recapWindow] * DAY_MS;
-  return new Date(Math.min(closes, deleteAt.getTime()));
 }
 
 /** The later of two days before deletion and the recap close (spec 3.10). */

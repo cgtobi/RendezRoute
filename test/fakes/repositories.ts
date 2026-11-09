@@ -6,9 +6,11 @@ import type {
   DeviceRepository,
   LinkedPlan,
   PlanRepository,
+  RecapRepository,
   ResponseRepository,
 } from "../../src/application/ports.ts";
 import type { Plan } from "../../src/domain/plan.ts";
+import type { RecapContribution } from "../../src/domain/recap.ts";
 import type { PlanResponse } from "../../src/domain/response.ts";
 import type { Route } from "../../src/domain/route.ts";
 
@@ -18,6 +20,7 @@ export function createFakeRepositories(): {
   devices: DeviceRepository & { all(): Device[] };
   responses: ResponseRepository;
   calendarFeeds: CalendarFeedRepository;
+  recap: RecapRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
   const routes = new Map<string, Route>();
@@ -31,6 +34,17 @@ export function createFakeRepositories(): {
   >();
   const responseNonces = new Map<string, string>();
   const feeds = new Map<string, CalendarFeed & { tokenHash: string }>();
+  const contributions = new Map<string, RecapContribution>();
+  const deleteContributions = (matches: (c: RecapContribution) => boolean) => {
+    let deleted = 0;
+    for (const [id, c] of contributions) {
+      if (matches(c)) {
+        contributions.delete(id);
+        deleted++;
+      }
+    }
+    return deleted;
+  };
 
   const linkKey = (deviceId: string, target: DeviceLinkTarget) =>
     `${deviceId}|${target.role}|${target.role === "host" ? target.planId : target.responseId}`;
@@ -40,11 +54,13 @@ export function createFakeRepositories(): {
   const deletePlan = (id: string) => {
     plans.delete(id);
     routes.delete(id);
+    deleteContributions((c) => c.planId === id);
     previews.delete(id);
     for (const [nonce, planId] of planNonces) if (planId === id) planNonces.delete(nonce);
     for (const [responseId, entry] of responses) {
       if (entry.response.planId !== id) continue;
       responses.delete(responseId);
+      deleteContributions((c) => c.responseId === responseId);
       for (const key of links) if (key.endsWith(`|manage|${responseId}`)) links.delete(key);
     }
     for (const key of links) if (key.endsWith(`|host|${id}`)) links.delete(key);
@@ -234,6 +250,7 @@ export function createFakeRepositories(): {
       },
       async delete(id) {
         responses.delete(id);
+        deleteContributions((c) => c.responseId === id);
         for (const key of links) if (key.endsWith(`|manage|${id}`)) links.delete(key);
       },
       async isBlocked(planId, deviceId) {
@@ -246,6 +263,42 @@ export function createFakeRepositories(): {
       },
     },
 
+    recap: {
+      async create(c) {
+        contributions.set(c.id, structuredClone(c));
+      },
+      async update(c) {
+        const existing = contributions.get(c.id);
+        if (existing !== undefined) contributions.set(c.id, { ...existing, ...structuredClone(c) });
+      },
+      async findById(id) {
+        const c = contributions.get(id);
+        return c === undefined ? undefined : structuredClone(c);
+      },
+      async listByPlan(planId) {
+        return [...contributions.values()]
+          .filter((c) => c.planId === planId)
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))
+          .map((c) => structuredClone(c));
+      },
+      async countByPlan(planId) {
+        return [...contributions.values()].filter((c) => c.planId === planId).length;
+      },
+      async countByAuthor(planId, responseId) {
+        return [...contributions.values()].filter(
+          (c) => c.planId === planId && c.responseId === responseId,
+        ).length;
+      },
+      async delete(id) {
+        contributions.delete(id);
+      },
+      async deleteForResponse(responseId) {
+        deleteContributions((c) => c.responseId === responseId);
+      },
+      async deleteForPlan(planId) {
+        return deleteContributions((c) => c.planId === planId);
+      },
+    },
     calendarFeeds: {
       async replace(feed) {
         feeds.set(feed.deviceId, { ...feed });

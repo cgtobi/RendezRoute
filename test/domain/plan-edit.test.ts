@@ -139,40 +139,88 @@ describe("retention above a lowered maximum (spec 3.10: existing plans keep thei
   });
 
   it("keeps an unchanged retention valid in the retention-only edit", () => {
-    expect(validateRetentionEdit("30", longPlan, started, 7).ok).toBe(true);
-    expect(validateRetentionEdit("20", longPlan, started, 7)).toEqual({
+    expect(
+      validateRetentionEdit({ retentionDays: "30", recapWindow: "" }, longPlan, started, 7).ok,
+    ).toBe(true);
+    expect(
+      validateRetentionEdit({ retentionDays: "20", recapWindow: "" }, longPlan, started, 7),
+    ).toEqual({
       ok: false,
-      error: "retention_out_of_range",
+      errors: [{ field: "retentionDays", code: "retention_out_of_range" }],
     });
   });
 });
 
 describe("validateRetentionEdit (spec 3.1 Retention edits)", () => {
-  it("recomputes delete_at and the recap window", () => {
-    expect(validateRetentionEdit("3", plan, started, 30)).toEqual({
+  it("recomputes delete_at and shortens the recap window to fit, measured from the change", () => {
+    expect(
+      validateRetentionEdit({ retentionDays: "3", recapWindow: "" }, plan, started, 30),
+    ).toEqual({
       ok: true,
       value: {
         retentionDays: 3,
         recapWindow: "1d",
+        recapWindowSetAt: started,
+        recapClosedAt: undefined,
         deleteAt: new Date("2026-06-10T05:30:00Z"),
         deletesNow: false,
       },
     });
   });
 
+  it("changes the recap window after the start: from now, or closed at once (spec 6 feature 6)", () => {
+    const closed = validateRetentionEdit(
+      { retentionDays: "14", recapWindow: "now" },
+      plan,
+      started,
+      30,
+    );
+    expect(closed.ok && closed.value).toMatchObject({
+      recapWindow: "now",
+      recapWindowSetAt: started,
+      recapClosedAt: started,
+    });
+    const unchanged = validateRetentionEdit(
+      { retentionDays: "14", recapWindow: "1w" },
+      plan,
+      started,
+      30,
+    );
+    expect(unchanged.ok && unchanged.value).toMatchObject({
+      recapWindow: "1w",
+      recapWindowSetAt: undefined,
+      recapClosedAt: undefined,
+    });
+    expect(
+      validateRetentionEdit({ retentionDays: "14", recapWindow: "x" }, plan, started, 30),
+    ).toEqual({
+      ok: false,
+      errors: [{ field: "recapWindow", code: "choice_invalid" }],
+    });
+  });
+
   it("flags a deletion date that is already past", () => {
-    const result = validateRetentionEdit("1", plan, new Date("2026-06-09T00:00:00Z"), 30);
+    const result = validateRetentionEdit(
+      { retentionDays: "1", recapWindow: "" },
+      plan,
+      new Date("2026-06-09T00:00:00Z"),
+      30,
+    );
     expect(result.ok && result.value.deletesNow).toBe(true);
   });
 
   it("rejects values outside the allowed range", () => {
-    expect(validateRetentionEdit("31", plan, started, 30)).toEqual({
+    expect(
+      validateRetentionEdit({ retentionDays: "31", recapWindow: "" }, plan, started, 30),
+    ).toEqual({
       ok: false,
-      error: "retention_out_of_range",
+      errors: [{ field: "retentionDays", code: "retention_out_of_range" }],
     });
-    expect(validateRetentionEdit("x", plan, started, 30)).toEqual({
+    expect(
+      validateRetentionEdit({ retentionDays: "x", recapWindow: "" }, plan, started, 30),
+    ).toEqual({
       ok: false,
-      error: "retention_out_of_range",
+      errors: [{ field: "retentionDays", code: "retention_out_of_range" }],
     });
   });
 });

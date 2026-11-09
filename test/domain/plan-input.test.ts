@@ -26,6 +26,7 @@ const valid: PlanInput = {
   primaryColor: "#2e5bff",
   secondaryColor: "#FF7A45",
   retentionDays: "",
+  recapWindow: "",
 };
 
 function draft(overrides: Partial<PlanInput> = {}) {
@@ -247,6 +248,18 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
   describe("retention (spec 3.10, decision D4)", () => {
     it("defaults to 14 days and picks the recap window that fits", () => {
       expect(draft({ retentionDays: "3" })).toMatchObject({ retentionDays: 3, recapWindow: "1d" });
+    });
+
+    it("takes a chosen recap window, shortened when longer than the retention (spec 6 feature 6)", () => {
+      expect(draft({ recapWindow: "1d" })).toMatchObject({ retentionDays: 14, recapWindow: "1d" });
+      expect(draft({ recapWindow: "now" })).toMatchObject({ recapWindow: "now" });
+      expect(draft({ recapWindow: "1w", retentionDays: "3" })).toMatchObject({
+        retentionDays: 3,
+        recapWindow: "1d",
+      });
+      expect(errors({ recapWindow: "1y" })).toEqual([
+        { field: "recapWindow", code: "choice_invalid" },
+      ]);
     });
 
     it("respects the instance maximum", () => {

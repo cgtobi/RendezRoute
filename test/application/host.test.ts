@@ -177,7 +177,7 @@ describe("editPlan (spec 3.1 Editing)", () => {
         units: "metric",
         confirmDeleteNow: false,
       }),
-    ).toEqual({ kind: "updated" });
+    ).toEqual({ kind: "updated", recapWindowShortened: "1d" });
     expect(await repos.plans.findById(planId)).toMatchObject({
       title: "Easy Sunday run",
       retentionDays: 3,

@@ -354,6 +354,60 @@ button.danger {
   cursor: pointer;
 }
 
+/* Recap (spec 6 feature 5) */
+
+.contributions {
+  padding: 0;
+  list-style: none;
+}
+
+.contribution {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.contribution p {
+  margin: 4px 0;
+}
+
+.contribution-author {
+  font-weight: 600;
+}
+
+.contribution-body {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.contribution-link a {
+  overflow-wrap: anywhere;
+}
+
+.service {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.hidden-contribution {
+  opacity: 0.6;
+}
+
+.contribution-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.contribution-actions form {
+  margin: 0;
+}
+
 /* Host page */
 
 .people-actions {

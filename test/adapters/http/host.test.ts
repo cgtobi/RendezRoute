@@ -87,11 +87,11 @@ describe("editing (spec 3.1)", () => {
     expect(await response.text()).toContain(escaped(en["field.required"]));
   });
 
-  it("offers only retention after the start, and confirms a deletion that would happen now", async () => {
+  it("offers only retention and the recap window after the start, and confirms a deletion that would happen now", async () => {
     const { host, planId, clock } = await setup();
     clock.set("2026-06-09T00:00:00Z");
     const fields = await editForm(host, planId);
-    expect(Object.keys(fields).sort()).toEqual(["_csrf", "retentionDays"]);
+    expect(Object.keys(fields).sort()).toEqual(["_csrf", "recapWindow", "retentionDays"]);
 
     const ask = await host.postForm(`/p/${planId}/host`, { ...fields, retentionDays: "1" });
     expect(ask.status).toBe(200);
@@ -126,7 +126,7 @@ describe("removing people (spec 3.5)", () => {
 });
 
 describe("cancelling (spec 5 feature 8, decision D8)", () => {
-  it("shows the banner, closes responses and leaves only retention editable", async () => {
+  it("shows the banner, closes responses and leaves only retention and the recap window editable", async () => {
     const { host, planId, newClient } = await setup();
     const page = await (await host.get(`/p/${planId}/host`)).text();
     expect((await host.postForm(`/p/${planId}/host/cancel`, hiddenFields(page))).status).toBe(303);
@@ -134,7 +134,11 @@ describe("cancelling (spec 5 feature 8, decision D8)", () => {
     const viewerHtml = await (await newClient().get(`/p/${planId}`)).text();
     expect(viewerHtml).toContain(escaped(en["plan.cancelled"]));
     expect(viewerHtml).not.toContain('name="displayName"');
-    expect(Object.keys(await editForm(host, planId)).sort()).toEqual(["_csrf", "retentionDays"]);
+    expect(Object.keys(await editForm(host, planId)).sort()).toEqual([
+      "_csrf",
+      "recapWindow",
+      "retentionDays",
+    ]);
   });
 });
 

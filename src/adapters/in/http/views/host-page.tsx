@@ -2,10 +2,12 @@
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { HostPerson, HostRequest } from "../../../../application/host.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
+import type { RecapWindow } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import type { MapSettings } from "./maps.tsx";
 import { PlanForm } from "./plan-form.tsx";
+import { RecapShortenedNotice, RecapWindowSelect } from "./recap.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
 import type { Units } from "../../../../domain/units.ts";
@@ -29,6 +31,8 @@ export interface HostPageProps {
   timeZones: readonly string[];
   maxRetentionDays: number;
   saved: boolean;
+  /** The recap window, after a save that shortened the chosen one (spec 3.10). */
+  recapWindowShortened: RecapWindow | undefined;
   /** A retention edit would delete the plan now and needs confirmation (spec 3.1). */
   confirmDeleteNow: boolean;
   push: PushSettings;
@@ -44,6 +48,8 @@ export interface HostPageProps {
   /** The submitted "hide start and end" choice of the last route upload. */
   routeTrim: string;
   units: Units;
+  /** Contributions in the recap, from the start of an active plan on (spec 6 feature 7). */
+  recapContributions: number | undefined;
 }
 
 export function HostPage(props: HostPageProps) {
@@ -59,6 +65,9 @@ export function HostPage(props: HostPageProps) {
         <p class="notice" role="status">
           {t("host.saved")}
         </p>
+      )}
+      {props.recapWindowShortened !== undefined && (
+        <RecapShortenedNotice t={t} window={props.recapWindowShortened} />
       )}
 
       {props.scope === "all" ? (
@@ -151,6 +160,19 @@ export function HostPage(props: HostPageProps) {
         </details>
       )}
 
+      {props.recapContributions !== undefined && props.recapContributions > 0 && (
+        <details class="danger-zone">
+          <summary>{t("host.recapDelete")}</summary>
+          <p>{t("host.recapDeleteExplain", { count: props.recapContributions })}</p>
+          <form method="post" action={`/p/${planId}/host/recap/delete`}>
+            {csrf}
+            <button type="submit" class="danger">
+              {t("host.recapDeleteConfirm")}
+            </button>
+          </form>
+        </details>
+      )}
+
       <p class="danger-zone">
         <a href={`/p/${planId}/host/delete`}>{t("host.delete")}</a>
       </p>
@@ -204,7 +226,9 @@ function RouteSection(props: HostPageProps) {
 
 function RetentionForm(props: HostPageProps) {
   const { t, planId } = props;
-  const error = props.errors.find((e) => e.field === "retentionDays");
+  const errorFor = (field: string) => props.errors.find((e) => e.field === field);
+  const error = errorFor("retentionDays");
+  const recapError = errorFor("recapWindow");
   return (
     <form method="post" action={`/p/${planId}/host`} class="plan-form">
       <h1>{t("host.heading")}</h1>
@@ -213,6 +237,7 @@ function RetentionForm(props: HostPageProps) {
       {props.confirmDeleteNow ? (
         <>
           <input type="hidden" name="retentionDays" value={props.values.retentionDays} />
+          <input type="hidden" name="recapWindow" value={props.values.recapWindow} />
           <input type="hidden" name="confirmDeleteNow" value="1" />
           <p class="warning" role="alert">
             {t("host.deletesNowWarning")}
@@ -233,6 +258,14 @@ function RetentionForm(props: HostPageProps) {
               ))}
             </select>
             {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+          </div>
+          <div class={recapError === undefined ? "field" : "field field-invalid"}>
+            <label for="field-recapWindow">{t("form.recapWindow")}</label>
+            <RecapWindowSelect t={t} id="field-recapWindow" selected={props.values.recapWindow} />
+            <p class="hint">{t("host.recapWindowHint")}</p>
+            {recapError !== undefined && (
+              <p class="error">{fieldErrorMessage(recapError.code, t)}</p>
+            )}
           </div>
           <button type="submit">{t("host.save")}</button>
         </>

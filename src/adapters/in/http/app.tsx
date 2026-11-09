@@ -26,6 +26,7 @@ import { registerPlaceRoutes } from "./routes/places.ts";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerRecapRoutes } from "./routes/recap.tsx";
 import { registerTemplateRoutes } from "./routes/templates.tsx";
+import { registerLinkToolRoutes } from "./routes/link-tools.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
@@ -235,6 +236,7 @@ export function createApp({
   registerCalendarRoutes(app, deps);
   registerRecapRoutes(app, deps);
   registerTemplateRoutes(app, deps);
+  registerLinkToolRoutes(app, deps);
 
   return app;
 }

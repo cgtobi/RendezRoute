@@ -16,6 +16,7 @@ import { createDeviceRepository } from "../../src/adapters/out/sqlite/devices.ts
 import { createPlanRepository } from "../../src/adapters/out/sqlite/plans.ts";
 import { createRecapRepository } from "../../src/adapters/out/sqlite/recap.ts";
 import { createTemplateRepository } from "../../src/adapters/out/sqlite/templates.ts";
+import { createFormNonceRepository } from "../../src/adapters/out/sqlite/form-nonces.ts";
 import { createResponseRepository } from "../../src/adapters/out/sqlite/responses.ts";
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { type Config, loadConfig } from "../../src/config.ts";
@@ -76,6 +77,7 @@ export async function createTestApp({
     calendarFeeds: createCalendarFeedRepository(database),
     recap: createRecapRepository(database, cipher),
     templates: createTemplateRepository(database, cipher),
+    formNonces: createFormNonceRepository(database),
     notify: { channels, jobs, reminders: createSentReminderRepository(database) },
   };
   const app = createApp({

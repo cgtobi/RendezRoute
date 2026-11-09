@@ -102,6 +102,8 @@ export interface PlanRepository {
   findById(id: string): Promise<Plan | undefined>;
   findByHostTokenHash(hash: string): Promise<Plan | undefined>;
   findIdByCreationNonce(nonce: string): Promise<string | undefined>;
+  /** "Get a new link": the old host link stops working (spec 3.2). */
+  setHostTokenHash(planId: string, hash: string): Promise<void>;
   /** Stores every field of an existing plan. */
   update(plan: Plan): Promise<void>;
   /** Hard delete of the plan and everything referencing it, physically removed from disk (spec 1.6, 3.10). */
@@ -159,6 +161,13 @@ export interface NewTemplate {
   creationNonce?: string | undefined;
 }
 
+/** One-time form values that were used (decision I44); kept for a day. */
+export interface FormNonceRepository {
+  /** True the first time a value is claimed, false when the form was sent again. */
+  claim(nonce: string, now: Date): Promise<boolean>;
+  deleteUsedBefore(cutoff: Date): Promise<number>;
+}
+
 /** Repeatable templates (spec 3.10); exact start and route encrypted at rest. */
 export interface TemplateRepository {
   /** Stores the template and links the plan's host devices to it, in one transaction. */
@@ -166,6 +175,8 @@ export interface TemplateRepository {
   findById(id: string): Promise<PlanTemplate | undefined>;
   findByHostTokenHash(hash: string): Promise<PlanTemplate | undefined>;
   findIdByCreationNonce(nonce: string): Promise<string | undefined>;
+  /** "Get a new link", also for templates kept without one (spec 3.2, decision I36). */
+  setHostTokenHash(templateId: string, hash: string): Promise<void>;
   /** Stores every field but the route. */
   update(template: PlanTemplate): Promise<void>;
   /** A repeat or edit: the template stays until `expiresAt` (spec 3.10). */
@@ -189,6 +200,12 @@ export interface DeviceRepository {
   /** Idempotent. */
   link(deviceId: string, target: DeviceLinkTarget, now: Date): Promise<void>;
   hasLink(deviceId: string, target: DeviceLinkTarget): Promise<boolean>;
+  /**
+   * "Sign out all other devices": removes the target's links of every other device, in one step and
+   * only while the kept device is still linked, so two devices signing out at once cannot remove
+   * each other (spec 3.2).
+   */
+  unlinkOthers(target: DeviceLinkTarget, keepDeviceId: string): Promise<number>;
   /** Deletes devices without links last seen before the first cutoff, and any device before the second. */
   deleteInactive(cutoffs: {
     unlinkedLastSeenBefore: Date;
@@ -210,6 +227,8 @@ export interface ResponseRepository {
   create(input: NewResponse): Promise<void>;
   findById(id: string): Promise<PlanResponse | undefined>;
   findByManageTokenHash(hash: string): Promise<PlanResponse | undefined>;
+  /** "Get a new link": the old manage link stops working (spec 3.2). */
+  setManageTokenHash(responseId: string, hash: string): Promise<void>;
   findIdByCreationNonce(nonce: string): Promise<string | undefined>;
   /** The response a device manages for a plan, if any (one per device and plan). */
   findForDevice(planId: string, deviceId: string): Promise<PlanResponse | undefined>;

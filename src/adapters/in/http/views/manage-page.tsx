@@ -5,6 +5,7 @@ import type { ResponseChoice } from "../../../../domain/requests.ts";
 import { MAX_DISPLAY_NAME_LENGTH } from "../../../../domain/responding.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, statusKey } from "./format.ts";
+import { LinkTools } from "./link-tools.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 
 export function ManagePage(props: {
@@ -21,6 +22,10 @@ export function ManagePage(props: {
   displayName: string;
   errorCode: string | undefined;
   notice: string | undefined;
+  /** Other devices removed by "Sign out all other devices", right after it (spec 3.2). */
+  signedOut: number | undefined;
+  /** One-time value for "Get a new link" (decision I44). */
+  linkNonce: string;
 }) {
   const { t, planId, response } = props;
   const blocked = response.kind === "removed" || response.kind === "rejected";
@@ -84,6 +89,15 @@ export function ManagePage(props: {
       )}
 
       <PushSwitch t={t} push={props.push} hint={t("push.hint")} offOnly={blocked} />
+
+      <LinkTools
+        t={t}
+        base={`/p/${planId}/me`}
+        csrfToken={props.csrfToken}
+        signedOut={props.signedOut}
+        notifications={!blocked}
+        nonce={props.linkNonce}
+      />
 
       <details class="withdraw">
         <summary>{t("manage.withdraw")}</summary>

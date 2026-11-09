@@ -18,6 +18,11 @@ export function deviceExpiryCutoffs(now: Date): {
   };
 }
 
+/** Used one-time form values are kept for a day, long enough to catch a resent form (I44). */
+export function usedFormNonceCutoff(now: Date): Date {
+  return new Date(now.getTime() - DAY_MS);
+}
+
 /** Pre-migration backups are deleted after 7 days, so they never outlive retention by more than a week (spec 11). */
 export const BACKUP_DAYS = 7;
 

@@ -155,6 +155,21 @@ describe("SQLite templates (spec 3.10, section 4)", () => {
     ).rejects.toThrow(/UNIQUE constraint failed/);
   });
 
+  it("get new link hashes, and sign out other devices (spec 3.2)", async () => {
+    await templates().create(kept({ hostTokenHash: undefined }));
+    await templates().setHostTokenHash("template-1", "new-template-hash");
+    expect(await templates().findByHostTokenHash("new-template-hash")).toMatchObject({
+      id: "template-1",
+    });
+
+    const target = { role: "template", templateId: "template-1" } as const;
+    expect(await devices().unlinkOthers(target, "device-2")).toBe(1);
+    expect(await devices().hasLink("device-1", target)).toBe(false);
+    expect(await devices().hasLink("device-2", target)).toBe(true);
+    // Other links of the same devices stay.
+    expect(await devices().hasLink("device-1", { role: "host", planId: "plan-1" })).toBe(true);
+  });
+
   it("expire when their date has passed", async () => {
     await templates().create(kept());
     const { expiresAt } = kept().template;

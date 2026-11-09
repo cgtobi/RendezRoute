@@ -10,6 +10,7 @@ import type {
   RecapRepository,
   ResponseRepository,
   TemplateRepository,
+  FormNonceRepository,
 } from "../../src/application/ports.ts";
 import type { Plan } from "../../src/domain/plan.ts";
 import type { RecapContribution } from "../../src/domain/recap.ts";
@@ -25,6 +26,7 @@ export function createFakeRepositories(): {
   calendarFeeds: CalendarFeedRepository;
   recap: RecapRepository;
   templates: TemplateRepository;
+  formNonces: FormNonceRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
   const routes = new Map<string, Route>();
@@ -39,6 +41,7 @@ export function createFakeRepositories(): {
   const responseNonces = new Map<string, string>();
   const feeds = new Map<string, CalendarFeed & { tokenHash: string }>();
   const contributions = new Map<string, RecapContribution>();
+  const usedNonces = new Map<string, Date>();
   const templates = new Map<
     string,
     {
@@ -141,6 +144,10 @@ export function createFakeRepositories(): {
       async findIdByCreationNonce(nonce) {
         return planNonces.get(nonce);
       },
+      async setHostTokenHash(planId, hash) {
+        const entry = plans.get(planId);
+        if (entry !== undefined) entry.hostTokenHash = hash;
+      },
       async update(plan) {
         const entry = plans.get(plan.id);
         if (entry !== undefined) entry.plan = structuredClone(plan);
@@ -213,6 +220,24 @@ export function createFakeRepositories(): {
       },
     },
 
+    formNonces: {
+      async claim(nonce, now) {
+        if (usedNonces.has(nonce)) return false;
+        usedNonces.set(nonce, now);
+        return true;
+      },
+      async deleteUsedBefore(cutoff) {
+        let deleted = 0;
+        for (const [nonce, usedAt] of usedNonces) {
+          if (usedAt.getTime() < cutoff.getTime()) {
+            usedNonces.delete(nonce);
+            deleted++;
+          }
+        }
+        return deleted;
+      },
+    },
+
     templates: {
       async create(input) {
         insertTemplate(input);
@@ -227,6 +252,10 @@ export function createFakeRepositories(): {
       },
       async findIdByCreationNonce(nonce) {
         return [...templates.values()].find((e) => e.creationNonce === nonce)?.template.id;
+      },
+      async setHostTokenHash(templateId, hash) {
+        const entry = templates.get(templateId);
+        if (entry !== undefined) entry.hostTokenHash = hash;
       },
       async update(template) {
         const entry = templates.get(template.id);
@@ -288,6 +317,18 @@ export function createFakeRepositories(): {
       async hasLink(deviceId, target) {
         return links.has(linkKey(deviceId, target));
       },
+      async unlinkOthers(target, keepDeviceId) {
+        const suffix = `|${target.role}|${targetId(target)}`;
+        if (!links.has(`${keepDeviceId}${suffix}`)) return 0;
+        let removed = 0;
+        for (const key of links) {
+          if (key.endsWith(suffix) && !key.startsWith(`${keepDeviceId}|`)) {
+            links.delete(key);
+            removed++;
+          }
+        }
+        return removed;
+      },
       async deleteInactive({ unlinkedLastSeenBefore, anyLastSeenBefore }) {
         let deleted = 0;
         for (const [id, entry] of devices) {
@@ -320,6 +361,10 @@ export function createFakeRepositories(): {
       async findById(id) {
         const entry = responses.get(id);
         return entry === undefined ? undefined : copy(entry.response);
+      },
+      async setManageTokenHash(responseId, hash) {
+        const entry = responses.get(responseId);
+        if (entry !== undefined) entry.manageTokenHash = hash;
       },
       async findByManageTokenHash(hash) {
         const entry = [...responses.values()].find(

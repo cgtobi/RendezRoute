@@ -33,6 +33,7 @@ import {
   newNonce,
   TIME_ZONES,
   tooManyRequests,
+  signedOutCount,
 } from "./shared.tsx";
 
 export function registerHostRoutes(
@@ -82,6 +83,8 @@ export function registerHostRoutes(
         hasRoute={page.hasRoute}
         recapContributions={page.recapContributions}
         templateNonce={newNonce()}
+        signedOut={signedOutCount(c)}
+        linkNonce={newNonce()}
         routeError={form.routeError}
         routeTrim={form.routeTrim ?? ""}
         map={mapSettings(config)}

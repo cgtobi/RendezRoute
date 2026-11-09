@@ -170,6 +170,14 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       return row === undefined ? undefined : fromRow(row);
     },
 
+    async setHostTokenHash(planId, hash) {
+      await database.db
+        .updateTable("plans")
+        .set({ host_token_hash: hash })
+        .where("id", "=", planId)
+        .execute();
+    },
+
     async update(plan) {
       const {
         id,

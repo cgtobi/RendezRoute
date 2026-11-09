@@ -522,6 +522,26 @@ export const en = {
     "Only continue on your own device: anyone using this browser can then use the template.",
   "privacy.templates":
     "If a host chooses “Keep as repeatable template” or saves a template, the plan’s details, including the host’s name, are kept as a template; never its responses, participants’ names or recap. The exact start and route are kept only if the host includes them, and then encrypted. A template is deleted after 90 days without being repeated or edited.",
+  "linkTools.heading": "Private link",
+  "linkTools.explain":
+    "Lost your private link, or think someone else has it? A new link replaces the old one, and devices already using it stay signed in.",
+  "linkTools.newLink": "Get a new link",
+  "linkTools.signOut": "Sign out all other devices",
+  "linkTools.signOutExplain":
+    "Every other device that uses this link loses access; this device keeps it. If the link got out, get a new one too.",
+  "linkTools.signOutNotifications":
+    "Notifications are turned off on all devices, this one included; you can turn them on again here.",
+  "linkTools.signOutConfirm": "Sign out other devices",
+  "linkTools.signedOut": {
+    zero: "No other device was signed in.",
+    one: "{count} other device was signed out.",
+    other: "{count} other devices were signed out.",
+  },
+  "linkTools.newHeading": "Your new link",
+  "linkTools.oldLinkStopped": "The old link no longer works.",
+  "linkTools.alreadyIssued":
+    "This link was already shown, so nothing changed. If you didn’t save it, get a new one.",
+  "linkTools.back": "Back",
 } as const satisfies Readonly<Record<string, Message>>;
 
 export type MessageKey = keyof typeof en;

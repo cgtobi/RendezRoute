@@ -541,4 +541,24 @@ export const fr: Messages = {
     "Ne continuez que sur votre propre appareil : toute personne utilisant ce navigateur pourra ensuite utiliser le modèle.",
   "privacy.templates":
     "Si l’organisateur·rice choisit « Garder comme modèle réutilisable » ou enregistre un modèle, les informations de la sortie, y compris le nom de l’organisateur·rice, sont gardées comme modèle, jamais ses réponses, les noms des participant·e·s ni son récapitulatif. Le point de départ exact et le parcours ne sont gardés que si l’organisateur·rice les inclut, et alors chiffrés. Un modèle est supprimé après 90 jours sans être répété ni modifié.",
+  "linkTools.heading": "Lien privé",
+  "linkTools.explain":
+    "Vous avez perdu votre lien privé, ou quelqu’un d’autre l’a peut-être ? Un nouveau lien remplace l’ancien, et les appareils qui l’utilisent déjà restent connectés.",
+  "linkTools.newLink": "Obtenir un nouveau lien",
+  "linkTools.signOut": "Déconnecter tous les autres appareils",
+  "linkTools.signOutExplain":
+    "Tous les autres appareils qui utilisent ce lien perdent l’accès, cet appareil le garde. Si le lien a circulé, obtenez aussi un nouveau lien.",
+  "linkTools.signOutNotifications":
+    "Les notifications sont désactivées sur tous les appareils, celui-ci compris ; vous pouvez les réactiver ici.",
+  "linkTools.signOutConfirm": "Déconnecter les autres appareils",
+  "linkTools.signedOut": {
+    zero: "Aucun autre appareil n’était connecté.",
+    one: "{count} autre appareil a été déconnecté.",
+    other: "{count} autres appareils ont été déconnectés.",
+  },
+  "linkTools.newHeading": "Votre nouveau lien",
+  "linkTools.oldLinkStopped": "L’ancien lien ne fonctionne plus.",
+  "linkTools.alreadyIssued":
+    "Ce lien a déjà été affiché, rien n’a donc changé. Si vous ne l’avez pas enregistré, obtenez-en un nouveau.",
+  "linkTools.back": "Retour",
 };

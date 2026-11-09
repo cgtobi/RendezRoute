@@ -6,6 +6,7 @@ import type { PlanTemplate, TemplateAdjustment } from "../../../../domain/templa
 import type { Units } from "../../../../domain/units.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, formatDate, formatDistance, formatPaceBand } from "./format.ts";
+import { LinkTools } from "./link-tools.tsx";
 import { WINDOW_LABELS } from "./recap.tsx";
 
 /** "Keep as repeatable template" and its sub-option, on the create and host forms. */
@@ -109,6 +110,10 @@ export interface TemplatePageProps {
   /** The repeat form's values and errors. */
   repeat: { date: string; time: string; errors: readonly FieldError[] };
   saved: boolean;
+  /** Other devices removed by "Sign out all other devices", right after it (spec 3.2). */
+  signedOut: number | undefined;
+  /** One-time value for "Get a new link" (decision I44). */
+  linkNonce: string;
 }
 
 export function TemplatePage(props: TemplatePageProps) {
@@ -193,6 +198,14 @@ export function TemplatePage(props: TemplatePageProps) {
           </button>
         </form>
       )}
+      <LinkTools
+        t={t}
+        base={base}
+        csrfToken={props.csrfToken}
+        signedOut={props.signedOut}
+        notifications={false}
+        nonce={props.linkNonce}
+      />
       <details class="danger-zone">
         <summary>{t("template.delete")}</summary>
         <p>{t("template.deleteExplain")}</p>

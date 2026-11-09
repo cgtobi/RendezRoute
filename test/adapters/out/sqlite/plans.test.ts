@@ -72,6 +72,28 @@ describe("PlanRepository", () => {
     expect(await repos().plans.findIdByCreationNonce("nonce-x")).toBeUndefined();
   });
 
+  it("replaces the host link's hash (spec 3.2 Get a new link)", async () => {
+    const plan = await seed();
+    await repos().plans.setHostTokenHash(plan.id, "host-hash-2");
+    expect(await repos().plans.findByHostTokenHash("host-hash-1")).toBeUndefined();
+    expect((await repos().plans.findByHostTokenHash("host-hash-2"))?.id).toBe(plan.id);
+  });
+
+  it("signs out other host devices only while the kept one is still linked (spec 3.2)", async () => {
+    const plan = await seed();
+    const { devices } = repos();
+    await devices.create({ id: "device-2", tokenHash: "device-hash-2", now: fixtureNow });
+    const target = { role: "host", planId: plan.id } as const;
+    await devices.link("device-2", target, fixtureNow);
+    // device-3 has no link, so it cannot sign the others out.
+    expect(await devices.unlinkOthers(target, "device-3")).toBe(0);
+    expect(await devices.hasLink("device-1", target)).toBe(true);
+    expect(await devices.unlinkOthers(target, "device-2")).toBe(1);
+    expect(await devices.hasLink("device-1", target)).toBe(false);
+    expect(await devices.unlinkOthers(target, "device-1")).toBe(0);
+    expect(await devices.hasLink("device-2", target)).toBe(true);
+  });
+
   it("links the creating device as host in the same step", async () => {
     const plan = await seed();
     expect(await repos().devices.hasLink("device-1", { role: "host", planId: plan.id })).toBe(true);

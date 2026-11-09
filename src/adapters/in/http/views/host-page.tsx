@@ -9,6 +9,7 @@ import type { MapSettings } from "./maps.tsx";
 import { PlanForm } from "./plan-form.tsx";
 import { RecapShortenedNotice, RecapWindowSelect } from "./recap.tsx";
 import { TemplateOptions } from "./templates.tsx";
+import { LinkTools } from "./link-tools.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
 import type { Units } from "../../../../domain/units.ts";
@@ -53,6 +54,10 @@ export interface HostPageProps {
   recapContributions: number | undefined;
   /** One-time value for "Save as template" (decision I9). */
   templateNonce: string;
+  /** Other devices removed by "Sign out all other devices", right after it (spec 3.2). */
+  signedOut: number | undefined;
+  /** One-time value for "Get a new link" (decision I44). */
+  linkNonce: string;
 }
 
 export function HostPage(props: HostPageProps) {
@@ -149,6 +154,15 @@ export function HostPage(props: HostPageProps) {
           </>
         )}
       </section>
+
+      <LinkTools
+        t={t}
+        base={`/p/${planId}/host`}
+        csrfToken={csrfToken}
+        signedOut={props.signedOut}
+        notifications
+        nonce={props.linkNonce}
+      />
 
       <details>
         <summary>{t("host.saveTemplate")}</summary>

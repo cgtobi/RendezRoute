@@ -1,5 +1,10 @@
 // Automatic retention and housekeeping (spec 3.10), run by the scheduler and the CLI.
-import { backupExpiryCutoff, capRetention, deviceExpiryCutoffs } from "../domain/expiry.ts";
+import {
+  backupExpiryCutoff,
+  capRetention,
+  deviceExpiryCutoffs,
+  usedFormNonceCutoff,
+} from "../domain/expiry.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { BackupStore } from "./ports.ts";
 import { deletePlansKeepingTemplates } from "./templates.ts";
@@ -19,6 +24,7 @@ export async function runHousekeeping(deps: PlanDeps & { backups: BackupStore })
   deletedDevices: number;
   deletedFeeds: number;
   deletedBackups: number;
+  deletedFormNonces: number;
 }> {
   const now = deps.clock.now();
   // Templates first, so devices linked only to them count as unlinked right away.
@@ -27,7 +33,8 @@ export async function runHousekeeping(deps: PlanDeps & { backups: BackupStore })
   // Feeds that no longer reference anything (spec 3.10); those of deleted devices went with them.
   const deletedFeeds = await deps.calendarFeeds.deleteUnlinked();
   const deletedBackups = await deps.backups.deleteOlderThan(backupExpiryCutoff(now));
-  return { deletedTemplates, deletedDevices, deletedFeeds, deletedBackups };
+  const deletedFormNonces = await deps.formNonces.deleteUsedBefore(usedFormNonceCutoff(now));
+  return { deletedTemplates, deletedDevices, deletedFeeds, deletedBackups, deletedFormNonces };
 }
 
 /** Applies a lowered MAX_RETENTION_DAYS to existing plans (CLI `apply-retention-max`, spec 3.10). */

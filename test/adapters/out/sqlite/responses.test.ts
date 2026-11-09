@@ -84,6 +84,13 @@ describe("ResponseRepository", () => {
     expect(await responses.findIdByCreationNonce("nonce-1")).toBe("response-1");
   });
 
+  it("replaces the manage link's hash (spec 3.2 Get a new link)", async () => {
+    const { responses } = await seed();
+    await responses.setManageTokenHash("response-1", "manage-hash-2");
+    expect(await responses.findByManageTokenHash("manage-hash-1")).toBeUndefined();
+    expect(await responses.findByManageTokenHash("manage-hash-2")).toEqual(response());
+  });
+
   it("finds a device's response to a plan through its manage link", async () => {
     const { responses } = await seed();
     expect((await responses.findForDevice("plan-0001", "device-1"))?.id).toBe("response-1");

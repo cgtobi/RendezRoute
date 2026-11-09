@@ -36,6 +36,7 @@ import type { Result } from "../domain/result.ts";
 import type {
   CalendarFeedRepository,
   ChannelRepository,
+  FormNonceRepository,
   JobQueue,
   PlanRepository,
   RecapRepository,
@@ -57,6 +58,8 @@ export interface PlanDeps extends DeviceDeps {
   recap: RecapRepository;
   /** Repeatable templates (spec 3.10). */
   templates: TemplateRepository;
+  /** One-time values of "Get a new link" forms (decision I44). */
+  formNonces: FormNonceRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
   notify?:
     | { channels: ChannelRepository; jobs: JobQueue; reminders: SentReminderRepository }

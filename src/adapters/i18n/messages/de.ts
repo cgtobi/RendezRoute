@@ -544,4 +544,24 @@ export const de: Messages = {
     "Mach nur auf deinem eigenen Gerät weiter: Alle, die diesen Browser nutzen, können danach die Vorlage verwenden.",
   "privacy.templates":
     "Wenn die Organisator:in „Als wiederholbare Vorlage behalten“ wählt oder eine Vorlage speichert, werden die Angaben des Treffens samt ihrem Namen als Vorlage behalten; nie seine Antworten, die Namen der Teilnehmer:innen oder der Rückblick. Genauer Treffpunkt und Route werden nur behalten, wenn die Organisator:in sie einschließt, und dann verschlüsselt. Eine Vorlage wird gelöscht, wenn sie 90 Tage lang weder wiederholt noch bearbeitet wurde.",
+  "linkTools.heading": "Privater Link",
+  "linkTools.explain":
+    "Link verloren, oder hat ihn vielleicht jemand anderes? Ein neuer Link ersetzt den alten, und Geräte, die ihn schon nutzen, bleiben angemeldet.",
+  "linkTools.newLink": "Neuen Link erstellen",
+  "linkTools.signOut": "Alle anderen Geräte abmelden",
+  "linkTools.signOutExplain":
+    "Alle anderen Geräte, die diesen Link nutzen, verlieren den Zugang; dieses Gerät behält ihn. Wenn der Link in falsche Hände geraten ist, erstelle auch einen neuen.",
+  "linkTools.signOutNotifications":
+    "Benachrichtigungen werden auf allen Geräten ausgeschaltet, auch auf diesem; du kannst sie hier wieder einschalten.",
+  "linkTools.signOutConfirm": "Andere Geräte abmelden",
+  "linkTools.signedOut": {
+    zero: "Es war kein anderes Gerät angemeldet.",
+    one: "{count} anderes Gerät wurde abgemeldet.",
+    other: "{count} andere Geräte wurden abgemeldet.",
+  },
+  "linkTools.newHeading": "Dein neuer Link",
+  "linkTools.oldLinkStopped": "Der alte Link funktioniert nicht mehr.",
+  "linkTools.alreadyIssued":
+    "Dieser Link wurde schon angezeigt, daher hat sich nichts geändert. Wenn du ihn nicht gespeichert hast, erstelle einen neuen.",
+  "linkTools.back": "Zurück",
 };

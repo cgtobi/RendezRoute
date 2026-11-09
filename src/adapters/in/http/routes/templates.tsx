@@ -27,11 +27,13 @@ import {
   newNonce,
   planGone,
   planInput,
+  templateGone,
   readForm,
   type RouteDeps,
   secretLinkHeaders,
   TIME_ZONES,
   tooManyRequests,
+  signedOutCount,
 } from "./shared.tsx";
 
 export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
@@ -42,15 +44,6 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
   });
   const base = (c: Context<AppEnv>) => `/templates/${request(c).templateId}`;
 
-  // Templates have no public page: an unknown template and one this device is not linked to
-  // look the same.
-  const gone = (c: Context<AppEnv>) => {
-    c.status(404);
-    return c.render(<p class="gone">{c.get("t")("template.gone")}</p>, {
-      title: c.get("t")("template.gone"),
-    });
-  };
-
   const renderPage = async (
     c: Context<AppEnv>,
     repeat: { date: string; time?: string; errors: readonly FieldError[] } = {
@@ -59,7 +52,7 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     },
   ) => {
     const result = await viewTemplate(planDeps, request(c));
-    if (result.kind !== "found") return gone(c);
+    if (result.kind !== "found") return templateGone(c);
     c.header("cache-control", "private, no-store");
     c.header("x-robots-tag", "noindex");
     return c.render(
@@ -72,6 +65,8 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         nonce={newNonce()}
         repeat={{ ...repeat, time: repeat.time ?? result.template.startTime }}
         saved={c.req.query("saved") !== undefined}
+        signedOut={signedOutCount(c)}
+        linkNonce={newNonce()}
       />,
       { title: result.template.title },
     );
@@ -82,7 +77,7 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     form: { values?: PlanInput; errors?: readonly FieldError[]; notice?: string } = {},
   ) => {
     const result = await viewTemplate(planDeps, request(c));
-    if (result.kind !== "found") return gone(c);
+    if (result.kind !== "found") return templateGone(c);
     const t = c.get("t");
     c.header("cache-control", "private, no-store");
     return c.render(
@@ -176,7 +171,7 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     switch (result.kind) {
       case "not_found":
       case "forbidden":
-        return gone(c);
+        return templateGone(c);
       case "bad_request":
         return badRequest(c);
       case "duplicate":
@@ -229,17 +224,17 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         c.status(422);
         return renderEditForm(c, { values, errors: result.errors });
       default:
-        return gone(c);
+        return templateGone(c);
     }
   });
 
   app.post("/templates/:id/route/remove", async (c) => {
     const result = await removeTemplateRoute(planDeps, request(c));
-    return result.kind === "removed" ? c.redirect(`${base(c)}?saved`, 303) : gone(c);
+    return result.kind === "removed" ? c.redirect(`${base(c)}?saved`, 303) : templateGone(c);
   });
 
   app.post("/templates/:id/delete", async (c) => {
     const result = await deleteTemplate(planDeps, request(c));
-    return result.kind === "deleted" ? c.redirect("/", 303) : gone(c);
+    return result.kind === "deleted" ? c.redirect("/", 303) : templateGone(c);
   });
 }

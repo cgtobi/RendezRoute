@@ -70,6 +70,26 @@ export function createDeviceRepository(database: Database): DeviceRepository {
       return row !== undefined;
     },
 
+    async unlinkOthers(target, keepDeviceId) {
+      const result = await database.db
+        .deleteFrom("device_links")
+        .where("role", "=", target.role)
+        .where(...targetEquals(target))
+        .where("device_id", "!=", keepDeviceId)
+        .where((eb) =>
+          eb.exists(
+            eb
+              .selectFrom("device_links as kept")
+              .select("kept.device_id")
+              .where("kept.device_id", "=", keepDeviceId)
+              .where("kept.role", "=", target.role)
+              .where(`kept.${targetOf(target)[0]}`, "=", targetOf(target)[1]),
+          ),
+        )
+        .executeTakeFirst();
+      return Number(result.numDeletedRows);
+    },
+
     async deleteInactive({ unlinkedLastSeenBefore, anyLastSeenBefore }) {
       const result = await database.db
         .deleteFrom("devices")

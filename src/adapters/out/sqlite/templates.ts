@@ -163,6 +163,14 @@ export function createTemplateRepository(
       return row?.id;
     },
 
+    async setHostTokenHash(templateId, hash) {
+      await database.db
+        .updateTable("plan_templates")
+        .set({ host_token_hash: hash })
+        .where("id", "=", templateId)
+        .execute();
+    },
+
     async update(template) {
       const { created_at: _createdAt, ...fields } = toRow(cipher, template);
       await database.db

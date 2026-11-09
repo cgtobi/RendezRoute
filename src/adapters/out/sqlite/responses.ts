@@ -77,6 +77,14 @@ export function createResponseRepository(
       return row === undefined ? undefined : fromRow(row);
     },
 
+    async setManageTokenHash(responseId, hash) {
+      await database.db
+        .updateTable("responses")
+        .set({ manage_token_hash: hash })
+        .where("id", "=", responseId)
+        .execute();
+    },
+
     async findIdByCreationNonce(nonce) {
       const row = await database.db
         .selectFrom("responses")

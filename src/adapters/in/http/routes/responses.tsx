@@ -22,6 +22,8 @@ import {
   clientOf,
   tooManyRequests,
   secretLinkHeaders,
+  newNonce,
+  signedOutCount,
 } from "./shared.tsx";
 
 export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
@@ -135,6 +137,8 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         displayName={form.displayName ?? result.response.displayName}
         errorCode={form.errorCode}
         notice={form.notice}
+        signedOut={signedOutCount(c)}
+        linkNonce={newNonce()}
       />,
       { title: result.planTitle },
     );

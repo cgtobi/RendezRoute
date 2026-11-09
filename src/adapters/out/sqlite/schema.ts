@@ -195,4 +195,10 @@ export interface DatabaseSchema {
   calendar_feeds: CalendarFeedsTable;
   recap_contributions: RecapContributionsTable;
   plan_templates: PlanTemplatesTable;
+  used_form_nonces: UsedFormNoncesTable;
+}
+
+export interface UsedFormNoncesTable {
+  nonce: string;
+  used_at: string;
 }

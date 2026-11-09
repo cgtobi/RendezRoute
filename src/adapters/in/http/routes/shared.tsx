@@ -88,6 +88,17 @@ export function planGone(c: Context<AppEnv>) {
   });
 }
 
+/**
+ * Templates have no public page: an unknown template and one this device is not linked to look the
+ * same (decision I43).
+ */
+export function templateGone(c: Context<AppEnv>) {
+  c.status(404);
+  return c.render(<p class="gone">{c.get("t")("template.gone")}</p>, {
+    title: c.get("t")("template.gone"),
+  });
+}
+
 /** Renders a found plan for its audience, with the response form for viewers. */
 export async function renderPlanPage(
   c: Context<AppEnv>,
@@ -149,4 +160,10 @@ export const TIME_ZONES = (() => {
 /** The stored distance with the language's decimal separator, e.g. "12,5" in German (decision I31). */
 export function localizedInput(input: PlanInput, language: string): PlanInput {
   return { ...input, distanceKm: localizeDecimal(input.distanceKm, language) };
+}
+
+/** "?signedOut=N" after "Sign out all other devices", for the notice on the page (decision I44). */
+export function signedOutCount(c: Context<AppEnv>): number | undefined {
+  const value = c.req.query("signedOut");
+  return value !== undefined && /^\d{1,6}$/.test(value) ? Number(value) : undefined;
 }

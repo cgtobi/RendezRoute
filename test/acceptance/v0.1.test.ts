@@ -13,7 +13,7 @@ import { runRetentionSweep } from "../../src/application/maintenance.ts";
 import { createTestApp } from "../support/app.ts";
 import { TestClient } from "../support/client.ts";
 import { sampleGpx } from "../support/gpx.ts";
-import { planForm, respondViaUi } from "../support/plans.ts";
+import { createPlanWithRouteViaUi, planForm, respondViaUi } from "../support/plans.ts";
 
 const EXACT = {
   exactDescription: "SENTINEL-gate-4b2d",
@@ -39,16 +39,11 @@ function tempDir() {
 /** A plan with exact start and route, created through the form like a browser would. */
 async function planWithRoute(test: Awaited<ReturnType<typeof createTestApp>>) {
   const host = new TestClient(test.app);
-  const hidden = await host.hiddenFields("/new");
-  const created = await host.postMultipart(
-    "/new",
-    { ...hidden, ...planForm(EXACT) },
-    { gpx: { name: "run.gpx", content: sampleGpx({ lat: Number(ROUTE_LAT) }) } },
+  const { planId, hostPath } = await createPlanWithRouteViaUi(
+    host,
+    EXACT,
+    sampleGpx({ lat: Number(ROUTE_LAT) }),
   );
-  const html = await created.text();
-  const planId = /\/p\/([A-Za-z0-9_-]{22})/.exec(html)?.[1] ?? "";
-  const hostPath = /https:\/\/runs\.example\.org(\/a\/[A-Za-z0-9_-]{43})/.exec(html)?.[1] ?? "";
-  expect(planId).not.toBe("");
   return { host, planId, hostPath };
 }
 

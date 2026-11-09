@@ -24,7 +24,7 @@ export const fr: Messages = {
   "privacy.storedPlans":
     "Quand vous créez une sortie : votre nom, les informations de la sortie et un parcours facultatif. Le nom, le titre, la remarque, la zone de rendez-vous, l’heure, la distance et l’allure sont visibles par toute personne ayant le lien. Le point de départ exact et le parcours ne sont visibles que par vous et les personnes inscrites, et sont enregistrés chiffrés.",
   "privacy.storedResponses":
-    "Quand vous répondez : le nom que vous indiquez, votre choix et la langue de la page, pour les messages concernant la sortie. Votre nom est enregistré chiffré et visible par l’organisateur·rice, ainsi que par les autres participant·e·s si vous vous inscrivez.",
+    "Quand vous répondez : le nom que vous indiquez, votre choix et la langue de la page, pour les messages concernant la sortie. Votre nom est enregistré chiffré et visible par l’organisateur·rice, ainsi que par les autres participant·e·s si vous vous inscrivez. Si vous demandez à participer, votre message facultatif à l’organisateur·rice est aussi enregistré chiffré, visible seulement par l’organisateur·rice et supprimé dès sa décision.",
   "privacy.storedRecap":
     "Après une sortie, les participant·e·s et l’organisateur·rice peuvent ajouter des commentaires et des liens à son récapitulatif. Ils sont enregistrés chiffrés, visibles uniquement par les participant·e·s et l’organisateur·rice, et supprimés avec la sortie. Les liens sont affichés comme simples liens ; rien n’est chargé depuis ceux-ci.",
   "privacy.noTracking": "Il n’y a ni comptes, ni mesure d’audience, ni publicité.",
@@ -56,7 +56,7 @@ export const fr: Messages = {
   "privacy.geocoder":
     "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Les recherches et leurs résultats restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes.",
   "privacy.push":
-    "Si vous activez les notifications, le service push de votre navigateur (de Google, Mozilla, Apple ou Microsoft) les distribue. Les messages sont chiffrés ; le service voit seulement qu’un message a été envoyé.",
+    "Si vous activez les notifications, le service push de votre navigateur (de Google, Mozilla, Apple ou Microsoft) les distribue. Les messages sont chiffrés ; le service voit seulement qu’un message a été envoyé. Pour les envoyer, ce serveur enregistre l’adresse push et les clés de votre navigateur, chiffrées, et les supprime quand vous désactivez les notifications, ou avec la sortie ou votre réponse.",
   "privacy.weather":
     "Pour les prévisions météo sur les pages des sorties, ce serveur interroge {host} sur la zone de rendez-vous approximative et l’heure de départ. Rien vous concernant n’est envoyé. Les prévisions restent jusqu’à {minutes} minutes dans la mémoire de ce serveur.",
   "privacy.calendar":

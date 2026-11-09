@@ -1,30 +1,7 @@
 // The v0.1 core loop in a real browser against the built image (spec 5 acceptance criteria, 2b).
 // Runs once per project: default settings (fake providers) and maps, geocoder and weather disabled.
-import { type Browser, type BrowserContext, expect, type Page, test } from "@playwright/test";
-
-const ALLOWED_HOSTS = new Set(["localhost:3101", "localhost:3102", "fakes:8080"]);
-
-/** A browser profile of its own (own cookies), failing the test on console errors or foreign requests. */
-async function person(browser: Browser, baseURL: string, problems: string[]) {
-  const context: BrowserContext = await browser.newContext({ baseURL });
-  const page = await context.newPage();
-  page.on("console", (message) => {
-    if (message.type() === "error") {
-      problems.push(`console: ${message.text()} @ ${message.location().url}`);
-    }
-  });
-  page.on("pageerror", (error) => problems.push(`page error: ${error.message}`));
-  page.on("request", (request) => {
-    const url = new URL(request.url());
-    if (url.protocol !== "data:" && !ALLOWED_HOSTS.has(url.host)) {
-      problems.push(`request to ${url.host}`);
-    }
-  });
-  return { context, page };
-}
-
-/** A date five days from now, as the date field expects it: within the weather horizon. */
-const inFiveDays = () => new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+import { expect, type Page, test } from "@playwright/test";
+import { inFiveDays, person } from "./helpers.ts";
 
 async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: string }> {
   await host.goto("/");

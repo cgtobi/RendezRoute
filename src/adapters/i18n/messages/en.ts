@@ -21,7 +21,7 @@ export const en = {
   "privacy.storedPlans":
     "When you create a plan: your name, the plan details you enter and an optional route. Name, title, note, meeting area, time, distance and pace are visible to anyone with the link. The exact start and the route are shown only to you and people who join, and are stored encrypted.",
   "privacy.storedResponses":
-    "When you respond: the name you give, your choice and the language of the page, for messages about the plan. Your name is stored encrypted and shown to the host, and to the other participants if you join.",
+    "When you respond: the name you give, your choice and the language of the page, for messages about the plan. Your name is stored encrypted and shown to the host, and to the other participants if you join. If you ask to join, your optional note to the host is stored encrypted too, shown only to the host and deleted once the host decides.",
   "privacy.storedRecap":
     "After a plan, participants and the host can add comments and links to its recap. They are stored encrypted, shown only to participants and the host, and deleted with the plan. Links are shown as plain links; nothing is loaded from them.",
   "privacy.noTracking": "There are no accounts, no analytics and no advertising.",
@@ -53,7 +53,7 @@ export const en = {
   "privacy.geocoder":
     "Place search goes through this server to {host}. That service sees what you search for, but not who you are. Searches and their results are kept in this server’s memory for up to {days} days, so repeated searches need no new request.",
   "privacy.push":
-    "If you turn on notifications, your browser’s push service (from Google, Mozilla, Apple or Microsoft) delivers them. The messages are encrypted; the service only sees that one was sent.",
+    "If you turn on notifications, your browser’s push service (from Google, Mozilla, Apple or Microsoft) delivers them. The messages are encrypted; the service only sees that one was sent. To send them, this server stores your browser’s push address and keys, encrypted, and deletes them when you turn notifications off, or with the plan or your response.",
   "privacy.weather":
     "For the weather forecast on plan pages, this server asks {host} about the rough meeting area and the start time. Nothing about you is sent. Forecasts are kept in this server’s memory for up to {minutes} minutes.",
   "privacy.calendar":

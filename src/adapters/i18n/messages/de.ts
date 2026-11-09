@@ -22,7 +22,7 @@ export const de: Messages = {
   "privacy.storedPlans":
     "Wenn du ein Treffen erstellst: dein Name, die Angaben zum Treffen und optional eine Route. Name, Titel, Notiz, Treffgebiet, Zeit, Distanz und Pace sieht jede Person mit dem Link. Den genauen Treffpunkt und die Route sehen nur du und alle, die zusagen; sie werden verschlüsselt gespeichert.",
   "privacy.storedResponses":
-    "Wenn du antwortest: der Name, den du angibst, deine Antwort und die Sprache der Seite, für Nachrichten zum Treffen. Dein Name wird verschlüsselt gespeichert; die Organisator:in sieht ihn und, wenn du zusagst, auch die anderen Teilnehmer:innen.",
+    "Wenn du antwortest: der Name, den du angibst, deine Antwort und die Sprache der Seite, für Nachrichten zum Treffen. Dein Name wird verschlüsselt gespeichert; die Organisator:in sieht ihn und, wenn du zusagst, auch die anderen Teilnehmer:innen. Wenn du um Teilnahme bittest, wird deine optionale Nachricht an die Organisator:in ebenfalls verschlüsselt gespeichert, nur ihr gezeigt und gelöscht, sobald sie entschieden hat.",
   "privacy.storedRecap":
     "Nach einem Treffen können Teilnehmer:innen und die Organisator:in Kommentare und Links zum Rückblick hinzufügen. Sie werden verschlüsselt gespeichert, nur Teilnehmer:innen und der Organisator:in gezeigt und mit dem Treffen gelöscht. Links werden als einfache Links gezeigt; es wird nichts von ihnen geladen.",
   "privacy.noTracking": "Es gibt keine Konten, keine Analyse und keine Werbung.",
@@ -54,7 +54,7 @@ export const de: Messages = {
   "privacy.geocoder":
     "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Suchanfragen und Ergebnisse bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit wiederholte Suchen keine neue Anfrage brauchen.",
   "privacy.push":
-    "Wenn du Benachrichtigungen einschaltest, stellt der Push-Dienst deines Browsers (von Google, Mozilla, Apple oder Microsoft) sie zu. Die Nachrichten sind verschlüsselt; der Dienst sieht nur, dass eine verschickt wurde.",
+    "Wenn du Benachrichtigungen einschaltest, stellt der Push-Dienst deines Browsers (von Google, Mozilla, Apple oder Microsoft) sie zu. Die Nachrichten sind verschlüsselt; der Dienst sieht nur, dass eine verschickt wurde. Dafür speichert dieser Server die Push-Adresse und die Schlüssel deines Browsers verschlüsselt und löscht sie, wenn du Benachrichtigungen ausschaltest, oder mit dem Treffen oder deiner Antwort.",
   "privacy.weather":
     "Für die Wettervorhersage auf den Seiten der Treffen fragt dieser Server bei {host} nach dem ungefähren Treffgebiet und der Startzeit. Über dich wird nichts gesendet. Vorhersagen bleiben bis zu {minutes} Minuten im Speicher dieses Servers.",
   "privacy.calendar":

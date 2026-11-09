@@ -596,6 +596,7 @@ export const en = {
   "rating.remove": "Remove my rating",
   "rating.yours": "Your rating:",
   "rating.closed": "Rating has closed.",
+  "rating.notYetOpen": "Rating opens once the plan has started.",
   "rating.closedNow": "Rating has closed for this plan.",
   "rating.honesty":
     "Only the host sees ratings. In a small group they may guess who gave one. Notes show your name.",

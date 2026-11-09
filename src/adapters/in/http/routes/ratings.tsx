@@ -28,11 +28,23 @@ export function registerRatingRoutes(app: Hono<AppEnv>, { config, planDeps }: Ro
     },
   ) => {
     const result = await viewPlan(planDeps, request(c));
-    if (result.kind !== "participant" || result.view.rating === undefined) {
-      return c.redirect(`/p/${request(c).planId}`, 303);
-    }
     const t = c.get("t");
     c.header("cache-control", "private, no-store");
+    if (result.kind !== "participant" || result.view.rating === undefined) {
+      // No rating form to show: before the start (or if the plan or the response changed
+      // meanwhile). Rating has not opened, so say that, keeping the status.
+      return c.render(
+        <section class="rating-form">
+          <p class="warning" role="alert">
+            {t("rating.notYetOpen")}
+          </p>
+          <p>
+            <a href={`/p/${request(c).planId}`}>{t("rating.back")}</a>
+          </p>
+        </section>,
+        { title: t("rating.heading") },
+      );
+    }
     return c.render(
       <section class="rating-form">
         <p>

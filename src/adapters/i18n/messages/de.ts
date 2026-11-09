@@ -619,6 +619,7 @@ export const de: Messages = {
   "rating.remove": "Meine Bewertung entfernen",
   "rating.yours": "Deine Bewertung:",
   "rating.closed": "Die Bewertung ist geschlossen.",
+  "rating.notYetOpen": "Bewerten ist möglich, sobald das Treffen begonnen hat.",
   "rating.closedNow": "Die Bewertung für dieses Treffen ist geschlossen.",
   "rating.honesty":
     "Nur die Organisator:in sieht Bewertungen. In einer kleinen Gruppe kann sie erraten, wer bewertet hat. Nachrichten zeigen deinen Namen.",

@@ -8,7 +8,13 @@ import { runHousekeeping, runRetentionSweep } from "../../src/application/mainte
 import { createTestApp } from "../support/app.ts";
 import { hiddenFields, TestClient } from "../support/client.ts";
 import { sampleGpx } from "../support/gpx.ts";
-import { createPlanWithRouteViaUi, ownStatus, planForm, respondViaUi } from "../support/plans.ts";
+import {
+  createPlanWithRouteViaUi,
+  hostActsOn,
+  ownStatus,
+  planForm,
+  respondViaUi,
+} from "../support/plans.ts";
 
 const en = translator("en");
 const EXACT = "SENTINEL-gate-9f3a";
@@ -40,14 +46,8 @@ async function csrfOf(client: TestClient, path: string): Promise<string> {
   return token;
 }
 
-/** Posts the first of the host page's accept or reject buttons. */
-async function decide(host: TestClient, planId: string, action: "accept" | "reject") {
-  const page = await (await host.get(`/p/${planId}/host`)).text();
-  const form = new RegExp(
-    `<form[^>]*action="(/p/${planId}/host/people/[^"]+/${action})"[\\s\\S]*?</form>`,
-  ).exec(page);
-  if (form?.[1] === undefined) throw new Error(`no ${action} button`);
-  expect((await host.postForm(form[1], hiddenFields(form[0]))).status).toBe(303);
+async function decide(host: TestClient, planId: string, action: "accept" | "reject", name: string) {
+  expect((await hostActsOn(host, planId, action, name)).status).toBe(303);
 }
 
 async function contribute(client: TestClient, planId: string, body: string) {
@@ -103,10 +103,10 @@ async function startedPlanWithEveryone() {
   const person = () => new TestClient(test.app);
   const ben = person();
   await respondViaUi(ben, planId, "Ben", "requested", NOTE);
-  await decide(host, planId, "accept");
+  await decide(host, planId, "accept", "Ben");
   const rex = person();
   await respondViaUi(rex, planId, "Rex", "requested", NOTE);
-  await decide(host, planId, "reject");
+  await decide(host, planId, "reject", "Rex");
   const pia = person();
   await respondViaUi(pia, planId, "Pia", "requested", NOTE);
   const ida = person();
@@ -190,7 +190,7 @@ describe("v0.5 acceptance criteria (spec 6)", () => {
     const { host, planId } = await planWithRoute(test);
     const ben = new TestClient(test.app);
     await respondViaUi(ben, planId, "Ben", "requested", NOTE);
-    await decide(host, planId, "accept");
+    await decide(host, planId, "accept", "Ben");
     expect(await (await ben.get(`/p/${planId}`)).text()).toContain(EXACT);
     // The switch is rendered hidden, for the browser script to show only where push works.
     expect(await (await ben.get(`/p/${planId}/me`)).text()).toMatch(
@@ -213,7 +213,7 @@ describe("v0.5 acceptance criteria (spec 6)", () => {
     });
     const ben = new TestClient(test.app);
     await respondViaUi(ben, planId, "SENTINEL-name-Ben", "requested", NOTE);
-    await decide(host, planId, "accept");
+    await decide(host, planId, "accept", "SENTINEL-name-Ben");
     const pia = new TestClient(test.app);
     await respondViaUi(pia, planId, "SENTINEL-name-Pia", "requested", NOTE);
     expect(await ownStatus(pia, planId)).toBe(en("status.requested"));

@@ -1,6 +1,6 @@
 import type { PlanInput } from "../../src/domain/plan-input.ts";
 import { sampleInput } from "../fixtures/plans.ts";
-import type { TestClient } from "./client.ts";
+import { hiddenFields, type TestClient } from "./client.ts";
 
 /** Form field names are the PlanInput keys. */
 export function planForm(overrides: Partial<PlanInput> = {}): Record<string, string> {
@@ -69,4 +69,18 @@ export async function ownStatus(client: TestClient, planId: string): Promise<str
   const html = await (await client.get(`/p/${planId}/me`)).text();
   const status = /<p class="notice">([^<]*)<\/p>/.exec(html)?.[1] ?? "";
   return status.replaceAll("&#39;", "'");
+}
+
+/** Presses the host page's button (accept, reject, remove, restore) in this person's row. */
+export async function hostActsOn(
+  host: TestClient,
+  planId: string,
+  action: "accept" | "reject" | "remove" | "restore",
+  name: string,
+): Promise<Response> {
+  const page = await (await host.get(`/p/${planId}/host`)).text();
+  const row = page.split("<li>").find((item) => item.startsWith(`<span>${name}</span>`)) ?? "";
+  const form = new RegExp(`<form[^>]*action="([^"]+/${action})"[^]*?</form>`).exec(row);
+  if (form?.[1] === undefined) throw new Error(`no ${action} button for ${name}`);
+  return host.postForm(form[1], hiddenFields(form[0]));
 }

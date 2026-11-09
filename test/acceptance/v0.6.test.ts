@@ -9,7 +9,10 @@ import { checkpoint } from "../../src/adapters/out/sqlite/database.ts";
 import { runRetentionSweep } from "../../src/application/maintenance.ts";
 import { createTestApp } from "../support/app.ts";
 import { hiddenFields, TestClient } from "../support/client.ts";
-import { createPlanViaUi, respondViaUi } from "../support/plans.ts";
+import { createPlanViaUi, hostActsOn, ownStatus, respondViaUi } from "../support/plans.ts";
+import { translator } from "../../src/adapters/i18n/i18n.ts";
+
+const en = translator("en");
 
 // sampleInput starts on 7 June 2026 at 07:30 in Berlin; recap open for a week; deleted on 21 June.
 const AFTER_START = "2026-06-07T06:00:00Z";
@@ -69,6 +72,19 @@ async function ratedPlan(test: Test, names: readonly string[], input = {}) {
     ids.set(name, await rate(test, client, planId, `${SENTINEL}-${name}`));
   }
   return { host, planId, people, ids };
+}
+
+/** What a rating attempt got: saved, refused (sent back to the plan), not yet open or closed. */
+async function attempt(client: TestClient, planId: string) {
+  const _csrf = hiddenFields(await (await client.get(`/p/${planId}`)).text())._csrf ?? "";
+  const response = await client.postForm(`/p/${planId}/rating`, { _csrf, value: "up", note: "" });
+  if (response.status === 303) {
+    return response.headers.get("location") === `/p/${planId}#rating` ? "saved" : "refused";
+  }
+  expect(response.status).toBe(409);
+  const html = (await response.text()).replaceAll("&#39;", "'");
+  if (html.includes(en("rating.notYetOpen"))) return "not yet open";
+  return html.includes(en("rating.closedNow")) ? "closed" : "unexpected 409";
 }
 
 /** Posts a form whose CSRF token comes from `page`. */
@@ -172,5 +188,69 @@ describe("v0.6 acceptance criteria (spec 6a)", () => {
     for (const file of [path, `${path}-wal`].filter(existsSync)) {
       expect(readFileSync(file).toString("latin1")).not.toContain(SENTINEL);
     }
+  });
+  it("Only participants can rate, and only while the recap is open", async () => {
+    const test = await createTestApp();
+    test.clock.set("2026-06-01T08:00:00Z");
+    const host = new TestClient(test.app);
+    const { planId, hostPath } = await createPlanViaUi(host, { joinMode: "approval" });
+    const person = () => new TestClient(test.app);
+    const decide = async (action: "accept" | "reject" | "remove", name: string) =>
+      expect((await hostActsOn(host, planId, action, name)).status).toBe(303);
+
+    const ben = person();
+    await respondViaUi(ben, planId, "Ben", "requested");
+    await decide("accept", "Ben");
+    const tom = person();
+    await respondViaUi(tom, planId, "Tom", "requested");
+    await decide("accept", "Tom");
+    await decide("remove", "Tom");
+    const rex = person();
+    await respondViaUi(rex, planId, "Rex", "requested");
+    await decide("reject", "Rex");
+    const pia = person();
+    await respondViaUi(pia, planId, "Pia", "requested");
+    const ida = person();
+    await respondViaUi(ida, planId, "Ida", "interested");
+    // A participant's device that also confirmed the host link counts as the host.
+    const cora = person();
+    await respondViaUi(cora, planId, "Cora", "requested");
+    await decide("accept", "Cora");
+    await cora.postForm("/a", hiddenFields(await (await cora.get(hostPath)).text()));
+    // Everyone is in the state the check is about, so a refusal means what it says.
+    expect(await ownStatus(ben, planId)).toBe(en("status.joined"));
+    expect(await ownStatus(tom, planId)).toBe(en("status.removed"));
+    expect(await ownStatus(rex, planId)).toBe(en("status.rejected"));
+    expect(await ownStatus(pia, planId)).toBe(en("status.requested"));
+    expect(await ownStatus(ida, planId)).toBe(en("status.interested"));
+    expect((await cora.get(`/p/${planId}/host`)).status).toBe(200);
+
+    expect(await attempt(ben, planId)).toBe("not yet open");
+    test.clock.set(AFTER_START);
+    expect(await attempt(ben, planId)).toBe("saved");
+    for (const client of [host, cora, tom, rex, pia, ida, person()]) {
+      expect(await attempt(client, planId)).toBe("refused");
+    }
+    // Only Ben's rating was stored.
+    expect(ratingIds(test)).toHaveLength(1);
+
+    test.clock.set(CLOSED);
+    expect(await attempt(ben, planId)).toBe("closed");
+    const _csrf = hiddenFields(await (await ben.get(`/p/${planId}`)).text())._csrf ?? "";
+    expect((await ben.postForm(`/p/${planId}/rating/delete`, { _csrf })).status).toBe(409);
+
+    // Reopening the closed recap for comments does not reopen ratings.
+    const hostFields = hiddenFields(await (await host.get(`/p/${planId}/host`)).text());
+    const reopened = await host.postForm(`/p/${planId}/host`, {
+      _csrf: hostFields._csrf ?? "",
+      retentionDays: "14",
+      recapWindow: "1d",
+    });
+    expect(reopened.status).toBe(303);
+    expect(await (await ben.get(`/p/${planId}`)).text()).toContain(
+      'action="/p/' + planId + '/recap"',
+    );
+    expect(await attempt(ben, planId)).toBe("closed");
+    expect(ratingIds(test)).toHaveLength(1);
   });
 });

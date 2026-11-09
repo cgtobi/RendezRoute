@@ -616,6 +616,7 @@ export const fr: Messages = {
   "rating.remove": "Retirer mon évaluation",
   "rating.yours": "Votre évaluation :",
   "rating.closed": "L’évaluation est close.",
+  "rating.notYetOpen": "L’évaluation ouvre une fois la sortie commencée.",
   "rating.closedNow": "L’évaluation de cette sortie est close.",
   "rating.honesty":
     "Seul·e l’organisateur·rice voit les évaluations et, dans un petit groupe, peut deviner qui en a donné une. Les messages affichent votre nom.",

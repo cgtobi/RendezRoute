@@ -92,13 +92,16 @@ describe("GPX parsing (spec 5 feature 2, 3.8 Uploads)", () => {
   });
 
   it("rejects files with far too many points before building a document", () => {
-    const points = '<trkpt lat="1" lon="1"/>'.repeat(200_000);
-    const start = performance.now();
-    expect(parser.parse(bytes(gpx(`<trk><trkseg>${points}</trkseg></trk>`)))).toEqual({
-      ok: false,
-      error: "route_too_many_points",
-    });
-    expect(performance.now() - start).toBeLessThan(200);
+    // A broken tail makes any built document "unreadable"; counting the points first answers
+    // "too many points" instead. This checks the order without timing it (user decision
+    // 2026-11-09; the test used to require 200 ms, which failed on busy machines).
+    const brokenTail = "<trk><trkseg><trkpt";
+    const file = (count: number) =>
+      bytes(
+        gpx(`<trk><trkseg>${'<trkpt lat="1" lon="1"/>'.repeat(count)}</trkseg></trk>${brokenTail}`),
+      );
+    expect(parser.parse(file(3))).toEqual({ ok: false, error: "route_unreadable" });
+    expect(parser.parse(file(200_000))).toEqual({ ok: false, error: "route_too_many_points" });
   });
 
   it("rejects more than 50,000 points", () => {

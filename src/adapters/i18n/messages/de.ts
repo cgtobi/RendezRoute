@@ -547,7 +547,7 @@ export const de: Messages = {
   "privacy.ratings":
     "Nach einem Treffen können Teilnehmer:innen es mit Daumen hoch oder runter und einer optionalen Nachricht bewerten. Nur die Organisator:in sieht Bewertungen, wenn der Rückblick geschlossen ist und nur bei Treffen mit mindestens 3 Teilnehmer:innen; Nachrichten zeigen den Namen ihrer Verfasser:in. Bewertungen werden mit verschlüsselter Nachricht gespeichert und mit dem Treffen, der Antwort oder deinen Daten gelöscht.",
   "privacy.templates":
-    "Wenn die Organisator:in „Als wiederholbare Vorlage behalten“ wählt oder eine Vorlage speichert, werden die Angaben des Treffens samt ihrem Namen als Vorlage behalten; nie seine Antworten, die Namen der Teilnehmer:innen oder der Rückblick. Genauer Treffpunkt und Route werden nur behalten, wenn die Organisator:in sie einschließt, und dann verschlüsselt. Eine Vorlage wird gelöscht, wenn sie 90 Tage lang weder wiederholt noch bearbeitet wurde.",
+    "Wenn die Organisator:in „Als wiederholbare Vorlage behalten“ wählt oder eine Vorlage speichert, werden die Angaben des Treffens samt ihrem Namen als Vorlage behalten; nie seine Antworten, die Namen der Teilnehmer:innen, der Rückblick oder die Bewertungen. Genauer Treffpunkt und Route werden nur behalten, wenn die Organisator:in sie einschließt, und dann verschlüsselt. Eine Vorlage wird gelöscht, wenn sie 90 Tage lang weder wiederholt noch bearbeitet wurde.",
   "linkTools.heading": "Privater Link",
   "linkTools.explain":
     "Link verloren, oder hat ihn vielleicht jemand anderes? Ein neuer Link ersetzt den alten, und Geräte, die ihn schon nutzen, bleiben angemeldet.",

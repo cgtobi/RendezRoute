@@ -12,6 +12,8 @@ import type {
   PlanViewForParticipant,
   PlanViewForPoster,
   PlanViewForResponder,
+  RatingResultView,
+  RatingView,
 } from "./plan-views.ts";
 import { type PlanDeps, viewPlan } from "./plans.ts";
 import { withdrawResponse } from "./responses.ts";
@@ -80,6 +82,10 @@ export interface ExportedPlan {
   /** Only where the page offers it: the host and accepted participants. */
   route: Route | undefined;
   calendar: CalendarEntry;
+  /** A participant's own rating (spec 6a); nobody else's. */
+  ownRating: RatingView["own"];
+  /** The host's result, once it shows on the host page (spec 6a). */
+  ratingResult: RatingResultView | undefined;
 }
 
 export interface ExportedTemplate {
@@ -108,7 +114,11 @@ async function exportedPlan(
   planId: string,
   device: { id: string; token: string | undefined },
 ): Promise<ExportedPlan | undefined> {
-  const result = await viewPlan(deps, { planId, deviceToken: device.token });
+  const result = await viewPlan(deps, {
+    planId,
+    deviceToken: device.token,
+    withRatingResult: true,
+  });
   if (result.kind === "not_found" || result.kind === "viewer") return undefined;
   const hosting = result.kind === "poster";
   const insider = hosting || result.kind === "participant";
@@ -125,9 +135,14 @@ async function exportedPlan(
       ownContributions: [],
       route: undefined,
       calendar,
+      ownRating: undefined,
+      ratingResult: undefined,
     };
   }
   const { recap, ...view } = result.view;
+  // Per audience (spec 6a): the host's result for the host, one's own rating for a participant.
+  const ownRating = result.kind === "participant" ? result.view.rating?.own : undefined;
+  const ratingResult = result.kind === "poster" ? result.view.ratingResult : undefined;
   return {
     role: hosting ? "host" : "response",
     view,
@@ -137,6 +152,8 @@ async function exportedPlan(
       .map(({ body, linkUrl, hidden }) => ({ body, linkUrl, hidden })),
     route: view.hasRoute ? await deps.plans.findRoute(planId) : undefined,
     calendar,
+    ownRating,
+    ratingResult,
   };
 }
 

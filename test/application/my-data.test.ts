@@ -5,6 +5,7 @@ import { subscribe } from "../../src/application/channels.ts";
 import { acceptRequest } from "../../src/application/host.ts";
 import { deleteMyData, exportMyData, viewMyData } from "../../src/application/my-data.ts";
 import { createPlan, type PlanDeps } from "../../src/application/plans.ts";
+import { ratePlan } from "../../src/application/ratings.ts";
 import { addContribution } from "../../src/application/recap.ts";
 import { respond } from "../../src/application/responses.ts";
 import { saveAsTemplate } from "../../src/application/templates.ts";
@@ -20,6 +21,7 @@ import { fixtureNow, sampleInput } from "../fixtures/plans.ts";
 
 // sampleInput starts on 7 June 2026 at 07:30 in Berlin (05:30 UTC).
 const STARTED = "2026-06-07T06:00:00Z";
+const CLOSED = "2026-06-14T05:30:00Z";
 const route = {
   segments: [
     [
@@ -198,6 +200,42 @@ describe("exportMyData (spec 3.7)", () => {
     expect(await exportMyData(deps, { deviceToken: undefined, scope: { kind: "device" } })).toEqual(
       { kind: "not_found" },
     );
+  });
+});
+
+describe("ratings in the export (spec 6a, 3.7)", () => {
+  it("hold a participant's own rating, and the host's result once it shows", async () => {
+    const { planId, host } = await newPlan();
+    const ben = await person(planId, host, "Ben", "joined");
+    const lea = await person(planId, host, "Lea", "joined");
+    await person(planId, host, "Max", "joined");
+    clock.set(STARTED);
+    await ratePlan(deps, { planId, deviceToken: ben, value: "down", note: "SENTINEL-ben" });
+    await ratePlan(deps, { planId, deviceToken: lea, value: "up", note: "" });
+    const exportOf = async (device: string | undefined) => {
+      const exported = await exportMyData(deps, { deviceToken: device, scope: { kind: "device" } });
+      if (exported.kind !== "found") throw new Error("no export");
+      return exported.data.plans.find((plan) => plan.view.id === planId);
+    };
+    expect(await exportOf(ben)).toMatchObject({
+      ownRating: { value: "down", note: "SENTINEL-ben" },
+      ratingResult: undefined,
+    });
+    expect(await exportOf(lea)).toMatchObject({ ownRating: { value: "up", note: undefined } });
+    expect(JSON.stringify(await exportOf(lea))).not.toContain("SENTINEL-ben");
+    const before = await exportOf(host);
+    expect(before).toMatchObject({ role: "host" });
+    expect(before?.ratingResult).toBeUndefined();
+
+    clock.set(CLOSED);
+    expect((await exportOf(host))?.ratingResult).toMatchObject({
+      participants: 3,
+      rated: 2,
+      up: 1,
+      down: 1,
+      notes: [{ authorName: "Ben", value: "down", note: "SENTINEL-ben" }],
+    });
+    expect(JSON.stringify(await exportOf(lea))).not.toContain("SENTINEL-ben");
   });
 });
 

@@ -63,7 +63,7 @@ describe("the export (spec 3.7)", () => {
     const data = JSON.parse(strFromU8(files["data.json"] ?? new Uint8Array()));
     expect(data).toMatchObject({
       format: "rendezroute-export",
-      version: 1,
+      version: 2,
       plans: [
         {
           role: "host",
@@ -72,6 +72,8 @@ describe("the export (spec 3.7)", () => {
             title: "Tuesday tempo",
             participants: ["Anna", "SENTINEL-Ben"],
           },
+          ownRating: null,
+          ratingResult: null,
           files: { calendar: "plans/1-tuesday-tempo/plan.ics" },
         },
       ],
@@ -100,6 +102,48 @@ describe("the export (spec 3.7)", () => {
     expect((await ben.get(`/p/${planId}/host/export.zip`)).status).toBe(404);
     expect((await host.get(`/p/${planId}/me/export.zip`)).status).toBe(404);
     expect((await new TestClient(app).get("/my-data/export.zip")).status).toBe(404);
+  });
+});
+
+describe("ratings in the export (spec 6a)", () => {
+  it("hold the participant's own rating, and the host's result once due, in data.json", async () => {
+    const { host, ben, app, planId, clock } = await setup();
+    const lea = new TestClient(app);
+    await respondViaUi(lea, planId, "Lea", "joined");
+    await respondViaUi(new TestClient(app), planId, "Max", "joined");
+    clock.set("2026-06-07T06:00:00Z");
+    for (const [client, value, note] of [
+      [ben, "down", "Too fast"],
+      [lea, "up", ""],
+    ] as const) {
+      const _csrf = hiddenFields(await (await client.get(`/p/${planId}`)).text())._csrf ?? "";
+      await client.postForm(`/p/${planId}/rating`, { _csrf, value, note });
+    }
+    const dataOf = async (client: TestClient, path: string) => {
+      const files = await unzip(await client.get(path));
+      return JSON.parse(strFromU8(files["data.json"] ?? new Uint8Array()));
+    };
+
+    const leaData = await dataOf(lea, `/p/${planId}/me/export.zip`);
+    expect(leaData.plans[0]).toMatchObject({
+      ownRating: { value: "up", note: null },
+      ratingResult: null,
+    });
+    expect((await dataOf(host, `/p/${planId}/host/export.zip`)).plans[0].ratingResult).toBeNull();
+
+    clock.set("2026-06-14T05:30:00Z");
+    const hostData = await dataOf(host, "/my-data/export.zip");
+    expect(hostData.plans[0]).toMatchObject({
+      role: "host",
+      ownRating: null,
+      ratingResult: {
+        participants: 3,
+        rated: 2,
+        up: 1,
+        down: 1,
+        notes: [{ author: "SENTINEL-Ben", value: "down", note: "Too fast" }],
+      },
+    });
   });
 });
 

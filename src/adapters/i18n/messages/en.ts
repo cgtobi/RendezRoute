@@ -525,7 +525,7 @@ export const en = {
   "privacy.ratings":
     "After a plan, participants can rate it with a thumbs up or down and an optional note. Only the host sees ratings, once the recap has closed and only for plans with at least 3 participants; notes show their author’s name. Ratings are stored with the note encrypted and deleted with the plan, the response or your data.",
   "privacy.templates":
-    "If a host chooses “Keep as repeatable template” or saves a template, the plan’s details, including the host’s name, are kept as a template; never its responses, participants’ names or recap. The exact start and route are kept only if the host includes them, and then encrypted. A template is deleted after 90 days without being repeated or edited.",
+    "If a host chooses “Keep as repeatable template” or saves a template, the plan’s details, including the host’s name, are kept as a template; never its responses, participants’ names, recap or ratings. The exact start and route are kept only if the host includes them, and then encrypted. A template is deleted after 90 days without being repeated or edited.",
   "linkTools.heading": "Private link",
   "linkTools.explain":
     "Lost your private link, or think someone else has it? A new link replaces the old one, and devices already using it stay signed in.",

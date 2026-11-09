@@ -249,7 +249,10 @@ export async function viewPlan(
   request: {
     planId: string;
     deviceToken: string | undefined;
-    /** The plan page shows the host's rating result; downloads and exports need not decrypt it. */
+    /**
+     * The plan page and the host's export show the host's rating result; calendar and route
+     * downloads need not decrypt it (decision D20).
+     */
     withRatingResult?: boolean;
   },
 ): Promise<ViewPlanResult> {

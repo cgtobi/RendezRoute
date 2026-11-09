@@ -544,7 +544,7 @@ export const fr: Messages = {
   "privacy.ratings":
     "Après une sortie, les participant·e·s peuvent l’évaluer d’un pouce levé ou baissé, avec un message facultatif. Seul·e l’organisateur·rice voit les évaluations, une fois le récapitulatif clos et seulement pour les sorties d’au moins 3 participant·e·s ; les messages affichent le nom de leur auteur·rice. Les évaluations sont enregistrées avec le message chiffré et supprimées avec la sortie, la réponse ou vos données.",
   "privacy.templates":
-    "Si l’organisateur·rice choisit « Garder comme modèle réutilisable » ou enregistre un modèle, les informations de la sortie, y compris le nom de l’organisateur·rice, sont gardées comme modèle, jamais ses réponses, les noms des participant·e·s ni son récapitulatif. Le point de départ exact et le parcours ne sont gardés que si l’organisateur·rice les inclut, et alors chiffrés. Un modèle est supprimé après 90 jours sans être répété ni modifié.",
+    "Si l’organisateur·rice choisit « Garder comme modèle réutilisable » ou enregistre un modèle, les informations de la sortie, y compris le nom de l’organisateur·rice, sont gardées comme modèle, jamais ses réponses, les noms des participant·e·s, son récapitulatif ni ses évaluations. Le point de départ exact et le parcours ne sont gardés que si l’organisateur·rice les inclut, et alors chiffrés. Un modèle est supprimé après 90 jours sans être répété ni modifié.",
   "linkTools.heading": "Lien privé",
   "linkTools.explain":
     "Vous avez perdu votre lien privé, ou quelqu’un d’autre l’a peut-être ? Un nouveau lien remplace l’ancien, et les appareils qui l’utilisent déjà restent connectés.",

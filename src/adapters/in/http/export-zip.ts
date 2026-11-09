@@ -12,8 +12,8 @@ import { fileName } from "./file-names.ts";
 import { writeCalendar } from "./ics.ts";
 import { calendarEvents } from "./views/calendar-events.ts";
 
-/** Changes whenever data.json changes shape, so importers can tell versions apart. */
-export const EXPORT_VERSION = 1;
+/** Changes whenever data.json changes shape, so importers can tell versions apart (2: ratings). */
+export const EXPORT_VERSION = 2;
 
 const orNull = <T>(value: T | undefined): T | null => value ?? null;
 const pointJson = (point: GeoPoint | undefined) =>
@@ -138,6 +138,24 @@ export function exportZip(
         link: orNull(c.linkUrl),
         hiddenByHost: c.hidden,
       })),
+      ownRating:
+        plan.ownRating === undefined
+          ? null
+          : { value: plan.ownRating.value, note: orNull(plan.ownRating.note) },
+      ratingResult:
+        plan.ratingResult === undefined
+          ? null
+          : {
+              participants: plan.ratingResult.participants,
+              rated: plan.ratingResult.rated,
+              up: plan.ratingResult.up,
+              down: plan.ratingResult.down,
+              notes: plan.ratingResult.notes.map((n) => ({
+                author: n.authorName,
+                value: n.value,
+                note: n.note,
+              })),
+            },
       files: { calendar, route: orNull(route), recap: orNull(recap) },
     };
   });

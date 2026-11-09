@@ -2,7 +2,12 @@
 import { type PlanTheme, planTheme } from "../domain/color.ts";
 import type { Units } from "../domain/pace.ts";
 import type { Plan } from "../domain/plan.ts";
-import { type FieldError, type PlanInput, validatePlanInput } from "../domain/plan-input.ts";
+import {
+  type FieldError,
+  type PlanDraft,
+  type PlanInput,
+  validatePlanInput,
+} from "../domain/plan-input.ts";
 import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
 import type { RecapWindow } from "../domain/schedule.ts";
 import { audienceFor, canSee } from "../domain/visibility.ts";
@@ -38,6 +43,7 @@ import type {
   RouteParseError,
   RouteParser,
   SentReminderRepository,
+  TemplateRepository,
 } from "./ports.ts";
 
 export interface PlanDeps extends DeviceDeps {
@@ -49,28 +55,22 @@ export interface PlanDeps extends DeviceDeps {
   calendarFeeds: CalendarFeedRepository;
   /** Recap contributions (spec 6 feature 5). */
   recap: RecapRepository;
+  /** Repeatable templates (spec 3.10). */
+  templates: TemplateRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
   notify?:
     | { channels: ChannelRepository; jobs: JobQueue; reminders: SentReminderRepository }
     | undefined;
 }
 
-const NONCE = /^[A-Za-z0-9_-]{16,64}$/;
+/** One-time form values (decision I9). */
+export const CREATION_NONCE = /^[A-Za-z0-9_-]{16,64}$/;
 
 export type CreatePlanResult =
-  | {
-      kind: "created";
-      planId: string;
-      /** For the share links on the links page. */
-      title: string;
-      hostToken: string;
-      newDeviceToken: string | undefined;
-      deleteAt: Date;
-      /** Canonical IANA zone of the plan, for displaying dates. */
-      timeZone: string;
+  | (CreatedPlan & {
       /** The recap window, if the chosen one was shortened to fit the retention (spec 3.10). */
       recapWindowShortened: RecapWindow | undefined;
-    }
+    })
   | { kind: "duplicate"; planId: string }
   | { kind: "invalid"; errors: FieldError[] }
   | { kind: "bad_request" };
@@ -103,9 +103,8 @@ export async function createPlan(
     routeTrim?: string | undefined;
   },
 ): Promise<CreatePlanResult> {
-  if (!NONCE.test(request.creationNonce)) return { kind: "bad_request" };
-  const existing = await deps.plans.findIdByCreationNonce(request.creationNonce);
-  if (existing !== undefined) return { kind: "duplicate", planId: existing };
+  const used = await checkCreationNonce(deps, request.creationNonce);
+  if (used !== undefined) return used;
 
   const now = deps.clock.now();
   const rules = { now, ...deps.limits };
@@ -134,15 +133,62 @@ export async function createPlan(
     return { kind: "invalid", errors };
   }
 
+  const stored = await storeNewPlan(deps, draft.value, { ...request, route });
+  return stored.kind === "created"
+    ? {
+        ...stored,
+        recapWindowShortened: shortenedRecapWindow(
+          request.input.recapWindow,
+          draft.value.recapWindow,
+        ),
+      }
+    : stored;
+}
+
+/** A created plan, for the links page; the host link exists only here (spec 3.2). */
+export interface CreatedPlan {
+  kind: "created";
+  planId: string;
+  /** For the share links on the links page. */
+  title: string;
+  hostToken: string;
+  newDeviceToken: string | undefined;
+  deleteAt: Date;
+  /** Canonical IANA zone of the plan, for displaying dates. */
+  timeZone: string;
+}
+
+/** Whether a creation nonce is well-formed and unused (decision I9). */
+export async function checkCreationNonce(
+  deps: Pick<PlanDeps, "plans">,
+  nonce: string,
+): Promise<{ kind: "bad_request" } | { kind: "duplicate"; planId: string } | undefined> {
+  if (!CREATION_NONCE.test(nonce)) return { kind: "bad_request" };
+  const existing = await deps.plans.findIdByCreationNonce(nonce);
+  return existing === undefined ? undefined : { kind: "duplicate", planId: existing };
+}
+
+/** Stores a validated plan with a new host link, linking the device as host (spec 3.2). */
+export async function storeNewPlan(
+  deps: PlanDeps,
+  draft: PlanDraft,
+  request: {
+    language: string;
+    creationNonce: string;
+    deviceToken: string | undefined;
+    route: Route | undefined;
+  },
+): Promise<CreatedPlan | { kind: "duplicate"; planId: string }> {
+  const now = deps.clock.now();
   const hostToken = deps.tokens.generate();
   const { device, newToken } = await ensureDevice(deps, request.deviceToken);
   const plan: Plan = {
-    ...draft.value,
+    ...draft,
     id: deps.ids.planId(),
     posterLanguage: request.language,
     visibility: "link",
     status: "active",
-    hasRoute: route !== undefined,
+    hasRoute: request.route !== undefined,
     recapWindowSetAt: undefined,
     recapClosedAt: undefined,
     createdAt: now,
@@ -154,7 +200,7 @@ export async function createPlan(
       hostTokenHash: deps.tokens.hash(hostToken),
       creationNonce: request.creationNonce,
       hostDeviceId: device.id,
-      route,
+      route: request.route,
     });
   } catch (error) {
     // A concurrent submit of the same form won the race (nonce is unique).
@@ -162,7 +208,6 @@ export async function createPlan(
     if (winner !== undefined) return { kind: "duplicate", planId: winner };
     throw error;
   }
-
   return {
     kind: "created",
     planId: plan.id,
@@ -171,7 +216,6 @@ export async function createPlan(
     newDeviceToken: newToken,
     deleteAt: plan.deleteAt,
     timeZone: plan.timeZone,
-    recapWindowShortened: shortenedRecapWindow(request.input.recapWindow, plan.recapWindow),
   };
 }
 

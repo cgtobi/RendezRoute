@@ -47,6 +47,7 @@ import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "./adapters/out/sqlite/plans.ts";
 import { createRecapRepository } from "./adapters/out/sqlite/recap.ts";
+import { createTemplateRepository } from "./adapters/out/sqlite/templates.ts";
 import { createResponseRepository } from "./adapters/out/sqlite/responses.ts";
 import { systemClock } from "./adapters/out/system-clock.ts";
 import { createTokenService } from "./adapters/out/tokens.ts";
@@ -187,6 +188,7 @@ async function openInstance(
     limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
     calendarFeeds: createCalendarFeedRepository(database),
     recap: createRecapRepository(database, keys.cipher),
+    templates: createTemplateRepository(database, keys.cipher),
     notify: {
       channels: createChannelRepository(database, keys.cipher, ids, () => systemClock.now()),
       jobs: createJobQueue(database, keys.cipher, ids),

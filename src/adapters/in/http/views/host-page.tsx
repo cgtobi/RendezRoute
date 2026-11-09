@@ -8,6 +8,7 @@ import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import type { MapSettings } from "./maps.tsx";
 import { PlanForm } from "./plan-form.tsx";
 import { RecapShortenedNotice, RecapWindowSelect } from "./recap.tsx";
+import { TemplateOptions } from "./templates.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
 import type { Units } from "../../../../domain/units.ts";
@@ -50,6 +51,8 @@ export interface HostPageProps {
   units: Units;
   /** Contributions in the recap, from the start of an active plan on (spec 6 feature 7). */
   recapContributions: number | undefined;
+  /** One-time value for "Save as template" (decision I9). */
+  templateNonce: string;
 }
 
 export function HostPage(props: HostPageProps) {
@@ -147,6 +150,22 @@ export function HostPage(props: HostPageProps) {
         )}
       </section>
 
+      <details>
+        <summary>{t("host.saveTemplate")}</summary>
+        <p>{t("host.saveTemplateExplain")}</p>
+        <form method="post" action={`/p/${planId}/host/template`}>
+          {csrf}
+          <input type="hidden" name="nonce" value={props.templateNonce} />
+          <label class="choice">
+            <input type="checkbox" name="includePrivate" value="1" />
+            {t("form.templateIncludePrivate")}
+          </label>
+          <button type="submit" class="secondary">
+            {t("host.saveTemplateConfirm")}
+          </button>
+        </form>
+      </details>
+
       {props.canCancel && (
         <details class="danger-zone">
           <summary>{t("host.cancel")}</summary>
@@ -238,6 +257,12 @@ function RetentionForm(props: HostPageProps) {
         <>
           <input type="hidden" name="retentionDays" value={props.values.retentionDays} />
           <input type="hidden" name="recapWindow" value={props.values.recapWindow} />
+          <input type="hidden" name="keepAsTemplate" value={props.values.keepAsTemplate} />
+          <input
+            type="hidden"
+            name="templateIncludePrivate"
+            value={props.values.templateIncludePrivate}
+          />
           <input type="hidden" name="confirmDeleteNow" value="1" />
           <p class="warning" role="alert">
             {t("host.deletesNowWarning")}
@@ -267,6 +292,7 @@ function RetentionForm(props: HostPageProps) {
               <p class="error">{fieldErrorMessage(recapError.code, t)}</p>
             )}
           </div>
+          <TemplateOptions t={t} values={props.values} errors={props.errors} />
           <button type="submit">{t("host.save")}</button>
         </>
       )}
@@ -354,6 +380,8 @@ export function DeleteConfirm(props: {
   planId: string;
   title: string;
   responseCount: number;
+  /** The plan opted in to "Keep as repeatable template" (spec 3.10). */
+  keepsTemplate: boolean;
   csrfToken: string;
 }) {
   const { t } = props;
@@ -361,6 +389,7 @@ export function DeleteConfirm(props: {
     <section class="host">
       <h1>{t("host.deleteHeading", { title: props.title })}</h1>
       <p class="warning">{t("host.deleteExplain", { count: props.responseCount })}</p>
+      {props.keepsTemplate && <p>{t("host.deleteKeepsTemplate")}</p>}
       <form method="post" action={`/p/${props.planId}/host/delete`}>
         <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
         <button type="submit" class="danger">

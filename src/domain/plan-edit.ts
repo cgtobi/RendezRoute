@@ -8,8 +8,10 @@ import {
   type PlanDraft,
   type PlanInput,
   type PlanRules,
+  type TemplateOption,
   type Validation,
   validatePlanInput,
+  validateTemplateOption,
 } from "./plan-input.ts";
 import type { PlanResponse } from "./response.ts";
 import { err, ok, type Result } from "./result.ts";
@@ -30,9 +32,45 @@ export function editScope(plan: Pick<Plan, "startsAt" | "status">, now: Date): "
 
 const decimal = (value: number) => String(Number(value.toFixed(3)));
 
+/** What plans and templates share (spec 3.10 Templates). */
+export type PlanDetails = Pick<
+  Plan,
+  | "posterName"
+  | "activity"
+  | "title"
+  | "note"
+  | "timeZone"
+  | "area"
+  | "exactStart"
+  | "distanceMeters"
+  | "elevationGainMeters"
+  | "pace"
+  | "dropPolicy"
+  | "joinMode"
+  | "colors"
+  | "retentionDays"
+  | "recapWindow"
+>;
+
+type DateAndOptionFields = "date" | "time" | "keepAsTemplate" | "templateIncludePrivate";
+
 /** The create/edit form values for a stored plan; saving them unchanged reproduces the plan. */
 export function planToInput(plan: Plan, units: Units): PlanInput {
   const local = instantToLocal(plan.startsAt, plan.timeZone);
+  return {
+    ...detailsToInput(plan, units),
+    date: local.date,
+    time: local.time,
+    keepAsTemplate: plan.template.keep ? "1" : "",
+    templateIncludePrivate: plan.template.includePrivate ? "1" : "",
+  };
+}
+
+/** Form values for everything but the date, time and template options. */
+export function detailsToInput(
+  plan: PlanDetails,
+  units: Units,
+): Omit<PlanInput, DateAndOptionFields> {
   const exactPoint = plan.exactStart?.point;
   // The public point is derived from the exact point when there is one, so it is not a form value then.
   const areaPoint = exactPoint === undefined ? plan.area.point : undefined;
@@ -45,8 +83,6 @@ export function planToInput(plan: Plan, units: Units): PlanInput {
     activity: plan.activity,
     title: plan.title,
     note: plan.note ?? "",
-    date: local.date,
-    time: local.time,
     timeZone: plan.timeZone,
     areaLabel: plan.area.label,
     areaLat: areaPoint === undefined ? "" : String(areaPoint.lat),
@@ -88,6 +124,7 @@ export function validatePlanEdit(
 }
 
 export interface RetentionEdit {
+  template: TemplateOption;
   retentionDays: number;
   recapWindow: RecapWindow;
   recapWindowSetAt: Date | undefined;
@@ -98,13 +135,16 @@ export interface RetentionEdit {
 }
 
 /**
- * Retention and the recap window can change at any time; delete_at is always recomputed (spec 3.1
- * Retention edits). An unchanged retention stays valid above a lowered maximum (spec 3.10). The
+ * Retention, the recap window and the template options can change at any time; delete_at is
+ * always recomputed (spec 3.1 Editing, Retention edits). An unchanged retention stays valid above a lowered maximum (spec 3.10). The
  * window is shortened to fit the retention (decision D4) and, after the start, measured from the
  * change (spec 6 feature 6).
  */
 export function validateRetentionEdit(
-  input: { retentionDays: string; recapWindow: string },
+  input: Pick<
+    PlanInput,
+    "retentionDays" | "recapWindow" | "keepAsTemplate" | "templateIncludePrivate"
+  >,
   plan: Pick<
     Plan,
     "startsAt" | "retentionDays" | "recapWindow" | "recapWindowSetAt" | "recapClosedAt" | "deleteAt"
@@ -112,6 +152,8 @@ export function validateRetentionEdit(
   now: Date,
   maxRetentionDays: number,
 ): { ok: true; value: RetentionEdit } | { ok: false; errors: FieldError[] } {
+  const template = validateTemplateOption(input);
+  if (!template.ok) return template;
   const value = input.retentionDays.trim();
   const days = /^\d+$/.test(value) ? Number(value) : Number.NaN;
   const max = days === plan.retentionDays ? Math.max(maxRetentionDays, days) : maxRetentionDays;
@@ -126,6 +168,7 @@ export function validateRetentionEdit(
   return {
     ok: true,
     value: {
+      template: template.value,
       retentionDays: checked.value,
       ...changeRecapWindow(plan, fitRecapWindow(requested, checked.value), now),
       deleteAt: newDeleteAt,

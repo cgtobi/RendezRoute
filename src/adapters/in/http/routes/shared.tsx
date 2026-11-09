@@ -14,6 +14,7 @@ import { PlanPage } from "../views/plan-page.tsx";
 import type { RespondFormState } from "../views/respond-form.tsx";
 import { PreviewTags } from "../views/preview-tags.tsx";
 import { themeVersion } from "../views/theme-css.ts";
+import { localizeDecimal } from "../views/format.ts";
 
 export interface RouteDeps {
   config: Config;
@@ -137,4 +138,15 @@ export async function renderPlanPage(
       ),
     },
   );
+}
+
+/** The time zones offered by the plan and template forms. */
+export const TIME_ZONES = (() => {
+  const zones = Intl.supportedValuesOf("timeZone");
+  return zones.includes("UTC") ? zones : ["UTC", ...zones];
+})();
+
+/** The stored distance with the language's decimal separator, e.g. "12,5" in German (decision I31). */
+export function localizedInput(input: PlanInput, language: string): PlanInput {
+  return { ...input, distanceKm: localizeDecimal(input.distanceKm, language) };
 }

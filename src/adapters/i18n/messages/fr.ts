@@ -487,4 +487,58 @@ export const fr: Messages = {
   "hostLink.confirm": "Utiliser sur cet appareil",
   "hostLink.invalid": "Ce lien n’est pas valide. Il a peut-être été remplacé par un plus récent.",
   "secretLink.confirm": "Utiliser sur cet appareil",
+  "form.template": "Répéter plus tard",
+  "form.keepAsTemplate": "Garder comme modèle réutilisable",
+  "form.templateIncludePrivate": "Inclure le point de départ exact et le parcours",
+  "form.templateHint":
+    "Quand la sortie est supprimée, ses informations restent 90 jours comme modèle, associé aux appareils sur lesquels vous l’organisez, pour que vous puissiez la répéter à une nouvelle date. Les réponses, les noms des participant·e·s et le récapitulatif ne sont jamais gardés.",
+  "home.templates": "Vos modèles",
+  "host.deleteKeepsTemplate":
+    "Ses informations restent comme modèle réutilisable, associé aux appareils sur lesquels vous l’organisez.",
+  "host.saveTemplate": "Enregistrer comme modèle",
+  "host.saveTemplateExplain":
+    "Enregistre les informations de cette sortie comme modèle, avec son propre lien privé, pour la répéter à une nouvelle date. Les réponses, les noms et le récapitulatif ne sont pas inclus.",
+  "host.saveTemplateConfirm": "Enregistrer le modèle",
+  "template.label": "Modèle",
+  "template.startTime": "Départ à {time} ({zone})",
+  "template.includesExactStart": "Avec le point de départ exact",
+  "template.includesRoute": "Avec le parcours",
+  "template.expires": "Supprimé le {date}, sauf si vous le répétez ou le modifiez d’ici là.",
+  "template.repeatHeading": "Répéter",
+  "template.repeatHint":
+    "Crée une nouvelle sortie à partir de ce modèle, avec de nouveaux liens et sans réponses.",
+  "template.repeatSubmit": "Créer la sortie",
+  "template.edit": "Modifier le modèle",
+  "template.editHeading": "Modifier le modèle",
+  "template.back": "Retour au modèle",
+  "template.save": "Enregistrer le modèle",
+  "template.saved": "Modèle enregistré.",
+  "template.removeRoute": "Retirer le parcours",
+  "template.delete": "Supprimer le modèle",
+  "template.deleteExplain":
+    "Cela supprime définitivement le modèle et son lien. Les sorties créées à partir de lui restent.",
+  "template.deleteConfirm": "Supprimer définitivement le modèle",
+  "template.gone": "Ce modèle n’existe pas, ou cet appareil n’y est pas associé.",
+  "template.needsEdit":
+    "Certains réglages ne respectent plus les règles de ce site. Veuillez les modifier, puis répéter le modèle.",
+  "template.adjusted": "Certains réglages ont été adaptés aux règles actuelles de ce site :",
+  "template.adjustedRetention": {
+    one: "Supprimée {count} jour après la sortie au lieu de {from} jours.",
+    other: "Supprimée {count} jours après la sortie au lieu de {from} jours.",
+  },
+  "template.adjustedRecapWindow": "Récapitulatif : « {to} » au lieu de « {from} ».",
+  "template.savedHeading": "Modèle enregistré",
+  "template.savedBody":
+    "« {title} » est enregistré comme modèle. Vous pouvez le répéter à une nouvelle date.",
+  "template.link": "Votre lien de modèle : gardez-le privé",
+  "template.linkWarning":
+    "Enregistrez-le maintenant. Il n’est affiché qu’une fois, et toute personne qui l’a peut répéter, modifier ou supprimer le modèle. Ce navigateur y reste associé.",
+  "template.open": "Ouvrir le modèle",
+  "templateLink.heading": "Utiliser ce lien de modèle sur cet appareil ?",
+  "templateLink.body":
+    "Ce lien vous permet de répéter, modifier ou supprimer le modèle « {title} ».",
+  "templateLink.sharedWarning":
+    "Ne continuez que sur votre propre appareil : toute personne utilisant ce navigateur pourra ensuite utiliser le modèle.",
+  "privacy.templates":
+    "Si l’organisateur·rice choisit « Garder comme modèle réutilisable » ou enregistre un modèle, les informations de la sortie, y compris le nom de l’organisateur·rice, sont gardées comme modèle, jamais ses réponses, les noms des participant·e·s ni son récapitulatif. Le point de départ exact et le parcours ne sont gardés que si l’organisateur·rice les inclut, et alors chiffrés. Un modèle est supprimé après 90 jours sans être répété ni modifié.",
 };

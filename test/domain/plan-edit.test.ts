@@ -14,6 +14,8 @@ const rules = { now: fixtureNow, horizonDays: 180, maxRetentionDays: 30 };
 const plan = samplePlan();
 const started = new Date("2026-06-07T06:00:00Z");
 
+const noTemplate = { keepAsTemplate: "", templateIncludePrivate: "" };
+
 describe("editScope (spec 3.1 Editing, decision D8)", () => {
   it("allows everything before the start, only retention afterwards or when cancelled", () => {
     expect(editScope(plan, fixtureNow)).toBe("all");
@@ -140,10 +142,20 @@ describe("retention above a lowered maximum (spec 3.10: existing plans keep thei
 
   it("keeps an unchanged retention valid in the retention-only edit", () => {
     expect(
-      validateRetentionEdit({ retentionDays: "30", recapWindow: "" }, longPlan, started, 7).ok,
+      validateRetentionEdit(
+        { ...noTemplate, retentionDays: "30", recapWindow: "" },
+        longPlan,
+        started,
+        7,
+      ).ok,
     ).toBe(true);
     expect(
-      validateRetentionEdit({ retentionDays: "20", recapWindow: "" }, longPlan, started, 7),
+      validateRetentionEdit(
+        { ...noTemplate, retentionDays: "20", recapWindow: "" },
+        longPlan,
+        started,
+        7,
+      ),
     ).toEqual({
       ok: false,
       errors: [{ field: "retentionDays", code: "retention_out_of_range" }],
@@ -154,10 +166,16 @@ describe("retention above a lowered maximum (spec 3.10: existing plans keep thei
 describe("validateRetentionEdit (spec 3.1 Retention edits)", () => {
   it("recomputes delete_at and shortens the recap window to fit, measured from the change", () => {
     expect(
-      validateRetentionEdit({ retentionDays: "3", recapWindow: "" }, plan, started, 30),
+      validateRetentionEdit(
+        { ...noTemplate, retentionDays: "3", recapWindow: "" },
+        plan,
+        started,
+        30,
+      ),
     ).toEqual({
       ok: true,
       value: {
+        template: { keep: false, includePrivate: false },
         retentionDays: 3,
         recapWindow: "1d",
         recapWindowSetAt: started,
@@ -170,7 +188,7 @@ describe("validateRetentionEdit (spec 3.1 Retention edits)", () => {
 
   it("changes the recap window after the start: from now, or closed at once (spec 6 feature 6)", () => {
     const closed = validateRetentionEdit(
-      { retentionDays: "14", recapWindow: "now" },
+      { ...noTemplate, retentionDays: "14", recapWindow: "now" },
       plan,
       started,
       30,
@@ -181,7 +199,7 @@ describe("validateRetentionEdit (spec 3.1 Retention edits)", () => {
       recapClosedAt: started,
     });
     const unchanged = validateRetentionEdit(
-      { retentionDays: "14", recapWindow: "1w" },
+      { ...noTemplate, retentionDays: "14", recapWindow: "1w" },
       plan,
       started,
       30,
@@ -192,16 +210,49 @@ describe("validateRetentionEdit (spec 3.1 Retention edits)", () => {
       recapClosedAt: undefined,
     });
     expect(
-      validateRetentionEdit({ retentionDays: "14", recapWindow: "x" }, plan, started, 30),
+      validateRetentionEdit(
+        { ...noTemplate, retentionDays: "14", recapWindow: "x" },
+        plan,
+        started,
+        30,
+      ),
     ).toEqual({
       ok: false,
       errors: [{ field: "recapWindow", code: "choice_invalid" }],
     });
   });
 
+  it("changes the template options at any time (spec 3.1 Editing)", () => {
+    const kept = validateRetentionEdit(
+      { retentionDays: "14", recapWindow: "", keepAsTemplate: "1", templateIncludePrivate: "1" },
+      plan,
+      started,
+      30,
+    );
+    expect(kept.ok && kept.value.template).toEqual({ keep: true, includePrivate: true });
+    const privateOnly = validateRetentionEdit(
+      { ...noTemplate, retentionDays: "14", recapWindow: "", templateIncludePrivate: "1" },
+      plan,
+      started,
+      30,
+    );
+    expect(privateOnly.ok && privateOnly.value.template).toEqual({
+      keep: false,
+      includePrivate: false,
+    });
+    expect(
+      validateRetentionEdit(
+        { ...noTemplate, retentionDays: "14", recapWindow: "", keepAsTemplate: "yes" },
+        plan,
+        started,
+        30,
+      ),
+    ).toEqual({ ok: false, errors: [{ field: "keepAsTemplate", code: "choice_invalid" }] });
+  });
+
   it("flags a deletion date that is already past", () => {
     const result = validateRetentionEdit(
-      { retentionDays: "1", recapWindow: "" },
+      { ...noTemplate, retentionDays: "1", recapWindow: "" },
       plan,
       new Date("2026-06-09T00:00:00Z"),
       30,
@@ -211,13 +262,23 @@ describe("validateRetentionEdit (spec 3.1 Retention edits)", () => {
 
   it("rejects values outside the allowed range", () => {
     expect(
-      validateRetentionEdit({ retentionDays: "31", recapWindow: "" }, plan, started, 30),
+      validateRetentionEdit(
+        { ...noTemplate, retentionDays: "31", recapWindow: "" },
+        plan,
+        started,
+        30,
+      ),
     ).toEqual({
       ok: false,
       errors: [{ field: "retentionDays", code: "retention_out_of_range" }],
     });
     expect(
-      validateRetentionEdit({ retentionDays: "x", recapWindow: "" }, plan, started, 30),
+      validateRetentionEdit(
+        { ...noTemplate, retentionDays: "x", recapWindow: "" },
+        plan,
+        started,
+        30,
+      ),
     ).toEqual({
       ok: false,
       errors: [{ field: "retentionDays", code: "retention_out_of_range" }],

@@ -27,6 +27,8 @@ const valid: PlanInput = {
   secondaryColor: "#FF7A45",
   retentionDays: "",
   recapWindow: "",
+  keepAsTemplate: "",
+  templateIncludePrivate: "",
 };
 
 function draft(overrides: Partial<PlanInput> = {}) {
@@ -61,7 +63,23 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
       retentionDays: 14,
       recapWindow: "1w",
       deleteAt: new Date("2026-06-21T05:30:00Z"),
+      template: { keep: false, includePrivate: false },
     });
+  });
+
+  it("keeps a template only when asked, with the exact start and route only on top (spec 3.10)", () => {
+    expect(draft({ keepAsTemplate: "1" }).template).toEqual({ keep: true, includePrivate: false });
+    expect(draft({ keepAsTemplate: "1", templateIncludePrivate: "1" }).template).toEqual({
+      keep: true,
+      includePrivate: true,
+    });
+    expect(draft({ templateIncludePrivate: "1" }).template).toEqual({
+      keep: false,
+      includePrivate: false,
+    });
+    expect(errors({ keepAsTemplate: "on" })).toEqual([
+      { field: "keepAsTemplate", code: "choice_invalid" },
+    ]);
   });
 
   it("reports every invalid field at once", () => {

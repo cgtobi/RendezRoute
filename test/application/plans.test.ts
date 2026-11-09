@@ -200,7 +200,7 @@ describe("host link (spec 3.2, decision D1)", () => {
     const before = repos.devices.all().length;
     expect(await openHostLink(deps, { token: hostToken, deviceToken: undefined })).toEqual({
       kind: "confirm",
-      planId: "plan-0001",
+      id: "plan-0001",
       title: "Easy Sunday run",
     });
     expect(repos.devices.all()).toHaveLength(before);
@@ -218,14 +218,14 @@ describe("host link (spec 3.2, decision D1)", () => {
     const { hostToken, newDeviceToken } = await created();
     expect(await openHostLink(deps, { token: hostToken, deviceToken: newDeviceToken })).toEqual({
       kind: "already_linked",
-      planId: "plan-0001",
+      id: "plan-0001",
     });
   });
 
   it("links a new device on confirmation and makes it a host", async () => {
     const { hostToken } = await created();
     const confirmed = await confirmHostLink(deps, { token: hostToken, deviceToken: undefined });
-    expect(confirmed).toMatchObject({ kind: "linked", planId: "plan-0001" });
+    expect(confirmed).toMatchObject({ kind: "linked", id: "plan-0001" });
     if (confirmed.kind !== "linked") return;
     const view = await viewPlan(deps, {
       planId: "plan-0001",
@@ -242,7 +242,7 @@ describe("host link (spec 3.2, decision D1)", () => {
       await confirmHostLink(deps, { token: hostToken, deviceToken: other.newDeviceToken }),
     ).toEqual({
       kind: "linked",
-      planId: "plan-0001",
+      id: "plan-0001",
       newDeviceToken: undefined,
     });
   });

@@ -12,6 +12,7 @@ import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import { MapTools, type MapSettings } from "./maps.tsx";
 import { RecapWindowSelect } from "./recap.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
+import { TemplateOptions } from "./templates.tsx";
 import type { Units } from "../../../../domain/units.ts";
 
 const COLOR_PRESETS = [
@@ -51,6 +52,10 @@ export interface PlanFormProps {
   detectZoneFrom?: string | undefined;
   /** Pending requests that switching to open mode would accept; asks first (spec 3.4). */
   confirmAcceptPending?: number | undefined;
+  /** Editing a template: no date and no template options (spec 3.10). */
+  forTemplate?: boolean;
+  /** Shown above the form, e.g. why a template needs changes before repeating. */
+  notice?: string | undefined;
 }
 
 export function PlanForm({
@@ -71,6 +76,8 @@ export function PlanForm({
   units,
   detectZoneFrom,
   confirmAcceptPending,
+  forTemplate = false,
+  notice,
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
   const id = (field: PlanField) => `field-${field}`;
@@ -125,6 +132,7 @@ export function PlanForm({
       enctype={withGpx ? "multipart/form-data" : undefined}
     >
       <h1>{heading}</h1>
+      {notice !== undefined && <p class="warning">{notice}</p>}
       {errors.length > 0 && (
         <p class="error" role="alert">
           {t("form.errors")}
@@ -156,9 +164,11 @@ export function PlanForm({
       </Field>
 
       <div class="field-row">
-        <Field field="date" label={t("form.date")}>
-          {input("date", { type: "date", required: true })}
-        </Field>
+        {!forTemplate && (
+          <Field field="date" label={t("form.date")}>
+            {input("date", { type: "date", required: true })}
+          </Field>
+        )}
         <Field field="time" label={t("form.time")}>
           {input("time", { type: "time", required: true })}
         </Field>
@@ -336,6 +346,8 @@ export function PlanForm({
           selected={values.recapWindow || defaultRecapWindow(Number(retentionDays))}
         />
       </Field>
+
+      {!forTemplate && <TemplateOptions t={t} values={values} errors={errors} />}
 
       {confirmAcceptPending !== undefined && (
         <>

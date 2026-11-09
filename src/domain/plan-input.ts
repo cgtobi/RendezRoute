@@ -54,6 +54,9 @@ export const PLAN_INPUT_FIELDS = [
   "retentionDays",
   // "now", "1d" or "1w" (spec 6 feature 6); empty means the largest that fits the retention.
   "recapWindow",
+  // Checkboxes, "1" when ticked (spec 3.10 Templates).
+  "keepAsTemplate",
+  "templateIncludePrivate",
 ] as const;
 
 /** Raw form values; empty strings mean "not given". */
@@ -82,6 +85,31 @@ export interface PlanDraft {
   retentionDays: number;
   recapWindow: RecapWindow;
   deleteAt: Date;
+  template: TemplateOption;
+}
+
+/** "Keep as repeatable template", and whether it includes the exact start and route (spec 3.10). */
+export interface TemplateOption {
+  keep: boolean;
+  /** Only together with `keep`. */
+  includePrivate: boolean;
+}
+
+/** The template checkboxes; anything but empty or "1" is invalid. */
+export function validateTemplateOption(
+  input: Pick<PlanInput, "keepAsTemplate" | "templateIncludePrivate">,
+): { ok: true; value: TemplateOption } | { ok: false; errors: FieldError[] } {
+  const errors: FieldError[] = [];
+  const flag = (field: "keepAsTemplate" | "templateIncludePrivate") => {
+    const value = input[field].trim();
+    if (value !== "" && value !== "1") errors.push({ field, code: "choice_invalid" });
+    return value === "1";
+  };
+  const keep = flag("keepAsTemplate");
+  const includePrivate = flag("templateIncludePrivate");
+  return errors.length > 0
+    ? { ok: false, errors }
+    : { ok: true, value: { keep, includePrivate: keep && includePrivate } };
 }
 
 /** Decision D7. */
@@ -268,6 +296,8 @@ export function validatePlanInput(
     input.recapWindow.trim() === ""
       ? undefined
       : choice("recapWindow", RECAP_WINDOWS, input.recapWindow.trim());
+  const template = validateTemplateOption(input);
+  if (!template.ok) errors.push(...template.errors);
 
   if (
     errors.length > 0 ||
@@ -281,7 +311,8 @@ export function validatePlanInput(
     joinMode === undefined ||
     !primary.ok ||
     !secondary.ok ||
-    retentionDays === undefined
+    retentionDays === undefined ||
+    !template.ok
   ) {
     return { ok: false, errors };
   }
@@ -309,6 +340,7 @@ export function validatePlanInput(
           ? defaultRecapWindow(retentionDays)
           : fitRecapWindow(chosenWindow, retentionDays),
       deleteAt: deleteAt(startsAt, retentionDays),
+      template: template.value,
     },
   };
 }

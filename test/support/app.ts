@@ -15,6 +15,7 @@ import { type Database, openDatabase } from "../../src/adapters/out/sqlite/datab
 import { createDeviceRepository } from "../../src/adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "../../src/adapters/out/sqlite/plans.ts";
 import { createRecapRepository } from "../../src/adapters/out/sqlite/recap.ts";
+import { createTemplateRepository } from "../../src/adapters/out/sqlite/templates.ts";
 import { createResponseRepository } from "../../src/adapters/out/sqlite/responses.ts";
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { type Config, loadConfig } from "../../src/config.ts";
@@ -74,6 +75,7 @@ export async function createTestApp({
     limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
     calendarFeeds: createCalendarFeedRepository(database),
     recap: createRecapRepository(database, cipher),
+    templates: createTemplateRepository(database, cipher),
     notify: { channels, jobs, reminders: createSentReminderRepository(database) },
   };
   const app = createApp({

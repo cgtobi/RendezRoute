@@ -13,7 +13,6 @@ import {
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
-import { localizeDecimal } from "../views/format.ts";
 import { DeleteConfirm, HostPage } from "../views/host-page.tsx";
 import { recapWindowParam } from "../views/recap.tsx";
 import { MapAssets } from "../views/maps.tsx";
@@ -30,9 +29,11 @@ import {
   readForm,
   type RouteDeps,
   clientOf,
+  localizedInput,
+  newNonce,
+  TIME_ZONES,
   tooManyRequests,
 } from "./shared.tsx";
-import { TIME_ZONES } from "./plans.tsx";
 
 export function registerHostRoutes(
   app: Hono<AppEnv>,
@@ -80,6 +81,7 @@ export function registerHostRoutes(
         confirmAcceptPending={form.confirmAcceptPending}
         hasRoute={page.hasRoute}
         recapContributions={page.recapContributions}
+        templateNonce={newNonce()}
         routeError={form.routeError}
         routeTrim={form.routeTrim ?? ""}
         map={mapSettings(config)}
@@ -158,6 +160,7 @@ export function registerHostRoutes(
         planId={page.planId}
         title={page.title}
         responseCount={participants.length + interested.length + removed.length}
+        keepsTemplate={page.input.keepAsTemplate === "1"}
         csrfToken={c.get("csrfToken")()}
       />,
       { title: c.get("t")("host.deleteHeading", { title: page.title }) },
@@ -205,9 +208,4 @@ export function registerHostRoutes(
       return afterAction(c, result, `/p/${request(c).planId}/host`);
     });
   }
-}
-
-/** The stored distance with the language's decimal separator, e.g. "12,5" in German (decision I31). */
-function localizedInput(input: PlanInput, language: string): PlanInput {
-  return { ...input, distanceKm: localizeDecimal(input.distanceKm, language) };
 }

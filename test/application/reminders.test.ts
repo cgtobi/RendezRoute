@@ -384,7 +384,7 @@ describe("deletion notices (spec 3.10)", () => {
     takeQueued();
     const plans = deps.plans;
     const failing = Object.assign(Object.create(plans) as typeof plans, {
-      delete: () => Promise.reject(new Error("disk full")),
+      deleteMany: () => Promise.reject(new Error("disk full")),
     });
     await expect(
       deletePlan({ ...deps, plans: failing }, { planId, deviceToken: host }),

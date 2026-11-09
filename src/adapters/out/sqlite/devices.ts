@@ -2,10 +2,27 @@
 import type { DeviceLinkTarget, DeviceRepository } from "../../../application/ports.ts";
 import { checkpoint, type Database } from "./database.ts";
 
-const columns = (target: DeviceLinkTarget) =>
-  target.role === "host"
-    ? { role: "host" as const, plan_id: target.planId, response_id: null }
-    : { role: "manage" as const, plan_id: null, response_id: target.responseId };
+/** The column and value that identify a link's target. */
+const targetOf = (target: DeviceLinkTarget) => {
+  switch (target.role) {
+    case "host":
+      return ["plan_id", target.planId] as const;
+    case "manage":
+      return ["response_id", target.responseId] as const;
+    case "template":
+      return ["template_id", target.templateId] as const;
+  }
+};
+
+const targetEquals = (target: DeviceLinkTarget) => {
+  const [column, id] = targetOf(target);
+  return [column, "=", id] as const;
+};
+
+const columns = (target: DeviceLinkTarget) => {
+  const [column, id] = targetOf(target);
+  return { plan_id: null, response_id: null, template_id: null, role: target.role, [column]: id };
+};
 
 export function createDeviceRepository(database: Database): DeviceRepository {
   return {
@@ -48,11 +65,7 @@ export function createDeviceRepository(database: Database): DeviceRepository {
         .select("device_id")
         .where("device_id", "=", deviceId)
         .where("role", "=", target.role)
-        .where(
-          target.role === "host" ? "plan_id" : "response_id",
-          "=",
-          target.role === "host" ? target.planId : target.responseId,
-        )
+        .where(...targetEquals(target))
         .executeTakeFirst();
       return row !== undefined;
     },

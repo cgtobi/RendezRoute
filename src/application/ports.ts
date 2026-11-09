@@ -8,6 +8,7 @@ import type { ReminderKind } from "../domain/reminders.ts";
 import type { PlanResponse, ResponseKind } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import type { Route, RouteError } from "../domain/route.ts";
+import type { PlanTemplate } from "../domain/template.ts";
 import type { PlanPreview } from "./plan-views.ts";
 
 // Driven ports (spec 2a). Use cases receive implementations as arguments;
@@ -105,10 +106,10 @@ export interface PlanRepository {
   update(plan: Plan): Promise<void>;
   /** Hard delete of the plan and everything referencing it, physically removed from disk (spec 1.6, 3.10). */
   delete(id: string): Promise<void>;
-  /** Like delete, for several plans in one transaction (retention sweep). */
-  deleteMany(ids: readonly string[]): Promise<void>;
-  /** IDs of plans whose delete_at is at or before `now`, cancelled plans included (spec 3.10). */
-  findDueForDeletion(now: Date): Promise<string[]>;
+  /** Like delete, for several plans in one transaction; templates kept from them are stored in it too. */
+  deleteMany(ids: readonly string[], templates?: readonly NewTemplate[]): Promise<void>;
+  /** Plans whose delete_at is at or before `now`, cancelled plans included (spec 3.10). */
+  findDueForDeletion(now: Date): Promise<Plan[]>;
   /** Active plans starting within the range, bounds included (spec 6 feature 3: day-before reminder). */
   findActiveStartingBetween(from: Date, to: Date): Promise<Plan[]>;
   /** Active plans being deleted within the range, bounds included (spec 3.10: deletion reminder). */
@@ -142,7 +143,44 @@ export interface Device {
 /** What a device is linked to, and in which role (spec 3.2). */
 export type DeviceLinkTarget =
   | { role: "host"; planId: string }
-  | { role: "manage"; responseId: string };
+  | { role: "manage"; responseId: string }
+  | { role: "template"; templateId: string };
+
+/** A template to store, with the plan whose host devices get linked to it (spec 3.10). */
+export interface NewTemplate {
+  template: PlanTemplate;
+  /** Undefined for templates kept at deletion: no link is shown then (decision I36). */
+  hostTokenHash: string | undefined;
+  /** Only when the template includes the exact start and route. */
+  route: Route | undefined;
+  /** The plan ID whose host devices get linked to the template. */
+  hostsOfPlan: string;
+  /** One-time value from the "Save as template" form; detects resubmission (decision I9). */
+  creationNonce?: string | undefined;
+}
+
+/** Repeatable templates (spec 3.10); exact start and route encrypted at rest. */
+export interface TemplateRepository {
+  /** Stores the template and links the plan's host devices to it, in one transaction. */
+  create(input: NewTemplate): Promise<void>;
+  findById(id: string): Promise<PlanTemplate | undefined>;
+  findByHostTokenHash(hash: string): Promise<PlanTemplate | undefined>;
+  findIdByCreationNonce(nonce: string): Promise<string | undefined>;
+  /** Stores every field but the route. */
+  update(template: PlanTemplate): Promise<void>;
+  /** A repeat or edit: the template stays until `expiresAt` (spec 3.10). */
+  markUsed(id: string, lastUsedAt: Date, expiresAt: Date): Promise<void>;
+  /** The route, decrypted; only for devices linked to the template. */
+  findRoute(id: string): Promise<Route | undefined>;
+  /** Removes the route, physically (spec 3.10). */
+  deleteRoute(id: string): Promise<void>;
+  /** Physical delete (spec 3.10). */
+  delete(id: string): Promise<void>;
+  /** The templates linked to a device, by title. */
+  listForDevice(deviceId: string): Promise<PlanTemplate[]>;
+  /** Deletes templates whose expiry has passed; returns how many (spec 3.10). */
+  deleteExpired(now: Date): Promise<number>;
+}
 
 export interface DeviceRepository {
   findByTokenHash(hash: string): Promise<Device | undefined>;

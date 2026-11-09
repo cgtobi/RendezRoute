@@ -58,10 +58,44 @@ export interface DevicesTable {
 
 export interface DeviceLinksTable {
   device_id: string;
-  role: "host" | "manage";
+  role: "host" | "manage" | "template";
   plan_id: string | null;
   response_id: string | null;
+  template_id: string | null;
   created_at: string;
+}
+
+export interface PlanTemplatesTable {
+  id: string;
+  host_token_hash: string | null;
+  poster_name: string;
+  poster_language: string;
+  timezone: string;
+  start_time: string;
+  activity_type: ActivityType;
+  title: string;
+  note: string | null;
+  area_label: string;
+  area_lat: number | null;
+  area_lng: number | null;
+  exact_location_enc: string | null;
+  distance_m: number | null;
+  elevation_gain_m: number | null;
+  pace_min_s_per_km: number | null;
+  pace_max_s_per_km: number | null;
+  drop_policy: DropPolicy;
+  primary_color: string;
+  secondary_color: string;
+  visibility: Visibility;
+  join_mode: JoinMode;
+  recap_window: RecapWindow;
+  retention_days: number;
+  route_geojson_enc: string | null;
+  creation_nonce: string | null;
+  last_used_at: string;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ResponsesTable {
@@ -160,4 +194,5 @@ export interface DatabaseSchema {
   sent_reminders: SentRemindersTable;
   calendar_feeds: CalendarFeedsTable;
   recap_contributions: RecapContributionsTable;
+  plan_templates: PlanTemplatesTable;
 }

@@ -33,6 +33,7 @@ describe("privacy notice (spec 5 feature 13)", () => {
       "privacy.previews",
       "privacy.calendar",
       "privacy.storedRecap",
+      "privacy.templates",
     ] as const) {
       expect(text(html)).toContain(en(key));
     }

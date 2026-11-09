@@ -511,3 +511,16 @@ button.danger {
 .push {
   margin: 24px 0;
 }
+
+/* Templates (spec 3.10): the home page list and the template page's summary. */
+.templates ul,
+.template-facts {
+  padding: 0;
+  list-style: none;
+}
+
+.templates li,
+.template-facts li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}

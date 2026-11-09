@@ -31,7 +31,8 @@ export function serviceName(url: string): string | undefined {
   return host === undefined ? undefined : SERVICES.find(([pattern]) => pattern.test(host))?.[1];
 }
 
-const WINDOW_LABELS: Readonly<Record<RecapWindow, MessageKey>> = {
+/** The label of each recap window choice. */
+export const WINDOW_LABELS: Readonly<Record<RecapWindow, MessageKey>> = {
   now: "form.recapWindowNow",
   "1d": "form.recapWindow1d",
   "1w": "form.recapWindow1w",

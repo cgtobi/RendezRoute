@@ -23,6 +23,7 @@ import type { Result } from "../domain/result.ts";
 import { resolveDevice } from "./devices.ts";
 import { deletionNotices, notifyResponders, notifyResponse } from "./notify.ts";
 import type { PlanDeps } from "./plans.ts";
+import { deletePlansKeepingTemplates } from "./templates.ts";
 
 export type Denied = { kind: "not_found" } | { kind: "forbidden" };
 
@@ -148,13 +149,15 @@ export async function editPlan(
     if (!edit.ok) return { kind: "invalid", errors: edit.errors };
     if (edit.value.deletesNow) {
       if (!request.confirmDeleteNow) return { kind: "confirm_delete_now" };
-      // Same path as retention deletion; templates and notifications arrive in v0.5.
-      await deps.plans.delete(plan.id);
+      // Same path as retention deletion: a template is kept if asked for, in this form too (spec 3.10).
+      await deletePlansKeepingTemplates(deps, [{ ...plan, template: edit.value.template }]);
       return { kind: "deleted" };
     }
-    const { retentionDays, recapWindow, recapWindowSetAt, recapClosedAt, deleteAt } = edit.value;
+    const { template, retentionDays, recapWindow, recapWindowSetAt, recapClosedAt, deleteAt } =
+      edit.value;
     await deps.plans.update({
       ...plan,
+      template,
       retentionDays,
       recapWindow,
       recapWindowSetAt,
@@ -222,7 +225,7 @@ export async function deletePlan(
   const plan = await asHost(deps, request.planId, request.deviceToken);
   if (isDenied(plan)) return plan;
   const sendNotices = await deletionNotices(deps, plan);
-  await deps.plans.delete(plan.id);
+  await deletePlansKeepingTemplates(deps, [plan]);
   await sendNotices();
   return { kind: "deleted" };
 }

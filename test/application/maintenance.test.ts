@@ -65,6 +65,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
   it("deletes pre-migration backups after 7 days (spec 11)", async () => {
     const backups = new FakeBackupStore(2);
     expect(await runHousekeeping({ ...deps, backups })).toEqual({
+      deletedTemplates: 0,
       deletedDevices: 0,
       deletedFeeds: 0,
       deletedBackups: 2,
@@ -77,6 +78,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
     await addPlan("p", 14);
     clock.advance({ days: 31 });
     expect(await runHousekeeping({ ...deps, backups: new FakeBackupStore() })).toEqual({
+      deletedTemplates: 0,
       deletedDevices: 1,
       deletedFeeds: 0,
       deletedBackups: 0,

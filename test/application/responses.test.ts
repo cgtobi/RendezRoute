@@ -358,14 +358,18 @@ describe("manage link (spec 3.2, decision D1)", () => {
     const ben = await joined();
     expect(await openManageLink(deps, { token: ben.manageToken, deviceToken: undefined })).toEqual({
       kind: "confirm",
-      planId,
+      id: planId,
       title: "Easy Sunday run",
     });
     const linked = await confirmManageLink(deps, {
       token: ben.manageToken,
       deviceToken: undefined,
     });
-    expect(linked).toMatchObject({ kind: "linked", planId, newDeviceToken: expect.any(String) });
+    expect(linked).toMatchObject({
+      kind: "linked",
+      id: planId,
+      newDeviceToken: expect.any(String),
+    });
     if (linked.kind !== "linked") return;
     expect(
       await viewMyResponse(deps, { planId, deviceToken: linked.newDeviceToken }),
@@ -374,7 +378,7 @@ describe("manage link (spec 3.2, decision D1)", () => {
       await openManageLink(deps, { token: ben.manageToken, deviceToken: linked.newDeviceToken }),
     ).toEqual({
       kind: "already_linked",
-      planId,
+      id: planId,
     });
   });
 

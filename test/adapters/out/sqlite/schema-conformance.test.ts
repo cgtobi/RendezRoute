@@ -132,6 +132,8 @@ describe("device_links", () => {
     expect(link("host", null, "resp-x")).toThrow(/CHECK constraint failed/);
     expect(link("manage", "plan-x", null)).toThrow(/CHECK constraint failed/);
     expect(link("host", "plan-x", "resp-x")).toThrow(/CHECK constraint failed/);
+    expect(link("template", "plan-x", null)).toThrow(/CHECK constraint failed/);
+    expect(link("template", null, "resp-x")).toThrow(/CHECK constraint failed/);
     expect(link("host", "plan-x", null)).not.toThrow();
     expect(link("manage", null, "resp-x")).not.toThrow();
   });

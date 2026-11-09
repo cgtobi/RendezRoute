@@ -1,10 +1,13 @@
-// Host links (/a) and manage links (/m): confirm on GET, link on POST (spec 3.2, decision D1).
+// Host links (/a), manage links (/m) and template links (/t): confirm on GET, link on POST
+// (spec 3.2, decision D1).
 import type { Hono } from "hono";
 import {
   confirmHostLink,
   confirmManageLink,
+  confirmTemplateLink,
   openHostLink,
   openManageLink,
+  openTemplateLink,
 } from "../../../../application/secret-links.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
@@ -12,11 +15,11 @@ import { SecretLinkConfirm, SecretLinkHead } from "../views/secret-link.tsx";
 import { badRequest, formField, readForm, type RouteDeps, secretLinkHeaders } from "./shared.tsx";
 
 /**
- * Paths that carry a secret token (spec 3.2): host and manage links, and calendar feeds. They must
- * never be echoed into other URLs.
+ * Paths that carry a secret token (spec 3.2): host, manage and template links, and calendar feeds.
+ * They must never be echoed into other URLs.
  */
 export function isSecretLinkPath(path: string): boolean {
-  return /^\/(?:a|m|c)(?:\/|$)/.test(path);
+  return /^\/(?:a|m|t|c)(?:\/|$)/.test(path);
 }
 
 const KINDS = {
@@ -42,6 +45,17 @@ const KINDS = {
       warning: "manageLink.sharedWarning",
     },
   },
+  template: {
+    path: "/t",
+    open: openTemplateLink,
+    confirm: confirmTemplateLink,
+    target: (templateId: string) => `/templates/${templateId}`,
+    texts: {
+      heading: "templateLink.heading",
+      body: "templateLink.body",
+      warning: "templateLink.sharedWarning",
+    },
+  },
 } as const;
 
 export function registerSecretLinkRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {
@@ -56,7 +70,7 @@ export function registerSecretLinkRoutes(app: Hono<AppEnv>, { config, planDeps }
           c.status(404);
           return c.render(<p>{t("hostLink.invalid")}</p>, { head: <SecretLinkHead t={t} /> });
         case "already_linked":
-          return c.redirect(kind.target(result.planId), 303);
+          return c.redirect(kind.target(result.id), 303);
         case "confirm":
           c.header("x-robots-tag", "noindex");
           return c.render(
@@ -87,7 +101,7 @@ export function registerSecretLinkRoutes(app: Hono<AppEnv>, { config, planDeps }
         return c.render(<p>{c.get("t")("hostLink.invalid")}</p>);
       }
       if (result.newDeviceToken !== undefined) setDeviceToken(c, config, result.newDeviceToken);
-      return c.redirect(kind.target(result.planId), 303);
+      return c.redirect(kind.target(result.id), 303);
     });
   }
 }

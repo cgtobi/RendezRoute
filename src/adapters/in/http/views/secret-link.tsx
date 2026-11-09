@@ -18,7 +18,7 @@ export function SecretLinkConfirm(props: {
   heading: string;
   body: string;
   warning: string;
-  action: "/a" | "/m";
+  action: "/a" | "/m" | "/t";
   token: string;
   csrfToken: string;
 }) {

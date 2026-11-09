@@ -5,14 +5,17 @@ import type {
   DeviceLinkTarget,
   DeviceRepository,
   LinkedPlan,
+  NewTemplate,
   PlanRepository,
   RecapRepository,
   ResponseRepository,
+  TemplateRepository,
 } from "../../src/application/ports.ts";
 import type { Plan } from "../../src/domain/plan.ts";
 import type { RecapContribution } from "../../src/domain/recap.ts";
 import type { PlanResponse } from "../../src/domain/response.ts";
 import type { Route } from "../../src/domain/route.ts";
+import type { PlanTemplate } from "../../src/domain/template.ts";
 
 /** In-memory repositories sharing one store, like the SQLite adapters share a database. */
 export function createFakeRepositories(): {
@@ -21,6 +24,7 @@ export function createFakeRepositories(): {
   responses: ResponseRepository;
   calendarFeeds: CalendarFeedRepository;
   recap: RecapRepository;
+  templates: TemplateRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
   const routes = new Map<string, Route>();
@@ -35,6 +39,15 @@ export function createFakeRepositories(): {
   const responseNonces = new Map<string, string>();
   const feeds = new Map<string, CalendarFeed & { tokenHash: string }>();
   const contributions = new Map<string, RecapContribution>();
+  const templates = new Map<
+    string,
+    {
+      template: PlanTemplate;
+      hostTokenHash: string | undefined;
+      route: Route | undefined;
+      creationNonce: string | undefined;
+    }
+  >();
   const deleteContributions = (matches: (c: RecapContribution) => boolean) => {
     let deleted = 0;
     for (const [id, c] of contributions) {
@@ -46,8 +59,45 @@ export function createFakeRepositories(): {
     return deleted;
   };
 
+  const targetId = (target: DeviceLinkTarget) =>
+    target.role === "host"
+      ? target.planId
+      : target.role === "manage"
+        ? target.responseId
+        : target.templateId;
   const linkKey = (deviceId: string, target: DeviceLinkTarget) =>
-    `${deviceId}|${target.role}|${target.role === "host" ? target.planId : target.responseId}`;
+    `${deviceId}|${target.role}|${targetId(target)}`;
+  const deleteTemplate = (id: string) => {
+    templates.delete(id);
+    for (const key of links) if (key.endsWith(`|template|${id}`)) links.delete(key);
+  };
+  /** Stores a template and links the plan's host devices, like the SQLite adapter. */
+  const insertTemplate = ({
+    template,
+    hostTokenHash,
+    route,
+    hostsOfPlan,
+    creationNonce,
+  }: NewTemplate) => {
+    if (
+      creationNonce !== undefined &&
+      [...templates.values()].some((e) => e.creationNonce === creationNonce)
+    ) {
+      throw new Error("duplicate key");
+    }
+    templates.set(template.id, {
+      creationNonce,
+      template: structuredClone({ ...template, hasRoute: route !== undefined }),
+      hostTokenHash,
+      route: structuredClone(route),
+    });
+    const hostDevices = Array.from(links, (key) => key.split("|"))
+      .filter(([, role, id]) => role === "host" && id === hostsOfPlan)
+      .map(([device = ""]) => device);
+    for (const device of hostDevices) {
+      links.add(linkKey(device, { role: "template", templateId: template.id }));
+    }
+  };
   const copy = (response: PlanResponse) => structuredClone(response);
 
   /** Plan deletion with the cascades the database performs. */
@@ -99,7 +149,7 @@ export function createFakeRepositories(): {
       async findDueForDeletion(now) {
         return [...plans.values()]
           .filter((e) => e.plan.deleteAt.getTime() <= now.getTime())
-          .map((e) => e.plan.id);
+          .map((e) => structuredClone(e.plan));
       },
       async findRoute(planId) {
         const route = routes.get(planId);
@@ -157,8 +207,66 @@ export function createFakeRepositories(): {
           .map((e) => structuredClone(e.plan));
       },
       delete: async (id) => deletePlan(id),
-      async deleteMany(ids) {
+      async deleteMany(ids, kept = []) {
+        for (const template of kept) insertTemplate(template);
         for (const id of ids) deletePlan(id);
+      },
+    },
+
+    templates: {
+      async create(input) {
+        insertTemplate(input);
+      },
+      async findById(id) {
+        const entry = templates.get(id);
+        return entry === undefined ? undefined : structuredClone(entry.template);
+      },
+      async findByHostTokenHash(hash) {
+        const entry = [...templates.values()].find((e) => e.hostTokenHash === hash);
+        return entry === undefined ? undefined : structuredClone(entry.template);
+      },
+      async findIdByCreationNonce(nonce) {
+        return [...templates.values()].find((e) => e.creationNonce === nonce)?.template.id;
+      },
+      async update(template) {
+        const entry = templates.get(template.id);
+        if (entry !== undefined) {
+          entry.template = structuredClone({ ...template, hasRoute: entry.route !== undefined });
+        }
+      },
+      async markUsed(id, lastUsedAt, expiresAt) {
+        const entry = templates.get(id);
+        if (entry !== undefined) {
+          entry.template = { ...entry.template, lastUsedAt, expiresAt, updatedAt: lastUsedAt };
+        }
+      },
+      async findRoute(id) {
+        return structuredClone(templates.get(id)?.route);
+      },
+      async deleteRoute(id) {
+        const entry = templates.get(id);
+        if (entry !== undefined) {
+          entry.route = undefined;
+          entry.template = { ...entry.template, hasRoute: false };
+        }
+      },
+      async delete(id) {
+        deleteTemplate(id);
+      },
+      async listForDevice(deviceId) {
+        return [...templates.values()]
+          .filter((e) =>
+            links.has(linkKey(deviceId, { role: "template", templateId: e.template.id })),
+          )
+          .map((e) => structuredClone(e.template))
+          .sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+      },
+      async deleteExpired(now) {
+        const expired = [...templates.values()].filter(
+          (e) => e.template.expiresAt.getTime() <= now.getTime(),
+        );
+        for (const e of expired) deleteTemplate(e.template.id);
+        return expired.length;
       },
     },
 

@@ -7,6 +7,7 @@ import { bodyLimit } from "hono/body-limit";
 import type { Child } from "hono/jsx";
 import { jsxRenderer } from "hono/jsx-renderer";
 import type { PlanDeps } from "../../../application/plans.ts";
+import { listTemplates } from "../../../application/templates.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
 import { isUnits, type Units } from "../../../domain/units.ts";
@@ -14,6 +15,7 @@ import { type Language, resolveLanguage, type Translate, translator } from "../.
 import type { Logger } from "../../logging.ts";
 import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
+import { readDeviceToken } from "./device-cookie.ts";
 import { readPreference } from "./preference-cookies.ts";
 import type { RateLimits } from "./rate-limit.ts";
 import { registerCalendarRoutes } from "./routes/calendar.tsx";
@@ -23,10 +25,12 @@ import { registerPreferenceRoutes } from "./routes/preferences.ts";
 import { registerPlaceRoutes } from "./routes/places.ts";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerRecapRoutes } from "./routes/recap.tsx";
+import { registerTemplateRoutes } from "./routes/templates.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
 import { PrivacyPage } from "./views/privacy-page.tsx";
+import { TemplateList } from "./views/templates.tsx";
 import { requestLogger } from "./request-logger.ts";
 import { securityHeaders } from "./security-headers.ts";
 
@@ -172,8 +176,13 @@ export function createApp({
     serveStatic({ root: STATIC_ROOT, rewriteRequestPath: (path) => path.replace(/^\/static/, "") }),
   );
 
-  app.get("/", (c) => {
+  app.get("/", async (c) => {
     const t = c.get("t");
+    // The device's templates (spec 3.10, decision I43), so the page is private when it has any.
+    const templates = await listTemplates(planDeps, {
+      deviceToken: readDeviceToken(c, config),
+    });
+    if (templates.length > 0) c.header("cache-control", "private, no-store");
     return c.render(
       <section class="home">
         <p>{t("home.intro")}</p>
@@ -182,6 +191,7 @@ export function createApp({
             {t("home.cta")}
           </a>
         </p>
+        <TemplateList t={t} templates={templates} />
       </section>,
     );
   });
@@ -224,6 +234,7 @@ export function createApp({
   registerNotificationRoutes(app, { config, planDeps, limits: rateLimits });
   registerCalendarRoutes(app, deps);
   registerRecapRoutes(app, deps);
+  registerTemplateRoutes(app, deps);
 
   return app;
 }

@@ -54,7 +54,9 @@ describe("plans due for deletion (spec 3.10)", () => {
     });
     await addPlan({ deleteAt: new Date("2026-06-21T05:31:00Z") });
     const found = await repos().plans.findDueForDeletion(new Date("2026-06-21T05:30:00Z"));
-    expect(found.sort()).toEqual([cancelled.id, due.id].sort());
+    expect(found.map((plan) => plan.id).sort((a, b) => a.localeCompare(b))).toEqual(
+      [cancelled.id, due.id].sort((a, b) => a.localeCompare(b)),
+    );
   });
 
   it("deletes several plans at once and leaves no trace in the files (security test)", async () => {

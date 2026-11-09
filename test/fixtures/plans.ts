@@ -27,6 +27,8 @@ export const sampleInput: PlanInput = {
   secondaryColor: "#FF7A45",
   retentionDays: "",
   recapWindow: "",
+  keepAsTemplate: "",
+  templateIncludePrivate: "",
 };
 
 export function samplePlan(overrides: Partial<Plan> = {}, input: Partial<PlanInput> = {}): Plan {

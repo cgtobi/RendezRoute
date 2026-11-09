@@ -28,6 +28,7 @@ import {
   clientOf,
   tooManyRequests,
   secretLinkHeaders,
+  TIME_ZONES,
 } from "./shared.tsx";
 
 /** ASCII file name from a title, e.g. "Easy Sunday run" → "easy-sunday-run". */
@@ -39,11 +40,6 @@ const fileName = (title: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "route";
-
-export const TIME_ZONES = (() => {
-  const zones = Intl.supportedValuesOf("timeZone");
-  return zones.includes("UTC") ? zones : ["UTC", ...zones];
-})();
 
 export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
   const { config, planDeps, geocoder, previewRenderer, limits } = deps;

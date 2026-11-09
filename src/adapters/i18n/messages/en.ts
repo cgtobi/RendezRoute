@@ -471,6 +471,57 @@ export const en = {
   "hostLink.confirm": "Use on this device",
   "hostLink.invalid": "This link is not valid. It may have been replaced by a newer one.",
   "secretLink.confirm": "Use on this device",
+  "form.template": "Repeat later",
+  "form.keepAsTemplate": "Keep as repeatable template",
+  "form.templateIncludePrivate": "Include the exact start and route",
+  "form.templateHint":
+    "When the plan is deleted, its details stay as a template for 90 days, linked to the devices you host it on, so you can repeat it on a new date. Responses, participants’ names and the recap are never kept.",
+  "home.templates": "Your templates",
+  "host.deleteKeepsTemplate":
+    "Its details stay as a repeatable template, linked to the devices you host it on.",
+  "host.saveTemplate": "Save as template",
+  "host.saveTemplateExplain":
+    "Saves this plan’s details as a template with its own private link, so you can repeat it on a new date. Responses, names and the recap are not included.",
+  "host.saveTemplateConfirm": "Save template",
+  "template.label": "Template",
+  "template.startTime": "Starts at {time} ({zone})",
+  "template.includesExactStart": "Includes the exact start",
+  "template.includesRoute": "Includes the route",
+  "template.expires": "Deleted on {date} unless you repeat or edit it before then.",
+  "template.repeatHeading": "Repeat",
+  "template.repeatHint": "Creates a new plan from this template, with new links and no responses.",
+  "template.repeatSubmit": "Create plan",
+  "template.edit": "Edit template",
+  "template.editHeading": "Edit template",
+  "template.back": "Back to the template",
+  "template.save": "Save template",
+  "template.saved": "Template saved.",
+  "template.removeRoute": "Remove the route",
+  "template.delete": "Delete template",
+  "template.deleteExplain":
+    "This deletes the template and its link for good. Plans created from it stay.",
+  "template.deleteConfirm": "Delete template for good",
+  "template.gone": "This template does not exist, or this device is not linked to it.",
+  "template.needsEdit":
+    "Some settings no longer fit this site’s rules. Please change them, then repeat the template.",
+  "template.adjusted": "Some settings were adjusted to this site’s current rules:",
+  "template.adjustedRetention": {
+    one: "Deleted {count} day after the run instead of {from} days.",
+    other: "Deleted {count} days after the run instead of {from} days.",
+  },
+  "template.adjustedRecapWindow": "Recap: “{to}” instead of “{from}”.",
+  "template.savedHeading": "Template saved",
+  "template.savedBody": "“{title}” is saved as a template. You can repeat it on a new date.",
+  "template.link": "Your template link: keep this private",
+  "template.linkWarning":
+    "Save it now. It is shown only once, and anyone with it can repeat, change or delete the template. This browser stays linked to it.",
+  "template.open": "Open the template",
+  "templateLink.heading": "Use this template link on this device?",
+  "templateLink.body": "This link lets you repeat, change or delete the template “{title}”.",
+  "templateLink.sharedWarning":
+    "Only continue on your own device: anyone using this browser can then use the template.",
+  "privacy.templates":
+    "If a host chooses “Keep as repeatable template” or saves a template, the plan’s details, including the host’s name, are kept as a template; never its responses, participants’ names or recap. The exact start and route are kept only if the host includes them, and then encrypted. A template is deleted after 90 days without being repeated or edited.",
 } as const satisfies Readonly<Record<string, Message>>;
 
 export type MessageKey = keyof typeof en;

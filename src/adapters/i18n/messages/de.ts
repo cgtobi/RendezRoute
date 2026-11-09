@@ -488,4 +488,60 @@ export const de: Messages = {
   "hostLink.confirm": "Auf diesem Gerät verwenden",
   "hostLink.invalid": "Dieser Link ist ungültig. Vielleicht wurde er durch einen neueren ersetzt.",
   "secretLink.confirm": "Auf diesem Gerät verwenden",
+  "form.template": "Später wiederholen",
+  "form.keepAsTemplate": "Als wiederholbare Vorlage behalten",
+  "form.templateIncludePrivate": "Genauen Treffpunkt und Route einschließen",
+  "form.templateHint":
+    "Wenn das Treffen gelöscht wird, bleiben seine Angaben 90 Tage lang als Vorlage, verknüpft mit den Geräten, auf denen du es organisierst, damit du es an einem neuen Datum wiederholen kannst. Antworten, Namen der Teilnehmer:innen und der Rückblick werden nie behalten.",
+  "home.templates": "Deine Vorlagen",
+  "host.deleteKeepsTemplate":
+    "Seine Angaben bleiben als wiederholbare Vorlage, verknüpft mit den Geräten, auf denen du es organisierst.",
+  "host.saveTemplate": "Als Vorlage speichern",
+  "host.saveTemplateExplain":
+    "Speichert die Angaben dieses Treffens als Vorlage mit eigenem privatem Link, damit du es an einem neuen Datum wiederholen kannst. Antworten, Namen und der Rückblick sind nicht enthalten.",
+  "host.saveTemplateConfirm": "Vorlage speichern",
+  "template.label": "Vorlage",
+  "template.startTime": "Beginnt um {time} ({zone})",
+  "template.includesExactStart": "Mit genauem Treffpunkt",
+  "template.includesRoute": "Mit Route",
+  "template.expires":
+    "Wird am {date} gelöscht, wenn du sie bis dahin nicht wiederholst oder bearbeitest.",
+  "template.repeatHeading": "Wiederholen",
+  "template.repeatHint":
+    "Erstellt aus dieser Vorlage ein neues Treffen mit neuen Links und ohne Antworten.",
+  "template.repeatSubmit": "Treffen erstellen",
+  "template.edit": "Vorlage bearbeiten",
+  "template.editHeading": "Vorlage bearbeiten",
+  "template.back": "Zurück zur Vorlage",
+  "template.save": "Vorlage speichern",
+  "template.saved": "Vorlage gespeichert.",
+  "template.removeRoute": "Route entfernen",
+  "template.delete": "Vorlage löschen",
+  "template.deleteExplain":
+    "Damit werden die Vorlage und ihr Link endgültig gelöscht. Treffen, die daraus erstellt wurden, bleiben.",
+  "template.deleteConfirm": "Vorlage endgültig löschen",
+  "template.gone": "Diese Vorlage gibt es nicht, oder dieses Gerät ist nicht mit ihr verknüpft.",
+  "template.needsEdit":
+    "Einige Einstellungen passen nicht mehr zu den Regeln dieser Seite. Bitte ändere sie und wiederhole die Vorlage dann.",
+  "template.adjusted":
+    "Einige Einstellungen wurden an die aktuellen Regeln dieser Seite angepasst:",
+  "template.adjustedRetention": {
+    one: "Wird {count} Tag nach dem Treffen gelöscht statt nach {from} Tagen.",
+    other: "Wird {count} Tage nach dem Treffen gelöscht statt nach {from} Tagen.",
+  },
+  "template.adjustedRecapWindow": "Rückblick: „{to}“ statt „{from}“.",
+  "template.savedHeading": "Vorlage gespeichert",
+  "template.savedBody":
+    "„{title}“ ist als Vorlage gespeichert. Du kannst es an einem neuen Datum wiederholen.",
+  "template.link": "Dein Vorlagenlink: privat halten",
+  "template.linkWarning":
+    "Speichere ihn jetzt. Er wird nur einmal angezeigt, und alle, die ihn haben, können die Vorlage wiederholen, ändern oder löschen. Dieser Browser bleibt mit ihr verknüpft.",
+  "template.open": "Vorlage öffnen",
+  "templateLink.heading": "Diesen Vorlagenlink auf diesem Gerät verwenden?",
+  "templateLink.body":
+    "Mit diesem Link kannst du die Vorlage „{title}“ wiederholen, ändern oder löschen.",
+  "templateLink.sharedWarning":
+    "Mach nur auf deinem eigenen Gerät weiter: Alle, die diesen Browser nutzen, können danach die Vorlage verwenden.",
+  "privacy.templates":
+    "Wenn die Organisator:in „Als wiederholbare Vorlage behalten“ wählt oder eine Vorlage speichert, werden die Angaben des Treffens samt ihrem Namen als Vorlage behalten; nie seine Antworten, die Namen der Teilnehmer:innen oder der Rückblick. Genauer Treffpunkt und Route werden nur behalten, wenn die Organisator:in sie einschließt, und dann verschlüsselt. Eine Vorlage wird gelöscht, wenn sie 90 Tage lang weder wiederholt noch bearbeitet wurde.",
 };

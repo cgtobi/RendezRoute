@@ -3,6 +3,8 @@ import type { Translate } from "../../../i18n/i18n.ts";
 import type { RecapWindow } from "../../../../domain/schedule.ts";
 import { RecapShortenedNotice } from "./recap.tsx";
 import { ShareLinks } from "./share.tsx";
+import type { TemplateAdjustment } from "../../../../domain/template.ts";
+import { TemplateAdjustments } from "./templates.tsx";
 
 export function LinksPage(props: {
   t: Translate;
@@ -13,11 +15,14 @@ export function LinksPage(props: {
   deletion: string;
   /** The recap window, if the chosen one was shortened to fit the retention (spec 3.10). */
   recapWindowShortened: RecapWindow | undefined;
+  /** What a repeat adjusted to the current rules (spec 3.10). */
+  adjustments?: readonly TemplateAdjustment[];
 }) {
   const { t } = props;
   return (
     <section class="links">
       <h1>{t("links.heading")}</h1>
+      <TemplateAdjustments t={t} adjustments={props.adjustments ?? []} />
       <h2>{t("links.planLink")}</h2>
       <p class="link-box">
         <a href={props.planPath}>{props.planUrl}</a>

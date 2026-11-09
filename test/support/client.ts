@@ -29,7 +29,8 @@ export class TestClient {
     return this.request(path);
   }
 
-  postForm(path: string, fields: Record<string, string>): Promise<Response> {
+  /** A URL-encoded form post; URLSearchParams for fields with several values. */
+  postForm(path: string, fields: Record<string, string> | URLSearchParams): Promise<Response> {
     return this.request(path, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },

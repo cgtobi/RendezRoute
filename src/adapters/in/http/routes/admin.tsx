@@ -4,9 +4,11 @@
 import type { Context, Hono } from "hono";
 import {
   type AdminDeps,
+  adminOverview,
   deletePlanAsAdmin,
   isAdmin,
   logInAsAdmin,
+  resolveReport,
   viewPlanAsAdmin,
 } from "../../../../application/admin.ts";
 import type { Config } from "../../../../config.ts";
@@ -27,6 +29,7 @@ export function adminRoot(path: string): string {
 }
 
 const PLAN_ID = /^[A-Za-z0-9_-]{22}$/;
+const REPORT_ID = /^[A-Za-z0-9-]{1,64}$/;
 const PLAN_LINK = /\/p\/([A-Za-z0-9_-]{22})(?:[/?#]|$)/;
 
 /** A plan ID from a pasted plan link or a bare ID. */
@@ -94,9 +97,15 @@ export function registerAdminRoutes(
     return toLogin(c);
   });
 
-  const notFound = (c: Context<AppEnv>, status: 404 | 422) => {
+  /** The admin's home with the open reports; also the page for a plan that was not found. */
+  const home = async (
+    c: Context<AppEnv>,
+    state: { deleted: boolean; notFound: "plan" | "report" | undefined; status?: 200 | 404 | 422 },
+  ) => {
+    const overview = await adminOverview(adminDeps, { session: session(c) });
+    if (overview.kind === "not_admin") return toLogin(c);
     const t = c.get("t");
-    c.status(status);
+    c.status(state.status ?? 200);
     return render(
       c,
       t("admin.title"),
@@ -104,26 +113,18 @@ export function registerAdminRoutes(
         t={t}
         csrfToken={c.get("csrfToken")()}
         adminDir={adminDir(c)}
-        deleted={false}
-        notFound
+        deleted={state.deleted}
+        notFound={state.notFound}
+        openReports={overview.openReports}
       />,
     );
   };
+  const notFound = (c: Context<AppEnv>, status: 404 | 422, what: "plan" | "report" = "plan") =>
+    home(c, { deleted: false, notFound: what, status });
 
-  app.get("/admin/", (c) => {
-    const t = c.get("t");
-    return render(
-      c,
-      t("admin.title"),
-      <AdminHome
-        t={t}
-        csrfToken={c.get("csrfToken")()}
-        adminDir={adminDir(c)}
-        deleted={c.req.query("deleted") !== undefined}
-        notFound={false}
-      />,
-    );
-  });
+  app.get("/admin/", (c) =>
+    home(c, { deleted: c.req.query("deleted") !== undefined, notFound: undefined }),
+  );
 
   app.post("/admin/plans", async (c) => {
     const body = await readForm(c);
@@ -149,6 +150,7 @@ export function registerAdminRoutes(
         csrfToken={c.get("csrfToken")()}
         adminDir={adminDir(c)}
         view={result.view}
+        reports={result.reports}
       />,
     );
   });
@@ -160,5 +162,14 @@ export function registerAdminRoutes(
     if (result.kind === "not_admin") return toLogin(c);
     if (result.kind === "not_found") return notFound(c, 404);
     return c.redirect(`${adminDir(c)}?deleted`, 303);
+  });
+
+  app.post("/admin/reports/:id/resolve", async (c) => {
+    const reportId = c.req.param("id");
+    if (!REPORT_ID.test(reportId)) return notFound(c, 404, "report");
+    const result = await resolveReport(adminDeps, { reportId, session: session(c) });
+    if (result.kind === "not_admin") return toLogin(c);
+    if (result.kind === "not_found") return notFound(c, 404, "report");
+    return c.redirect(`${adminDir(c)}plans/${result.planId}#reports`, 303);
   });
 }

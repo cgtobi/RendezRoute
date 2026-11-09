@@ -26,6 +26,8 @@ export interface RouteDeps {
   weather: WeatherProvider | undefined;
   limits: RateLimits;
   vapidPublicKey: string;
+  /** Plans can be reported: instance admin authentication is configured (spec 7 Moderation). */
+  reporting: boolean;
 }
 
 /** The rate-limit key of the request's client; never logged (decision I18). */
@@ -102,7 +104,12 @@ export function templateGone(c: Context<AppEnv>) {
 /** Renders a found plan for its audience, with the response form for viewers. */
 export async function renderPlanPage(
   c: Context<AppEnv>,
-  { config, planDeps, weather }: Pick<RouteDeps, "config" | "planDeps" | "weather">,
+  {
+    config,
+    planDeps,
+    weather,
+    reporting,
+  }: Pick<RouteDeps, "config" | "planDeps" | "weather" | "reporting">,
   result: Exclude<ViewPlanResult, { kind: "not_found" }>,
   form: Omit<RespondFormState, "csrfToken"> = {
     displayName: "",
@@ -130,6 +137,7 @@ export async function renderPlanPage(
       forecast={forecast}
       hasRecap={hasRecap}
       csrfToken={c.get("csrfToken")()}
+      reporting={reporting}
     />,
     {
       title: result.view.title,

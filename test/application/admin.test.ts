@@ -2,11 +2,14 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import {
   type AdminDeps,
+  adminOverview,
   deletePlanAsAdmin,
   isAdmin,
   logInAsAdmin,
+  resolveReport,
   viewPlanAsAdmin,
 } from "../../src/application/admin.ts";
+import { reportPlan } from "../../src/application/reports.ts";
 import { subscribe } from "../../src/application/channels.ts";
 import { createPlan } from "../../src/application/plans.ts";
 import { respond } from "../../src/application/responses.ts";
@@ -75,6 +78,10 @@ describe("the instance admin (spec 7 Moderation)", () => {
       expect(await viewPlanAsAdmin(deps, { planId, session: without })).toEqual({
         kind: "not_admin",
       });
+      expect(await adminOverview(deps, { session: without })).toEqual({ kind: "not_admin" });
+      expect(await resolveReport(deps, { reportId: "any", session: without })).toEqual({
+        kind: "not_admin",
+      });
       expect(await deletePlanAsAdmin(deps, { planId, session: without })).toEqual({
         kind: "not_admin",
       });
@@ -136,5 +143,86 @@ describe("the instance admin (spec 7 Moderation)", () => {
     expect(queued[0]).toContain('"deleted"');
     expect(await listTemplates(deps, { deviceToken: created.newDeviceToken })).toEqual([]);
     expect(await deletePlanAsAdmin(deps, { planId, session })).toEqual({ kind: "not_found" });
+  });
+});
+
+describe("reports for the instance admin (spec 7 Moderation)", () => {
+  const report = (planId: string, reason: string, details = "") =>
+    reportPlan(deps, {
+      planId,
+      deviceToken: undefined,
+      reason,
+      details,
+      attach: [],
+      nonce: nonce(),
+    });
+
+  it("lists open reports oldest first, with their plan's title", async () => {
+    const first = await newPlan({ title: "First plan" });
+    const second = await newPlan({ title: "Second plan" });
+    await report(second.planId, "spam");
+    clock.advance({ minutes: 1 });
+    await report(first.planId, "unsafe");
+    const overview = await adminOverview(deps, { session });
+    expect(overview).toEqual({
+      kind: "overview",
+      openReports: [
+        { planId: second.planId, planTitle: "Second plan", reason: "spam" },
+        { planId: first.planId, planTitle: "First plan", reason: "unsafe" },
+      ],
+    });
+  });
+
+  it("shows a plan's open reports in full and counts resolved ones; resolving moves one", async () => {
+    const { planId } = await newPlan();
+    await report(planId, "unsafe", "SENTINEL-details");
+    await report(planId, "other");
+    const before = await viewPlanAsAdmin(deps, { planId, session });
+    if (before.kind !== "found") throw new Error("not found");
+    expect(before.reports).toEqual({
+      open: [
+        {
+          id: expect.any(String),
+          reason: "unsafe",
+          details: "SENTINEL-details",
+          attached: [],
+          createdAt: fixtureNow,
+        },
+        {
+          id: expect.any(String),
+          reason: "other",
+          details: undefined,
+          attached: [],
+          createdAt: fixtureNow,
+        },
+      ],
+      resolved: 0,
+    });
+    const id = before.reports.open[0]?.id ?? "";
+    expect(await resolveReport(deps, { reportId: id, session })).toEqual({
+      kind: "resolved",
+      planId,
+    });
+    expect(await resolveReport(deps, { reportId: id, session })).toEqual({
+      kind: "already_resolved",
+      planId,
+    });
+    expect(await resolveReport(deps, { reportId: "unknown", session })).toEqual({
+      kind: "not_found",
+    });
+    const after = await viewPlanAsAdmin(deps, { planId, session });
+    if (after.kind !== "found") throw new Error("not found");
+    expect(after.reports.open.map((r) => r.reason)).toEqual(["other"]);
+    expect(after.reports.resolved).toBe(1);
+    const overview = await adminOverview(deps, { session });
+    expect(overview.kind === "overview" && overview.openReports).toHaveLength(1);
+  });
+
+  it("loses a plan's reports when the admin deletes the plan", async () => {
+    const { planId } = await newPlan();
+    await report(planId, "spam");
+    await deletePlanAsAdmin(deps, { planId, session });
+    expect(await deps.reports.listOpenForPlan(planId)).toEqual([]);
+    expect(await deps.reports.countResolvedForPlan(planId)).toBe(0);
   });
 });

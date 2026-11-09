@@ -55,6 +55,8 @@ export function PlanPage(props: {
   hasRecap: boolean;
   /** For the recap forms. */
   csrfToken: string;
+  /** Show "Report this plan": instance admin authentication is configured (spec 7 Moderation). */
+  reporting: boolean;
 }) {
   const { t, language, units, audience, map } = props;
   const { view } = audience;
@@ -231,6 +233,13 @@ export function PlanPage(props: {
           </>
         )}
       </p>
+      {props.reporting && (
+        <p class="report-link">
+          <a href={`/p/${view.id}/report`} rel="nofollow">
+            {t("report.link")}
+          </a>
+        </p>
+      )}
     </article>
   );
 }

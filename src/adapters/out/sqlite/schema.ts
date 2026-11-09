@@ -1,5 +1,6 @@
 // Table types for Kysely (spec section 4). Must match the migrations in ./migrations;
 // repository integration tests and the schema conformance test catch drift.
+import type { ReportReason } from "../../../domain/report.ts";
 import type { RatingValue } from "../../../domain/rating.ts";
 import type { Generated } from "kysely";
 import type { ActivityType } from "../../../domain/activity.ts";
@@ -200,6 +201,7 @@ export interface DatabaseSchema {
   plan_templates: PlanTemplatesTable;
   used_form_nonces: UsedFormNoncesTable;
   plan_ratings: PlanRatingsTable;
+  reports: ReportsTable;
 }
 
 export interface PlanRatingsTable {
@@ -210,6 +212,16 @@ export interface PlanRatingsTable {
   note_enc: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ReportsTable {
+  id: string;
+  plan_id: string;
+  reason: ReportReason;
+  details_enc: string | null;
+  attached_content_enc: string | null;
+  created_at: string;
+  resolved_at: string | null;
 }
 
 export interface UsedFormNoncesTable {

@@ -12,7 +12,9 @@ import type {
   TemplateRepository,
   FormNonceRepository,
   RatingRepository,
+  ReportRepository,
 } from "../../src/application/ports.ts";
+import type { Report } from "../../src/domain/report.ts";
 import type { Plan } from "../../src/domain/plan.ts";
 import type { RecapContribution } from "../../src/domain/recap.ts";
 import type { PlanResponse } from "../../src/domain/response.ts";
@@ -30,6 +32,7 @@ export function createFakeRepositories(): {
   templates: TemplateRepository;
   formNonces: FormNonceRepository;
   ratings: RatingRepository;
+  reports: ReportRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
   const routes = new Map<string, Route>();
@@ -47,6 +50,9 @@ export function createFakeRepositories(): {
   const usedNonces = new Map<string, Date>();
   /** By response ID: one rating per response. */
   const ratings = new Map<string, PlanRating>();
+  const reports = new Map<string, Report>();
+  const byCreation = (a: Report, b: Report) =>
+    a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id);
   const templates = new Map<
     string,
     {
@@ -115,6 +121,7 @@ export function createFakeRepositories(): {
     deleteContributions((c) => c.planId === id);
     for (const [responseId, rating] of ratings)
       if (rating.planId === id) ratings.delete(responseId);
+    for (const [reportId, report] of reports) if (report.planId === id) reports.delete(reportId);
     previews.delete(id);
     for (const [nonce, planId] of planNonces) if (planId === id) planNonces.delete(nonce);
     for (const [responseId, entry] of responses) {
@@ -255,6 +262,41 @@ export function createFakeRepositories(): {
       },
       async deleteForResponse(responseId) {
         ratings.delete(responseId);
+      },
+    },
+
+    reports: {
+      async create(report) {
+        reports.set(report.id, structuredClone(report));
+      },
+      async listOpen() {
+        return [...reports.values()]
+          .filter((report) => report.resolvedAt === undefined)
+          .sort(byCreation)
+          .flatMap((report) => {
+            const plan = plans.get(report.planId)?.plan;
+            return plan === undefined
+              ? []
+              : [{ planId: plan.id, planTitle: plan.title, reason: report.reason }];
+          });
+      },
+      async listOpenForPlan(planId) {
+        return [...reports.values()]
+          .filter((report) => report.planId === planId && report.resolvedAt === undefined)
+          .sort(byCreation)
+          .map((report) => structuredClone(report));
+      },
+      async countResolvedForPlan(planId) {
+        return [...reports.values()].filter(
+          (report) => report.planId === planId && report.resolvedAt !== undefined,
+        ).length;
+      },
+      async resolve(id, at) {
+        const report = reports.get(id);
+        if (report === undefined) return undefined;
+        const wasOpen = report.resolvedAt === undefined;
+        if (wasOpen) report.resolvedAt = at;
+        return { planId: report.planId, wasOpen };
       },
     },
 

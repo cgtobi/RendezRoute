@@ -636,6 +636,40 @@ export const de: Messages = {
   },
   "rating.resultTooFew":
     "Bei Treffen mit weniger als 3 Teilnehmer:innen werden keine Bewertungen gezeigt.",
+  "report.link": "Treffen melden",
+  "report.heading": "„{title}“ melden",
+  "report.intro":
+    "Deine Meldung geht nur an die Administration dieser Instanz. Sie enthält nicht, wer sie geschickt hat, und wird mit dem Treffen gelöscht.",
+  "report.reason": "Was stimmt nicht?",
+  "report.reason.spam": "Spam oder Werbung",
+  "report.reason.inappropriate": "Unangemessen oder beleidigend",
+  "report.reason.unsafe": "Unsicher oder gefährlich",
+  "report.reason.other": "Etwas anderes",
+  "report.details": "Einzelheiten (optional)",
+  "report.detailsHint": "Die Administration kann dir nicht antworten.",
+  "report.attach": "Kommentare aus dem Rückblick anhängen (optional)",
+  "report.attachHint":
+    "Die Administration sieht den Rückblick nicht. Hake Kommentare oder Links an, um ihr eine Kopie zu schicken, ohne die Namen der Verfasser:innen.",
+  "report.submit": "Meldung senden",
+  "report.sent": "Danke. Deine Meldung wurde an die Administration geschickt.",
+  "report.sentTitle": "Meldung gesendet",
+  "report.back": "Zurück zum Treffen",
+  "privacy.reports":
+    "Meldungen: Wenn du ein Treffen meldest, erhält die Administration den Grund, deine Einzelheiten und Kopien der Kommentare aus dem Rückblick, die du anhängst, ohne die Namen der Verfasser:innen. Meldungen enthalten nicht, wer sie geschickt hat, und werden mit dem Treffen gelöscht.",
+  "admin.openReports": {
+    zero: "Keine offenen Meldungen",
+    one: "{count} offene Meldung",
+    other: "{count} offene Meldungen",
+  },
+  "admin.attached": "Angehängte Kommentare aus dem Rückblick, ohne Verfasser:innen:",
+  "admin.reportNotFound":
+    "Diese Meldung gibt es nicht mehr. Meldungen werden mit ihrem Treffen gelöscht.",
+  "admin.resolve": "Als erledigt markieren",
+  "admin.resolvedReports": {
+    zero: "Keine erledigten Meldungen",
+    one: "{count} erledigte Meldung",
+    other: "{count} erledigte Meldungen",
+  },
   "admin.title": "Instanz-Administration",
   "admin.loginHeading": "Anmeldung für die Administration",
   "admin.token": "Admin-Token",

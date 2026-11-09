@@ -1,5 +1,12 @@
-// The instance admin (spec 7 Moderation, 3.6 Instance admin column): logging in, public plan
-// fields only, and deleting any plan. Every use case checks the admin session through `AdminAuth`.
+// The instance admin (spec 7 Moderation, 3.6 Instance admin column): logging in, open reports,
+// public plan fields with the plan's reports, resolving reports and deleting any plan. Every use
+// case checks the admin session through `AdminAuth`.
+import {
+  type AttachedContribution,
+  copyOfPost,
+  type Report,
+  type ReportReason,
+} from "../domain/report.ts";
 import { deletionNotices } from "./notify.ts";
 import type { PlanViewForInstanceAdmin } from "./plan-views.ts";
 import { type PlanDeps, viewPlan } from "./plans.ts";
@@ -13,6 +20,30 @@ export interface AdminDeps extends PlanDeps {
 }
 
 type NotAdmin = { kind: "not_admin" };
+
+/** An open report as listed on the admin's home: what it is about, not what it says. */
+export interface OpenReportSummary {
+  planId: string;
+  planTitle: string;
+  reason: ReportReason;
+}
+
+/** A report as the admin reads it: only what the reporter wrote and chose to attach (spec 3.6). */
+export interface ReportView {
+  id: string;
+  reason: ReportReason;
+  details: string | undefined;
+  attached: AttachedContribution[];
+  createdAt: Date;
+}
+
+const reportView = (report: Report): ReportView => ({
+  id: report.id,
+  reason: report.reason,
+  details: report.details,
+  attached: report.attached.map(copyOfPost),
+  createdAt: report.createdAt,
+});
 
 /** Whether the session value belongs to a logged-in admin. */
 export function isAdmin(
@@ -33,11 +64,36 @@ export function logInAsAdmin(
   return { kind: "logged_in", session: deps.adminAuth.startSession(deps.clock.now()) };
 }
 
-/** What the admin sees of a plan: a few public fields, never private ones (spec 3.6). */
+/** The admin's home: open reports, oldest first, with their plan's title. */
+export async function adminOverview(
+  deps: AdminDeps,
+  request: { session: string | undefined },
+): Promise<{ kind: "overview"; openReports: OpenReportSummary[] } | NotAdmin> {
+  if (!isAdmin(deps, request)) return { kind: "not_admin" };
+  const openReports = (await deps.reports.listOpen()).map((row): OpenReportSummary => ({
+    planId: row.planId,
+    planTitle: row.planTitle,
+    reason: row.reason,
+  }));
+  return { kind: "overview", openReports };
+}
+
+/**
+ * What the admin sees of a plan: a few public fields, never private ones, and its open reports
+ * with the content their reporters attached (spec 3.6).
+ */
 export async function viewPlanAsAdmin(
   deps: AdminDeps,
   request: { planId: string; session: string | undefined },
-): Promise<{ kind: "found"; view: PlanViewForInstanceAdmin } | { kind: "not_found" } | NotAdmin> {
+): Promise<
+  | {
+      kind: "found";
+      view: PlanViewForInstanceAdmin;
+      reports: { open: ReportView[]; resolved: number };
+    }
+  | { kind: "not_found" }
+  | NotAdmin
+> {
   if (!isAdmin(deps, request)) return { kind: "not_admin" };
   // Without a device the read model is the public one; the admin's is a part of it.
   const result = await viewPlan(deps, { planId: request.planId, deviceToken: undefined });
@@ -45,6 +101,10 @@ export async function viewPlanAsAdmin(
   const { view } = result;
   return {
     kind: "found",
+    reports: {
+      open: (await deps.reports.listOpenForPlan(view.id)).map(reportView),
+      resolved: await deps.reports.countResolvedForPlan(view.id),
+    },
     view: {
       id: view.id,
       title: view.title,
@@ -75,4 +135,23 @@ export async function deletePlanAsAdmin(
   await deps.plans.delete(plan.id);
   await sendNotices();
   return { kind: "deleted" };
+}
+
+/**
+ * Marks a report resolved; it leaves the open list and stays until its plan is deleted. Resolving
+ * it again is no error: the admin may have clicked twice.
+ */
+export async function resolveReport(
+  deps: AdminDeps,
+  request: { reportId: string; session: string | undefined },
+): Promise<
+  | { kind: "resolved"; planId: string }
+  | { kind: "already_resolved"; planId: string }
+  | { kind: "not_found" }
+  | NotAdmin
+> {
+  if (!isAdmin(deps, request)) return { kind: "not_admin" };
+  const result = await deps.reports.resolve(request.reportId, deps.clock.now());
+  if (result === undefined) return { kind: "not_found" };
+  return { kind: result.wasOpen ? "resolved" : "already_resolved", planId: result.planId };
 }

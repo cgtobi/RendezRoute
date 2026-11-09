@@ -19,7 +19,7 @@ export function PrivacyPage({
 }: {
   t: Translate;
   config: Config;
-  /** Instance admin login is configured (spec 7 Moderation). */
+  /** Instance admin login is configured, and with it reports (spec 7 Moderation). */
   adminLogin: boolean;
 }) {
   const { maps, geocoder, weather } = config;
@@ -39,6 +39,7 @@ export function PrivacyPage({
       <p>{t("privacy.storedRecap")}</p>
       <p>{t("privacy.ratings")}</p>
       <p>{t("privacy.templates")}</p>
+      {adminLogin && <p>{t("privacy.reports")}</p>}
       <p>{t("privacy.noTracking")}</p>
       <p>
         {t("privacy.myData")} <a href="/my-data">{t("myData.heading")}</a>

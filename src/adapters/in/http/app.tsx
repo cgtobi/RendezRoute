@@ -35,6 +35,7 @@ import { registerLinkToolRoutes } from "./routes/link-tools.tsx";
 import { registerMyDataRoutes } from "./routes/my-data.tsx";
 import { registerRatingRoutes } from "./routes/ratings.tsx";
 import { registerAdminRoutes } from "./routes/admin.tsx";
+import { registerReportRoutes } from "./routes/reports.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
@@ -250,6 +251,7 @@ export function createApp({
     weather,
     limits: rateLimits,
     vapidPublicKey,
+    reporting: adminAuth !== undefined,
   };
   registerPlanRoutes(app, deps);
   registerResponseRoutes(app, deps);
@@ -265,6 +267,7 @@ export function createApp({
   registerMyDataRoutes(app, deps);
   registerRatingRoutes(app, deps);
   if (adminAuth !== undefined) {
+    registerReportRoutes(app, deps);
     registerAdminRoutes(app, { config, adminDeps: { ...planDeps, adminAuth }, limits: rateLimits });
   }
 

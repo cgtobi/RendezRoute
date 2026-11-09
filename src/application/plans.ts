@@ -39,6 +39,7 @@ import type {
   ChannelRepository,
   FormNonceRepository,
   RatingRepository,
+  ReportRepository,
   JobQueue,
   PlanRepository,
   RecapRepository,
@@ -64,6 +65,8 @@ export interface PlanDeps extends DeviceDeps {
   formNonces: FormNonceRepository;
   /** Plan ratings (spec 6a). */
   ratings: RatingRepository;
+  /** Reports to the instance admin (spec 7 Moderation). */
+  reports: ReportRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
   notify?:
     | { channels: ChannelRepository; jobs: JobQueue; reminders: SentReminderRepository }

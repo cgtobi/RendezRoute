@@ -21,7 +21,8 @@ async function logIn(admin: TestClient, token = TOKEN) {
 
 /** Where Home Assistant Ingress (or any proxy) serves the app (spec 3.8 URLs). */
 const PREFIX = "https://ha.example/api/hassio_ingress/abc";
-const ADMIN_POSTS = /^\/admin\/(?:login|logout|plans|plans\/[A-Za-z0-9_-]{22}\/delete)$/;
+const ADMIN_POSTS =
+  /^\/admin\/(?:login|logout|plans|plans\/[A-Za-z0-9_-]{22}\/delete|reports\/[A-Za-z0-9-]+\/resolve)$/;
 
 /**
  * Follows every link, asset, form action and redirect of an admin response as a browser would when
@@ -127,9 +128,13 @@ describe("instance admin login (spec 7 Moderation)", () => {
 
 describe("the instance admin's pages (spec 7 Moderation, 3.6 Instance admin column)", () => {
   it("work under any path prefix: every link, form and redirect stays under it (spec 3.8)", async () => {
-    const { admin, app } = await setup();
+    const { admin, app, database } = await setup();
     const { planId } = await createPlanViaUi(new TestClient(app));
     const other = await createPlanViaUi(new TestClient(app));
+    const reporter = new TestClient(app);
+    const reportForm = hiddenFields(await (await reporter.get(`/p/${planId}/report`)).text());
+    await reporter.postForm(`/p/${planId}/report`, { ...reportForm, reason: "spam" });
+    const reportId = String(database.sqlite.prepare("select id from reports").pluck().get());
     const pages: [string, Response][] = [];
     const get = async (path: string) => pages.push([path, await admin.get(path)]);
     const post = async (path: string, fields: Record<string, string>) => {
@@ -149,12 +154,14 @@ describe("the instance admin's pages (spec 7 Moderation, 3.6 Instance admin colu
     await post("/admin/plans", { plan: planId });
     await post("/admin/plans", { plan: "no plan here" });
     await get(`/admin/plans/${planId}`);
+    await post(`/admin/reports/${reportId}/resolve`, {});
+    await post(`/admin/reports/${reportId}/resolve`, {});
     await get("/admin/plans/unknown");
     await post(`/admin/plans/${other.planId}/delete`, {});
     await post(`/admin/plans/${other.planId}/delete`, {});
     await post("/admin/logout", {});
     expect(pages.map(([, response]) => response.status)).toEqual([
-      303, 303, 303, 200, 401, 303, 200, 303, 200, 303, 422, 200, 404, 303, 404, 303,
+      303, 303, 303, 200, 401, 303, 200, 303, 200, 303, 422, 200, 303, 303, 404, 303, 404, 303,
     ]);
     await logIn(admin);
     for (const [path, response] of pages) await expectWorksUnderPrefix(admin, path, response);

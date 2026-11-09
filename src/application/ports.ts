@@ -1,4 +1,5 @@
 import type { GeoPoint } from "../domain/geo.ts";
+import type { Report, ReportReason } from "../domain/report.ts";
 import type { JobType } from "../domain/jobs.ts";
 import type { Notification } from "../domain/notification.ts";
 import type { PushSubscription } from "../domain/push.ts";
@@ -161,6 +162,25 @@ export interface NewTemplate {
   hostsOfPlan: string;
   /** One-time value from the "Save as template" form; detects resubmission (decision I9). */
   creationNonce?: string | undefined;
+}
+
+/** Reports to the instance admin (spec 7 Moderation); details and attachments encrypted at rest. */
+export interface ReportRepository {
+  create(report: Report): Promise<void>;
+  /** Unresolved reports, oldest first, with their plan's public title; nothing is decrypted. */
+  listOpen(): Promise<OpenReportRow[]>;
+  /** The plan's unresolved reports, oldest first, decrypted. */
+  listOpenForPlan(planId: string): Promise<Report[]>;
+  countResolvedForPlan(planId: string): Promise<number>;
+  /** Marks a report resolved: its plan and whether it was still open; undefined if unknown. */
+  resolve(id: string, at: Date): Promise<{ planId: string; wasOpen: boolean } | undefined>;
+}
+
+/** An open report as the admin's home lists it: what it is about, not what it says. */
+export interface OpenReportRow {
+  planId: string;
+  planTitle: string;
+  reason: ReportReason;
 }
 
 /** Plan ratings (spec 6a); the note encrypted at rest. */

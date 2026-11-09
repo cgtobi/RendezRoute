@@ -66,8 +66,8 @@ const REJECTED_NAME = "SENTINEL-rejected-name";
 const ALL_NAMES = [JOINED_NAME, INTERESTED_NAME, REMOVED_NAME, PENDING_NAME, REJECTED_NAME];
 
 /** One plan with a host and a joined, interested, removed, pending and rejected person. */
-async function audiences() {
-  const test = await createTestApp();
+async function audiences(env: Record<string, string> = {}) {
+  const test = await createTestApp({ env });
   const client = () => new TestClient(test.app);
   const host = client();
   const { planId, hostPath } = await createPlanViaUi(host, exactStart);
@@ -387,6 +387,61 @@ describe("ratings (spec 6a, acceptance criterion v0.6)", () => {
   });
 });
 
+describe("reports (spec 7 Moderation, 3.6 Instance admin column)", () => {
+  const ADMIN_TOKEN = "admin-token-for-tests-0123456789abcdef";
+  const DETAILS = "SENTINEL-report-details";
+  const ATTACHED = "SENTINEL-attached-post";
+  const NOT_ATTACHED = "SENTINEL-not-attached-post";
+
+  it("Nobody but the instance admin sees reports, and the admin page shows only public plan fields and the content a reporter attached", async () => {
+    const setup = await audiences({ ADMIN_TOKEN });
+    setup.clock.set(AFTER_START);
+    await contribute(setup.joined, setup.planId, ATTACHED, RECAP_LINK);
+    await contribute(setup.host, setup.planId, NOT_ATTACHED);
+    const form = await (await setup.joined.get(`/p/${setup.planId}/report`)).text();
+    const attachId = new RegExp(`name="attach" value="([^"]+)"[^>]*>${ATTACHED}`).exec(form)?.[1];
+    expect(attachId).toBeDefined();
+    const body = new URLSearchParams({
+      ...hiddenFieldsOf(form),
+      reason: "unsafe",
+      details: DETAILS,
+      attach: attachId ?? "",
+    });
+    expect((await setup.joined.postForm(`/p/${setup.planId}/report`, body)).status).toBe(303);
+
+    // Every audience, the reporter included, on every plan page, export and calendar.
+    for (const client of [
+      setup.host,
+      setup.joined,
+      setup.interested,
+      setup.removed,
+      setup.pending,
+      setup.rejected,
+      setup.viewer,
+    ]) {
+      expect(await pages(client, setup.planId)).not.toContain(DETAILS);
+    }
+    expect(setup.logs.join("\n")).not.toContain("SENTINEL");
+
+    // The admin: the report and the attached post, but no names, exact start or other posts.
+    const admin = setup.client();
+    const login = hiddenFieldsOf(await (await admin.get("/admin/login")).text());
+    await admin.postForm("/admin/login", { ...login, token: ADMIN_TOKEN });
+    const home = await (await admin.get("/admin/")).text();
+    const plan = await (await admin.get(`/admin/plans/${setup.planId}`)).text();
+    expect(plan).toContain(DETAILS);
+    expect(plan).toContain(ATTACHED);
+    expect(plan).toContain(RECAP_LINK);
+    expect(plan).toContain("Easy Sunday run");
+    for (const page of [home, plan]) {
+      expect(page).not.toContain(NOT_ATTACHED);
+      expectNoExactStart(page);
+      for (const name of ALL_NAMES) expect(page).not.toContain(name);
+    }
+    expect(home).not.toContain(DETAILS);
+  });
+});
+
 describe("host link (spec 3.2: shown once on creation)", () => {
   it("appears on no page after the links page, not even for the host", async () => {
     const { app } = await createTestApp();
@@ -404,7 +459,10 @@ describe("data at rest (spec 2b)", () => {
     const dir = mkdtempSync(join(tmpdir(), "rendezroute-privacy-"));
     dirs.push(dir);
     const path = join(dir, "rendezroute.db");
-    const { app, database, clock } = await createTestApp({ databasePath: path });
+    const { app, database, clock } = await createTestApp({
+      databasePath: path,
+      env: { ADMIN_TOKEN: "admin-token-for-tests-0123456789abcdef" },
+    });
     const host = new TestClient(app);
     const { planId, hostPath } = await createPlanViaUi(host, exactStart);
     const joined = new TestClient(app);
@@ -412,7 +470,20 @@ describe("data at rest (spec 2b)", () => {
     const feed = await feedPath(host);
     clock.set(AFTER_START);
     await contribute(joined, planId, RECAP_BODY, RECAP_LINK);
+    const reportForm = await (await joined.get(`/p/${planId}/report`)).text();
+    const reported = await joined.postForm(
+      `/p/${planId}/report`,
+      new URLSearchParams({
+        ...hiddenFieldsOf(reportForm),
+        reason: "other",
+        details: "SENTINEL-report-at-rest",
+        attach: /name="attach" value="([^"]+)"/.exec(reportForm)?.[1] ?? "missing",
+      }),
+    );
+    expect(reported.status).toBe(303);
+    expect(database.sqlite.prepare("select count(*) from reports").pluck().get()).toBe(1);
     const secrets = [
+      "SENTINEL-report-at-rest",
       RECAP_BODY,
       RECAP_LINK,
       feed.slice("/c/".length),

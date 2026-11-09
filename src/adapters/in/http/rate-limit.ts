@@ -32,6 +32,8 @@ export interface RateLimits {
   recap: RateLimiter;
   /** Instance admin login attempts, against guessing ADMIN_TOKEN (spec 7 Moderation). */
   adminLogin: RateLimiter;
+  /** Reports to the instance admin (spec 3.11: rate limits on reports). */
+  report: RateLimiter;
 }
 
 /**
@@ -39,7 +41,8 @@ export interface RateLimits {
  * created, so parallel requests cannot exceed the burst. Requests carrying a route file always
  * count (parsing is the costly part), as does every place search; previews count only renders.
  * Switching to joined or requested on the manage page counts as responding, since it notifies the
- * host; every attempt to turn notifications on counts too, and every created calendar link and recap contribution.
+ * host; every attempt to turn notifications on counts too, and every created calendar link, recap
+ * contribution and report.
  * A client is forgotten once its bucket is full again, after at most 30 minutes (create: 5
  * tokens at 10 per hour).
  */
@@ -54,6 +57,7 @@ export function createRateLimits(now: () => number): RateLimits {
     calendar: createRateLimiter({ capacity: 5, perHour: 10, now }),
     recap: createRateLimiter({ capacity: 10, perHour: 30, now }),
     adminLogin: createRateLimiter({ capacity: 5, perHour: 10, now }),
+    report: createRateLimiter({ capacity: 3, perHour: 10, now }),
   };
 }
 

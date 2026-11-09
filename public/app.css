@@ -533,3 +533,25 @@ button.danger {
 .rating-note {
   white-space: pre-line;
 }
+
+/* Reports (spec 7 Moderation): a quiet link at the foot of the plan page; on the admin pages the
+   reporter's details keep their line breaks, and attached copies are listed like ratings. */
+.report-link {
+  font-size: 0.875rem;
+}
+
+.report-details,
+.report-attached > li {
+  white-space: pre-line;
+}
+
+.report-attached {
+  padding: 0;
+  list-style: none;
+}
+
+.report-attached > li,
+.admin-report {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}

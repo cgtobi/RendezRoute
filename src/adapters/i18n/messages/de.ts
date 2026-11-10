@@ -694,6 +694,22 @@ export const de: Messages = {
   "admin.deleteConfirm": "Treffen endgültig löschen",
   "admin.deleted": "Das Treffen wurde gelöscht.",
   "admin.back": "Zurück zur Administration",
+  "account.fediverseHeading": "Mit einem Fediverse-Konto anmelden",
+  "account.fediverseServer": "Dein Server",
+  "account.fediverseHint": "Zum Beispiel mastodon.social oder dein Handle wie @du@dein.server.",
+  "account.fediverseHandleHint":
+    "Wenn die Domain deines Handles nicht die Adresse deines Servers ist, gib die Adresse des Servers ein.",
+  "account.fediverseServers": "Erlaubte Server: {servers}",
+  "account.fediverseSubmit": "Weiter",
+  "account.continue": "Weiter zu {server}",
+  "account.continueText":
+    "Melde dich dort an und erlaube den Zugriff. Danach kommst du hierher zurück.",
+  "account.serverUnavailable":
+    "Dieser Server ist nicht erreichbar oder lässt diese Instanz nicht für die Anmeldung zu. Bitte prüfe die Adresse oder versuch es später noch einmal.",
+  "field.server_invalid": "Bitte gib die Adresse deines Servers ein, zum Beispiel mastodon.social.",
+  "field.server_not_allowed": "Mit diesem Server kannst du dich hier nicht anmelden.",
+  "privacy.fediverse":
+    "Fediverse-Anmeldung: Wenn du dich mit einem Fediverse-Konto anmeldest, geht dein Browser zu deinem Server, wo diese Instanz für diese eine Anmeldung eine App einträgt. Sie darf die Angaben deines Kontos lesen, auch wem du folgst; sie wird nur genutzt, um zu erfahren, welches Konto du bist, und der Zugriff wird gleich danach zurückgegeben. Hier gespeichert, verschlüsselt: dein Server und deine Konto-ID, dein Handle und dein Anzeigename.",
   "layout.account": "Konto",
   "account.heading": "Dein Konto",
   "account.intro":

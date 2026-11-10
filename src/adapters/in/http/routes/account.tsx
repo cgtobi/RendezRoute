@@ -1,10 +1,12 @@
 // Accounts (spec 7 Identity, 3.11 Account takeover): the account page, logging in through a provider
 // and back, renaming and logging out. Registered only when a way to log in is configured.
 //
-// Starting a login is a GET link, not a form: a form post redirected to the provider would be
-// blocked by `form-action 'self'` (spec 3.8). It changes nothing but a pending login bound to this
-// browser by the login cookie, is rate limited, and is refused when another site sends the browser
-// there (`Sec-Fetch-Site: cross-site`), so no site can log anyone in unasked.
+// No login starts with a redirect from a form: `form-action 'self'` (spec 3.8) would block it.
+// OIDC starts with a GET link: it changes nothing but a pending login bound to this browser by the
+// login cookie, is rate limited, and is refused when another site sends the browser there
+// (`Sec-Fetch-Site: cross-site`). A fediverse login starts with a form (CSRF-protected: it may
+// register an app at the server) that answers with a "Continue to <server>" page and its link, so
+// the person also sees where they are sent (decision D24).
 import type { Context, Hono } from "hono";
 import {
   type AccountDeps,
@@ -14,6 +16,7 @@ import {
   startLogin,
   viewAccount,
 } from "../../../../application/accounts.ts";
+import type { LookupHasher } from "../../../../application/ports.ts";
 import type { DisplayNameError, IdentityProviderKind } from "../../../../domain/identity.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
@@ -21,6 +24,8 @@ import { setLoginState, takeLoginState } from "../login-cookie.ts";
 import {
   AccountPage,
   type AccountNotice,
+  ContinueLogin,
+  type FediverseLoginForm,
   type LoginOption,
   LoginFailed,
 } from "../views/account.tsx";
@@ -36,6 +41,19 @@ import {
 
 const NOTICES = ["loggedIn", "loggedOut", "renamed"] as const;
 
+/** Where providers send the browser back. A fediverse server's own key follows this path (I50). */
+export const OIDC_CALLBACK_PATH = "/login/oidc/callback";
+export const FEDIVERSE_CALLBACK_PATH = "/login/fediverse/callback/";
+
+/** A fediverse server's own callback: its key is a keyed hash, so the URL names no server. */
+export const fediverseCallbackUri =
+  (baseUrl: URL, lookup: LookupHasher) =>
+  (server: string): URL =>
+    new URL(
+      `${FEDIVERSE_CALLBACK_PATH}${lookup.hash(`fediverse-callback:${server}`).slice(0, 32)}`,
+      baseUrl,
+    );
+
 export function registerAccountRoutes(
   app: Hono<AppEnv>,
   { config, limits }: RouteDeps,
@@ -46,10 +64,16 @@ export function registerAccountRoutes(
 
   const renderAccount = async (
     c: Context<AppEnv>,
-    rename?: { value: string; error: DisplayNameError },
+    forms: {
+      rename?: { value: string; error: DisplayNameError };
+      fediverse?: FediverseLoginForm;
+    } = {},
   ) => {
     const t = c.get("t");
-    const notice: AccountNotice = NOTICES.find((name) => c.req.query(name) !== undefined);
+    const failed = forms.rename !== undefined || forms.fediverse !== undefined;
+    const notice: AccountNotice = failed
+      ? undefined
+      : NOTICES.find((name) => c.req.query(name) !== undefined);
     c.header("cache-control", "private, no-store");
     return c.render(
       <AccountPage
@@ -57,40 +81,83 @@ export function registerAccountRoutes(
         csrfToken={c.get("csrfToken")()}
         account={await viewAccount(deps, { deviceToken: deviceToken(c) })}
         logins={logins}
-        notice={rename === undefined ? notice : undefined}
-        rename={rename}
+        notice={notice}
+        rename={forms.rename}
+        fediverse={forms.fediverse}
       />,
       { title: t("account.heading") },
     );
   };
 
+  const loginFailed = (c: Context<AppEnv>, status: 400 | 502, message: string) => {
+    const t = c.get("t");
+    c.status(status);
+    return c.render(<LoginFailed t={t} message={message} />, { title: t("account.heading") });
+  };
+
   app.get("/account", (c) => renderAccount(c));
 
-  for (const { provider } of logins) {
-    const callbackPath = `/login/${provider}/callback`;
-
-    app.get(`/login/${provider}`, async (c) => {
+  if (logins.some((login) => login.provider === "oidc")) {
+    app.get("/login/oidc", async (c) => {
       c.header("cache-control", "no-store");
       // Sent here by another site: start nothing, offer the login on our own page instead.
       if (c.req.header("sec-fetch-site") === "cross-site") return c.redirect("/account", 303);
       const client = clientOf(c);
       const allowed = limits.login.take(client);
       if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
-      const started = await startLogin(deps, { provider });
+      const started = await startLogin(deps, { provider: "oidc" });
       if (started.kind !== "redirect") {
         limits.login.refund(client);
-        if (started.kind === "not_found") return c.notFound();
-        const t = c.get("t");
-        c.status(502);
-        return c.render(<LoginFailed t={t} message={t("account.unavailable")} />, {
-          title: t("account.heading"),
-        });
+        if (started.kind !== "unavailable") return c.notFound();
+        return loginFailed(c, 502, c.get("t")("account.unavailable"));
       }
       setLoginState(c, config, started.state);
       return c.redirect(started.authorizationUrl.href, 303);
     });
+  }
 
-    app.get(callbackPath, async (c) => {
+  if (logins.some((login) => login.provider === "fediverse")) {
+    app.post("/login/fediverse", async (c) => {
+      const body = await readForm(c);
+      if (body === undefined) return badRequest(c);
+      const client = clientOf(c);
+      const allowed = limits.login.take(client);
+      if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
+      const server = formField(body, "server");
+      const started = await startLogin(deps, { provider: "fediverse", server });
+      // Only a typo is free: a server that fails was still contacted, and refunding it would let
+      // anyone send this instance's requests to servers they pick without limit.
+      if (started.kind === "invalid") limits.login.refund(client);
+      switch (started.kind) {
+        case "not_found":
+          return c.notFound();
+        case "invalid":
+          c.status(422);
+          return renderAccount(c, { fediverse: { value: server, error: started.error } });
+        case "unavailable":
+          return loginFailed(c, 502, c.get("t")("account.serverUnavailable"));
+        case "redirect": {
+          setLoginState(c, config, started.state);
+          c.header("cache-control", "no-store");
+          c.header("referrer-policy", "no-referrer");
+          const t = c.get("t");
+          const host = started.authorizationUrl.host;
+          return c.render(
+            <ContinueLogin t={t} server={host} authorizationUrl={started.authorizationUrl} />,
+            { title: t("account.continue", { server: host }) },
+          );
+        }
+      }
+    });
+  }
+
+  // Each fediverse server has its own callback, with a key made from the server (decision I50).
+  const callbackPaths = {
+    oidc: OIDC_CALLBACK_PATH,
+    fediverse: `${FEDIVERSE_CALLBACK_PATH}:key`,
+  } as const;
+  for (const { provider } of logins) {
+    app.get(callbackPaths[provider], async (c) => {
       // The URL carries the provider's code: no referrer, no cache (spec 3.2).
       secretLinkHeaders(c);
       const result = await finishLogin(deps, {
@@ -99,13 +166,7 @@ export function registerAccountRoutes(
         cookieState: takeLoginState(c, config),
         deviceToken: deviceToken(c),
       });
-      if (result.kind === "failed") {
-        const t = c.get("t");
-        c.status(400);
-        return c.render(<LoginFailed t={t} message={t("account.loginFailed")} />, {
-          title: t("account.heading"),
-        });
-      }
+      if (result.kind === "failed") return loginFailed(c, 400, c.get("t")("account.loginFailed"));
       setDeviceToken(c, config, result.newDeviceToken);
       return c.redirect("/account?loggedIn", 303);
     });
@@ -121,7 +182,7 @@ export function registerAccountRoutes(
         return c.redirect("/account", 303);
       case "invalid":
         c.status(422);
-        return renderAccount(c, { value: displayName, error: result.error });
+        return renderAccount(c, { rename: { value: displayName, error: result.error } });
       case "renamed":
         return c.redirect("/account?renamed", 303);
     }

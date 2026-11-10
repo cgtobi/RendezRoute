@@ -1,5 +1,5 @@
 import type { Child } from "hono/jsx";
-import type { Config } from "../../../config.ts";
+import { type Config, loginConfigured } from "../../../config.ts";
 import {
   LANGUAGE_NAMES,
   type Language,
@@ -100,7 +100,7 @@ export function Layout({
               </a>
             )}
             <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
-            {config.oidc !== undefined && <a href={`${pathBase}account`}>{t("layout.account")}</a>}
+            {loginConfigured(config) && <a href={`${pathBase}account`}>{t("layout.account")}</a>}
             {config.imprintUrl !== undefined && (
               <a href={config.imprintUrl.href} rel="noopener noreferrer">
                 {t("layout.imprint")}

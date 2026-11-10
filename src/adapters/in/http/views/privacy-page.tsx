@@ -3,7 +3,7 @@
 import { LOGIN_WINDOW_MINUTES } from "../../../../domain/identity.ts";
 import { ADMIN_SESSION_HOURS } from "../../../../application/admin.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
-import type { Config } from "../../../../config.ts";
+import { type Config, loginConfigured } from "../../../../config.ts";
 import {
   BACKUP_DAYS,
   DEVICE_UNLINKED_DAYS,
@@ -71,7 +71,7 @@ export function PrivacyPage({
         <li>{t("privacy.cookieCsrf")}</li>
         <li>{t("privacy.cookiePreferences", { days: LONG_COOKIE_DAYS })}</li>
         {adminLogin && <li>{t("privacy.cookieAdmin", { hours: ADMIN_SESSION_HOURS })}</li>}
-        {config.oidc !== undefined && (
+        {loginConfigured(config) && (
           <li>{t("privacy.cookieLogin", { minutes: LOGIN_WINDOW_MINUTES })}</li>
         )}
       </ul>
@@ -87,6 +87,7 @@ export function PrivacyPage({
         {config.oidc !== undefined && (
           <li>{t("privacy.oidc", { name: config.oidc.name, host: config.oidc.issuer.host })}</li>
         )}
+        {config.fediverseLogin !== undefined && <li>{t("privacy.fediverse")}</li>}
         {weather.enabled && (
           <li>
             {t("privacy.weather", { host: weather.url.host, minutes: WEATHER_CACHE_MINUTES })}

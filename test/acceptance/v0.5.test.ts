@@ -236,7 +236,11 @@ describe("v0.5 acceptance criteria (spec 6)", () => {
     // Kept on 21 June: due on 19 September, unless used. A repeat on 1 September restarts it.
     const backups = { deleteOlderThan: async () => 0 };
     const housekeeping = () =>
-      runHousekeeping({ ...test.planDeps, backups, pendingLogins: test.pendingLogins });
+      runHousekeeping({
+        ...test.planDeps,
+        backups,
+        pendingLogins: test.pendingLogins,
+      });
     test.clock.set("2026-09-01T10:00:00Z");
     const repeated = await host.postForm(`/templates/${templateId}/repeat`, {
       ...(await host.hiddenFields(`/templates/${templateId}`)),

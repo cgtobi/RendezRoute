@@ -27,6 +27,7 @@ const identity = (overrides: Partial<Identity> = {}): Identity => ({
   id: "identity-1",
   provider: "oidc",
   subject: "https://id.example.org|SENTINEL-subject",
+  handle: undefined,
   displayName: "SENTINEL-name",
   createdAt: fixtureNow,
   lastActiveAt: fixtureNow,
@@ -62,6 +63,20 @@ describe("SQLite identities (spec 4, 7 Identity)", () => {
     );
     await identities().setDisplayName("identity-1", undefined);
     expect((await identities().findById("identity-1"))?.displayName).toBeUndefined();
+  });
+
+  it("keep a fediverse handle encrypted next to the subject, and change it after a rename", async () => {
+    await identities().create(
+      identity({ provider: "fediverse", handle: "@anna@SENTINEL.example" }),
+      "subject-hash",
+    );
+    await identities().setHandle("identity-1", "@anna.r@SENTINEL.example");
+    expect(await identities().findById("identity-1")).toMatchObject({
+      subject: "https://id.example.org|SENTINEL-subject",
+      handle: "@anna.r@SENTINEL.example",
+    });
+    const raw = JSON.stringify(database.sqlite.prepare("select * from identities").all());
+    expect(raw).not.toContain("SENTINEL");
   });
 
   it("are linked to devices, which keep nothing else of them", async () => {
@@ -109,6 +124,20 @@ describe("SQLite pending logins (spec 3.11 Account takeover)", () => {
     expect(await pending().take("state-hash")).toEqual(login);
     expect(await pending().take("state-hash")).toBeUndefined();
     expect(await pending().take("unknown")).toBeUndefined();
+  });
+
+  it("keep a fediverse login's server", async () => {
+    const fediverse = {
+      ...login,
+      provider: "fediverse" as const,
+      secrets: {
+        ...login.secrets,
+        server: "https://social.example",
+        client: { id: "SENTINEL-client", secret: "SENTINEL-secret" },
+      },
+    };
+    await pending().create("fediverse-state", fediverse);
+    expect(await pending().take("fediverse-state")).toEqual(fediverse);
   });
 
   it("are deleted once started too long ago", async () => {

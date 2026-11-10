@@ -246,6 +246,7 @@ export interface IdentitiesTable {
   subject_hmac: string;
   subject_enc: string;
   display_name_enc: string | null;
+  handle_enc: string | null;
   created_at: string;
   last_active_at: string;
 }

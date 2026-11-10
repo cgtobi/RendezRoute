@@ -61,6 +61,8 @@ import {
   createPendingLoginRepository,
 } from "./adapters/out/sqlite/identities.ts";
 import { createOidcProvider } from "./adapters/out/identity/oidc.ts";
+import { createFediverseProvider } from "./adapters/out/identity/fediverse.ts";
+import { fediverseCallbackUri } from "./adapters/in/http/routes/account.tsx";
 import { createTrustedFetch } from "./adapters/out/http/trusted-fetch.ts";
 import { createResponseRepository } from "./adapters/out/sqlite/responses.ts";
 import { systemClock } from "./adapters/out/system-clock.ts";
@@ -234,8 +236,23 @@ export async function startServer(
     identities: createIdentityRepository(database, keys.cipher),
     pendingLogins: createPendingLoginRepository(database, keys.cipher),
     identityLookup: keys.identityLookup,
-    identityProviders:
-      config.oidc === undefined
+    fediverse: {
+      servers: config.fediverseLogin?.servers,
+      allowInsecure: config.allowInsecureDev,
+    },
+    identityProviders: {
+      // Fediverse servers are typed by people: full SSRF protection (decision D24).
+      ...(config.fediverseLogin === undefined
+        ? {}
+        : {
+            fediverse: createFediverseProvider({
+              http: outboundHttp(config, config.contactEmail),
+              callbackUri: fediverseCallbackUri(config.baseUrl, keys.identityLookup),
+              clientName: config.instanceName,
+              website: config.baseUrl,
+            }),
+          }),
+      ...(config.oidc === undefined
         ? {}
         : {
             oidc: createOidcProvider({
@@ -249,7 +266,8 @@ export async function startServer(
               }),
               allowHttp: config.allowInsecureDev,
             }),
-          },
+          }),
+    },
   };
 
   // Web Push (spec 6 feature 3): the instance's VAPID keys live next to the encryption key.

@@ -21,8 +21,9 @@ Things to know before going live:
 - **Weather** comes from [Open-Meteo](https://open-meteo.com/), whose free API is for non-commercial use only and has a daily request limit. For commercial use, get an API plan or run your own Open-Meteo and set `WEATHER_URL`, or switch weather off with `WEATHER_ENABLED=false`.
 - **Backups:** `docker compose exec rendezroute node dist/cli.js backup /data/manual-backups` copies the live database safely; copy it off the server together with the key volume, stored separately. Upgrades also back up the database before migrations (`/data/backups`, at most two, deleted after 7 days).
 - **`ADMIN_TOKEN`** turns on the instance admin pages at `/admin`, where you log in with the token to find and delete any plan. It must be at least 32 characters (for example from `openssl rand -base64 32`); without it there are no admin pages.
-- **`POSTING_MODE`** decides who may create plans: `anyone` (the default), `invite` (only browsers or accounts that opened an invite link from the admin page; needs `ADMIN_TOKEN`) or `logged_in` (needs a login method).
+- **`POSTING_MODE`** decides who may create plans: `anyone` (the default), `invite` (only browsers or accounts that opened an invite link from the admin page; needs `ADMIN_TOKEN`) or `logged_in` (needs OIDC or fediverse login).
 - **`OIDC_ISSUER`, `OIDC_CLIENT_ID`** (and `OIDC_CLIENT_SECRET` for a confidential client, `OIDC_NAME` for the button) turn on login with an OpenID Connect provider such as Keycloak or Authelia; it may run on your local network. Register `https://<your domain>/login/oidc/callback` as the redirect URI.
+- **`FEDIVERSE_LOGIN=true`** lets people log in with a Mastodon, GoToSocial, Akkoma or Pleroma account; `FEDIVERSE_LOGIN_SERVERS` (comma-separated domains) limits which servers may be used.
 - The generated privacy notice is at `/privacy`; set `PRIVACY_URL` and `IMPRINT_URL` to link your own pages.
 
 ## Development

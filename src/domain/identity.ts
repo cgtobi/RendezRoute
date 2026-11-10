@@ -10,8 +10,10 @@ export type IdentityProviderKind = (typeof IDENTITY_PROVIDERS)[number];
 export interface Identity {
   id: string;
   provider: IdentityProviderKind;
-  /** The provider's identifier for the account, as shown; stored encrypted. */
+  /** The provider's stable identifier for the account (issuer or server included); encrypted. */
   subject: string;
+  /** A fediverse account's handle, @name@host, updated at each login; encrypted (D23). */
+  handle: string | undefined;
   displayName: string | undefined;
   createdAt: Date;
   lastActiveAt: Date;

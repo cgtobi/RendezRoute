@@ -16,6 +16,7 @@ const COLUMNS = [
   "provider",
   "subject_enc",
   "display_name_enc",
+  "handle_enc",
   "created_at",
   "last_active_at",
 ] as const;
@@ -33,11 +34,15 @@ export function createIdentityRepository(
       row.display_name_enc === null
         ? undefined
         : cipher.decrypt(row.display_name_enc, "identities.display_name"),
+    handle:
+      row.handle_enc === null ? undefined : cipher.decrypt(row.handle_enc, "identities.handle"),
     createdAt: new Date(row.created_at),
     lastActiveAt: new Date(row.last_active_at),
   });
   const nameEnc = (name: string | undefined) =>
     name === undefined ? null : cipher.encrypt(name, "identities.display_name");
+  const handleEnc = (handle: string | undefined) =>
+    handle === undefined ? null : cipher.encrypt(handle, "identities.handle");
 
   return {
     async create(identity, subjectHash) {
@@ -49,6 +54,7 @@ export function createIdentityRepository(
           subject_hmac: subjectHash,
           subject_enc: cipher.encrypt(identity.subject, "identities.subject"),
           display_name_enc: nameEnc(identity.displayName),
+          handle_enc: handleEnc(identity.handle),
           created_at: identity.createdAt.toISOString(),
           last_active_at: identity.lastActiveAt.toISOString(),
         })
@@ -78,6 +84,15 @@ export function createIdentityRepository(
       await db
         .updateTable("identities")
         .set({ display_name_enc: nameEnc(displayName) })
+        .where("id", "=", id)
+        .execute();
+      checkpoint(database);
+    },
+
+    async setHandle(id, handle) {
+      await db
+        .updateTable("identities")
+        .set({ handle_enc: handleEnc(handle) })
         .where("id", "=", id)
         .execute();
       checkpoint(database);
@@ -126,6 +141,10 @@ export function createPendingLoginRepository(
         state: String(stored?.state),
         nonce: String(stored?.nonce),
         codeVerifier: String(stored?.codeVerifier),
+        ...(typeof stored?.server === "string" ? { server: stored.server } : {}),
+        ...(typeof stored?.client?.id === "string" && typeof stored.client.secret === "string"
+          ? { client: { id: stored.client.id, secret: stored.client.secret } }
+          : {}),
       };
       return { provider: row.provider, secrets, startedAt: new Date(row.started_at) };
     },

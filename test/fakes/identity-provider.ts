@@ -13,8 +13,12 @@ export class FakeIdentityProvider implements IdentityProvider {
   /** Off to test that the use cases check the state themselves, whatever the adapter does. */
   checksState = true;
 
-  async startLogin() {
+  /** The servers fediverse logins were started at. */
+  readonly servers: string[] = [];
+
+  async startLogin(request?: { server?: string | undefined }) {
     if (this.unavailable) throw new Error("provider unreachable");
+    if (request?.server !== undefined) this.servers.push(request.server);
     const n = ++this.#count;
     const secrets: LoginSecrets = {
       state: `state-${String(n).padStart(40, "0")}`,

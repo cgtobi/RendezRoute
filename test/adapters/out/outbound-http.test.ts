@@ -174,6 +174,25 @@ describe("OutboundHttp", () => {
     ).rejects.toThrow(/redirects/);
   });
 
+  it("keeps credentials on same-origin hops and drops them when a redirect leaves the origin", async () => {
+    const other = await serve((_, res) => res.end("elsewhere"));
+    const first = await serve((req, res) => {
+      if (req.url === "/start") res.writeHead(302, { location: "/same" }).end();
+      else res.writeHead(302, { location: `http://fine.test:${other.port}/away` }).end();
+    });
+    const response = await createOutboundHttp(testOptions).get(
+      new URL(`http://fine.test:${first.port}/start`),
+      { headers: { authorization: "Bearer SENTINEL-token", accept: "application/json" } },
+    );
+    expect(new TextDecoder().decode(response.body)).toBe("elsewhere");
+    expect(first.hits.map((hit) => hit.headers.authorization)).toEqual([
+      "Bearer SENTINEL-token",
+      "Bearer SENTINEL-token",
+    ]);
+    expect(other.hits[0]?.headers.authorization).toBeUndefined();
+    expect(other.hits[0]?.headers.accept).toBe("application/json");
+  });
+
   it("enforces the size limit with and without Content-Length", async () => {
     const big = "x".repeat(2048);
     const declared = await serve((_, res) =>

@@ -387,6 +387,10 @@ export function createFakeRepositories(): {
         const entry = identities.get(id);
         if (entry !== undefined) entry.identity.displayName = displayName;
       },
+      async setHandle(id, handle) {
+        const entry = identities.get(id);
+        if (entry !== undefined) entry.identity.handle = handle;
+      },
       async touch(id, now) {
         const entry = identities.get(id);
         if (entry !== undefined) entry.identity.lastActiveAt = now;

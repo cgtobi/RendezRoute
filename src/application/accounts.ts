@@ -11,6 +11,11 @@ import {
   type DisplayNameError,
   validateDisplayName,
 } from "../domain/identity.ts";
+import {
+  type FediverseServerError,
+  fediverseServerAllowed,
+  parseFediverseServer,
+} from "../domain/fediverse.ts";
 import { ensureDevice, lookupDevice } from "./devices.ts";
 import type { PlanDeps } from "./plans.ts";
 import type {
@@ -28,27 +33,42 @@ export interface AccountDeps extends PlanDeps {
   identityLookup: LookupHasher;
   /** The configured ways to log in. */
   identityProviders: Partial<Record<IdentityProviderKind, IdentityProvider>>;
+  /** Fediverse login's accepted servers (none listed: any) and whether local fakes may be used. */
+  fediverse: { servers: readonly string[] | undefined; allowInsecure: boolean };
 }
 
 /**
  * Starts a login: the provider's URL to send the browser to, and the state the browser keeps in its
- * login cookie. Logins left unfinished are dropped here.
+ * login cookie. A fediverse login names the server, as typed; it must be a public server and on the
+ * list when FEDIVERSE_LOGIN_SERVERS has one. Logins left unfinished are dropped here.
  */
 export async function startLogin(
   deps: AccountDeps,
-  request: { provider: IdentityProviderKind },
+  request: { provider: IdentityProviderKind; server?: string | undefined },
 ): Promise<
   | { kind: "redirect"; authorizationUrl: URL; state: string }
+  | { kind: "invalid"; error: FediverseServerError }
   | { kind: "unavailable" }
   | { kind: "not_found" }
 > {
   const provider = deps.identityProviders[request.provider];
   if (provider === undefined) return { kind: "not_found" };
+  let server: string | undefined;
+  if (request.provider === "fediverse") {
+    const parsed = parseFediverseServer(request.server ?? "", {
+      allowInsecure: deps.fediverse.allowInsecure,
+    });
+    if (!parsed.ok) return { kind: "invalid", error: parsed.error };
+    if (!fediverseServerAllowed(parsed.value, deps.fediverse.servers)) {
+      return { kind: "invalid", error: "server_not_allowed" };
+    }
+    server = parsed.value;
+  }
   const now = deps.clock.now();
   await deps.pendingLogins.deleteStartedBefore(loginCutoff(now));
   let started: Awaited<ReturnType<IdentityProvider["startLogin"]>>;
   try {
-    started = await provider.startLogin();
+    started = await provider.startLogin({ server });
   } catch {
     return { kind: "unavailable" };
   }
@@ -117,14 +137,12 @@ async function findOrCreateIdentity(
 ): Promise<Identity> {
   const subjectHash = deps.identityLookup.hash(`${provider}:${account.subject}`);
   const existing = await deps.identities.findBySubjectHash(provider, subjectHash);
-  if (existing !== undefined) {
-    await deps.identities.touch(existing.id, now);
-    return existing;
-  }
+  if (existing !== undefined) return seenAgain(deps, existing, account, now);
   const identity: Identity = {
     id: deps.ids.rowId(),
     provider,
     subject: account.subject,
+    handle: account.handle,
     displayName: displayNameFromProvider(account.names),
     createdAt: now,
     lastActiveAt: now,
@@ -136,9 +154,21 @@ async function findOrCreateIdentity(
     // The same person's first login finished a moment earlier in another browser.
     const winner = await deps.identities.findBySubjectHash(provider, subjectHash);
     if (winner === undefined) throw error;
-    await deps.identities.touch(winner.id, now);
-    return winner;
+    return seenAgain(deps, winner, account, now);
   }
+}
+
+/** An account logging in again: active now, and a renamed fediverse account's new handle. */
+async function seenAgain(
+  deps: AccountDeps,
+  identity: Identity,
+  account: ProviderAccount,
+  now: Date,
+): Promise<Identity> {
+  await deps.identities.touch(identity.id, now);
+  if (identity.handle !== account.handle)
+    await deps.identities.setHandle(identity.id, account.handle);
+  return { ...identity, handle: account.handle, lastActiveAt: now };
 }
 
 /** The account logged in on this device, if any. Never writes. */

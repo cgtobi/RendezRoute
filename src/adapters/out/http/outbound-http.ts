@@ -101,6 +101,14 @@ export function isBlockedAddress(address: string): boolean {
   return true;
 }
 
+/** The headers without those that carry credentials. */
+const withoutCredentials = (headers: Readonly<Record<string, string>>) =>
+  Object.fromEntries(
+    Object.entries(headers).filter(
+      ([name]) => !["authorization", "cookie", "proxy-authorization"].includes(name.toLowerCase()),
+    ),
+  );
+
 export interface OutboundHttpOptions {
   userAgent: string;
   /** Plain http is accepted only in development (ALLOW_INSECURE_DEV). */
@@ -169,6 +177,7 @@ export function createOutboundHttp(options: OutboundHttpOptions): OutboundHttp {
       const signal = AbortSignal.timeout(timeoutMs ?? options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
       const maxRedirects = options.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
       let url = initialUrl;
+      let sent = headers;
 
       try {
         for (let hop = 0; ; hop++) {
@@ -177,7 +186,7 @@ export function createOutboundHttp(options: OutboundHttpOptions): OutboundHttp {
             dispatcher: agent,
             redirect: "manual",
             signal,
-            headers: { ...headers, "user-agent": options.userAgent },
+            headers: { ...sent, "user-agent": options.userAgent },
           });
 
           const location = response.headers.get("location");
@@ -185,7 +194,10 @@ export function createOutboundHttp(options: OutboundHttpOptions): OutboundHttp {
             await response.body?.cancel();
             if (hop >= maxRedirects)
               throw new OutboundError(`Too many redirects (more than ${maxRedirects}).`);
-            url = new URL(location, url);
+            const next = new URL(location, url);
+            // Credentials stay with the origin they were meant for, as browsers do.
+            if (next.origin !== url.origin) sent = withoutCredentials(sent);
+            url = next;
             continue;
           }
 

@@ -89,7 +89,7 @@ describe("POSTING_MODE (spec 7 Moderation)", () => {
     );
     for (const env of [{}, { OIDC_ISSUER: "" }]) {
       expect(errors({ ...minimal, ...env, POSTING_MODE: "logged_in" })).toEqual([
-        "POSTING_MODE=logged_in needs a way to log in: set OIDC_ISSUER and OIDC_CLIENT_ID.",
+        "POSTING_MODE=logged_in needs a way to log in: set OIDC_ISSUER and OIDC_CLIENT_ID, or FEDIVERSE_LOGIN=true.",
       ]);
     }
   });
@@ -104,6 +104,63 @@ describe("POSTING_MODE (spec 7 Moderation)", () => {
 });
 
 const OIDC = { OIDC_ISSUER: "https://id.example.org/realms/club", OIDC_CLIENT_ID: "rendezroute" };
+
+describe("FEDIVERSE_LOGIN and FEDIVERSE_LOGIN_SERVERS (spec 7 Identity, decision D24)", () => {
+  it("is off unless turned on, and then accepts any server", () => {
+    expect(ok(minimal).config.fediverseLogin).toBeUndefined();
+    expect(ok({ ...minimal, FEDIVERSE_LOGIN: "false" }).config.fediverseLogin).toBeUndefined();
+    expect(ok({ ...minimal, FEDIVERSE_LOGIN: "true" }).config.fediverseLogin).toEqual({
+      servers: undefined,
+    });
+  });
+
+  it("can be limited to a list of servers, given as domains", () => {
+    const limited = ok({
+      ...minimal,
+      FEDIVERSE_LOGIN: "true",
+      FEDIVERSE_LOGIN_SERVERS: " Club.Example , mastodon.social,",
+    });
+    expect(limited.config.fediverseLogin).toEqual({
+      servers: ["club.example", "mastodon.social"],
+    });
+  });
+
+  it("refuses a server list without FEDIVERSE_LOGIN=true, and entries that are not domains", () => {
+    expect(errors({ ...minimal, FEDIVERSE_LOGIN_SERVERS: "club.example" })).toEqual([
+      "FEDIVERSE_LOGIN_SERVERS needs FEDIVERSE_LOGIN=true.",
+    ]);
+    expect(
+      errors({
+        ...minimal,
+        FEDIVERSE_LOGIN: "true",
+        FEDIVERSE_LOGIN_SERVERS: "club.example, https://x.example/path, 10.0.0.1",
+      }),
+    ).toEqual([
+      'FEDIVERSE_LOGIN_SERVERS must list domains such as mastodon.social, got "https://x.example/path".',
+      'FEDIVERSE_LOGIN_SERVERS must list domains such as mastodon.social, got "10.0.0.1".',
+    ]);
+  });
+
+  it("refuses a list without domains, and takes local servers with ports in development", () => {
+    expect(errors({ ...minimal, FEDIVERSE_LOGIN: "true", FEDIVERSE_LOGIN_SERVERS: " , " })).toEqual(
+      ["FEDIVERSE_LOGIN_SERVERS must list at least one domain."],
+    );
+    const dev = ok({
+      ...minimal,
+      BASE_URL: "http://localhost:3000",
+      ALLOW_INSECURE_DEV: "true",
+      FEDIVERSE_LOGIN: "true",
+      FEDIVERSE_LOGIN_SERVERS: "localhost:9001",
+    });
+    expect(dev.config.fediverseLogin).toEqual({ servers: ["localhost:9001"] });
+  });
+
+  it("is a way to log in for POSTING_MODE=logged_in", () => {
+    expect(
+      ok({ ...minimal, FEDIVERSE_LOGIN: "true", POSTING_MODE: "logged_in" }).config.postingMode,
+    ).toBe("logged_in");
+  });
+});
 
 describe("OIDC_* (spec 7 Identity)", () => {
   it("is off unless an issuer and client ID are set", () => {

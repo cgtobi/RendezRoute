@@ -22,6 +22,7 @@ import { fixtureNow, sampleInput } from "../fixtures/plans.ts";
 let deps: AccountDeps;
 let clock: FakeClock;
 let provider: FakeIdentityProvider;
+let fediverseProvider: FakeIdentityProvider;
 let repositories: ReturnType<typeof createFakeRepositories>;
 const anna: ProviderAccount = {
   subject: "https://id.example.org user-1",
@@ -31,6 +32,7 @@ const anna: ProviderAccount = {
 beforeEach(() => {
   clock = new FakeClock(fixtureNow);
   provider = new FakeIdentityProvider();
+  fediverseProvider = new FakeIdentityProvider();
   repositories = createFakeRepositories();
   deps = {
     ...repositories,
@@ -41,7 +43,8 @@ beforeEach(() => {
     limits: { horizonDays: 180, maxRetentionDays: 30 },
     postingMode: "anyone",
     identityLookup: { hash: (value) => `hmac(${value})` },
-    identityProviders: { oidc: provider },
+    identityProviders: { oidc: provider, fediverse: fediverseProvider },
+    fediverse: { servers: undefined, allowInsecure: false },
   };
 });
 
@@ -78,6 +81,7 @@ describe("logging in (spec 7 Identity)", () => {
         id: expect.any(String),
         provider: "oidc",
         subject: anna.subject,
+        handle: undefined,
         displayName: "Anna Example",
         createdAt: fixtureNow,
         lastActiveAt: fixtureNow,
@@ -164,6 +168,7 @@ describe("logging in (spec 7 Identity)", () => {
   it("says when the provider cannot be reached, or is not configured", async () => {
     provider.unavailable = true;
     expect(await startLogin(deps, { provider: "oidc" })).toEqual({ kind: "unavailable" });
+    deps.identityProviders = { oidc: provider };
     expect(await startLogin(deps, { provider: "fediverse" })).toEqual({ kind: "not_found" });
   });
 });
@@ -256,6 +261,72 @@ describe("login protections (spec 3.11 Account takeover)", () => {
     const second = await start();
     expect(await deps.pendingLogins.take(deps.tokens.hash(first.state))).toBeUndefined();
     expect(await deps.pendingLogins.take(deps.tokens.hash(second.state))).toBeDefined();
+  });
+});
+
+describe("fediverse logins (spec 7 Identity, decision D24)", () => {
+  const login = async (server: string, account: ProviderAccount) => {
+    const started = await startLogin(deps, { provider: "fediverse", server });
+    if (started.kind !== "redirect") throw new Error(`not started: ${started.kind}`);
+    const finished = await finishLogin(deps, {
+      provider: "fediverse",
+      callback: fediverseProvider.approve(started.authorizationUrl, account),
+      cookieState: started.state,
+      deviceToken: undefined,
+    });
+    if (finished.kind !== "logged_in") throw new Error("login failed");
+    return finished.newDeviceToken;
+  };
+
+  it("start at the server as typed, made an origin, and only at public servers", async () => {
+    expect(
+      (await startLogin(deps, { provider: "fediverse", server: "@anna@Social.Example" })).kind,
+    ).toBe("redirect");
+    expect(fediverseProvider.servers).toEqual(["https://social.example"]);
+    expect(await startLogin(deps, { provider: "fediverse", server: "10.0.0.1" })).toEqual({
+      kind: "invalid",
+      error: "server_invalid",
+    });
+    expect(await startLogin(deps, { provider: "fediverse", server: undefined })).toEqual({
+      kind: "invalid",
+      error: "server_invalid",
+    });
+  });
+
+  it("start only at listed servers when FEDIVERSE_LOGIN_SERVERS has a list", async () => {
+    deps.fediverse = { servers: ["club.example"], allowInsecure: false };
+    expect(await startLogin(deps, { provider: "fediverse", server: "mastodon.social" })).toEqual({
+      kind: "invalid",
+      error: "server_not_allowed",
+    });
+    expect((await startLogin(deps, { provider: "fediverse", server: "club.example" })).kind).toBe(
+      "redirect",
+    );
+  });
+
+  it("keep the account when it is renamed, with the new handle and the stable subject", async () => {
+    const subject = "https://social.example 109";
+    await login("social.example", { subject, handle: "@anna@social.example", names: ["Anna"] });
+    await login("social.example", { subject, handle: "@anna_r@social.example", names: ["A"] });
+    expect(repositories.identities.all()).toEqual([
+      expect.objectContaining({
+        provider: "fediverse",
+        subject,
+        handle: "@anna_r@social.example",
+        displayName: "Anna",
+      }),
+    ]);
+  });
+
+  it("are other accounts than OIDC ones, even with the same subject", async () => {
+    await logIn({ subject: "same", names: [] });
+    await login("social.example", { subject: "same", names: [] });
+    expect(
+      repositories.identities
+        .all()
+        .map((identity) => identity.provider)
+        .sort(),
+    ).toEqual(["fediverse", "oidc"]);
   });
 });
 

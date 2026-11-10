@@ -669,6 +669,21 @@ export const en = {
   "admin.deleteConfirm": "Delete plan for good",
   "admin.deleted": "The plan was deleted.",
   "admin.back": "Back to the admin page",
+  "account.fediverseHeading": "Log in with a fediverse account",
+  "account.fediverseServer": "Your server",
+  "account.fediverseHint": "For example mastodon.social, or your handle such as @you@your.server.",
+  "account.fediverseHandleHint":
+    "If your handle’s domain is not your server’s address, enter the server’s address.",
+  "account.fediverseServers": "Accepted servers: {servers}",
+  "account.fediverseSubmit": "Continue",
+  "account.continue": "Continue to {server}",
+  "account.continueText": "Log in there and allow access. You will then come back here.",
+  "account.serverUnavailable":
+    "That server cannot be reached, or does not let this instance register for logging in. Please check the address or try again later.",
+  "field.server_invalid": "Please enter your server’s address, for example mastodon.social.",
+  "field.server_not_allowed": "Logging in with this server is not possible here.",
+  "privacy.fediverse":
+    "Fediverse login: when you log in with a fediverse account, your browser goes to your server, where this instance registers an app for that one login. It may read your account’s details, including whom you follow; it is used only to learn which account you are, and the access is given back right after. Stored here, encrypted: your server and account ID, your handle and your display name.",
   "layout.account": "Account",
   "account.heading": "Your account",
   "account.intro":

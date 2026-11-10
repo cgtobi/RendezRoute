@@ -2,6 +2,7 @@
 // Takes a plain key/value record so sources other than process.env (e.g. a
 // Home Assistant options file, spec section 8) can be mapped onto it later.
 import { isAbsolute } from "node:path";
+import { parseFediverseServer } from "./domain/fediverse.ts";
 import { POSTING_MODES, type PostingMode } from "./domain/invite.ts";
 import { validateTimeZone } from "./domain/timezone.ts";
 
@@ -41,6 +42,8 @@ export interface Config {
   postingMode: PostingMode;
   /** Login with an OpenID Connect provider (spec 7 Identity); off unless configured. */
   oidc: OidcConfig | undefined;
+  /** Login with a fediverse account (decision D24); off unless FEDIVERSE_LOGIN=true. */
+  fediverseLogin: { servers: readonly string[] | undefined } | undefined;
 }
 
 export interface OidcConfig {
@@ -51,6 +54,10 @@ export interface OidcConfig {
   /** Shown on the login button and in the privacy notice. */
   name: string;
 }
+
+/** Whether any way to log in is configured (spec 7 Identity). */
+export const loginConfigured = (config: Config): boolean =>
+  config.oidc !== undefined || config.fediverseLogin !== undefined;
 
 export type ConfigResult =
   | { ok: true; config: Config; warnings: string[] }
@@ -286,6 +293,33 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     return { issuer, clientId, clientSecret: read("OIDC_CLIENT_SECRET") || undefined, name };
   })();
 
+  // FEDIVERSE_LOGIN: off unless turned on; FEDIVERSE_LOGIN_SERVERS limits the servers (decision D24).
+  const fediverseOn = bool("FEDIVERSE_LOGIN", false);
+  const serverList = read("FEDIVERSE_LOGIN_SERVERS") || undefined;
+  if (serverList !== undefined && !fediverseOn) {
+    errors.push("FEDIVERSE_LOGIN_SERVERS needs FEDIVERSE_LOGIN=true.");
+  }
+  // Domains; in development also local fake servers with a port (host:port).
+  const servers = serverList
+    ?.split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "")
+    .flatMap((entry) => {
+      const parsed = parseFediverseServer(entry, { allowInsecure: allowInsecureDev });
+      const host = parsed.ok ? new URL(parsed.value).host : undefined;
+      if (host === undefined || host !== entry.toLowerCase().replace(/\.$/, "")) {
+        errors.push(
+          `FEDIVERSE_LOGIN_SERVERS must list domains such as mastodon.social, got "${entry}".`,
+        );
+        return [];
+      }
+      return [host];
+    });
+  if (serverList !== undefined && servers?.length === 0) {
+    errors.push("FEDIVERSE_LOGIN_SERVERS must list at least one domain.");
+  }
+  const fediverseLogin = fediverseOn ? { servers } : undefined;
+
   // POSTING_MODE: invite links come from the admin page, so invite needs ADMIN_TOKEN; logged_in
   // needs a way to log in.
   const postingSetting = read("POSTING_MODE") || "anyone";
@@ -298,9 +332,14 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       "POSTING_MODE=invite needs ADMIN_TOKEN: only the instance admin can create invite links.",
     );
   }
-  if (postingMode === "logged_in" && oidc === undefined && !read("OIDC_ISSUER")) {
+  if (
+    postingMode === "logged_in" &&
+    oidc === undefined &&
+    !read("OIDC_ISSUER") &&
+    fediverseLogin === undefined
+  ) {
     errors.push(
-      "POSTING_MODE=logged_in needs a way to log in: set OIDC_ISSUER and OIDC_CLIENT_ID.",
+      "POSTING_MODE=logged_in needs a way to log in: set OIDC_ISSUER and OIDC_CLIENT_ID, or FEDIVERSE_LOGIN=true.",
     );
   }
 
@@ -335,6 +374,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       adminToken,
       postingMode,
       oidc,
+      fediverseLogin,
     },
   };
 }

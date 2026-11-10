@@ -37,6 +37,9 @@ import {
 } from "../../src/adapters/out/sqlite/identities.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import type { FakeOidcServer } from "../fakes/oidc-server.ts";
+import { type FakeMastodonServer, fediverse } from "../fakes/mastodon-server.ts";
+import { createFediverseProvider } from "../../src/adapters/out/identity/fediverse.ts";
+import { fediverseCallbackUri } from "../../src/adapters/in/http/routes/account.tsx";
 import { FakeGeocoder } from "../fakes/geocoder.ts";
 import { FakePreviewRenderer } from "../fakes/preview-renderer.ts";
 import { fixtureNow } from "../fixtures/plans.ts";
@@ -61,6 +64,7 @@ export async function createTestApp({
   renderer,
   weather,
   oidc,
+  mastodon = [],
 }: {
   databasePath?: string;
   env?: Record<string, string>;
@@ -71,6 +75,8 @@ export async function createTestApp({
   weather?: WeatherProvider;
   /** A fake OIDC provider the app talks to; pass its env() too. */
   oidc?: FakeOidcServer;
+  /** Fake Mastodon servers fediverse logins reach; set FEDIVERSE_LOGIN=true too. */
+  mastodon?: FakeMastodonServer[];
 } = {}) {
   const config = testConfig(env);
   const database: Database = await openDatabase(databasePath);
@@ -103,6 +109,7 @@ export async function createTestApp({
     notify: { channels, jobs, reminders: createSentReminderRepository(database) },
   };
   const pendingLogins = createPendingLoginRepository(database, cipher);
+  const identityLookup = createLookupHasher(randomBytes(32));
   const app = createApp({
     config,
     geocoder: config.geocoder.enabled ? geocoder : undefined,
@@ -116,9 +123,9 @@ export async function createTestApp({
     accounts: {
       identities: createIdentityRepository(database, cipher),
       pendingLogins,
-      identityLookup: createLookupHasher(randomBytes(32)),
-      identityProviders:
-        config.oidc === undefined || oidc === undefined
+      identityLookup,
+      identityProviders: {
+        ...(config.oidc === undefined || oidc === undefined
           ? {}
           : {
               oidc: createOidcProvider({
@@ -129,7 +136,19 @@ export async function createTestApp({
                 fetch: oidc.fetch,
                 allowHttp: false,
               }),
-            },
+            }),
+        ...(config.fediverseLogin === undefined
+          ? {}
+          : {
+              fediverse: createFediverseProvider({
+                http: fediverse(...mastodon),
+                callbackUri: fediverseCallbackUri(config.baseUrl, identityLookup),
+                clientName: config.instanceName,
+                website: config.baseUrl,
+              }),
+            }),
+      },
+      fediverse: { servers: config.fediverseLogin?.servers, allowInsecure: false },
     },
     logger: createLogger({ write: (line) => logs.push(line) }),
     planDeps,

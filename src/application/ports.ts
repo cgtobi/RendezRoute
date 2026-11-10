@@ -55,6 +55,7 @@ export const ENCRYPTED_FIELDS = [
   "identities.subject",
   "identities.display_name",
   "pending_logins.secrets",
+  "identities.handle",
 ] as const;
 export type EncryptedField = (typeof ENCRYPTED_FIELDS)[number];
 
@@ -206,6 +207,8 @@ export interface IdentityRepository {
   ): Promise<Identity | undefined>;
   findById(id: string): Promise<Identity | undefined>;
   setDisplayName(id: string, displayName: string | undefined): Promise<void>;
+  /** A fediverse account's handle as shown, after a rename (D23). */
+  setHandle(id: string, handle: string | undefined): Promise<void>;
   touch(id: string, now: Date): Promise<void>;
 }
 
@@ -219,6 +222,10 @@ export interface LoginSecrets {
   state: string;
   nonce: string;
   codeVerifier: string;
+  /** Fediverse logins: the server's origin, where the code is exchanged (never the callback's). */
+  server?: string | undefined;
+  /** Fediverse logins: the app registered at the server for this login only (decision D24). */
+  client?: { id: string; secret: string } | undefined;
 }
 
 /** A login started and not finished yet (at most LOGIN_WINDOW_MINUTES); encrypted at rest. */
@@ -237,8 +244,10 @@ export interface PendingLoginRepository {
 
 /** Who logged in, as the provider says. */
 export interface ProviderAccount {
-  /** Stable for the account at this provider, issuer included. */
+  /** Stable for the account at this provider, issuer or server included; found by its hash. */
   subject: string;
+  /** A fediverse account's handle, @name@host, for display (D23). */
+  handle?: string | undefined;
   /** Names the provider offers, best first; the first valid one becomes the display name. */
   names: (string | undefined)[];
 }
@@ -248,8 +257,14 @@ export interface ProviderAccount {
  * matching are the adapter's job; it keeps no tokens.
  */
 export interface IdentityProvider {
-  /** Where to send the browser, with the one-time values the callback must match. */
-  startLogin(): Promise<{ authorizationUrl: URL; secrets: LoginSecrets }>;
+  /**
+   * Where to send the browser, with the one-time values the callback must match. Fediverse logins
+   * name the server's origin; throws when the provider cannot be reached.
+   */
+  startLogin(request?: { server?: string | undefined }): Promise<{
+    authorizationUrl: URL;
+    secrets: LoginSecrets;
+  }>;
   /** Checks the provider's answer at the callback URL against the login's one-time values. */
   finishLogin(
     callback: URL,

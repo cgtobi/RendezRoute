@@ -19,9 +19,15 @@ export async function runRetentionSweep(deps: PlanDeps): Promise<{ deletedPlans:
   return { deletedPlans: due.length };
 }
 
-/** Daily expiry of templates, devices, unfinished logins and pre-migration backups (spec 3.10, 11). */
+/**
+ * Daily expiry of templates, devices, unfinished logins and pre-migration backups (spec 3.10,
+ * 11).
+ */
 export async function runHousekeeping(
-  deps: PlanDeps & { backups: BackupStore; pendingLogins: PendingLoginRepository },
+  deps: PlanDeps & {
+    backups: BackupStore;
+    pendingLogins: PendingLoginRepository;
+  },
 ): Promise<{
   deletedTemplates: number;
   deletedDevices: number;

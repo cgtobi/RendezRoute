@@ -1,21 +1,24 @@
-// The account page (spec 7 Identity): the ways to log in, or the account's display name and
-// "Log out". Never the provider's identifier.
+// The account page (spec 7 Identity): the ways to log in (an OIDC button, a fediverse server field),
+// or the account's display name and "Log out". Never the provider's identifier.
 import type { AccountView } from "../../../../application/accounts.ts";
-import {
-  type DisplayNameError,
-  IDENTITY_LIMITS,
-  type IdentityProviderKind,
-} from "../../../../domain/identity.ts";
+import type { FediverseServerError } from "../../../../domain/fediverse.ts";
+import { type DisplayNameError, IDENTITY_LIMITS } from "../../../../domain/identity.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage } from "./format.ts";
 
 export type AccountNotice = "loggedIn" | "loggedOut" | "renamed" | undefined;
 
-export interface LoginOption {
-  provider: IdentityProviderKind;
-  /** The button's name for it, e.g. OIDC_NAME. */
-  name: string;
+export type LoginOption =
+  /** The button's name for it: OIDC_NAME. */
+  | { provider: "oidc"; name: string }
+  /** The accepted servers, when FEDIVERSE_LOGIN_SERVERS lists them (decision D24). */
+  | { provider: "fediverse"; servers: readonly string[] | undefined };
+
+/** The fediverse server as typed, with its error, when the login could not start. */
+export interface FediverseLoginForm {
+  value: string;
+  error: FediverseServerError;
 }
 
 export function AccountPage(props: {
@@ -26,6 +29,7 @@ export function AccountPage(props: {
   notice: AccountNotice;
   /** What was typed into the name field, with its error, when renaming failed. */
   rename?: { value: string; error: DisplayNameError } | undefined;
+  fediverse?: FediverseLoginForm | undefined;
 }) {
   const { t, account } = props;
   const notice = props.notice === undefined ? undefined : t(`account.${props.notice}`);
@@ -40,13 +44,22 @@ export function AccountPage(props: {
       {account.kind === "logged_out" ? (
         <>
           <p>{t("account.intro")}</p>
-          <p>
-            {props.logins.map((login) => (
-              <a class="button" href={`/login/${login.provider}`}>
-                {t("account.loginWith", { name: login.name })}
-              </a>
-            ))}
-          </p>
+          {props.logins.map((login) =>
+            login.provider === "oidc" ? (
+              <p>
+                <a class="button" href="/login/oidc">
+                  {t("account.loginWith", { name: login.name })}
+                </a>
+              </p>
+            ) : (
+              <FediverseLogin
+                t={t}
+                csrfToken={props.csrfToken}
+                servers={login.servers}
+                form={props.fediverse}
+              />
+            ),
+          )}
         </>
       ) : (
         <>
@@ -85,6 +98,66 @@ export function AccountPage(props: {
           </form>
         </>
       )}
+    </section>
+  );
+}
+
+/** Logging in with a fediverse account: the person's server, as a domain or handle. */
+function FediverseLogin(props: {
+  t: Translate;
+  csrfToken: string;
+  servers: readonly string[] | undefined;
+  form: FediverseLoginForm | undefined;
+}) {
+  const { t, form } = props;
+  return (
+    <form method="post" action="/login/fediverse">
+      <h2>{t("account.fediverseHeading")}</h2>
+      <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+      <div class={form === undefined ? "field" : "field field-invalid"}>
+        <label for="field-server">{t("account.fediverseServer")}</label>
+        <input
+          id="field-server"
+          name="server"
+          required
+          autocomplete="off"
+          spellcheck={false}
+          value={form?.value ?? ""}
+          aria-invalid={form === undefined ? undefined : "true"}
+          aria-describedby={form === undefined ? "field-server-hint" : "field-server-error"}
+        />
+        <p class="hint" id="field-server-hint">
+          {props.servers === undefined
+            ? t("account.fediverseHint")
+            : t("account.fediverseServers", { servers: props.servers.join(", ") })}{" "}
+          {t("account.fediverseHandleHint")}
+        </p>
+        {form !== undefined && (
+          <p class="error" id="field-server-error">
+            {fieldErrorMessage(form.error, t)}
+          </p>
+        )}
+      </div>
+      <button type="submit">{t("account.fediverseSubmit")}</button>
+    </form>
+  );
+}
+
+/**
+ * Where a fediverse login goes next: a link, not a redirect, since `form-action 'self'` would
+ * block a form's redirect to another server, and so the person sees which server it is.
+ */
+export function ContinueLogin(props: { t: Translate; server: string; authorizationUrl: URL }) {
+  const { t } = props;
+  return (
+    <section class="account">
+      <h1>{t("account.continue", { server: props.server })}</h1>
+      <p>{t("account.continueText")}</p>
+      <p>
+        <a class="button" href={props.authorizationUrl.href}>
+          {t("account.continue", { server: props.server })}
+        </a>
+      </p>
     </section>
   );
 }

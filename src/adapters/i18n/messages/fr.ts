@@ -690,6 +690,24 @@ export const fr: Messages = {
   "admin.deleteConfirm": "Supprimer définitivement la sortie",
   "admin.deleted": "La sortie a été supprimée.",
   "admin.back": "Retour à l’administration",
+  "account.fediverseHeading": "Se connecter avec un compte du fédivers",
+  "account.fediverseServer": "Votre serveur",
+  "account.fediverseHint":
+    "Par exemple mastodon.social, ou votre identifiant comme @vous@votre.serveur.",
+  "account.fediverseHandleHint":
+    "Si le domaine de votre identifiant n’est pas l’adresse de votre serveur, saisissez l’adresse du serveur.",
+  "account.fediverseServers": "Serveurs acceptés : {servers}",
+  "account.fediverseSubmit": "Continuer",
+  "account.continue": "Continuer vers {server}",
+  "account.continueText":
+    "Connectez-vous là-bas et autorisez l’accès. Vous reviendrez ensuite ici.",
+  "account.serverUnavailable":
+    "Ce serveur est injoignable ou n’accepte pas d’enregistrer cette instance pour la connexion. Veuillez vérifier l’adresse ou réessayer plus tard.",
+  "field.server_invalid":
+    "Veuillez saisir l’adresse de votre serveur, par exemple mastodon.social.",
+  "field.server_not_allowed": "La connexion avec ce serveur n’est pas possible ici.",
+  "privacy.fediverse":
+    "Connexion avec le fédivers : lorsque vous vous connectez avec un compte du fédivers, votre navigateur passe par votre serveur, où cette instance enregistre une application pour cette seule connexion. Elle peut lire les informations de votre compte, y compris qui vous suivez ; elle sert uniquement à savoir quel compte est le vôtre, et l’accès est rendu juste après. Conservés ici, chiffrés : votre serveur et l’identifiant de votre compte, votre identifiant de fédivers et votre nom affiché.",
   "layout.account": "Compte",
   "account.heading": "Votre compte",
   "account.intro":

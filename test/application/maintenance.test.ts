@@ -65,16 +65,20 @@ describe("runRetentionSweep (spec 3.10, acceptance criterion v0.1)", () => {
 describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
   it("deletes pre-migration backups after 7 days (spec 11)", async () => {
     const backups = new FakeBackupStore(2);
-    expect(await runHousekeeping({ ...deps, backups, pendingLogins: repos.pendingLogins })).toEqual(
-      {
-        deletedTemplates: 0,
-        deletedDevices: 0,
-        deletedFeeds: 0,
-        deletedBackups: 2,
-        deletedFormNonces: 0,
-        deletedPendingLogins: 0,
-      },
-    );
+    expect(
+      await runHousekeeping({
+        ...deps,
+        backups,
+        pendingLogins: repos.pendingLogins,
+      }),
+    ).toEqual({
+      deletedTemplates: 0,
+      deletedDevices: 0,
+      deletedFeeds: 0,
+      deletedBackups: 2,
+      deletedFormNonces: 0,
+      deletedPendingLogins: 0,
+    });
     expect(backups.cutoffs).toEqual([new Date(fixtureNow.getTime() - 7 * 24 * 60 * 60 * 1000)]);
   });
 

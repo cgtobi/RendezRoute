@@ -39,6 +39,7 @@ import { registerAdminRoutes } from "./routes/admin.tsx";
 import { registerReportRoutes } from "./routes/reports.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
 import { registerAccountRoutes } from "./routes/account.tsx";
+import type { LoginOption } from "./views/account.tsx";
 import { registerInviteRoutes } from "./routes/invites.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
@@ -251,12 +252,17 @@ export function createApp({
     return c.body(script);
   });
 
-  const oidcLogin =
-    config.oidc !== undefined && accounts?.identityProviders.oidc !== undefined
+  // The configured ways to log in that have a provider (spec 7 Identity).
+  const logins: LoginOption[] = [
+    ...(config.oidc !== undefined && accounts?.identityProviders.oidc !== undefined
       ? [{ provider: "oidc" as const, name: config.oidc.name }]
-      : [];
+      : []),
+    ...(config.fediverseLogin !== undefined && accounts?.identityProviders.fediverse !== undefined
+      ? [{ provider: "fediverse" as const, servers: config.fediverseLogin.servers }]
+      : []),
+  ];
   const accountDeps =
-    accounts === undefined || oidcLogin.length === 0 ? undefined : { ...planDeps, ...accounts };
+    accounts === undefined || logins.length === 0 ? undefined : { ...planDeps, ...accounts };
   const deps = {
     config,
     planDeps,
@@ -282,7 +288,7 @@ export function createApp({
   registerMyDataRoutes(app, deps);
   registerRatingRoutes(app, deps);
   if (accountDeps !== undefined) {
-    registerAccountRoutes(app, deps, { deps: accountDeps, logins: oidcLogin });
+    registerAccountRoutes(app, deps, { deps: accountDeps, logins });
   }
   if (config.postingMode === "invite") registerInviteRoutes(app, deps);
   if (adminAuth !== undefined) {

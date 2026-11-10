@@ -15,6 +15,7 @@ import { validatePlanInput } from "../domain/plan-input.ts";
 import type { Units } from "../domain/units.ts";
 import { lookupDevice, resolveDevice } from "./devices.ts";
 import { asHost, type Denied, isDenied } from "./host.ts";
+import { mayCreatePlans } from "./posting-rules.ts";
 import {
   checkCreationNonce,
   CREATION_NONCE,
@@ -136,9 +137,11 @@ export async function listTemplates(
 export async function viewTemplate(
   deps: PlanDeps,
   request: { templateId: string; deviceToken: string | undefined },
-): Promise<{ kind: "found"; template: PlanTemplate } | Denied> {
+): Promise<{ kind: "found"; template: PlanTemplate; mayRepeat: boolean } | Denied> {
   const template = await asTemplateHost(deps, request.templateId, request.deviceToken);
-  return isDenied(template) ? template : { kind: "found", template };
+  if (isDenied(template)) return template;
+  // Repeating creates a plan, so the posting rules decide (spec 7 Moderation).
+  return { kind: "found", template, mayRepeat: await mayCreatePlans(deps, request) };
 }
 
 /** Repeats and edits count as use: the template stays for another 90 days (spec 3.10). */
@@ -189,6 +192,8 @@ export type RepeatTemplateResult =
   | Denied
   | { kind: "bad_request" }
   | { kind: "duplicate"; planId: string }
+  /** The posting rules do not let this device create plans (spec 7 Moderation). */
+  | { kind: "not_allowed" }
   /** The date or time is not accepted. */
   | { kind: "invalid"; errors: FieldError[] }
   /** Other settings break the current rules and cannot be adjusted: edit the template first. */
@@ -214,6 +219,7 @@ export async function repeatTemplate(
   if (isDenied(template)) return template;
   const nonceUsed = await checkCreationNonce(deps, request.creationNonce);
   if (nonceUsed !== undefined) return nonceUsed;
+  if (!(await mayCreatePlans(deps, request))) return { kind: "not_allowed" };
 
   const now = deps.clock.now();
   const { input, adjustments } = repeatInput(

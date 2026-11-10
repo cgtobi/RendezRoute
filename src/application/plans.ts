@@ -8,6 +8,7 @@ import {
   type PlanInput,
   validatePlanInput,
 } from "../domain/plan-input.ts";
+import type { PostingMode } from "../domain/invite.ts";
 import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
 import type { RecapWindow } from "../domain/schedule.ts";
 import { audienceFor, canSee } from "../domain/visibility.ts";
@@ -20,6 +21,7 @@ import {
 } from "../domain/route.ts";
 import { canRespond } from "../domain/responding.ts";
 import { type DeviceDeps, ensureDevice, resolveDevice } from "./devices.ts";
+import { mayCreatePlans } from "./posting-rules.ts";
 import {
   type PlanViewForParticipant,
   type PlanViewForPoster,
@@ -38,6 +40,8 @@ import type {
   CalendarFeedRepository,
   ChannelRepository,
   FormNonceRepository,
+  InviteRepository,
+  PermissionRepository,
   RatingRepository,
   ReportRepository,
   JobQueue,
@@ -67,6 +71,10 @@ export interface PlanDeps extends DeviceDeps {
   ratings: RatingRepository;
   /** Reports to the instance admin (spec 7 Moderation). */
   reports: ReportRepository;
+  /** Who may create plans, and the invite links and permissions behind it (spec 7 Moderation). */
+  postingMode: PostingMode;
+  invites: InviteRepository;
+  permissions: PermissionRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
   notify?:
     | { channels: ChannelRepository; jobs: JobQueue; reminders: SentReminderRepository }
@@ -83,7 +91,9 @@ export type CreatePlanResult =
     })
   | { kind: "duplicate"; planId: string }
   | { kind: "invalid"; errors: FieldError[] }
-  | { kind: "bad_request" };
+  | { kind: "bad_request" }
+  /** The posting rules do not let this device create plans (spec 7 Moderation). */
+  | { kind: "not_allowed" };
 
 /** Parses an upload and hides its ends as chosen; trimmed points are never stored (D13). */
 export function readRoute(
@@ -115,6 +125,7 @@ export async function createPlan(
 ): Promise<CreatePlanResult> {
   const used = await checkCreationNonce(deps, request.creationNonce);
   if (used !== undefined) return used;
+  if (!(await mayCreatePlans(deps, request))) return { kind: "not_allowed" };
 
   const now = deps.clock.now();
   const rules = { now, ...deps.limits };

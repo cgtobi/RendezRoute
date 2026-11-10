@@ -202,6 +202,8 @@ export interface DatabaseSchema {
   used_form_nonces: UsedFormNoncesTable;
   plan_ratings: PlanRatingsTable;
   reports: ReportsTable;
+  invites: InvitesTable;
+  permissions: PermissionsTable;
 }
 
 export interface PlanRatingsTable {
@@ -222,6 +224,24 @@ export interface ReportsTable {
   attached_content_enc: string | null;
   created_at: string;
   resolved_at: string | null;
+}
+
+export interface InvitesTable {
+  id: string;
+  token_hash: string;
+  expires_at: string | null;
+  max_uses: number | null;
+  uses: Generated<number>;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+export interface PermissionsTable {
+  id: string;
+  device_id: string;
+  permission: "may_post";
+  invite_id: string | null;
+  created_at: string;
 }
 
 export interface UsedFormNoncesTable {

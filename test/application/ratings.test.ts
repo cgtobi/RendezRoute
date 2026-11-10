@@ -36,6 +36,7 @@ beforeEach(async () => {
     ids: new SequentialIdGenerator(),
     clock,
     limits: { horizonDays: 180, maxRetentionDays: 30 },
+    postingMode: "anyone",
   };
   const created = await createPlan(deps, {
     input: { ...sampleInput, joinMode: "approval" },

@@ -2,6 +2,7 @@
 // Takes a plain key/value record so sources other than process.env (e.g. a
 // Home Assistant options file, spec section 8) can be mapped onto it later.
 import { isAbsolute } from "node:path";
+import { POSTING_MODES, type PostingMode } from "./domain/invite.ts";
 import { validateTimeZone } from "./domain/timezone.ts";
 
 /** Raw key/value configuration, e.g. process.env or a mapped Home Assistant options file. */
@@ -36,6 +37,8 @@ export interface Config {
   allowInsecureDev: boolean;
   /** The instance admin's login secret (spec 7 Moderation); admin pages exist only when set. */
   adminToken: string | undefined;
+  /** Who may create plans (spec 7 Moderation). */
+  postingMode: PostingMode;
 }
 
 export type ConfigResult =
@@ -248,7 +251,19 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     errors.push(`ADMIN_TOKEN must be at least ${MIN_ADMIN_TOKEN_LENGTH} characters.`);
   }
 
-  if (errors.length > 0) return { ok: false, errors };
+  // POSTING_MODE: invite links come from the admin page, so invite needs ADMIN_TOKEN.
+  const postingSetting = read("POSTING_MODE") || "anyone";
+  const postingMode = (POSTING_MODES as readonly string[]).includes(postingSetting)
+    ? (postingSetting as PostingMode)
+    : undefined;
+  if (postingMode === undefined) errors.push("POSTING_MODE must be anyone or invite.");
+  if (postingMode === "invite" && adminToken === undefined) {
+    errors.push(
+      "POSTING_MODE=invite needs ADMIN_TOKEN: only the instance admin can create invite links.",
+    );
+  }
+
+  if (errors.length > 0 || postingMode === undefined) return { ok: false, errors };
 
   return {
     ok: true,
@@ -277,6 +292,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       weather: { enabled: weatherEnabled, url: weatherUrl },
       allowInsecureDev,
       adminToken,
+      postingMode,
     },
   };
 }

@@ -1,4 +1,5 @@
 import type { GeoPoint } from "../domain/geo.ts";
+import type { Invite } from "../domain/invite.ts";
 import type { Report, ReportReason } from "../domain/report.ts";
 import type { JobType } from "../domain/jobs.ts";
 import type { Notification } from "../domain/notification.ts";
@@ -162,6 +163,32 @@ export interface NewTemplate {
   hostsOfPlan: string;
   /** One-time value from the "Save as template" form; detects resubmission (decision I9). */
   creationNonce?: string | undefined;
+}
+
+/** Invite links (spec 7 Moderation); only their token hashes are stored. */
+export interface InviteRepository {
+  create(invite: Invite, tokenHash: string): Promise<void>;
+  findByTokenHash(hash: string): Promise<Invite | undefined>;
+  /** Every invite, newest first. */
+  list(): Promise<Invite[]>;
+  /** Whether the invite exists; revoking it again keeps the first time. */
+  revoke(id: string, at: Date): Promise<boolean>;
+  /**
+   * Lets the device post through the invite, in one step: a device that may already post uses
+   * nothing; otherwise one use is counted, but only while the invite is usable at `now`.
+   */
+  redeem(request: {
+    inviteId: string;
+    deviceId: string;
+    permissionId: string;
+    now: Date;
+  }): Promise<"granted" | "already_allowed" | "unusable">;
+}
+
+/** What a device may do beyond the defaults (spec 3.10 Other expiry counts these as links). */
+export interface PermissionRepository {
+  /** When the device became allowed to post, if it is. */
+  mayPostSince(deviceId: string): Promise<Date | undefined>;
 }
 
 /** Reports to the instance admin (spec 7 Moderation); details and attachments encrypted at rest. */

@@ -22,6 +22,7 @@ import {
   badRequest,
   clientOf,
   formField,
+  inviteNeeded,
   localizedInput,
   mapSettings,
   newNonce,
@@ -64,6 +65,8 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         csrfToken={c.get("csrfToken")()}
         nonce={newNonce()}
         repeat={{ ...repeat, time: repeat.time ?? result.template.startTime }}
+        mayRepeat={result.mayRepeat}
+        contactEmail={config.contactEmail}
         saved={c.req.query("saved") !== undefined}
         signedOut={signedOutCount(c)}
         linkNonce={newNonce()}
@@ -174,6 +177,8 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         return templateGone(c);
       case "bad_request":
         return badRequest(c);
+      case "not_allowed":
+        return inviteNeeded(c, config, 403);
       case "duplicate":
         return c.redirect(`/p/${result.planId}`, 303);
       case "invalid":

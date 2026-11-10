@@ -26,6 +26,7 @@ export function registerMyDataRoutes(
       <MyDataPage
         t={c.get("t")}
         language={c.get("language")}
+        timeZone={config.defaultTimezone}
         data={data}
         csrfToken={c.get("csrfToken")()}
         vapidPublicKey={vapidPublicKey}

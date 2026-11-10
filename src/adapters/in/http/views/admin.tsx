@@ -3,10 +3,18 @@
 // the admin directory (spec 3.8 URLs).
 import type { OpenReportSummary, ReportView } from "../../../../application/admin.ts";
 import type { PlanViewForInstanceAdmin } from "../../../../application/plan-views.ts";
+import type { InviteView } from "../../../../application/posting.ts";
+import {
+  INVITE_LIMITS,
+  type InviteError,
+  type InviteInput,
+  type InviteState,
+} from "../../../../domain/invite.ts";
+import type { MessageKey } from "../../../i18n/messages/en.ts";
 import { postText, REASON_LABELS } from "./report.tsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
-import { formatDate, formatDay, formatTime } from "./format.ts";
+import { fieldErrorMessage, formatDate, formatDay, formatTime } from "./format.ts";
 
 export function AdminLogin({
   t,
@@ -51,15 +59,18 @@ export function AdminHome({
   deleted,
   notFound,
   openReports,
+  invites,
 }: {
   t: Translate;
   csrfToken: string;
   /** Relative path to /admin/ from the current page. */
   adminDir: string;
   deleted: boolean;
-  /** A plan or report the admin asked for that does not exist (any more). */
-  notFound: "plan" | "report" | undefined;
+  /** A plan, report or invite the admin asked for that does not exist (any more). */
+  notFound: "plan" | "report" | "invite" | undefined;
   openReports: readonly OpenReportSummary[];
+  /** Only with POSTING_MODE=invite. */
+  invites: InvitesSectionProps | undefined;
 }) {
   const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
   return (
@@ -73,6 +84,11 @@ export function AdminHome({
       {notFound === "report" && (
         <p class="warning" role="alert">
           {t("admin.reportNotFound")}
+        </p>
+      )}
+      {notFound === "invite" && (
+        <p class="warning" role="alert">
+          {t("admin.inviteNotFound")}
         </p>
       )}
       <form method="post" action={`${adminDir}plans`}>
@@ -98,6 +114,9 @@ export function AdminHome({
           </ul>
         )}
       </section>
+      {invites !== undefined && (
+        <InvitesSection {...invites} t={t} csrfToken={csrfToken} adminDir={adminDir} />
+      )}
       <form method="post" action={`${adminDir}logout`}>
         {csrf}
         <button type="submit" class="secondary">
@@ -189,6 +208,140 @@ export function AdminPlan({
           {t("admin.deleteConfirm")}
         </button>
       </form>
+    </section>
+  );
+}
+
+const INVITE_STATES: Readonly<Record<InviteState, MessageKey>> = {
+  usable: "admin.inviteUsable",
+  expired: "admin.inviteExpired",
+  used_up: "admin.inviteUsedUp",
+  revoked: "admin.inviteRevoked",
+};
+
+export interface InvitesSectionProps {
+  language: string;
+  /** The instance's time zone, in which an invite's last day ends. */
+  timeZone: string;
+  list: readonly InviteView[];
+  /** One-time value for the form (decision I44). */
+  nonce: string;
+  /** What was typed, kept when the form shows errors. */
+  values: InviteInput;
+  errors: readonly InviteError[];
+}
+
+/** Invite links (spec 7 Moderation): a form for a new one, and every invite with its state. */
+function InvitesSection(
+  props: InvitesSectionProps & { t: Translate; csrfToken: string; adminDir: string },
+) {
+  const { t, language, timeZone } = props;
+  const csrf = <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />;
+  const errorFor = (field: InviteError["field"]) => props.errors.find((e) => e.field === field);
+  const field = (
+    name: InviteError["field"],
+    input: { type: "date" | "number"; label: MessageKey; hint: string },
+  ) => {
+    const error = errorFor(name);
+    return (
+      <div class={error === undefined ? "field" : "field field-invalid"}>
+        <label for={`field-${name}`}>{t(input.label)}</label>
+        <input
+          id={`field-${name}`}
+          name={name}
+          type={input.type}
+          value={props.values[name]}
+          {...(input.type === "number" ? { min: 1, max: INVITE_LIMITS.maxUses, step: 1 } : {})}
+          aria-invalid={error === undefined ? undefined : "true"}
+          aria-describedby={`field-${name}-${error === undefined ? "hint" : "error"}`}
+        />
+        <p class="hint" id={`field-${name}-hint`}>
+          {input.hint}
+        </p>
+        {error !== undefined && (
+          <p class="error" id={`field-${name}-error`}>
+            {fieldErrorMessage(error.code, t)}
+          </p>
+        )}
+      </div>
+    );
+  };
+  return (
+    <section class="admin-invites" id="invites">
+      <h2>{t("admin.invites")}</h2>
+      <p class="hint">{t("admin.invitesHint")}</p>
+      <form method="post" action={`${props.adminDir}invites`}>
+        {csrf}
+        <input type="hidden" name="nonce" value={props.nonce} />
+        <div class="field-row">
+          {field("expiresOn", {
+            type: "date",
+            label: "admin.inviteExpiresOn",
+            hint: t("admin.inviteExpiresOnHint", { zone: timeZone }),
+          })}
+          {field("maxUses", {
+            type: "number",
+            label: "admin.inviteMaxUses",
+            hint: t("admin.inviteMaxUsesHint"),
+          })}
+        </div>
+        <button type="submit">{t("admin.inviteCreate")}</button>
+      </form>
+      {props.list.length === 0 && <p>{t("admin.noInvites")}</p>}
+      {props.list.length > 0 && (
+        <ul class="admin-invite-list">
+          {props.list.map((invite) => (
+            <li>
+              <strong>{t(INVITE_STATES[invite.state])}</strong> ·{" "}
+              {t("admin.inviteCreatedOn", {
+                date: formatDate(invite.createdAt, timeZone, language),
+              })}
+              {invite.expiresAt !== undefined &&
+                ` · ${t("admin.inviteLastDay", {
+                  // The link works until the last day ends, at midnight.
+                  date: formatDate(new Date(invite.expiresAt.getTime() - 1), timeZone, language),
+                })}`}{" "}
+              ·{" "}
+              {invite.maxUses === undefined
+                ? t("admin.inviteUsed", { count: invite.uses })
+                : t("admin.inviteUses", { uses: invite.uses, max: invite.maxUses })}
+              {invite.state === "usable" && (
+                <form method="post" action={`${props.adminDir}invites/${invite.id}/revoke`}>
+                  {csrf}
+                  <button type="submit" class="secondary">
+                    {t("admin.inviteRevoke")}
+                  </button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** A new invite link, shown this once: only its hash is stored (spec 3.2). */
+export function InviteCreated({
+  t,
+  url,
+  adminDir,
+}: {
+  t: Translate;
+  url: string;
+  adminDir: string;
+}) {
+  return (
+    <section class="admin">
+      <h1>{t("admin.inviteCreatedHeading")}</h1>
+      <p>{t("admin.inviteCreated")}</p>
+      <p class="link-box">
+        <code>{url}</code>
+      </p>
+      <p class="warning">{t("admin.inviteWarning")}</p>
+      <p>
+        <a href={`${adminDir}#invites`}>{t("admin.back")}</a>
+      </p>
     </section>
   );
 }

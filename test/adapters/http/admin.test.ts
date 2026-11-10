@@ -22,7 +22,7 @@ async function logIn(admin: TestClient, token = TOKEN) {
 /** Where Home Assistant Ingress (or any proxy) serves the app (spec 3.8 URLs). */
 const PREFIX = "https://ha.example/api/hassio_ingress/abc";
 const ADMIN_POSTS =
-  /^\/admin\/(?:login|logout|plans|plans\/[A-Za-z0-9_-]{22}\/delete|reports\/[A-Za-z0-9-]+\/resolve)$/;
+  /^\/admin\/(?:login|logout|plans|plans\/[A-Za-z0-9_-]{22}\/delete|reports\/[A-Za-z0-9-]+\/resolve|invites|invites\/[A-Za-z0-9-]+\/revoke)$/;
 
 /**
  * Follows every link, asset, form action and redirect of an admin response as a browser would when
@@ -164,6 +164,27 @@ describe("the instance admin's pages (spec 7 Moderation, 3.6 Instance admin colu
       303, 303, 303, 200, 401, 303, 200, 303, 200, 303, 422, 200, 303, 303, 404, 303, 404, 303,
     ]);
     await logIn(admin);
+    for (const [path, response] of pages) await expectWorksUnderPrefix(admin, path, response);
+  });
+
+  it("work under any path prefix with invite links too (spec 3.8, 7 Moderation)", async () => {
+    const { admin } = await setup({ ADMIN_TOKEN: TOKEN, POSTING_MODE: "invite" });
+    await logIn(admin);
+    const pages: [string, Response][] = [];
+    const post = async (path: string, fields: Record<string, string>) => {
+      const home = await (await admin.get("/admin/")).text();
+      const form = hiddenFields(home.slice(home.indexOf('id="invites"')));
+      pages.push([path, await admin.postForm(path, { ...form, ...fields })]);
+    };
+    pages.push(["/admin/", await admin.get("/admin/")]);
+    await post("/admin/invites", { expiresOn: "", maxUses: "" });
+    await post("/admin/invites", { expiresOn: "2026-05-01", maxUses: "" });
+    const home = await (await admin.get("/admin/")).text();
+    const inviteId = /invites\/([A-Za-z0-9-]+)\/revoke/.exec(home)?.[1] ?? "";
+    pages.push(["/admin/", await admin.get("/admin/")]);
+    await post(`/admin/invites/${inviteId}/revoke`, {});
+    await post("/admin/invites/no-such-invite/revoke", {});
+    expect(pages.map(([, response]) => response.status)).toEqual([200, 200, 422, 200, 303, 404]);
     for (const [path, response] of pages) await expectWorksUnderPrefix(admin, path, response);
   });
 

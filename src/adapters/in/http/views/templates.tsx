@@ -1,5 +1,6 @@
 // Repeatable templates (spec 3.10 Templates, decision I43): the options on the plan forms, the
 // list on the home page, the template page with "Repeat", and the page showing a new template link.
+import { InviteNeeded } from "./posting.tsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { PlanTemplate, TemplateAdjustment } from "../../../../domain/template.ts";
@@ -114,6 +115,9 @@ export interface TemplatePageProps {
   signedOut: number | undefined;
   /** One-time value for "Get a new link" (decision I44). */
   linkNonce: string;
+  /** Whether the posting rules let this device repeat it; otherwise how to get an invite. */
+  mayRepeat: boolean;
+  contactEmail: string | undefined;
 }
 
 export function TemplatePage(props: TemplatePageProps) {
@@ -157,33 +161,42 @@ export function TemplatePage(props: TemplatePageProps) {
         })}
       </p>
 
-      <form method="post" action={`${base}/repeat`} class="plan-form">
-        <h2>{t("template.repeatHeading")}</h2>
-        <p class="hint">{t("template.repeatHint")}</p>
-        {csrf}
-        <input type="hidden" name="nonce" value={props.nonce} />
-        <div class="field-row">
-          {(["date", "time"] as const).map((field) => {
-            const error = errorFor(field);
-            return (
-              <div class={error === undefined ? "field" : "field field-invalid"}>
-                <label for={`field-${field}`}>
-                  {t(field === "date" ? "form.date" : "form.time")}
-                </label>
-                <input
-                  id={`field-${field}`}
-                  name={field}
-                  type={field}
-                  required
-                  value={props.repeat[field]}
-                />
-                {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
-              </div>
-            );
-          })}
-        </div>
-        <button type="submit">{t("template.repeatSubmit")}</button>
-      </form>
+      {!props.mayRepeat && (
+        <InviteNeeded
+          t={t}
+          contactEmail={props.contactEmail}
+          heading={{ level: 2, text: t("template.repeatHeading") }}
+        />
+      )}
+      {props.mayRepeat && (
+        <form method="post" action={`${base}/repeat`} class="plan-form">
+          <h2>{t("template.repeatHeading")}</h2>
+          <p class="hint">{t("template.repeatHint")}</p>
+          {csrf}
+          <input type="hidden" name="nonce" value={props.nonce} />
+          <div class="field-row">
+            {(["date", "time"] as const).map((field) => {
+              const error = errorFor(field);
+              return (
+                <div class={error === undefined ? "field" : "field field-invalid"}>
+                  <label for={`field-${field}`}>
+                    {t(field === "date" ? "form.date" : "form.time")}
+                  </label>
+                  <input
+                    id={`field-${field}`}
+                    name={field}
+                    type={field}
+                    required
+                    value={props.repeat[field]}
+                  />
+                  {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+                </div>
+              );
+            })}
+          </div>
+          <button type="submit">{t("template.repeatSubmit")}</button>
+        </form>
+      )}
 
       <p>
         <a class="button secondary" href={`${base}/edit`}>

@@ -40,6 +40,7 @@ export function PrivacyPage({
       <p>{t("privacy.ratings")}</p>
       <p>{t("privacy.templates")}</p>
       {adminLogin && <p>{t("privacy.reports")}</p>}
+      {config.postingMode === "invite" && <p>{t("privacy.invites")}</p>}
       <p>{t("privacy.noTracking")}</p>
       <p>
         {t("privacy.myData")} <a href="/my-data">{t("myData.heading")}</a>

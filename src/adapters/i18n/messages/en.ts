@@ -665,6 +665,49 @@ export const en = {
   "admin.deleteConfirm": "Delete plan for good",
   "admin.deleted": "The plan was deleted.",
   "admin.back": "Back to the admin page",
+  "posting.heading": "Invite needed",
+  "posting.inviteNeeded":
+    "On this instance, only people with an invite link can create plans. Ask the person who runs it for one.",
+  "posting.contact": "Contact:",
+  "invite.heading": "Use this invite on this device?",
+  "invite.body": "This invite link lets you create plans on {instance}.",
+  "invite.warning":
+    "Only continue on your own device: anyone using this browser can then create plans here.",
+  "invite.invalid":
+    "This invite link is not valid. It may have expired, been used up or been revoked. Ask for a new one.",
+  "privacy.invites":
+    "Invite links: only people with an invite link can create plans here. When you confirm one, this browser is noted as allowed to create plans, together with the invite it used. This is deleted when you delete your data on this device, or after 12 months without use.",
+  "myData.mayPost": "An invite link lets this browser create plans here (since {date}).",
+  "myData.deleteMayPost": "the permission to create plans that an invite link gave this browser",
+  "field.date_invalid": "Please enter a valid date.",
+  "field.expiry_in_past": "Please choose today or a later day.",
+  "admin.invites": "Invite links",
+  "admin.invitesHint":
+    "With an invite link, a browser may create plans on this instance. Each link is shown only once, right after it is created.",
+  "admin.inviteExpiresOn": "Last day (optional)",
+  "admin.inviteExpiresOnHint": "The link works until this day ends ({zone}).",
+  "admin.inviteMaxUses": "Usage limit (optional)",
+  "admin.inviteMaxUsesHint": "How many browsers may use the link.",
+  "admin.inviteCreate": "Create invite link",
+  "admin.noInvites": "No invite links yet.",
+  "admin.inviteUsable": "Active",
+  "admin.inviteExpired": "Expired",
+  "admin.inviteUsedUp": "Used up",
+  "admin.inviteRevoked": "Revoked",
+  "admin.inviteCreatedOn": "created {date}",
+  "admin.inviteLastDay": "last day {date}",
+  "admin.inviteUsed": {
+    zero: "not used yet",
+    one: "used once",
+    other: "used {count} times",
+  },
+  "admin.inviteUses": "{uses} of {max} uses",
+  "admin.inviteRevoke": "Revoke",
+  "admin.inviteNotFound": "This invite link does not exist.",
+  "admin.inviteCreatedHeading": "New invite link",
+  "admin.inviteCreated": "Here is the new invite link. Copy it now: it is shown only this once.",
+  "admin.inviteWarning":
+    "Anyone with this link can create plans here until it expires, is used up or you revoke it.",
 } as const satisfies Readonly<Record<string, Message>>;
 
 export type MessageKey = keyof typeof en;

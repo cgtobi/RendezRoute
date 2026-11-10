@@ -111,6 +111,15 @@ export function createDeviceRepository(database: Database): DeviceRepository {
                     .whereRef("device_links.device_id", "=", "devices.id"),
                 ),
               ),
+              // A permission counts as a link (spec 3.10 Other expiry).
+              eb.not(
+                eb.exists(
+                  eb
+                    .selectFrom("permissions")
+                    .select("device_id")
+                    .whereRef("permissions.device_id", "=", "devices.id"),
+                ),
+              ),
             ]),
           ]),
         )

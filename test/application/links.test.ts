@@ -45,6 +45,7 @@ beforeEach(async () => {
     ids: new SequentialIdGenerator(),
     clock: new FakeClock(fixtureNow),
     limits: { horizonDays: 180, maxRetentionDays: 30 },
+    postingMode: "anyone",
     notify: { channels, jobs: new FakeJobQueue(), reminders: new FakeSentReminders() },
   };
   const created = await createPlan(deps, {

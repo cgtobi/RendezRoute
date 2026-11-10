@@ -1,4 +1,5 @@
 // Helpers shared by the plan, response and secret-link routes.
+import { InviteNeeded } from "../views/posting.tsx";
 import { randomBytes } from "node:crypto";
 import type { Context } from "hono";
 import type { PlanDeps } from "../../../../application/plans.ts";
@@ -88,6 +89,24 @@ export function planGone(c: Context<AppEnv>) {
   return c.render(<p class="gone">{c.get("t")("plan.gone")}</p>, {
     title: c.get("t")("plan.gone"),
   });
+}
+
+/**
+ * The posting rules keep this device from creating plans: how to get an invite (spec 7). The page
+ * in place of the form answers 200; a form sent anyway answers 403.
+ */
+export function inviteNeeded(c: Context<AppEnv>, config: Config, status: 200 | 403) {
+  const t = c.get("t");
+  c.status(status);
+  c.header("cache-control", "private, no-store");
+  return c.render(
+    <InviteNeeded
+      t={t}
+      contactEmail={config.contactEmail}
+      heading={{ level: 1, text: t("posting.heading") }}
+    />,
+    { title: t("posting.heading") },
+  );
 }
 
 /**

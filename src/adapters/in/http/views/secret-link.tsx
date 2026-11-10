@@ -1,4 +1,4 @@
-// Confirmation step for host and manage links (decision D1).
+// Confirmation step for host, manage, template and invite links (decision D1).
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 
@@ -18,7 +18,7 @@ export function SecretLinkConfirm(props: {
   heading: string;
   body: string;
   warning: string;
-  action: "/a" | "/m" | "/t";
+  action: "/a" | "/m" | "/t" | "/i";
   token: string;
   csrfToken: string;
 }) {

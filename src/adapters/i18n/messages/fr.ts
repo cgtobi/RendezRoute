@@ -686,4 +686,50 @@ export const fr: Messages = {
   "admin.deleteConfirm": "Supprimer définitivement la sortie",
   "admin.deleted": "La sortie a été supprimée.",
   "admin.back": "Retour à l’administration",
+  "posting.heading": "Invitation nécessaire",
+  "posting.inviteNeeded":
+    "Sur cette instance, seules les personnes ayant un lien d’invitation peuvent créer des sorties. Demandez-en un à la personne qui la gère.",
+  "posting.contact": "Contact :",
+  "invite.heading": "Utiliser cette invitation sur cet appareil ?",
+  "invite.body": "Ce lien d’invitation vous permet de créer des sorties sur {instance}.",
+  "invite.warning":
+    "Ne continuez que sur votre propre appareil : toute personne utilisant ce navigateur pourra ensuite créer des sorties ici.",
+  "invite.invalid":
+    "Ce lien d’invitation n’est pas valide. Il a peut-être expiré, été épuisé ou été révoqué. Demandez-en un nouveau.",
+  "privacy.invites":
+    "Liens d’invitation : seules les personnes ayant un lien d’invitation peuvent créer des sorties ici. Lorsque vous en confirmez un, ce navigateur est enregistré comme autorisé à créer des sorties, avec l’invitation utilisée. Cela est supprimé lorsque vous supprimez vos données sur cet appareil, ou après 12 mois sans utilisation.",
+  "myData.mayPost":
+    "Un lien d’invitation permet à ce navigateur de créer des sorties ici (depuis le {date}).",
+  "myData.deleteMayPost":
+    "l’autorisation de créer des sorties qu’un lien d’invitation a donnée à ce navigateur",
+  "field.date_invalid": "Veuillez saisir une date valide.",
+  "field.expiry_in_past": "Veuillez choisir aujourd’hui ou un jour ultérieur.",
+  "admin.invites": "Liens d’invitation",
+  "admin.invitesHint":
+    "Avec un lien d’invitation, un navigateur peut créer des sorties sur cette instance. Chaque lien n’est affiché qu’une fois, juste après sa création.",
+  "admin.inviteExpiresOn": "Dernier jour (facultatif)",
+  "admin.inviteExpiresOnHint": "Le lien fonctionne jusqu’à la fin de ce jour ({zone}).",
+  "admin.inviteMaxUses": "Nombre maximal d’utilisations (facultatif)",
+  "admin.inviteMaxUsesHint": "Combien de navigateurs peuvent utiliser le lien.",
+  "admin.inviteCreate": "Créer un lien d’invitation",
+  "admin.noInvites": "Aucun lien d’invitation pour l’instant.",
+  "admin.inviteUsable": "Actif",
+  "admin.inviteExpired": "Expiré",
+  "admin.inviteUsedUp": "Épuisé",
+  "admin.inviteRevoked": "Révoqué",
+  "admin.inviteCreatedOn": "créé le {date}",
+  "admin.inviteLastDay": "dernier jour : {date}",
+  "admin.inviteUsed": {
+    zero: "pas encore utilisé",
+    one: "utilisé une fois",
+    other: "utilisé {count} fois",
+  },
+  "admin.inviteUses": "{uses} utilisations sur {max}",
+  "admin.inviteRevoke": "Révoquer",
+  "admin.inviteNotFound": "Ce lien d’invitation n’existe pas.",
+  "admin.inviteCreatedHeading": "Nouveau lien d’invitation",
+  "admin.inviteCreated":
+    "Voici le nouveau lien d’invitation. Copiez-le maintenant : il n’est affiché que cette fois.",
+  "admin.inviteWarning":
+    "Toute personne disposant de ce lien peut créer des sorties ici jusqu’à son expiration, son épuisement ou sa révocation.",
 };

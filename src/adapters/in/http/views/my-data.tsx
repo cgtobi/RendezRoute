@@ -11,6 +11,8 @@ import { PushSwitch } from "./push-switch.tsx";
 export interface MyDataPageProps {
   t: Translate;
   language: string;
+  /** The instance's time zone, for dates that belong to no plan. */
+  timeZone: string;
   data: MyData;
   csrfToken: string;
   vapidPublicKey: string;
@@ -32,7 +34,10 @@ function When({ t, item, language }: { t: Translate; item: MyDataItem; language:
 export function MyDataPage(props: MyDataPageProps) {
   const { t, data, language } = props;
   const empty =
-    data.hosted.length === 0 && data.responses.length === 0 && data.templates.length === 0;
+    data.hosted.length === 0 &&
+    data.responses.length === 0 &&
+    data.templates.length === 0 &&
+    data.mayPostSince === undefined;
   const tools = (base: string, notifications: boolean) => (
     <LinkTools
       t={t}
@@ -138,6 +143,12 @@ export function MyDataPage(props: MyDataPageProps) {
         <a href="/calendar">{t("myData.calendarManage")}</a>
       </p>
 
+      {data.mayPostSince !== undefined && (
+        <p>
+          {t("myData.mayPost", { date: formatDate(data.mayPostSince, props.timeZone, language) })}
+        </p>
+      )}
+
       {!empty && (
         <>
           <h2>{t("myData.exportHeading")}</h2>
@@ -200,6 +211,7 @@ export function DeleteMyDataPage({
           </li>
         )}
         {data.calendarFeed && <li>{t("myData.deleteFeed")}</li>}
+        {data.mayPostSince !== undefined && <li>{t("myData.deleteMayPost")}</li>}
         <li>{t("myData.deleteDevice")}</li>
       </ul>
       {data.hosted.length > 0 && <p>{t("myData.deleteNoTemplates")}</p>}

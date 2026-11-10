@@ -31,9 +31,17 @@ export interface MyData {
   responses: (MyDataItem & { responseKind: ResponseKind })[];
   templates: Pick<PlanTemplate, "id" | "title" | "expiresAt" | "timeZone">[];
   calendarFeed: boolean;
+  /** Since when an invite link lets the device create plans, if one does (spec 7 Moderation). */
+  mayPostSince: Date | undefined;
 }
 
-const EMPTY: MyData = { hosted: [], responses: [], templates: [], calendarFeed: false };
+const EMPTY: MyData = {
+  hosted: [],
+  responses: [],
+  templates: [],
+  calendarFeed: false,
+  mayPostSince: undefined,
+};
 
 const itemOf = (plan: Plan): MyDataItem => ({
   planId: plan.id,
@@ -60,6 +68,7 @@ export async function viewMyData(
       ({ id, title, expiresAt, timeZone }) => ({ id, title, expiresAt, timeZone }),
     ),
     calendarFeed: (await deps.calendarFeeds.findForDevice(device.id)) !== undefined,
+    mayPostSince: await deps.permissions.mayPostSince(device.id),
   };
 }
 
@@ -99,6 +108,8 @@ export interface ExportData {
   templates: ExportedTemplate[];
   /** Whether the device has a calendar feed; its link is a secret and not exported. */
   calendarFeed: boolean;
+  /** Device exports only: since when an invite link lets the device create plans. */
+  mayPostSince: Date | undefined;
 }
 
 /** Everything linked to the device, one plan it hosts, one's own response, or one template. */
@@ -173,7 +184,14 @@ export async function exportMyData(
   const device = { id: lookedUp.id, token: request.deviceToken };
   const data = (parts: Partial<ExportData>): { kind: "found"; data: ExportData } => ({
     kind: "found",
-    data: { exportedAt: deps.clock.now(), plans: [], templates: [], calendarFeed: false, ...parts },
+    data: {
+      exportedAt: deps.clock.now(),
+      plans: [],
+      templates: [],
+      calendarFeed: false,
+      mayPostSince: undefined,
+      ...parts,
+    },
   });
 
   switch (scope.kind) {
@@ -203,7 +221,8 @@ export async function exportMyData(
         templates.push(await exportedTemplate(deps, template));
       }
       const calendarFeed = (await deps.calendarFeeds.findForDevice(device.id)) !== undefined;
-      return data({ plans, templates, calendarFeed });
+      const mayPostSince = await deps.permissions.mayPostSince(device.id);
+      return data({ plans, templates, calendarFeed, mayPostSince });
     }
   }
 }
@@ -233,7 +252,7 @@ export async function deleteMyData(
   for (const template of await deps.templates.listForDevice(device.id)) {
     await deps.templates.delete(template.id);
   }
-  // Its links and calendar feed go with it.
+  // Its links, calendar feed and permissions go with it.
   await deps.devices.delete(device.id);
   return { kind: "deleted" };
 }

@@ -1,6 +1,7 @@
 // The instance admin pages (spec 7 Moderation, 3.8 URLs): login through `AdminAuth`, then a page to
-// find and delete any plan. Only relative URLs, so the pages work under any path prefix (Home
-// Assistant Ingress later); registered only when admin authentication is configured.
+// find and delete any plan, resolve reports and (with POSTING_MODE=invite) manage invite links.
+// Only relative URLs, so the pages work under any path prefix (Home Assistant Ingress later);
+// registered only when admin authentication is configured.
 import type { Context, Hono } from "hono";
 import {
   type AdminDeps,
@@ -11,12 +12,22 @@ import {
   resolveReport,
   viewPlanAsAdmin,
 } from "../../../../application/admin.ts";
+import { createInvite, listInvites, revokeInvite } from "../../../../application/posting.ts";
 import type { Config } from "../../../../config.ts";
+import type { InviteError, InviteInput } from "../../../../domain/invite.ts";
 import { adminSessionOf, endAdminSession, setAdminSession } from "../admin-session.ts";
 import type { AppEnv } from "../app.tsx";
 import type { RateLimits } from "../rate-limit.ts";
-import { AdminHome, AdminLogin, AdminPlan } from "../views/admin.tsx";
-import { badRequest, clientOf, formField, readForm, tooManyRequests } from "./shared.tsx";
+import { AdminHome, AdminLogin, AdminPlan, InviteCreated } from "../views/admin.tsx";
+import {
+  badRequest,
+  clientOf,
+  formField,
+  newNonce,
+  readForm,
+  secretLinkHeaders,
+  tooManyRequests,
+} from "./shared.tsx";
 
 /**
  * The relative way from an admin page back to the app's root: "../" from /admin/ and
@@ -29,7 +40,8 @@ export function adminRoot(path: string): string {
 }
 
 const PLAN_ID = /^[A-Za-z0-9_-]{22}$/;
-const REPORT_ID = /^[A-Za-z0-9-]{1,64}$/;
+/** Report and invite IDs (UUIDv7). */
+const ROW_ID = /^[A-Za-z0-9-]{1,64}$/;
 const PLAN_LINK = /\/p\/([A-Za-z0-9_-]{22})(?:[/?#]|$)/;
 
 /** A plan ID from a pasted plan link or a bare ID. */
@@ -97,13 +109,24 @@ export function registerAdminRoutes(
     return toLogin(c);
   });
 
-  /** The admin's home with the open reports; also the page for a plan that was not found. */
+  type NotFound = "plan" | "report" | "invite";
+  /** The admin's home with the open reports and invites; also the page for something not found. */
   const home = async (
     c: Context<AppEnv>,
-    state: { deleted: boolean; notFound: "plan" | "report" | undefined; status?: 200 | 404 | 422 },
+    state: {
+      deleted: boolean;
+      notFound: NotFound | undefined;
+      status?: 200 | 404 | 422;
+      inviteForm?: { values: InviteInput; errors: InviteError[] };
+    },
   ) => {
     const overview = await adminOverview(adminDeps, { session: session(c) });
     if (overview.kind === "not_admin") return toLogin(c);
+    const invites =
+      config.postingMode === "invite"
+        ? await listInvites(adminDeps, { session: session(c) })
+        : undefined;
+    if (invites?.kind === "not_admin") return toLogin(c);
     const t = c.get("t");
     c.status(state.status ?? 200);
     return render(
@@ -116,10 +139,22 @@ export function registerAdminRoutes(
         deleted={state.deleted}
         notFound={state.notFound}
         openReports={overview.openReports}
+        invites={
+          invites === undefined
+            ? undefined
+            : {
+                language: c.get("language"),
+                timeZone: config.defaultTimezone,
+                list: invites.invites,
+                nonce: newNonce(),
+                values: state.inviteForm?.values ?? { expiresOn: "", maxUses: "" },
+                errors: state.inviteForm?.errors ?? [],
+              }
+        }
       />,
     );
   };
-  const notFound = (c: Context<AppEnv>, status: 404 | 422, what: "plan" | "report" = "plan") =>
+  const notFound = (c: Context<AppEnv>, status: 404 | 422, what: NotFound = "plan") =>
     home(c, { deleted: false, notFound: what, status });
 
   app.get("/admin/", (c) =>
@@ -166,10 +201,65 @@ export function registerAdminRoutes(
 
   app.post("/admin/reports/:id/resolve", async (c) => {
     const reportId = c.req.param("id");
-    if (!REPORT_ID.test(reportId)) return notFound(c, 404, "report");
+    if (!ROW_ID.test(reportId)) return notFound(c, 404, "report");
     const result = await resolveReport(adminDeps, { reportId, session: session(c) });
     if (result.kind === "not_admin") return toLogin(c);
     if (result.kind === "not_found") return notFound(c, 404, "report");
     return c.redirect(`${adminDir(c)}plans/${result.planId}#reports`, 303);
+  });
+
+  if (config.postingMode !== "invite") return;
+
+  app.post("/admin/invites", async (c) => {
+    const body = await readForm(c);
+    if (body === undefined) return badRequest(c);
+    const values: InviteInput = {
+      expiresOn: formField(body, "expiresOn"),
+      maxUses: formField(body, "maxUses"),
+    };
+    const result = await createInvite(adminDeps, {
+      session: session(c),
+      ...values,
+      timeZone: config.defaultTimezone,
+      nonce: formField(body, "nonce"),
+    });
+    switch (result.kind) {
+      case "not_admin":
+        return toLogin(c);
+      case "bad_request":
+        return badRequest(c);
+      case "invalid":
+        return home(c, {
+          deleted: false,
+          notFound: undefined,
+          status: 422,
+          inviteForm: { values, errors: result.errors },
+        });
+      // Sent again: the link was shown the first time and cannot be shown again.
+      case "duplicate":
+        return c.redirect(`${adminDir(c)}#invites`, 303);
+      case "created": {
+        const t = c.get("t");
+        secretLinkHeaders(c);
+        return render(
+          c,
+          t("admin.inviteCreatedHeading"),
+          <InviteCreated
+            t={t}
+            url={new URL(`/i/${result.token}`, config.baseUrl).href}
+            adminDir={adminDir(c)}
+          />,
+        );
+      }
+    }
+  });
+
+  app.post("/admin/invites/:id/revoke", async (c) => {
+    const inviteId = c.req.param("id");
+    if (!ROW_ID.test(inviteId)) return notFound(c, 404, "invite");
+    const result = await revokeInvite(adminDeps, { inviteId, session: session(c) });
+    if (result.kind === "not_admin") return toLogin(c);
+    if (result.kind === "not_found") return notFound(c, 404, "invite");
+    return c.redirect(`${adminDir(c)}#invites`, 303);
   });
 }

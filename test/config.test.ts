@@ -67,6 +67,31 @@ describe("ADMIN_TOKEN (spec 7 Moderation)", () => {
   });
 });
 
+describe("POSTING_MODE (spec 7 Moderation)", () => {
+  it("lets anyone post by default", () => {
+    expect(ok(minimal).config.postingMode).toBe("anyone");
+    expect(ok({ ...minimal, POSTING_MODE: "anyone" }).config.postingMode).toBe("anyone");
+  });
+
+  it("accepts invite, which needs ADMIN_TOKEN, since only the admin creates invite links", () => {
+    const token = "x".repeat(32);
+    expect(ok({ ...minimal, POSTING_MODE: "invite", ADMIN_TOKEN: token }).config.postingMode).toBe(
+      "invite",
+    );
+    expect(errors({ ...minimal, POSTING_MODE: "invite" })).toEqual([
+      "POSTING_MODE=invite needs ADMIN_TOKEN: only the instance admin can create invite links.",
+    ]);
+  });
+
+  it("refuses other values, logged_in included until accounts exist", () => {
+    for (const value of ["logged_in", "Invite", "nobody"]) {
+      expect(errors({ ...minimal, POSTING_MODE: value })).toEqual([
+        "POSTING_MODE must be anyone or invite.",
+      ]);
+    }
+  });
+});
+
 describe("BASE_URL", () => {
   it("is required", () => {
     expect(errors({})).toEqual([expect.stringContaining("BASE_URL is required")]);

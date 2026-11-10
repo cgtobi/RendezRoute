@@ -13,7 +13,10 @@ import type {
   FormNonceRepository,
   RatingRepository,
   ReportRepository,
+  InviteRepository,
+  PermissionRepository,
 } from "../../src/application/ports.ts";
+import { type Invite, inviteState } from "../../src/domain/invite.ts";
 import type { Report } from "../../src/domain/report.ts";
 import type { Plan } from "../../src/domain/plan.ts";
 import type { RecapContribution } from "../../src/domain/recap.ts";
@@ -33,6 +36,8 @@ export function createFakeRepositories(): {
   formNonces: FormNonceRepository;
   ratings: RatingRepository;
   reports: ReportRepository;
+  invites: InviteRepository;
+  permissions: PermissionRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
   const routes = new Map<string, Route>();
@@ -51,6 +56,9 @@ export function createFakeRepositories(): {
   /** By response ID: one rating per response. */
   const ratings = new Map<string, PlanRating>();
   const reports = new Map<string, Report>();
+  const invites = new Map<string, { invite: Invite; tokenHash: string }>();
+  /** When each device became allowed to post, by device ID; goes with the device. */
+  const mayPost = new Map<string, Date>();
   const byCreation = (a: Report, b: Report) =>
     a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id);
   const templates = new Map<
@@ -300,6 +308,43 @@ export function createFakeRepositories(): {
       },
     },
 
+    invites: {
+      async create(invite, tokenHash) {
+        invites.set(invite.id, { invite: structuredClone(invite), tokenHash });
+      },
+      async findByTokenHash(hash) {
+        const entry = [...invites.values()].find((e) => e.tokenHash === hash);
+        return entry === undefined ? undefined : structuredClone(entry.invite);
+      },
+      async list() {
+        return [...invites.values()]
+          .map((e) => structuredClone(e.invite))
+          .sort(
+            (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id),
+          );
+      },
+      async revoke(id, at) {
+        const entry = invites.get(id);
+        if (entry === undefined) return false;
+        entry.invite.revokedAt ??= at;
+        return true;
+      },
+      async redeem({ inviteId, deviceId, now }) {
+        if (mayPost.has(deviceId)) return "already_allowed";
+        const entry = invites.get(inviteId);
+        if (entry === undefined || inviteState(entry.invite, now) !== "usable") return "unusable";
+        entry.invite.uses++;
+        mayPost.set(deviceId, now);
+        return "granted";
+      },
+    },
+
+    permissions: {
+      async mayPostSince(deviceId) {
+        return mayPost.get(deviceId);
+      },
+    },
+
     formNonces: {
       async claim(nonce, now) {
         if (usedNonces.has(nonce)) return false;
@@ -400,6 +445,7 @@ export function createFakeRepositories(): {
       async delete(id) {
         devices.delete(id);
         feeds.delete(id);
+        mayPost.delete(id);
         for (const key of links) if (key.startsWith(`${id}|`)) links.delete(key);
       },
       async unlinkOthers(target, keepDeviceId) {
@@ -418,13 +464,14 @@ export function createFakeRepositories(): {
         let deleted = 0;
         for (const [id, entry] of devices) {
           const seen = entry.device.lastSeenAt.getTime();
-          const linked = [...links].some((key) => key.startsWith(`${id}|`));
+          const linked = [...links].some((key) => key.startsWith(`${id}|`)) || mayPost.has(id);
           if (
             seen < anyLastSeenBefore.getTime() ||
             (!linked && seen < unlinkedLastSeenBefore.getTime())
           ) {
             devices.delete(id);
             feeds.delete(id);
+            mayPost.delete(id);
             for (const key of links) if (key.startsWith(`${id}|`)) links.delete(key);
             deleted++;
           }

@@ -41,6 +41,7 @@ beforeEach(() => {
     clock,
     routeParser: new FakeRouteParser(),
     limits: { horizonDays: 180, maxRetentionDays: 30 },
+    postingMode: "anyone",
   };
 });
 

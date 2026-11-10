@@ -12,8 +12,11 @@ import { fileName } from "./file-names.ts";
 import { writeCalendar } from "./ics.ts";
 import { calendarEvents } from "./views/calendar-events.ts";
 
-/** Changes whenever data.json changes shape, so importers can tell versions apart (2: ratings). */
-export const EXPORT_VERSION = 2;
+/**
+ * Changes whenever data.json changes shape, so importers can tell versions apart (2: ratings;
+ * 3: mayPostSince, set in device exports when an invite link lets the device create plans).
+ */
+export const EXPORT_VERSION = 3;
 
 const orNull = <T>(value: T | undefined): T | null => value ?? null;
 const pointJson = (point: GeoPoint | undefined) =>
@@ -183,6 +186,7 @@ export function exportZip(
         plans,
         templates,
         calendarFeed: data.calendarFeed,
+        mayPostSince: orNull(data.mayPostSince),
       },
       null,
       2,

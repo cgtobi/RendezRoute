@@ -690,4 +690,50 @@ export const de: Messages = {
   "admin.deleteConfirm": "Treffen endgültig löschen",
   "admin.deleted": "Das Treffen wurde gelöscht.",
   "admin.back": "Zurück zur Administration",
+  "posting.heading": "Einladung nötig",
+  "posting.inviteNeeded":
+    "Auf dieser Instanz können nur Menschen mit einem Einladungslink Treffen erstellen. Frag die Person, die sie betreibt, nach einem.",
+  "posting.contact": "Kontakt:",
+  "invite.heading": "Diese Einladung auf diesem Gerät verwenden?",
+  "invite.body": "Mit diesem Einladungslink kannst du auf {instance} Treffen erstellen.",
+  "invite.warning":
+    "Mach nur auf deinem eigenen Gerät weiter: Alle, die diesen Browser nutzen, können danach hier Treffen erstellen.",
+  "invite.invalid":
+    "Dieser Einladungslink ist ungültig. Vielleicht ist er abgelaufen, aufgebraucht oder wurde widerrufen. Frag nach einem neuen.",
+  "privacy.invites":
+    "Einladungslinks: Nur Menschen mit einem Einladungslink können hier Treffen erstellen. Wenn du einen bestätigst, wird für diesen Browser vermerkt, dass er Treffen erstellen darf, und über welche Einladung. Das wird gelöscht, wenn du deine Daten auf diesem Gerät löschst, oder nach 12 Monaten ohne Nutzung.",
+  "myData.mayPost":
+    "Ein Einladungslink erlaubt diesem Browser, hier Treffen zu erstellen (seit {date}).",
+  "myData.deleteMayPost":
+    "die Erlaubnis, Treffen zu erstellen, die ein Einladungslink diesem Browser gegeben hat",
+  "field.date_invalid": "Bitte gib ein gültiges Datum ein.",
+  "field.expiry_in_past": "Bitte wähle heute oder einen späteren Tag.",
+  "admin.invites": "Einladungslinks",
+  "admin.invitesHint":
+    "Mit einem Einladungslink darf ein Browser auf dieser Instanz Treffen erstellen. Jeder Link wird nur einmal angezeigt, direkt nach dem Erstellen.",
+  "admin.inviteExpiresOn": "Letzter Tag (optional)",
+  "admin.inviteExpiresOnHint": "Der Link gilt bis zum Ende dieses Tages ({zone}).",
+  "admin.inviteMaxUses": "Höchstzahl an Nutzungen (optional)",
+  "admin.inviteMaxUsesHint": "Wie viele Browser den Link nutzen dürfen.",
+  "admin.inviteCreate": "Einladungslink erstellen",
+  "admin.noInvites": "Noch keine Einladungslinks.",
+  "admin.inviteUsable": "Aktiv",
+  "admin.inviteExpired": "Abgelaufen",
+  "admin.inviteUsedUp": "Aufgebraucht",
+  "admin.inviteRevoked": "Widerrufen",
+  "admin.inviteCreatedOn": "erstellt am {date}",
+  "admin.inviteLastDay": "letzter Tag {date}",
+  "admin.inviteUsed": {
+    zero: "noch nicht genutzt",
+    one: "einmal genutzt",
+    other: "{count}-mal genutzt",
+  },
+  "admin.inviteUses": "{uses} von {max} Nutzungen",
+  "admin.inviteRevoke": "Widerrufen",
+  "admin.inviteNotFound": "Diesen Einladungslink gibt es nicht.",
+  "admin.inviteCreatedHeading": "Neuer Einladungslink",
+  "admin.inviteCreated":
+    "Hier ist der neue Einladungslink. Kopiere ihn jetzt: Er wird nur dieses eine Mal angezeigt.",
+  "admin.inviteWarning":
+    "Alle mit diesem Link können hier Treffen erstellen, bis er abläuft, aufgebraucht ist oder du ihn widerrufst.",
 };

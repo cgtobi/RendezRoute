@@ -37,6 +37,7 @@ import { registerRatingRoutes } from "./routes/ratings.tsx";
 import { registerAdminRoutes } from "./routes/admin.tsx";
 import { registerReportRoutes } from "./routes/reports.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
+import { registerInviteRoutes } from "./routes/invites.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
 import { PrivacyPage } from "./views/privacy-page.tsx";
@@ -266,6 +267,7 @@ export function createApp({
   registerLinkToolRoutes(app, deps);
   registerMyDataRoutes(app, deps);
   registerRatingRoutes(app, deps);
+  if (config.postingMode === "invite") registerInviteRoutes(app, deps);
   if (adminAuth !== undefined) {
     registerReportRoutes(app, deps);
     registerAdminRoutes(app, { config, adminDeps: { ...planDeps, adminAuth }, limits: rateLimits });

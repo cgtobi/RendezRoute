@@ -29,6 +29,7 @@ const createApp = ({ config }: { config: Config }) =>
       ids: new SequentialIdGenerator(),
       clock: new FakeClock(),
       limits: { horizonDays: 180, maxRetentionDays: 30 },
+      postingMode: "anyone",
     },
   });
 

@@ -63,7 +63,8 @@ describe("the export (spec 3.7)", () => {
     const data = JSON.parse(strFromU8(files["data.json"] ?? new Uint8Array()));
     expect(data).toMatchObject({
       format: "rendezroute-export",
-      version: 2,
+      version: 3,
+      mayPostSince: null,
       plans: [
         {
           role: "host",

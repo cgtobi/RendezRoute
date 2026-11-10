@@ -19,6 +19,10 @@ import { createRecapRepository } from "../../src/adapters/out/sqlite/recap.ts";
 import { createTemplateRepository } from "../../src/adapters/out/sqlite/templates.ts";
 import { createFormNonceRepository } from "../../src/adapters/out/sqlite/form-nonces.ts";
 import { createRatingRepository } from "../../src/adapters/out/sqlite/ratings.ts";
+import {
+  createInviteRepository,
+  createPermissionRepository,
+} from "../../src/adapters/out/sqlite/invites.ts";
 import { createReportRepository } from "../../src/adapters/out/sqlite/reports.ts";
 import { createResponseRepository } from "../../src/adapters/out/sqlite/responses.ts";
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
@@ -83,6 +87,9 @@ export async function createTestApp({
     formNonces: createFormNonceRepository(database),
     ratings: createRatingRepository(database, cipher),
     reports: createReportRepository(database, cipher),
+    postingMode: config.postingMode,
+    invites: createInviteRepository(database),
+    permissions: createPermissionRepository(database),
     notify: { channels, jobs, reminders: createSentReminderRepository(database) },
   };
   const app = createApp({

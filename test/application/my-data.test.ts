@@ -49,6 +49,7 @@ beforeEach(() => {
     ids: new SequentialIdGenerator(),
     clock,
     limits: { horizonDays: 180, maxRetentionDays: 30 },
+    postingMode: "anyone",
     notify: { channels: new FakeChannelRepository(), jobs, reminders: new FakeSentReminders() },
   };
 });

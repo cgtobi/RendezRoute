@@ -6,7 +6,8 @@ import {
   usedFormNonceCutoff,
 } from "../domain/expiry.ts";
 import type { PlanDeps } from "./plans.ts";
-import type { BackupStore, PendingLoginRepository } from "./ports.ts";
+import type { BackupStore, IdentityRepository, PendingLoginRepository } from "./ports.ts";
+import { expireAccounts } from "./account-data.ts";
 import { loginCutoff } from "../domain/identity.ts";
 import { deletePlansKeepingTemplates } from "./templates.ts";
 import type { Plan } from "../domain/plan.ts";
@@ -27,6 +28,7 @@ export async function runHousekeeping(
   deps: PlanDeps & {
     backups: BackupStore;
     pendingLogins: PendingLoginRepository;
+    identities: IdentityRepository;
   },
 ): Promise<{
   deletedTemplates: number;
@@ -35,10 +37,13 @@ export async function runHousekeeping(
   deletedBackups: number;
   deletedFormNonces: number;
   deletedPendingLogins: number;
+  deletedAccounts: number;
 }> {
   const now = deps.clock.now();
-  // Templates first, so devices linked only to them count as unlinked right away.
+  // Templates first, so devices linked only to them count as unlinked right away; accounts next,
+  // so their devices are logged out before device expiry looks at them.
   const deletedTemplates = await deps.templates.deleteExpired(now);
+  const deletedAccounts = await expireAccounts(deps);
   const deletedDevices = await deps.devices.deleteInactive(deviceExpiryCutoffs(now));
   // Feeds that no longer reference anything (spec 3.10); those of deleted devices went with them.
   const deletedFeeds = await deps.calendarFeeds.deleteUnlinked();
@@ -52,6 +57,7 @@ export async function runHousekeeping(
     deletedBackups,
     deletedFormNonces,
     deletedPendingLogins,
+    deletedAccounts,
   };
 }
 

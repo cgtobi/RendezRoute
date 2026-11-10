@@ -37,6 +37,7 @@ import {
 } from "./plan-views.ts";
 import type { Result } from "../domain/result.ts";
 import type {
+  AccessScope,
   CalendarFeedRepository,
   ChannelRepository,
   FormNonceRepository,
@@ -271,6 +272,8 @@ export async function viewPlan(
      * downloads need not decrypt it (decision D20).
      */
     withRatingResult?: boolean;
+    /** Whose eyes: the browser's own, its account's, or both (the default; I52 exports). */
+    scope?: AccessScope;
   },
 ): Promise<ViewPlanResult> {
   const plan = await deps.plans.findById(request.planId);
@@ -285,11 +288,11 @@ export async function viewPlan(
   const device = await resolveDevice(deps, request.deviceToken);
   const isHost =
     device !== undefined &&
-    (await deps.devices.hasLink(device.id, { role: "host", planId: plan.id }));
+    (await deps.devices.hasLink(device.id, { role: "host", planId: plan.id }, request.scope));
   const own =
     device === undefined || isHost
       ? undefined
-      : await deps.responses.findForDevice(plan.id, device.id);
+      : await deps.responses.findForDevice(plan.id, device.id, request.scope);
 
   // The visibility matrix decides which read model an audience gets (spec 3.6).
   const audience = audienceFor(isHost ? "poster" : own);

@@ -240,6 +240,7 @@ describe("v0.5 acceptance criteria (spec 6)", () => {
         ...test.planDeps,
         backups,
         pendingLogins: test.pendingLogins,
+        identities: test.identities,
       });
     test.clock.set("2026-09-01T10:00:00Z");
     const repeated = await host.postForm(`/templates/${templateId}/repeat`, {

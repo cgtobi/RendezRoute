@@ -9,7 +9,7 @@ import {
 } from "../../../../application/my-data.ts";
 import type { AppEnv } from "../app.tsx";
 import { clearDeviceToken, readDeviceToken } from "../device-cookie.ts";
-import { exportZip } from "../export-zip.ts";
+import { exportZip, zipDownload } from "../export-zip.ts";
 import { DeleteMyDataPage, MyDataPage } from "../views/my-data.tsx";
 import { newNonce, type RouteDeps, signedOutCount } from "./shared.tsx";
 
@@ -50,10 +50,7 @@ export function registerMyDataRoutes(
       baseUrl: config.baseUrl,
     });
     const day = result.data.exportedAt.toISOString().slice(0, 10);
-    c.header("content-type", "application/zip");
-    c.header("content-disposition", `attachment; filename="rendezroute-export-${day}.zip"`);
-    c.header("cache-control", "private, no-store");
-    return c.body(zip.slice().buffer);
+    return zipDownload(c, zip, `rendezroute-export-${day}.zip`);
   };
 
   app.get("/my-data/export.zip", (c) => download(c, { kind: "device" }));

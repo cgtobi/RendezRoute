@@ -296,3 +296,75 @@ describe("push subscriptions of a browser (step 5a)", () => {
     expect(left()).toEqual([{ plan_id: "a", device_id: "laptop" }]);
   });
 });
+
+describe("an account's own data (step 5b)", () => {
+  it("lists the plans it owns and responded to, and its templates", async () => {
+    await plan("owned", "anna");
+    await plan("other", undefined, "other");
+    await response("answer", "other", { deviceId: "phone", identityId: "anna" });
+    await plan("not-annas");
+    await templates().create({
+      template: templateFromPlan(samplePlan({ id: "owned" }), {
+        id: "t",
+        includePrivate: false,
+        now: fixtureNow,
+      }),
+      hostTokenHash: "template-hash",
+      route: undefined,
+      hostsOfPlan: "owned",
+    });
+    const owned = await plans().findOwnedBy("anna");
+    expect(owned.map((entry) => [entry.role, entry.plan.id])).toEqual([
+      ["host", "owned"],
+      ["manage", "other"],
+    ]);
+    expect(owned[1]).toMatchObject({ responseId: "answer", responseKind: "joined" });
+    expect((await templates().listOwnedBy("anna")).map((t) => t.id)).toEqual(["t"]);
+    expect(await plans().findOwnedBy("ben")).toEqual([]);
+  });
+
+  it("counts a logged-in device's use as its account's", async () => {
+    await devices().setIdentity("phone", "anna");
+    const later = new Date(fixtureNow.getTime() + 60_000);
+    await devices().touch("phone", later);
+    await devices().touch("other", new Date(fixtureNow.getTime() + 120_000));
+    const identities = createIdentityRepository(database, cipher);
+    expect((await identities.findById("anna"))?.lastActiveAt).toEqual(later);
+    expect((await identities.findById("ben"))?.lastActiveAt).toEqual(fixtureNow);
+  });
+
+  it("deletes the account, logging its devices out and taking its permissions", async () => {
+    const identities = createIdentityRepository(database, cipher);
+    await devices().setIdentity("phone", "anna");
+    database.sqlite
+      .prepare(
+        "insert into permissions (id, identity_id, permission, created_at) values ('p', 'anna', 'may_post', 'x')",
+      )
+      .run();
+    expect(
+      (await identities.listUnusedBefore(new Date(fixtureNow.getTime() + 1))).map((i) => i.id),
+    ).toEqual(["anna", "ben"]);
+    await identities.delete("anna");
+    expect(await identities.findById("anna")).toBeUndefined();
+    expect((await devices().findByTokenHash("hash-phone"))?.identityId).toBeUndefined();
+    expect(database.sqlite.prepare("select count(*) from permissions").pluck().get()).toBe(0);
+  });
+});
+
+describe("access scopes (decision I52)", () => {
+  it("read the device's own links, its account's items, or both", async () => {
+    await plan("owned", "anna", "other");
+    await plan("own");
+    await response("accounts", "own", { deviceId: "laptop", identityId: "anna" });
+    await devices().setIdentity("phone", "anna");
+    expect(await devices().hasLink("phone", host("owned"), "account")).toBe(true);
+    expect(await devices().hasLink("phone", host("owned"), "device")).toBe(false);
+    expect(await devices().hasLink("phone", host("own"), "account")).toBe(false);
+    expect(await devices().hasLink("phone", host("own"), "device")).toBe(true);
+    expect((await responses().findForDevice("own", "phone", "account"))?.id).toBe("accounts");
+    expect(await responses().findForDevice("own", "phone", "device")).toBeUndefined();
+    expect(
+      (await plans().findLinkedToDevice("phone", "account")).map((e) => e.plan.id).sort(),
+    ).toEqual(["owned", "own"].sort());
+  });
+});

@@ -694,6 +694,25 @@ export const de: Messages = {
   "admin.deleteConfirm": "Treffen endgültig löschen",
   "admin.deleted": "Das Treffen wurde gelöscht.",
   "admin.back": "Zurück zur Administration",
+  "account.dataHeading": "In deinem Konto",
+  "account.dataEmpty":
+    "Noch nichts. Treffen und Antworten, die du angemeldet erstellst oder hierher übernimmst, erscheinen hier.",
+  "account.deleteAt":
+    "Wenn du dein Konto nicht nutzt, wird es am {date} gelöscht, mit allem, was darin ist.",
+  "account.export": "Kontodaten exportieren (ZIP)",
+  "account.deleteLink": "Konto löschen",
+  "account.deleteHeading": "Dein Konto löschen?",
+  "account.deleteItself": "das Konto selbst und sein Anzeigename",
+  "account.mayPost":
+    "Ein Einladungslink erlaubt deinem Konto, hier Treffen zu erstellen (seit {date}).",
+  "account.deleteMayPost": "seine Erlaubnis, Treffen zu erstellen, aus einem Einladungslink",
+  "account.deleteLogsOut":
+    "Browser, die bei ihm angemeldet sind, werden abgemeldet; was sie selbst haben, bleibt.",
+  "account.deleteConfirm": "Konto endgültig löschen",
+  "account.accountDeleted": "Dein Konto wurde gelöscht.",
+  "account.back": "Zurück zu deinem Konto",
+  "privacy.accountExpiry":
+    "Konten, die {days} Tage lang nicht genutzt werden, werden mit allem, was darin ist, gelöscht.",
   "account.claimHeading": "In dein Konto übernehmen",
   "account.claimIntro":
     "Dieser Browser hat diese, außerhalb deines Kontos. In deinem Konto erreichen sie jedes Gerät, auf dem du angemeldet bist; dieser Browser hat sie dann nur noch, solange er angemeldet ist.",

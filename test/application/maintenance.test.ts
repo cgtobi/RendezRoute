@@ -70,6 +70,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
         ...deps,
         backups,
         pendingLogins: repos.pendingLogins,
+        identities: repos.identities,
       }),
     ).toEqual({
       deletedTemplates: 0,
@@ -78,6 +79,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
       deletedBackups: 2,
       deletedFormNonces: 0,
       deletedPendingLogins: 0,
+      deletedAccounts: 0,
     });
     expect(backups.cutoffs).toEqual([new Date(fixtureNow.getTime() - 7 * 24 * 60 * 60 * 1000)]);
   });
@@ -91,6 +93,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
         ...deps,
         backups: new FakeBackupStore(),
         pendingLogins: repos.pendingLogins,
+        identities: repos.identities,
       }),
     ).toEqual({
       deletedTemplates: 0,
@@ -99,6 +102,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
       deletedBackups: 0,
       deletedFormNonces: 0,
       deletedPendingLogins: 0,
+      deletedAccounts: 0,
     });
     expect(await repos.devices.findByTokenHash("lonely-hash")).toBeUndefined();
     expect(await repos.devices.findByTokenHash("hash-p")).toBeDefined();
@@ -120,6 +124,7 @@ describe("runHousekeeping and calendar feeds (spec 3.10)", () => {
         ...deps,
         backups: new FakeBackupStore(),
         pendingLogins: repos.pendingLogins,
+        identities: repos.identities,
       });
     expect((await housekeeping()).deletedFeeds).toBe(0);
     await repos.plans.delete("p");

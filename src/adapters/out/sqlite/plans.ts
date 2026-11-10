@@ -1,5 +1,6 @@
 // Plan persistence (spec 4). The exact start passes through FieldCipher; Kysely and
 // row types stay inside this adapter (spec 2a).
+import { accessSource } from "./access.ts";
 import { type Insertable, type Selectable, sql } from "kysely";
 import type {
   FieldCipher,
@@ -246,7 +247,9 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
         .leftJoin("responses as own", "own.id", "link.response_id")
         .select(["link.role as link_role", "own.id as response_id", "own.kind as response_kind"])
         .where("link.device_id", "=", deviceId)
-        .$if(scope === "device", (query) => query.where("link.source", "=", "link"))
+        .$if(accessSource(scope) !== undefined, (query) =>
+          query.where("link.source", "=", accessSource(scope) ?? "link"),
+        )
         // A plan both linked and in the account is listed once.
         .distinct()
         .orderBy("plans.starts_at")
@@ -258,6 +261,27 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
           ? { plan, role: "manage", responseId: row.response_id, responseKind: row.response_kind }
           : { plan, role: "host" };
       });
+    },
+
+    async findOwnedBy(identityId) {
+      const hosted = await selectPlans()
+        .where("plans.owner_identity_id", "=", identityId)
+        .execute();
+      const answered = await selectPlans()
+        .innerJoin("responses as own", "own.plan_id", "plans.id")
+        .select(["own.id as response_id", "own.kind as response_kind"])
+        .where("own.identity_id", "=", identityId)
+        .execute();
+      const linked: LinkedPlan[] = [
+        ...hosted.map((row): LinkedPlan => ({ plan: fromRow(row), role: "host" })),
+        ...answered.map((row): LinkedPlan => ({
+          plan: fromRow(row),
+          role: "manage",
+          responseId: row.response_id,
+          responseKind: row.response_kind,
+        })),
+      ];
+      return linked.sort((a, b) => a.plan.startsAt.getTime() - b.plan.startsAt.getTime());
     },
 
     async findWithRetentionAbove(maxRetentionDays) {

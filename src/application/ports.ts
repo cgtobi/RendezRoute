@@ -128,6 +128,8 @@ export interface PlanRepository {
   /** Plans the device hosts or manages a response to, with the response's kind (spec 6 feature 2). */
   /** Plans the device hosts or responded to; with its account's too for "device_and_account". */
   findLinkedToDevice(deviceId: string, scope: AccessScope): Promise<LinkedPlan[]>;
+  /** Plans the account owns, and plans it responded to (step 5b), by start. */
+  findOwnedBy(identityId: string): Promise<LinkedPlan[]>;
   /** Plans whose retention exceeds `maxRetentionDays` (apply-retention-max). */
   findWithRetentionAbove(maxRetentionDays: number): Promise<Plan[]>;
   /** The route, decrypted; only for audiences that may see it (spec 3.6). */
@@ -154,8 +156,11 @@ export interface Device {
   identityId: string | undefined;
 }
 
-/** Only what the device itself links to, or also what its account owns (step 5a). */
-export type AccessScope = "device" | "device_and_account";
+/**
+ * What the device itself links to, what its account owns, or both (steps 5a, 5b). Access checks
+ * use both; each export reads as its owner: the browser's or the account's (decision I52).
+ */
+export type AccessScope = "device" | "account" | "device_and_account";
 
 export interface ClaimCounts {
   plans: number;
@@ -210,6 +215,8 @@ export interface PermissionRepository {
   mayPostSince(deviceId: string): Promise<Date | undefined>;
   /** The device's own permission only, which goes with the device's data (spec 3.7). */
   deviceMayPostSince(deviceId: string): Promise<Date | undefined>;
+  /** The account's own permission only, which goes with the account (step 5b). */
+  accountMayPostSince(identityId: string): Promise<Date | undefined>;
 }
 
 /** Accounts (spec 7 Identity): subject and display name encrypted, looked up by a keyed hash. */
@@ -221,6 +228,10 @@ export interface IdentityRepository {
   ): Promise<Identity | undefined>;
   findById(id: string): Promise<Identity | undefined>;
   setDisplayName(id: string, displayName: string | undefined): Promise<void>;
+  /** The account itself; what it owns is removed first (spec 3.7). Its devices are logged out. */
+  delete(id: string): Promise<void>;
+  /** Accounts last active before the cutoff (spec 3.10 expiry). */
+  listUnusedBefore(cutoff: Date): Promise<Identity[]>;
   /** A fediverse account's handle as shown, after a rename (D23). */
   setHandle(id: string, handle: string | undefined): Promise<void>;
   touch(id: string, now: Date): Promise<void>;
@@ -357,6 +368,8 @@ export interface TemplateRepository {
   delete(id: string): Promise<void>;
   /** The templates linked to a device, by title. */
   listForDevice(deviceId: string, scope: AccessScope): Promise<PlanTemplate[]>;
+  /** The templates the account owns (step 5b). */
+  listOwnedBy(identityId: string): Promise<PlanTemplate[]>;
   /** Deletes templates whose expiry has passed; returns how many (spec 3.10). */
   deleteExpired(now: Date): Promise<number>;
 }
@@ -364,10 +377,11 @@ export interface TemplateRepository {
 export interface DeviceRepository {
   findByTokenHash(hash: string): Promise<Device | undefined>;
   create(device: { id: string; tokenHash: string; now: Date }): Promise<void>;
+  /** Last activity; also the account's the device is logged in to (spec 3.10). */
   touch(id: string, now: Date): Promise<void>;
   /** Idempotent. */
   link(deviceId: string, target: DeviceLinkTarget, now: Date): Promise<void>;
-  hasLink(deviceId: string, target: DeviceLinkTarget): Promise<boolean>;
+  hasLink(deviceId: string, target: DeviceLinkTarget, scope?: AccessScope): Promise<boolean>;
   /** What the device links to that no account owns yet, which claiming would move. */
   claimable(deviceId: string): Promise<ClaimCounts>;
   /**
@@ -414,7 +428,12 @@ export interface ResponseRepository {
   setManageTokenHash(responseId: string, hash: string): Promise<void>;
   findIdByCreationNonce(nonce: string): Promise<string | undefined>;
   /** The response a device manages for a plan, if any (one per device and plan). */
-  findForDevice(planId: string, deviceId: string): Promise<PlanResponse | undefined>;
+  /** The device's response to the plan, its own first (step 5a); both scopes by default. */
+  findForDevice(
+    planId: string,
+    deviceId: string,
+    scope?: AccessScope,
+  ): Promise<PlanResponse | undefined>;
   listByPlan(planId: string): Promise<PlanResponse[]>;
   /** Interested and joined counts; rejected and removed people never count (spec 3.5). */
   counts(planId: string): Promise<{ interested: number; participants: number }>;

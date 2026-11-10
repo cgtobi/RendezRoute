@@ -669,6 +669,24 @@ export const en = {
   "admin.deleteConfirm": "Delete plan for good",
   "admin.deleted": "The plan was deleted.",
   "admin.back": "Back to the admin page",
+  "account.dataHeading": "In your account",
+  "account.dataEmpty":
+    "Nothing yet. Plans and responses you create while logged in, or move here, appear here.",
+  "account.deleteAt":
+    "If you don’t use your account, it is deleted on {date}, with everything in it.",
+  "account.export": "Export account data (ZIP)",
+  "account.deleteLink": "Delete account",
+  "account.deleteHeading": "Delete your account?",
+  "account.deleteItself": "the account itself and its display name",
+  "account.mayPost": "An invite link lets your account create plans here (since {date}).",
+  "account.deleteMayPost": "its permission to create plans, from an invite link",
+  "account.deleteLogsOut":
+    "Browsers logged in to it are logged out; what they hold themselves stays.",
+  "account.deleteConfirm": "Delete account for good",
+  "account.accountDeleted": "Your account was deleted.",
+  "account.back": "Back to your account",
+  "privacy.accountExpiry":
+    "Accounts that are not used for {days} days are deleted, with everything in them.",
   "account.claimHeading": "Move into your account",
   "account.claimIntro":
     "This browser holds these, outside your account. In your account they reach every device you log in on; this browser then has them only while logged in.",

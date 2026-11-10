@@ -455,6 +455,42 @@ describe("host link (spec 3.2: shown once on creation)", () => {
   });
 });
 
+describe("account exports (spec 3.7, 2b; decision I52)", () => {
+  it("hold only what each audience may see, as the account sees it", async () => {
+    const oidc = new FakeOidcServer();
+    const { app } = await createTestApp({ env: oidc.env(), oidc });
+    const loggedIn = async (sub: string) => {
+      const client = new TestClient(app);
+      const start = new URL((await client.get("/login/oidc")).headers.get("location") ?? "");
+      const callback = oidc.approve(start, { sub });
+      await client.get(`${callback.pathname}${callback.search}`);
+      return client;
+    };
+    const host = await loggedIn("host");
+    const { planId } = await createPlanViaUi(host, exactStart);
+    const joined = await loggedIn("joined");
+    await respondViaUi(joined, planId, JOINED_NAME, "joined");
+    const interested = await loggedIn("interested");
+    await respondViaUi(interested, planId, INTERESTED_NAME, "interested");
+    const exported = async (client: TestClient) => bodyOf(await client.get("/account/export.zip"));
+
+    const interestedExport = await exported(interested);
+    expect(interestedExport).toContain(INTERESTED_NAME);
+    expect(interestedExport).not.toContain(SENTINEL_DESCRIPTION);
+    expect(interestedExport).not.toContain(SENTINEL_LAT);
+    expect(interestedExport).not.toContain(JOINED_NAME);
+
+    const joinedExport = await exported(joined);
+    expect(joinedExport).toContain(SENTINEL_DESCRIPTION);
+    expect(joinedExport).not.toContain(INTERESTED_NAME);
+
+    const hostExport = await exported(host);
+    expect(hostExport).toContain(JOINED_NAME);
+    expect(hostExport).toContain(INTERESTED_NAME);
+    expect(await exported(new TestClient(app))).not.toContain(SENTINEL_DESCRIPTION);
+  });
+});
+
 describe("data at rest (spec 2b)", () => {
   it("keeps encrypted fields and tokens out of the database and WAL files in plaintext", async () => {
     const dir = mkdtempSync(join(tmpdir(), "rendezroute-privacy-"));

@@ -1,4 +1,5 @@
 // Template persistence (spec 4, 3.10 Templates). Exact start and route pass through FieldCipher.
+import { accessSource } from "./access.ts";
 import type { Insertable, Selectable, Transaction } from "kysely";
 import type { FieldCipher, NewTemplate, TemplateRepository } from "../../../application/ports.ts";
 import type { Route } from "../../../domain/route.ts";
@@ -231,9 +232,22 @@ export function createTemplateRepository(
         .selectAll("plan_templates")
         .distinct()
         .where("link.device_id", "=", deviceId)
-        .$if(scope === "device", (query) => query.where("link.source", "=", "link"))
+        .$if(accessSource(scope) !== undefined, (query) =>
+          query.where("link.source", "=", accessSource(scope) ?? "link"),
+        )
         .orderBy("plan_templates.title")
         .orderBy("plan_templates.id")
+        .execute();
+      return rows.map(fromRow);
+    },
+
+    async listOwnedBy(identityId) {
+      const rows = await database.db
+        .selectFrom("plan_templates")
+        .selectAll()
+        .where("owner_identity_id", "=", identityId)
+        .orderBy("title")
+        .orderBy("id")
         .execute();
       return rows.map(fromRow);
     },

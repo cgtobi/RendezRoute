@@ -98,6 +98,21 @@ export function createIdentityRepository(
       checkpoint(database);
     },
 
+    async delete(id) {
+      await db.deleteFrom("identities").where("id", "=", id).execute();
+      checkpoint(database);
+    },
+
+    async listUnusedBefore(cutoff) {
+      const rows = await db
+        .selectFrom("identities")
+        .select(COLUMNS)
+        .where("last_active_at", "<", cutoff.toISOString())
+        .orderBy("last_active_at")
+        .execute();
+      return rows.map(identityOf);
+    },
+
     async touch(id, now) {
       await db
         .updateTable("identities")

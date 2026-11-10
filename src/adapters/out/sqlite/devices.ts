@@ -5,6 +5,7 @@ import type {
   DeviceRepository,
 } from "../../../application/ports.ts";
 import type { Kysely } from "kysely";
+import { accessSource } from "./access.ts";
 import { checkpoint, type Database } from "./database.ts";
 import type { DatabaseSchema } from "./schema.ts";
 
@@ -162,10 +163,19 @@ export function createDeviceRepository(database: Database): DeviceRepository {
     },
 
     async touch(id, now) {
+      const at = now.toISOString();
       await database.db
         .updateTable("devices")
-        .set({ last_seen_at: now.toISOString() })
+        .set({ last_seen_at: at })
         .where("id", "=", id)
+        .execute();
+      // Using a logged-in device is using its account (spec 3.10).
+      await database.db
+        .updateTable("identities")
+        .set({ last_active_at: at })
+        .where("id", "=", (eb) =>
+          eb.selectFrom("devices").select("identity_id").where("id", "=", id),
+        )
         .execute();
     },
 
@@ -177,12 +187,14 @@ export function createDeviceRepository(database: Database): DeviceRepository {
         .execute();
     },
 
-    async hasLink(deviceId, target) {
-      // Its own links, or its account's (device_access, step 5a).
+    async hasLink(deviceId, target, scope = "device_and_account") {
+      // Its own links, its account's, or both (device_access, steps 5a, 5b).
+      const source = accessSource(scope);
       const row = await database.db
         .selectFrom("device_access")
         .select("device_id")
         .where("device_id", "=", deviceId)
+        .$if(source !== undefined, (query) => query.where("source", "=", source ?? "link"))
         .where("role", "=", target.role)
         .where(...targetEquals(target))
         .executeTakeFirst();

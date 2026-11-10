@@ -1,5 +1,6 @@
 // "My data on this device" (spec 3.2, 3.7, decision I45): what a device is linked to, export as
 // data the adapter packs into a ZIP, and deleting all of it with the device itself.
+import type { IdentityProviderKind } from "../domain/identity.ts";
 import type { Plan, PlanStatus } from "../domain/plan.ts";
 import type { ResponseKind } from "../domain/response.ts";
 import type { Route } from "../domain/route.ts";
@@ -16,6 +17,7 @@ import type {
   RatingView,
 } from "./plan-views.ts";
 import { type PlanDeps, viewPlan } from "./plans.ts";
+import type { AccessScope, LinkedPlan } from "./ports.ts";
 import { withdrawResponse } from "./responses.ts";
 
 export interface MyDataItem {
@@ -46,7 +48,7 @@ const EMPTY: MyData = {
   mayPostSince: undefined,
 };
 
-const itemOf = (plan: Plan): MyDataItem => ({
+export const itemOf = (plan: Plan): MyDataItem => ({
   planId: plan.id,
   title: plan.title,
   startsAt: plan.startsAt,
@@ -114,6 +116,18 @@ export interface ExportData {
   calendarFeed: boolean;
   /** Device exports only: since when an invite link lets the device create plans. */
   mayPostSince: Date | undefined;
+  /** Account exports only: the account itself (spec 3.7), never its provider identifier's hash. */
+  account?: ExportedAccount | undefined;
+}
+
+export interface ExportedAccount {
+  provider: IdentityProviderKind;
+  /** The provider's identifier for the account, as stored. */
+  subject: string;
+  handle: string | undefined;
+  displayName: string | undefined;
+  createdAt: Date;
+  lastActiveAt: Date;
 }
 
 /** Everything linked to the device, one plan it hosts, one's own response, or one template. */
@@ -124,15 +138,18 @@ export type ExportScope =
   | { kind: "template"; templateId: string };
 
 /** The plan as this device sees it, read once: if it hosts the plan or has a response to it. */
-async function exportedPlan(
+export async function exportedPlan(
   deps: PlanDeps,
   planId: string,
   device: { id: string; token: string | undefined },
+  /** Whose eyes: a browser export reads as the browser, an account export as the account. */
+  scope: AccessScope = "device_and_account",
 ): Promise<ExportedPlan | undefined> {
   const result = await viewPlan(deps, {
     planId,
     deviceToken: device.token,
     withRatingResult: true,
+    scope,
   });
   if (result.kind === "not_found" || result.kind === "viewer") return undefined;
   const hosting = result.kind === "poster";
@@ -141,7 +158,7 @@ async function exportedPlan(
   const calendar = entryOf(result.view, { hosting, exactStart });
   const requestNote = hosting
     ? undefined
-    : (await deps.responses.findForDevice(planId, device.id))?.requestNote;
+    : (await deps.responses.findForDevice(planId, device.id, scope))?.requestNote;
   if (result.kind === "responder") {
     return {
       role: "response",
@@ -172,7 +189,10 @@ async function exportedPlan(
   };
 }
 
-async function exportedTemplate(deps: PlanDeps, template: PlanTemplate): Promise<ExportedTemplate> {
+export async function exportedTemplate(
+  deps: PlanDeps,
+  template: PlanTemplate,
+): Promise<ExportedTemplate> {
   const route = template.hasRoute ? await deps.templates.findRoute(template.id) : undefined;
   return { template, route };
 }
@@ -217,7 +237,8 @@ export async function exportMyData(
     case "device": {
       const plans: ExportedPlan[] = [];
       for (const entry of await deps.plans.findLinkedToDevice(device.id, "device")) {
-        const plan = await exportedPlan(deps, entry.plan.id, device);
+        // As this browser itself, never its account (I52).
+        const plan = await exportedPlan(deps, entry.plan.id, device, "device");
         if (plan !== undefined) plans.push(plan);
       }
       const templates: ExportedTemplate[] = [];
@@ -232,21 +253,19 @@ export async function exportMyData(
 }
 
 /**
- * "Delete my data": every hosted plan (deleted for everyone, telling those still in first if it
- * is upcoming, and never keeping a template), every response (as if withdrawn), every template,
- * the calendar feed and the device itself (spec 3.7, 3.10; user decision 2026-11-09).
+ * Removes what was listed, as its owner (spec 3.7, 3.10): hosted plans are deleted for everyone,
+ * telling those still in first if they are upcoming, and never keep a template; responses are
+ * withdrawn; templates are deleted. Shared by "Delete my data" and account deletion.
  */
-export async function deleteMyData(
+export async function removeOwnData(
   deps: PlanDeps,
-  request: { deviceToken: string | undefined },
-): Promise<{ kind: "deleted" } | { kind: "not_found" }> {
-  const device = await resolveDevice(deps, request.deviceToken);
-  if (device === undefined) return { kind: "not_found" };
-  const linked = await deps.plans.findLinkedToDevice(device.id, "device");
+  linked: readonly LinkedPlan[],
+  templates: readonly PlanTemplate[],
+): Promise<void> {
   const hosted = linked.flatMap((entry) => (entry.role === "host" ? [entry.plan] : []));
   for (const entry of linked) {
     if (entry.role !== "manage" || hosted.some((plan) => plan.id === entry.plan.id)) continue;
-    // This browser's own response, never its account's (step 5a).
+    // Exactly the listed response: a browser's own, never its account's (step 5a).
     const response = await deps.responses.findById(entry.responseId);
     if (response !== undefined) await withdrawResponse(deps, entry.plan, response);
   }
@@ -254,9 +273,25 @@ export async function deleteMyData(
   const notices = await Promise.all(hosted.map((plan) => deletionNotices(deps, plan)));
   await deps.plans.deleteMany(hosted.map((plan) => plan.id));
   for (const send of notices) await send();
-  for (const template of await deps.templates.listForDevice(device.id, "device")) {
-    await deps.templates.delete(template.id);
-  }
+  for (const template of templates) await deps.templates.delete(template.id);
+}
+
+/**
+ * "Delete my data": everything this browser holds itself, as removeOwnData does, then the
+ * calendar feed and the device itself (spec 3.7, 3.10; user decision 2026-11-09). Its account,
+ * if logged in, stays (decision D25).
+ */
+export async function deleteMyData(
+  deps: PlanDeps,
+  request: { deviceToken: string | undefined },
+): Promise<{ kind: "deleted" } | { kind: "not_found" }> {
+  const device = await resolveDevice(deps, request.deviceToken);
+  if (device === undefined) return { kind: "not_found" };
+  await removeOwnData(
+    deps,
+    await deps.plans.findLinkedToDevice(device.id, "device"),
+    await deps.templates.listForDevice(device.id, "device"),
+  );
   // Its links, calendar feed and permissions go with it.
   await deps.devices.delete(device.id);
   return { kind: "deleted" };

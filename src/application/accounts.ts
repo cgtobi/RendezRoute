@@ -16,6 +16,7 @@ import {
   fediverseServerAllowed,
   parseFediverseServer,
 } from "../domain/fediverse.ts";
+import { loggedInAccount } from "./account-data.ts";
 import { ensureDevice, lookupDevice } from "./devices.ts";
 import type { PlanDeps } from "./plans.ts";
 import type {
@@ -174,15 +175,8 @@ async function seenAgain(
   return { ...identity, handle: account.handle, lastActiveAt: now };
 }
 
-/** The account logged in on this device, if any. Never writes. */
-async function accountOf(deps: AccountDeps, deviceToken: string | undefined) {
-  const device = await lookupDevice(deps, deviceToken);
-  const identity =
-    device?.identityId === undefined
-      ? undefined
-      : await deps.identities.findById(device.identityId);
-  return device === undefined || identity === undefined ? undefined : { device, identity };
-}
+/** The account logged in on this device; using it counts as using the account (spec 3.10). */
+const accountOf = loggedInAccount;
 
 export type AccountView =
   | { kind: "logged_out" }

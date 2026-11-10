@@ -176,7 +176,7 @@ export function MyDataPage(props: MyDataPageProps) {
   );
 }
 
-const Titles = ({ items }: { items: readonly { title: string }[] }) => (
+export const Titles = ({ items }: { items: readonly { title: string }[] }) => (
   <ul>
     {items.map((item) => (
       <li>{item.title}</li>

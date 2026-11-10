@@ -690,6 +690,26 @@ export const fr: Messages = {
   "admin.deleteConfirm": "Supprimer définitivement la sortie",
   "admin.deleted": "La sortie a été supprimée.",
   "admin.back": "Retour à l’administration",
+  "account.dataHeading": "Dans votre compte",
+  "account.dataEmpty":
+    "Rien pour l’instant. Les sorties et réponses que vous créez en étant connecté·e, ou que vous transférez ici, apparaissent ici.",
+  "account.deleteAt":
+    "Si vous n’utilisez pas votre compte, il sera supprimé le {date}, avec tout ce qu’il contient.",
+  "account.export": "Exporter les données du compte (ZIP)",
+  "account.deleteLink": "Supprimer le compte",
+  "account.deleteHeading": "Supprimer votre compte ?",
+  "account.deleteItself": "le compte lui-même et son nom affiché",
+  "account.mayPost":
+    "Un lien d’invitation permet à votre compte de créer des sorties ici (depuis le {date}).",
+  "account.deleteMayPost":
+    "son autorisation de créer des sorties, obtenue par un lien d’invitation",
+  "account.deleteLogsOut":
+    "Les navigateurs connectés à ce compte sont déconnectés ; ce qu’ils contiennent eux-mêmes reste.",
+  "account.deleteConfirm": "Supprimer le compte définitivement",
+  "account.accountDeleted": "Votre compte a été supprimé.",
+  "account.back": "Retour à votre compte",
+  "privacy.accountExpiry":
+    "Les comptes inutilisés pendant {days} jours sont supprimés, avec tout ce qu’ils contiennent.",
   "account.claimHeading": "Transférer dans votre compte",
   "account.claimIntro":
     "Ce navigateur contient ceci, hors de votre compte. Dans votre compte, ces éléments sont accessibles depuis chaque appareil où vous êtes connecté·e ; ce navigateur ne les a alors plus que lorsqu’il est connecté.",

@@ -23,7 +23,14 @@ import type { AppEnv } from "../app.tsx";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { setLoginState, takeLoginState } from "../login-cookie.ts";
 import {
+  deleteAccount,
+  exportAccountData,
+  viewAccountData,
+} from "../../../../application/account-data.ts";
+import { exportZip, zipDownload } from "../export-zip.ts";
+import {
   AccountPage,
+  DeleteAccountPage,
   type AccountNotice,
   ContinueLogin,
   type FediverseLoginForm,
@@ -40,7 +47,7 @@ import {
   tooManyRequests,
 } from "./shared.tsx";
 
-const NOTICES = ["loggedIn", "loggedOut", "renamed", "claimed"] as const;
+const NOTICES = ["loggedIn", "loggedOut", "renamed", "claimed", "accountDeleted"] as const;
 
 /** Where providers send the browser back. A fediverse server's own key follows this path (I50). */
 export const OIDC_CALLBACK_PATH = "/login/oidc/callback";
@@ -76,11 +83,15 @@ export function registerAccountRoutes(
       ? undefined
       : NOTICES.find((name) => c.req.query(name) !== undefined);
     c.header("cache-control", "private, no-store");
+    const accountData = await viewAccountData(deps, { deviceToken: deviceToken(c) });
     return c.render(
       <AccountPage
         t={t}
         csrfToken={c.get("csrfToken")()}
         account={await viewAccount(deps, { deviceToken: deviceToken(c) })}
+        data={accountData.kind === "account" ? accountData.data : undefined}
+        language={c.get("language")}
+        timeZone={config.defaultTimezone}
         logins={logins}
         notice={notice}
         rename={forms.rename}
@@ -192,6 +203,34 @@ export function registerAccountRoutes(
   app.post("/account/claim", async (c) => {
     const result = await claimDeviceData(deps, { deviceToken: deviceToken(c) });
     return c.redirect(result.kind === "claimed" ? "/account?claimed" : "/account", 303);
+  });
+
+  app.get("/account/export.zip", async (c) => {
+    const result = await exportAccountData(deps, { deviceToken: deviceToken(c) });
+    if (result.kind === "not_found") return c.notFound();
+    const zip = exportZip(result.data, {
+      t: c.get("t"),
+      language: c.get("language"),
+      baseUrl: config.baseUrl,
+    });
+    const day = result.data.exportedAt.toISOString().slice(0, 10);
+    return zipDownload(c, zip, `rendezroute-account-${day}.zip`);
+  });
+
+  app.get("/account/delete", async (c) => {
+    const result = await viewAccountData(deps, { deviceToken: deviceToken(c) });
+    if (result.kind === "logged_out") return c.redirect("/account", 303);
+    const t = c.get("t");
+    c.header("cache-control", "private, no-store");
+    return c.render(
+      <DeleteAccountPage t={t} csrfToken={c.get("csrfToken")()} data={result.data} />,
+      { title: t("account.deleteHeading") },
+    );
+  });
+
+  app.post("/account/delete", async (c) => {
+    const result = await deleteAccount(deps, { deviceToken: deviceToken(c) });
+    return c.redirect(result.kind === "deleted" ? "/account?accountDeleted" : "/account", 303);
   });
 
   app.post("/account/logout", async (c) => {

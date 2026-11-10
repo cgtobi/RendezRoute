@@ -297,7 +297,7 @@ describe("what a device that may post keeps (spec 3.7)", () => {
       new Uint8Array(await (await invited.get("/my-data/export.zip")).arrayBuffer()),
     );
     const exported = JSON.parse(strFromU8(zip["data.json"] ?? new Uint8Array()));
-    expect(exported).toMatchObject({ version: 3, mayPostSince: "2026-06-01T08:00:00.000Z" });
+    expect(exported).toMatchObject({ version: 4, mayPostSince: "2026-06-01T08:00:00.000Z" });
     const confirm = text(await (await invited.get("/my-data/delete")).text());
     expect(confirm).toContain(en("myData.deleteMayPost"));
     await invited.postForm("/my-data/delete", hiddenFields(confirm));

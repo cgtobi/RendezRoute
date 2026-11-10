@@ -335,6 +335,7 @@ describe("template expiry (spec 3.10: 90 days without use)", () => {
         ...deps,
         backups,
         pendingLogins: repos.pendingLogins,
+        identities: repos.identities,
       }),
     ).toMatchObject({ deletedTemplates: 0 });
     clock.set("2026-08-30T08:00:00Z");
@@ -343,6 +344,7 @@ describe("template expiry (spec 3.10: 90 days without use)", () => {
         ...deps,
         backups,
         pendingLogins: repos.pendingLogins,
+        identities: repos.identities,
       }),
     ).toMatchObject({ deletedTemplates: 1 });
     expect(await listTemplates(deps, { deviceToken: host })).toEqual([]);

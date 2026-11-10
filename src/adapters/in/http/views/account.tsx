@@ -1,14 +1,22 @@
 // The account page (spec 7 Identity): the ways to log in (an OIDC button, a fediverse server field),
 // or the account's display name and "Log out". Never the provider's identifier.
+import type { AccountData } from "../../../../application/account-data.ts";
 import type { AccountView } from "../../../../application/accounts.ts";
 import type { ClaimCounts } from "../../../../application/ports.ts";
 import type { FediverseServerError } from "../../../../domain/fediverse.ts";
 import { type DisplayNameError, IDENTITY_LIMITS } from "../../../../domain/identity.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
-import { fieldErrorMessage } from "./format.ts";
+import { fieldErrorMessage, formatDate } from "./format.ts";
+import { Titles } from "./my-data.tsx";
 
-export type AccountNotice = "loggedIn" | "loggedOut" | "renamed" | "claimed" | undefined;
+export type AccountNotice =
+  | "loggedIn"
+  | "loggedOut"
+  | "renamed"
+  | "claimed"
+  | "accountDeleted"
+  | undefined;
 
 export type LoginOption =
   /** The button's name for it: OIDC_NAME. */
@@ -31,6 +39,11 @@ export function AccountPage(props: {
   /** What was typed into the name field, with its error, when renaming failed. */
   rename?: { value: string; error: DisplayNameError } | undefined;
   fediverse?: FediverseLoginForm | undefined;
+  /** What the account owns, when logged in (step 5b). */
+  data?: AccountData | undefined;
+  language: string;
+  /** The instance's time zone, for dates that belong to no plan. */
+  timeZone: string;
 }) {
   const { t, account } = props;
   const notice = props.notice === undefined ? undefined : t(`account.${props.notice}`);
@@ -91,6 +104,14 @@ export function AccountPage(props: {
             <button type="submit">{t("account.save")}</button>
           </form>
           <ClaimSection t={t} csrfToken={props.csrfToken} claimable={account.claimable} />
+          {props.data !== undefined && (
+            <AccountDataSection
+              t={t}
+              data={props.data}
+              language={props.language}
+              timeZone={props.timeZone}
+            />
+          )}
           <form method="post" action="/account/logout">
             <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
             <p class="hint">{t("account.logoutHint")}</p>
@@ -100,6 +121,122 @@ export function AccountPage(props: {
           </form>
         </>
       )}
+    </section>
+  );
+}
+
+/** What the account owns, its export and deletion, and when it expires (spec 3.7, 3.10). */
+function AccountDataSection(props: {
+  t: Translate;
+  data: AccountData;
+  language: string;
+  timeZone: string;
+}) {
+  const { t, data, language } = props;
+  const empty =
+    data.hosted.length === 0 && data.responses.length === 0 && data.templates.length === 0;
+  return (
+    <section class="account-data">
+      <h2>{t("account.dataHeading")}</h2>
+      {empty && <p>{t("account.dataEmpty")}</p>}
+      {data.hosted.length > 0 && (
+        <>
+          <h3>{t("myData.hosted")}</h3>
+          <ul>
+            {data.hosted.map((item) => (
+              <li>
+                <a href={`/p/${item.planId}`}>{item.title}</a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {data.responses.length > 0 && (
+        <>
+          <h3>{t("myData.responses")}</h3>
+          <ul>
+            {data.responses.map((item) => (
+              <li>
+                <a href={`/p/${item.planId}`}>{item.title}</a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {data.templates.length > 0 && (
+        <>
+          <h3>{t("myData.templates")}</h3>
+          <ul>
+            {data.templates.map((template) => (
+              <li>
+                <a href={`/templates/${template.id}`}>{template.title}</a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {data.mayPostSince !== undefined && (
+        <p>
+          {t("account.mayPost", {
+            date: formatDate(data.mayPostSince, props.timeZone, language),
+          })}
+        </p>
+      )}
+      <p class="hint">
+        {t("account.deleteAt", { date: formatDate(data.deleteAt, props.timeZone, language) })}
+      </p>
+      <p>
+        <a class="button secondary" href="/account/export.zip">
+          {t("account.export")}
+        </a>{" "}
+        <a class="button danger" href="/account/delete">
+          {t("account.deleteLink")}
+        </a>
+      </p>
+    </section>
+  );
+}
+
+/** Lists what deleting the account removes, by name, before doing it (spec 3.7). */
+export function DeleteAccountPage(props: { t: Translate; csrfToken: string; data: AccountData }) {
+  const { t, data } = props;
+  return (
+    <section class="account">
+      <h1>{t("account.deleteHeading")}</h1>
+      <p>{t("myData.deleteExplain")}</p>
+      <ul>
+        {data.hosted.length > 0 && (
+          <li>
+            {t("myData.deletePlans", { count: data.hosted.length })}
+            <Titles items={data.hosted} />
+          </li>
+        )}
+        {data.responses.length > 0 && (
+          <li>
+            {t("myData.deleteResponses", { count: data.responses.length })}
+            <Titles items={data.responses} />
+          </li>
+        )}
+        {data.templates.length > 0 && (
+          <li>
+            {t("myData.deleteTemplates", { count: data.templates.length })}
+            <Titles items={data.templates} />
+          </li>
+        )}
+        {data.mayPostSince !== undefined && <li>{t("account.deleteMayPost")}</li>}
+        <li>{t("account.deleteItself")}</li>
+      </ul>
+      {data.hosted.length > 0 && <p>{t("myData.deleteNoTemplates")}</p>}
+      <p>{t("account.deleteLogsOut")}</p>
+      <form method="post" action="/account/delete">
+        <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+        <button type="submit" class="danger">
+          {t("account.deleteConfirm")}
+        </button>
+      </form>
+      <p>
+        <a href="/account">{t("account.back")}</a>
+      </p>
     </section>
   );
 }

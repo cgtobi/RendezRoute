@@ -111,9 +111,11 @@ export function createFakeRepositories(): {
   const owners = new Map<string, string>();
   /** What a device may act on, as link keys: its links, and its account's items (device_access). */
   const access = (deviceId: string, scope: AccessScope = "device_and_account") => {
-    const keys = new Set([...links].filter((key) => key.startsWith(`${deviceId}|`)));
+    const keys = new Set(
+      scope === "account" ? [] : [...links].filter((key) => key.startsWith(`${deviceId}|`)),
+    );
     const identityId = devices.get(deviceId)?.device.identityId;
-    if (scope === "device_and_account" && identityId !== undefined) {
+    if (scope !== "device" && identityId !== undefined) {
       for (const [target, owner] of owners) {
         if (owner === identityId) keys.add(`${deviceId}|${target}`);
       }
@@ -295,6 +297,30 @@ export function createFakeRepositories(): {
         }
         return linked.sort((a, b) => a.plan.startsAt.getTime() - b.plan.startsAt.getTime());
       },
+      async findOwnedBy(identityId) {
+        const linked: LinkedPlan[] = [];
+        for (const [key, owner] of owners) {
+          if (owner !== identityId) continue;
+          const [role, id = ""] = key.split("|");
+          if (role === "host") {
+            const entry = plans.get(id);
+            if (entry !== undefined)
+              linked.push({ plan: structuredClone(entry.plan), role: "host" });
+          } else if (role === "manage") {
+            const response = responses.get(id)?.response;
+            const entry = response && plans.get(response.planId);
+            if (response !== undefined && entry !== undefined) {
+              linked.push({
+                plan: structuredClone(entry.plan),
+                role: "manage",
+                responseId: response.id,
+                responseKind: response.kind,
+              });
+            }
+          }
+        }
+        return linked.sort((a, b) => a.plan.startsAt.getTime() - b.plan.startsAt.getTime());
+      },
       async findWithRetentionAbove(max) {
         return [...plans.values()]
           .filter((e) => e.plan.retentionDays > max)
@@ -412,6 +438,9 @@ export function createFakeRepositories(): {
       async mayPostSince(deviceId) {
         return mayPostOf(deviceId);
       },
+      async accountMayPostSince(identityId) {
+        return mayPost.get(`identity:${identityId}`);
+      },
       async deviceMayPostSince(deviceId) {
         return mayPost.get(`device:${deviceId}`);
       },
@@ -442,6 +471,21 @@ export function createFakeRepositories(): {
       async touch(id, now) {
         const entry = identities.get(id);
         if (entry !== undefined) entry.identity.lastActiveAt = now;
+      },
+      async delete(id) {
+        identities.delete(id);
+        for (const [key, owner] of owners) if (owner === id) owners.delete(key);
+        mayPost.delete(`identity:${id}`);
+        for (const entry of devices.values()) {
+          if (entry.device.identityId === id)
+            entry.device = { ...entry.device, identityId: undefined };
+        }
+      },
+      async listUnusedBefore(cutoff) {
+        return [...identities.values()]
+          .filter((e) => e.identity.lastActiveAt.getTime() < cutoff.getTime())
+          .sort((a, b) => a.identity.lastActiveAt.getTime() - b.identity.lastActiveAt.getTime())
+          .map((e) => structuredClone(e.identity));
       },
       all: () => [...identities.values()].map((e) => structuredClone(e.identity)),
     },
@@ -538,6 +582,12 @@ export function createFakeRepositories(): {
           .map((e) => structuredClone(e.template))
           .sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
       },
+      async listOwnedBy(identityId) {
+        return [...templates.values()]
+          .filter((e) => owners.get(`template|${e.template.id}`) === identityId)
+          .map((e) => structuredClone(e.template))
+          .sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+      },
       async deleteExpired(now) {
         const expired = [...templates.values()].filter(
           (e) => e.template.expiresAt.getTime() <= now.getTime(),
@@ -558,12 +608,17 @@ export function createFakeRepositories(): {
       async touch(id, now) {
         const entry = devices.get(id);
         if (entry !== undefined) entry.device = { ...entry.device, lastSeenAt: now };
+        const account = entry?.device.identityId;
+        if (account !== undefined) {
+          const identity = identities.get(account);
+          if (identity !== undefined) identity.identity.lastActiveAt = now;
+        }
       },
       async link(deviceId, target) {
         links.add(linkKey(deviceId, target));
       },
-      async hasLink(deviceId, target) {
-        return access(deviceId).has(linkKey(deviceId, target));
+      async hasLink(deviceId, target, scope) {
+        return access(deviceId, scope).has(linkKey(deviceId, target));
       },
       async claimable(deviceId) {
         return countClaims(claimableKeys(deviceId));
@@ -656,13 +711,13 @@ export function createFakeRepositories(): {
       async findIdByCreationNonce(nonce) {
         return responseNonces.get(nonce);
       },
-      async findForDevice(planId, deviceId) {
+      async findForDevice(planId, deviceId, scope) {
         // The device's own response first, then the account's oldest (like SQLite).
         const reachable = [...responses.values()]
           .filter(
             (candidate) =>
               candidate.response.planId === planId &&
-              access(deviceId).has(
+              access(deviceId, scope).has(
                 linkKey(deviceId, { role: "manage", responseId: candidate.response.id }),
               ),
           )

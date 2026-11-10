@@ -109,6 +109,7 @@ export async function createTestApp({
     notify: { channels, jobs, reminders: createSentReminderRepository(database) },
   };
   const pendingLogins = createPendingLoginRepository(database, cipher);
+  const identities = createIdentityRepository(database, cipher);
   const identityLookup = createLookupHasher(randomBytes(32));
   const app = createApp({
     config,
@@ -121,7 +122,7 @@ export async function createTestApp({
       config.adminToken === undefined ? undefined : createTokenAdminAuth(config.adminToken),
     csrfKey: randomBytes(32),
     accounts: {
-      identities: createIdentityRepository(database, cipher),
+      identities,
       pendingLogins,
       identityLookup,
       identityProviders: {
@@ -166,5 +167,6 @@ export async function createTestApp({
     jobs,
     vapidPublicKey,
     pendingLogins,
+    identities,
   };
 }

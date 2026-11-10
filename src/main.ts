@@ -309,6 +309,7 @@ export async function startServer(
             ...planDeps,
             backups: createBackupStore(backupDir(config)),
             pendingLogins: accounts.pendingLogins,
+            identities: accounts.identities,
           }),
       },
       // Background jobs (spec 6 feature 12): notifications, with retries.

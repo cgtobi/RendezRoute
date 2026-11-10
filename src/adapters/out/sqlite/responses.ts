@@ -1,4 +1,5 @@
 // Response persistence (spec 3.5, 4). Display names pass through FieldCipher.
+import { accessSource } from "./access.ts";
 import { type Selectable, sql } from "kysely";
 import type { FieldCipher, ResponseRepository } from "../../../application/ports.ts";
 import type { PlanResponse } from "../../../domain/response.ts";
@@ -96,10 +97,12 @@ export function createResponseRepository(
       return row?.id;
     },
 
-    async findForDevice(planId, deviceId) {
+    async findForDevice(planId, deviceId, scope = "device_and_account") {
+      const source = accessSource(scope);
       const row = await selectResponses()
         .innerJoin("device_access as access", "access.response_id", "responses.id")
         .where("access.device_id", "=", deviceId)
+        .$if(source !== undefined, (query) => query.where("access.source", "=", source ?? "link"))
         .where("access.role", "=", "manage")
         // A browser that responded on its own and then logged in to an account that responded
         // elsewhere: its own response first (spec 3.2), then the oldest.

@@ -143,6 +143,16 @@ export function createPermissionRepository(database: Database): PermissionReposi
       return row === undefined ? undefined : new Date(row.created_at);
     },
 
+    async accountMayPostSince(identityId) {
+      const row = await database.db
+        .selectFrom("permissions")
+        .select("created_at")
+        .where("permission", "=", "may_post")
+        .where("identity_id", "=", identityId)
+        .executeTakeFirst();
+      return row === undefined ? undefined : new Date(row.created_at);
+    },
+
     async deviceMayPostSince(deviceId) {
       const row = await database.db
         .selectFrom("permissions")

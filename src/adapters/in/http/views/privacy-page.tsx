@@ -5,6 +5,7 @@ import { ADMIN_SESSION_HOURS } from "../../../../application/admin.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { type Config, loginConfigured } from "../../../../config.ts";
 import {
+  ACCOUNT_UNUSED_DAYS,
   BACKUP_DAYS,
   DEVICE_UNLINKED_DAYS,
   DEVICE_UNUSED_DAYS,
@@ -60,6 +61,9 @@ export function PrivacyPage({
           unusedDays: DEVICE_UNUSED_DAYS,
         })}
       </p>
+      {loginConfigured(config) && (
+        <p>{t("privacy.accountExpiry", { days: ACCOUNT_UNUSED_DAYS })}</p>
+      )}
       <p>{t("privacy.backups", { days: BACKUP_DAYS })}</p>
 
       <h2>{t("privacy.operatorHeading")}</h2>

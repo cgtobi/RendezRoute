@@ -1,6 +1,7 @@
 // The export ZIP (spec 3.7, decision I45): a versioned data.json, and per plan its calendar file,
 // its route as GPX where the device may see it, and one's own recap contributions as Markdown.
 // Built in memory on demand and never stored.
+import type { Context } from "hono";
 import { strToU8, zipSync } from "fflate";
 import type { ExportData, ExportedPlan } from "../../../application/my-data.ts";
 import type { ExactStart, GeoPoint } from "../../../domain/geo.ts";
@@ -14,9 +15,10 @@ import { calendarEvents } from "./views/calendar-events.ts";
 
 /**
  * Changes whenever data.json changes shape, so importers can tell versions apart (2: ratings;
- * 3: mayPostSince, set in device exports when an invite link lets the device create plans).
+ * 3: mayPostSince, set in device exports when an invite link lets the device create plans;
+ * 4: account, set in account exports).
  */
-export const EXPORT_VERSION = 3;
+export const EXPORT_VERSION = 4;
 
 const orNull = <T>(value: T | undefined): T | null => value ?? null;
 const pointJson = (point: GeoPoint | undefined) =>
@@ -187,10 +189,29 @@ export function exportZip(
         templates,
         calendarFeed: data.calendarFeed,
         mayPostSince: orNull(data.mayPostSince),
+        account:
+          data.account === undefined
+            ? null
+            : {
+                provider: data.account.provider,
+                subject: data.account.subject,
+                handle: orNull(data.account.handle),
+                displayName: orNull(data.account.displayName),
+                createdAt: data.account.createdAt,
+                lastActiveAt: data.account.lastActiveAt,
+              },
       },
       null,
       2,
     ),
   );
   return zipSync(files);
+}
+
+/** Sends an export as a download that no cache keeps (spec 3.7: generated on demand, not stored). */
+export function zipDownload(c: Context, zip: Uint8Array, name: string): Response {
+  c.header("content-type", "application/zip");
+  c.header("content-disposition", `attachment; filename="${name}"`);
+  c.header("cache-control", "private, no-store");
+  return c.body(zip.slice().buffer);
 }

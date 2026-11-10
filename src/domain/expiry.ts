@@ -18,6 +18,19 @@ export function deviceExpiryCutoffs(now: Date): {
   };
 }
 
+/** Accounts unused this long are deleted with everything they own (spec 3.10, decision I52). */
+export const ACCOUNT_UNUSED_DAYS = 365;
+
+/** When an account is deleted unless it is used again. */
+export function accountDeleteAt(lastActiveAt: Date): Date {
+  return new Date(lastActiveAt.getTime() + ACCOUNT_UNUSED_DAYS * DAY_MS);
+}
+
+/** Accounts last active before this are due for deletion. */
+export function accountExpiryCutoff(now: Date): Date {
+  return new Date(now.getTime() - ACCOUNT_UNUSED_DAYS * DAY_MS);
+}
+
 /** Used one-time form values are kept for a day, long enough to catch a resent form (I44). */
 export function usedFormNonceCutoff(now: Date): Date {
   return new Date(now.getTime() - DAY_MS);

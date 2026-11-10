@@ -1,5 +1,6 @@
 // Accounts through the web pages, with a fake OIDC provider (spec 7 Identity, 3.11 Account takeover;
 // plan v1.0 step 4a).
+import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vite-plus/test";
 import { translator } from "../../../src/adapters/i18n/i18n.ts";
 import { isSecretLinkPath } from "../../../src/adapters/in/http/routes/secret-links.tsx";
@@ -349,6 +350,51 @@ describe("claiming on the account page (spec 7 Identity)", () => {
   });
 });
 
+describe("the account's data on the account page (spec 3.7, 3.10)", () => {
+  it("lists what the account owns, when it expires, and exports it", async () => {
+    const { app, oidc } = await setup();
+    const client = new TestClient(app);
+    await logIn(client, oidc);
+    const { planId } = await createPlanViaUi(client, { title: "Account run" });
+    const page = text(await (await client.get("/account")).text());
+    expect(page).toContain(en("account.dataHeading"));
+    expect(page).toContain(`href="/p/${planId}"`);
+    expect(page).toContain(en("account.deleteAt", { date: "1 June 2027" }));
+    expect(page).toContain('href="/account/export.zip"');
+    const exported = await client.get("/account/export.zip");
+    expect(exported.headers.get("content-type")).toBe("application/zip");
+    expect(exported.headers.get("cache-control")).toBe("private, no-store");
+    const files = unzipSync(new Uint8Array(await exported.arrayBuffer()));
+    const data = JSON.parse(strFromU8(files["data.json"] ?? new Uint8Array()));
+    expect(data).toMatchObject({
+      version: 4,
+      account: { provider: "oidc", displayName: "Anna Example", handle: null },
+      plans: [{ role: "host", plan: { title: "Account run" } }],
+    });
+    expect((await new TestClient(app).get("/account/export.zip")).status).toBe(404);
+  });
+
+  it("deletes the account after a confirmation listing what goes", async () => {
+    const { app, oidc, database } = await setup();
+    const client = new TestClient(app);
+    await logIn(client, oidc);
+    const { planId } = await createPlanViaUi(client, { title: "Account run" });
+    const confirm = await (await client.get("/account/delete")).text();
+    expect(text(confirm)).toContain(en("myData.deletePlans", { count: 1 }));
+    expect(text(confirm)).toContain("Account run");
+    expect((await client.postForm("/account/delete", {})).status).toBe(403);
+    const deleted = await client.postForm("/account/delete", hiddenFields(confirm));
+    expect(deleted.status).toBe(303);
+    expect(deleted.headers.get("location")).toBe("/account?accountDeleted");
+    const after = text(await (await client.get("/account?accountDeleted")).text());
+    expect(after).toContain(en("account.accountDeleted"));
+    expect(after).toContain(en("account.loginWith", { name: "Club login" }));
+    expect(identities(database)).toEqual([]);
+    expect((await client.get(`/p/${planId}`)).status).toBe(404);
+    expect((await new TestClient(app).get("/account/delete")).status).toBe(303);
+  });
+});
+
 describe("POSTING_MODE=logged_in (spec 7 Moderation)", () => {
   it("lets only logged-in browsers create plans, and says how to log in", async () => {
     const { app, oidc, database } = await setup({ POSTING_MODE: "logged_in" });
@@ -407,6 +453,7 @@ describe("the privacy notice (spec 5 feature 13)", () => {
     const html = text(await (await new TestClient(app).get("/privacy")).text());
     expect(html).toContain(en("privacy.oidc", { name: "Club login", host: "id.example.org" }));
     expect(html).toContain(en("privacy.cookieLogin", { minutes: 10 }));
+    expect(html).toContain(en("privacy.accountExpiry", { days: 365 }));
     const { app: plain } = await createTestApp();
     const without = text(await (await new TestClient(plain).get("/privacy")).text());
     expect(without).not.toContain(en("privacy.cookieLogin", { minutes: 10 }));

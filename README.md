@@ -30,12 +30,12 @@ Things to know before going live:
 
 Node 26 and npm. `npm ci`, then:
 
-| Command         | What it does                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------- |
-| `npm run dev`   | Server with reload; needs `BASE_URL=http://localhost:3000 ALLOW_INSECURE_DEV=true`                      |
-| `npm run check` | Format, lint, type check and unit/integration tests                                                     |
-| `npm run build` | Browser bundles and the server build                                                                    |
-| `npm run e2e`   | Browser tests against the Docker image with fake map, search, weather and login services (needs Docker) |
+| Command         | What it does                                                                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`   | Server with reload on port 3000; run `npm run build` first (browser scripts and fonts), and set `BASE_URL=http://localhost:3000 ALLOW_INSECURE_DEV=true DATA_DIR=$PWD/data` |
+| `npm run check` | Format, lint, type check and unit/integration tests                                                                                                                         |
+| `npm run build` | Browser bundles and the server build                                                                                                                                        |
+| `npm run e2e`   | Browser tests against the Docker image with fake map, search, weather and login services (needs Docker)                                                                     |
 
 `E2E_CHANNEL=chrome npm run e2e` uses an installed Chrome instead of Playwright's Chromium.
 

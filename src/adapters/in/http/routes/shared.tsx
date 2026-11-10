@@ -171,6 +171,7 @@ export async function renderPlanPage(
     />,
     {
       title: result.view.title,
+      wide: true,
       head: (
         <>
           <link

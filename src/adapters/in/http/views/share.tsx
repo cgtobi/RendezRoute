@@ -10,7 +10,7 @@ export function ShareLinks({ t, url, title }: { t: Translate; url: string; title
     <section class="share" data-share="" data-url={url} data-title={title}>
       <h2>{t("share.heading")}</h2>
       <div class="share-actions">
-        <button type="button" data-share-native="" hidden>
+        <button type="button" class="secondary" data-share-native="" hidden>
           {t("share.native")}
         </button>
         <button

@@ -70,6 +70,8 @@ declare module "hono" {
         head?: Child | undefined;
         /** Relative prefix for instance admin pages (spec 3.8 URLs). */
         pathBase?: string | undefined;
+        /** The page uses the full width on large screens (Layout). */
+        wide?: boolean | undefined;
       },
     ): Response | Promise<Response>;
   }
@@ -164,7 +166,7 @@ export function createApp({
 
   app.use(
     jsxRenderer(
-      ({ children, title, head, pathBase }, c: Context<AppEnv>) => (
+      ({ children, title, head, pathBase, wide }, c: Context<AppEnv>) => (
         <Layout
           config={config}
           language={c.get("language")}
@@ -180,6 +182,7 @@ export function createApp({
               : undefined
           }
           pathBase={pathBase}
+          wide={wide}
         >
           {children}
         </Layout>

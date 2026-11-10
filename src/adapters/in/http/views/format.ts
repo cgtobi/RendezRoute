@@ -3,6 +3,7 @@ import type { OwnResponseView } from "../../../../application/plan-views.ts";
 import { localeOf as locale, type Translate } from "../../../i18n/i18n.ts";
 import { en, type MessageKey } from "../../../i18n/messages/en.ts";
 import { type ActivityType, paceStyleFor } from "../../../../domain/activity.ts";
+import type { ResponseKind } from "../../../../domain/response.ts";
 import { formatPace, formatSpeed, type PaceBand } from "../../../../domain/pace.ts";
 import {
   celsiusToTemperature,
@@ -125,7 +126,12 @@ export function retentionOptions(maxRetentionDays: number, current: string): str
   return options;
 }
 
-/** The status text of one's own response; an undecided request after the start is "not answered" (spec 3.1). */
+/** One's own response as shown; an undecided request after the start is "not answered" (spec 3.1). */
+export function responseState(response: OwnResponseView): ResponseKind | "notAnswered" {
+  return response.notAnswered ? "notAnswered" : response.kind;
+}
+
+/** The status text of one's own response. */
 export function statusKey(response: OwnResponseView): MessageKey {
-  return response.notAnswered ? "status.notAnswered" : `status.${response.kind}`;
+  return `status.${responseState(response)}`;
 }

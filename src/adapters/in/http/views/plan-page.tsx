@@ -1,7 +1,9 @@
 // Plan page (spec 5 features 3 and 5). Renders only what the read model contains (spec 2a);
 // which model it receives decides what may be shown (spec 3.6).
+import type { Child } from "hono/jsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import type {
+  OwnResponseView,
   PersonView,
   PlanViewForParticipant,
   PlanViewForPoster,
@@ -23,13 +25,20 @@ import {
   formatTime,
   formatWindSpeed,
 } from "./format.ts";
+import { avatarOf } from "./avatar.ts";
 import { Linkified } from "./linkify.tsx";
 import { type MapSettings, PlanMap } from "./maps.tsx";
 import type { WeatherView } from "../../../../application/weather.ts";
-import { statusKey } from "./format.ts";
+import { responseState, statusKey } from "./format.ts";
 import { RatingResultSection, RatingSection } from "./rating.tsx";
 import { RecapSection } from "./recap.tsx";
 import { RespondForm, type RespondFormState } from "./respond-form.tsx";
+
+/** One of the plan's measures, as shown: distance, elevation gain, pace or speed. */
+interface Metric {
+  label: string;
+  value: string;
+}
 
 export type PlanPageAudience =
   | { kind: "viewer"; view: PlanViewForViewer }
@@ -68,179 +77,272 @@ export function PlanPage(props: {
       audience.view.ownResponse.kind !== "rejected" &&
       audience.view.ownResponse.kind !== "removed");
 
+  // Adding the plan to the calendar is the page's main action while it lies ahead for someone
+  // who is in; before that, responding is, and afterwards rating (one primary per page, D27).
+  const hasAfterStart =
+    props.hasRecap ||
+    (audience.kind === "poster" && audience.view.ratingResult !== undefined) ||
+    (audience.kind === "participant" && audience.view.rating !== undefined);
+  const calendarIsMain = inFeed && view.status === "active" && !props.hasRecap;
+  const metrics: Metric[] = [
+    ...(view.distanceMeters === undefined
+      ? []
+      : [
+          {
+            label: t("plan.distance"),
+            value: formatDistance(view.distanceMeters, units, language, t),
+          },
+        ]),
+    ...(view.elevationGainMeters === undefined
+      ? []
+      : [
+          {
+            label: t("plan.elevation"),
+            value: formatElevation(view.elevationGainMeters, units, language, t),
+          },
+        ]),
+    ...(view.pace === undefined
+      ? []
+      : [
+          {
+            label: paceStyleFor(view.activity) === "pace" ? t("plan.pace") : t("plan.speed"),
+            value: formatPaceBand(view.pace, view.activity, units, t),
+          },
+        ]),
+  ];
+  const counts = (
+    <p class="counts">
+      {t("plan.counts", {
+        participants: view.counts.participants,
+        interested: view.counts.interested,
+      })}
+    </p>
+  );
+
+  // Two columns from 960 px (decision D27): the plan on the left, you and the group on the right.
   return (
     <article class="plan">
-      <header class="plan-header">
-        <p class="plan-activity">{t(`activity.${view.activity}`)}</p>
-        <h1>{view.title}</h1>
-        <p>
-          {t("plan.postedBy", { name: view.posterName })}{" "}
-          <span class="badge">{t("plan.host")}</span>
-        </p>
-      </header>
-
-      {view.status === "cancelled" && (
-        <p class="warning" role="status">
-          {t("plan.cancelled")}
-        </p>
-      )}
-      {audience.kind === "poster" && (
-        <p class="notice">
-          {t("plan.youAreHost")} <a href={`/p/${view.id}/host`}>{t("plan.managePlan")}</a>
-        </p>
-      )}
-      {audience.kind === "poster" && audience.view.pendingRequests > 0 && (
-        <p class="notice">
-          <a href={`/p/${view.id}/host`}>
-            {t("plan.pendingRequests", { count: audience.view.pendingRequests })}
-          </a>
-        </p>
-      )}
-
-      <dl class="plan-facts">
-        <dt>{t("plan.when")}</dt>
-        <dd>
-          {formatDay(view.startsAt, view.timeZone, language)},{" "}
-          {formatTime(view.startsAt, view.timeZone, language)}{" "}
-          <span class="time-zone" data-time-zone={view.timeZone}>
-            ({t("plan.timeZone", { zone: view.timeZone })})
-          </span>
-        </dd>
-        <dt>{t("plan.where")}</dt>
-        <dd>{view.area.label}</dd>
-        {view.distanceMeters !== undefined && (
-          <>
-            <dt>{t("plan.distance")}</dt>
-            <dd>{formatDistance(view.distanceMeters, units, language, t)}</dd>
-          </>
-        )}
-        {view.elevationGainMeters !== undefined && (
-          <>
-            <dt>{t("plan.elevation")}</dt>
-            <dd>{formatElevation(view.elevationGainMeters, units, language, t)}</dd>
-          </>
-        )}
-        {view.pace !== undefined && (
-          <>
-            <dt>{paceStyleFor(view.activity) === "pace" ? t("plan.pace") : t("plan.speed")}</dt>
-            <dd>{formatPaceBand(view.pace, view.activity, units, t)}</dd>
-          </>
-        )}
-        <dt>{t("plan.group")}</dt>
-        <dd>{t(`drop.${view.dropPolicy}`)}</dd>
-      </dl>
-
-      {props.forecast !== undefined && (
-        <WeatherSection t={t} language={language} units={units} forecast={props.forecast} />
-      )}
-
-      <p class="counts">
-        {t("plan.counts", {
-          participants: view.counts.participants,
-          interested: view.counts.interested,
-        })}
-      </p>
-
-      {view.status !== "cancelled" && <ShareLinks t={t} url={props.planUrl} title={view.title} />}
-
-      {view.note !== undefined && (
-        <p class="note">
-          <Linkified text={view.note} />
-        </p>
-      )}
-
-      {map !== undefined && view.area.point !== undefined && (
-        <PlanMap
-          t={t}
-          map={map}
-          area={view.area.point}
-          exact={insider ? audience.view.exactStart?.point : undefined}
-          routeUrl={insider && audience.view.hasRoute ? `/p/${view.id}/route.geojson` : undefined}
-        />
-      )}
-
-      {(audience.kind === "participant" || audience.kind === "poster") && (
-        <ExactStartSection t={t} exactStart={audience.view.exactStart} />
-      )}
-
-      {(audience.kind === "participant" || audience.kind === "poster") &&
-        audience.view.hasRoute && (
-          <section class="route">
-            <h2>{t("plan.route")}</h2>
-            <p>
-              <a href={`/p/${view.id}/route.gpx`}>{t("plan.downloadGpx")}</a>
-            </p>
-          </section>
-        )}
-
-      {(audience.kind === "responder" || audience.kind === "participant") && (
-        <section class="own-response">
-          <h2>{t("plan.yourResponse")}</h2>
-          <p>{t(statusKey(audience.view.ownResponse))}</p>
-          <p>
-            <a href={`/p/${view.id}/me`}>{t("plan.manageResponse")}</a>
+      <div class="plan-main">
+        <header class="plan-header">
+          <p class="plan-byline">
+            <span class="plan-activity">{t(`activity.${view.activity}`)}</span>{" "}
+            <span>{t("plan.postedBy", { name: view.posterName })}</span>{" "}
+            <span class="badge">{t("plan.host")}</span>
           </p>
-        </section>
-      )}
+          <h1>{view.title}</h1>
+        </header>
 
-      {(audience.kind === "participant" || audience.kind === "poster") && (
-        <People heading={t("plan.participants")} people={audience.view.participants} t={t} />
-      )}
-      {audience.kind === "poster" && audience.view.interested.length > 0 && (
-        <People heading={t("plan.interestedPeople")} people={audience.view.interested} t={t} />
-      )}
-
-      {audience.kind === "viewer" &&
-        (props.responsesOpen && props.respondForm !== undefined ? (
-          <RespondForm t={t} planId={view.id} joinMode={view.joinMode} state={props.respondForm} />
-        ) : (
-          <p class="notice">{t("respond.closed")}</p>
-        ))}
-
-      {props.hasRecap && (
-        <RecapSection
-          t={t}
-          language={language}
-          planId={view.id}
-          timeZone={view.timeZone}
-          participants={view.counts.participants}
-          recap={insider ? audience.view.recap : undefined}
-          isHost={audience.kind === "poster"}
-          csrfToken={props.csrfToken}
-        />
-      )}
-      {audience.kind === "poster" && audience.view.ratingResult !== undefined && (
-        <RatingResultSection t={t} closed result={audience.view.ratingResult} />
-      )}
-      {audience.kind === "participant" && audience.view.rating !== undefined && (
-        <RatingSection
-          t={t}
-          planId={view.id}
-          rating={audience.view.rating}
-          csrfToken={props.csrfToken}
-        />
-      )}
-
-      <p class="deletion">
-        {t("plan.deletion", { date: formatDate(view.deleteAt, view.timeZone, language) })}
-      </p>
-      <p class="calendar-links">
-        <a href={`/p/${view.id}/calendar.ics`}>{t("plan.addToCalendar")}</a>
-        {inFeed && (
-          <>
-            {" · "}
-            <a href="/calendar">{t("plan.subscribeCalendar")}</a>
-          </>
+        {view.status === "cancelled" && (
+          <p class="warning" role="status">
+            {t("plan.cancelled")}
+          </p>
         )}
-      </p>
-      {props.reporting && (
-        <p class="report-link">
-          <a href={`/p/${view.id}/report`} rel="nofollow">
-            {t("report.link")}
-          </a>
+        {audience.kind === "poster" && (
+          <p class="notice">
+            {t("plan.youAreHost")} <a href={`/p/${view.id}/host`}>{t("plan.managePlan")}</a>
+          </p>
+        )}
+        {audience.kind === "poster" && audience.view.pendingRequests > 0 && (
+          <p class="notice">
+            <a href={`/p/${view.id}/host`}>
+              {t("plan.pendingRequests", { count: audience.view.pendingRequests })}
+            </a>
+          </p>
+        )}
+
+        <dl class="when-where">
+          <div class="pill">
+            <dt class="visually-hidden">{t("plan.when")}</dt>
+            <dd>
+              <span class="icon icon-calendar" aria-hidden="true"></span>
+              <span>
+                {formatDay(view.startsAt, view.timeZone, language)},{" "}
+                {formatTime(view.startsAt, view.timeZone, language)}{" "}
+                <span class="time-zone" data-time-zone={view.timeZone}>
+                  ({t("plan.timeZone", { zone: view.timeZone })})
+                </span>
+              </span>
+            </dd>
+          </div>
+          <div class="pill">
+            <dt class="visually-hidden">{t("plan.where")}</dt>
+            <dd>
+              <span class="icon icon-pin" aria-hidden="true"></span>
+              <span>{view.area.label}</span>
+            </dd>
+          </div>
+        </dl>
+
+        <dl class="metrics">
+          {metrics.map((metric) => (
+            <div class="metric">
+              <dt>{metric.label}</dt>
+              <dd>{metric.value}</dd>
+            </div>
+          ))}
+          <div class={`metric drop-policy drop-${view.dropPolicy}`}>
+            <dt class="visually-hidden">{t("plan.group")}</dt>
+            <dd>{t(`drop.${view.dropPolicy}`)}</dd>
+          </div>
+        </dl>
+
+        {view.note !== undefined && (
+          <p class="note">
+            <Linkified text={view.note} />
+          </p>
+        )}
+
+        {map !== undefined && view.area.point !== undefined && (
+          <PlanMap
+            t={t}
+            map={map}
+            area={view.area.point}
+            exact={insider ? audience.view.exactStart?.point : undefined}
+            routeUrl={insider && audience.view.hasRoute ? `/p/${view.id}/route.geojson` : undefined}
+          />
+        )}
+
+        {(audience.kind === "participant" || audience.kind === "poster") && (
+          <ExactStartSection t={t} exactStart={audience.view.exactStart} />
+        )}
+
+        {(audience.kind === "participant" || audience.kind === "poster") &&
+          audience.view.hasRoute && (
+            <section class="route">
+              <h2>{t("plan.route")}</h2>
+              <p>
+                <a href={`/p/${view.id}/route.gpx`}>{t("plan.downloadGpx")}</a>
+              </p>
+            </section>
+          )}
+
+        {view.status !== "cancelled" && <ShareLinks t={t} url={props.planUrl} title={view.title} />}
+      </div>
+
+      <div class="plan-side">
+        {!insider && counts}
+        {(audience.kind === "responder" || audience.kind === "participant") && (
+          <OwnResponse t={t} planId={view.id} response={audience.view.ownResponse} />
+        )}
+        {audience.kind === "viewer" &&
+          (props.responsesOpen && props.respondForm !== undefined ? (
+            <RespondForm
+              t={t}
+              planId={view.id}
+              joinMode={view.joinMode}
+              state={props.respondForm}
+            />
+          ) : (
+            <p class="notice">{t("respond.closed")}</p>
+          ))}
+
+        {props.forecast !== undefined && (
+          <WeatherSection t={t} language={language} units={units} forecast={props.forecast} />
+        )}
+
+        {(audience.kind === "participant" || audience.kind === "poster") && (
+          <People
+            heading={t("plan.participants")}
+            people={audience.view.participants}
+            t={t}
+            language={language}
+          >
+            {counts}
+          </People>
+        )}
+        {audience.kind === "poster" && audience.view.interested.length > 0 && (
+          <People
+            heading={t("plan.interestedPeople")}
+            people={audience.view.interested}
+            t={t}
+            language={language}
+          />
+        )}
+
+        <p class="deletion">
+          {t("plan.deletion", { date: formatDate(view.deleteAt, view.timeZone, language) })}
         </p>
+        <p class="actions">
+          <a
+            class={calendarIsMain ? "button" : "button secondary"}
+            href={`/p/${view.id}/calendar.ics`}
+          >
+            <span class="icon icon-calendar" aria-hidden="true"></span>
+            {t("plan.addToCalendar")}
+          </a>
+          {inFeed && (
+            <a class="button secondary" href="/calendar">
+              {t("plan.subscribeCalendar")}
+            </a>
+          )}
+        </p>
+        {props.reporting && (
+          <p class="report-link">
+            <a href={`/p/${view.id}/report`} rel="nofollow">
+              {t("report.link")}
+            </a>
+          </p>
+        )}
+      </div>
+
+      {/* After you and the group, so phones show the response before the recap. */}
+      {hasAfterStart && (
+        <div class="plan-after">
+          {props.hasRecap && (
+            <RecapSection
+              t={t}
+              language={language}
+              planId={view.id}
+              timeZone={view.timeZone}
+              participants={view.counts.participants}
+              recap={insider ? audience.view.recap : undefined}
+              isHost={audience.kind === "poster"}
+              csrfToken={props.csrfToken}
+            />
+          )}
+          {audience.kind === "poster" && audience.view.ratingResult !== undefined && (
+            <RatingResultSection t={t} closed result={audience.view.ratingResult} />
+          )}
+          {audience.kind === "participant" && audience.view.rating !== undefined && (
+            <RatingSection
+              t={t}
+              planId={view.id}
+              rating={audience.view.rating}
+              csrfToken={props.csrfToken}
+            />
+          )}
+        </div>
       )}
     </article>
+  );
+}
+
+/** The person's own response as a status box, with the way to change it. */
+function OwnResponse({
+  t,
+  planId,
+  response,
+}: {
+  t: Translate;
+  planId: string;
+  response: OwnResponseView;
+}) {
+  const state = responseState(response);
+  return (
+    <section class={`status status-${state}`}>
+      {state === "joined" && (
+        <span class="status-icon" aria-hidden="true">
+          <span class="icon icon-check"></span>
+        </span>
+      )}
+      <div class="status-text">
+        <h2>{t("plan.yourResponse")}</h2>
+        <p>{t(statusKey(response))}</p>
+      </div>
+      <p class="status-action">
+        <a href={`/p/${planId}/me`}>{t("plan.manageResponse")}</a>
+      </p>
+    </section>
   );
 }
 
@@ -291,7 +393,10 @@ function ExactStartSection({
   const { point } = exactStart;
   return (
     <section class="exact-start">
-      <h2>{t("plan.exactStart")}</h2>
+      <h2>
+        <span class="icon icon-lock" aria-hidden="true"></span>
+        {t("plan.exactStart")}
+      </h2>
       <p class="hint">{t("plan.exactStartPrivate")}</p>
       {exactStart.description !== undefined && (
         <p>
@@ -318,26 +423,43 @@ function People({
   heading,
   people,
   t,
+  language,
+  children,
 }: {
   heading: string;
   people: readonly PersonView[];
   t: Translate;
+  language: string;
+  /** Shown beside the heading (the counts). */
+  children?: Child;
 }) {
   return (
     <section class="people">
-      <h2>{heading}</h2>
-      <ul>
-        {people.map((person) => (
-          <li>
-            {person.name}
-            {person.isHost && (
-              <>
-                {" "}
-                <span class="badge">{t("plan.host")}</span>
-              </>
-            )}
-          </li>
-        ))}
+      <div class="section-head">
+        <h2>{heading}</h2>
+        {children}
+      </div>
+      <ul class="people-list">
+        {people.map((person) => {
+          const avatar = avatarOf(person.name, language);
+          return (
+            <li class="person">
+              <span
+                class={person.isHost ? "avatar avatar-host" : `avatar avatar-${avatar.hue}`}
+                aria-hidden="true"
+              >
+                {avatar.initial}
+              </span>
+              {person.name}
+              {person.isHost && (
+                <>
+                  {" "}
+                  <span class="badge">{t("plan.host")}</span>
+                </>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

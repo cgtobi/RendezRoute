@@ -27,6 +27,8 @@ interface LayoutProps {
    * which must work under any path prefix (spec 3.8, Home Assistant Ingress later).
    */
   pathBase?: string | undefined;
+  /** A page that uses the full width on large screens (the plan page's two columns). */
+  wide?: boolean | undefined;
   children?: Child;
 }
 
@@ -39,8 +41,11 @@ export function Layout({
   units,
   languageSwitch,
   pathBase = "/",
+  wide = false,
   children,
 }: LayoutProps) {
+  /** Adds the full-width class on wide pages. */
+  const widened = (base?: string) => (wide ? [base, "wide"].filter(Boolean).join(" ") : base);
   const pageTitle = title === undefined ? config.instanceName : `${title} · ${config.instanceName}`;
   return (
     <html lang={language}>
@@ -61,11 +66,11 @@ export function Layout({
             {t("layout.devBanner")}
           </p>
         )}
-        <header class="site-header">
+        <header class={widened("site-header")}>
           <a href={pathBase}>{config.instanceName}</a>
         </header>
-        <main>{children}</main>
-        <footer class="site-footer">
+        <main class={widened()}>{children}</main>
+        <footer class={widened("site-footer")}>
           {config.instanceName !== SOFTWARE_NAME && (
             <p class="powered-by">{t("layout.poweredBy", { name: SOFTWARE_NAME })}</p>
           )}

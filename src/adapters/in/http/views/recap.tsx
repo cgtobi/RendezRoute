@@ -123,6 +123,7 @@ function PrivateRecap(props: Parameters<typeof RecapSection>[0] & { recap: Recap
           action={`/p/${planId}/recap`}
           heading={t("recap.add")}
           submit={t("recap.submit")}
+          secondary
           values={{ body: "", linkUrl: "" }}
           errors={[]}
           csrfToken={props.csrfToken}
@@ -204,6 +205,8 @@ export function ContributionForm(props: {
   action: string;
   heading: string;
   submit: string;
+  /** On the plan page, where another action is the page's main one (decision D27). */
+  secondary?: boolean;
   values: { body: string; linkUrl: string };
   errors: readonly { field: string; code: string }[];
   csrfToken: string;
@@ -257,7 +260,9 @@ export function ContributionForm(props: {
         />,
         t("recap.linkHint"),
       )}
-      <button type="submit">{props.submit}</button>
+      <button type="submit" class={props.secondary === true ? "secondary" : undefined}>
+        {props.submit}
+      </button>
     </form>
   );
 }

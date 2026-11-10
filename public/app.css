@@ -29,6 +29,26 @@
   --on-danger: #ffffff;
   --warning-bg: #fff4e5;
   --warning-line: #f3d19c;
+  --ok: #1a6e3e;
+  --ok-bg: #ebf8f0;
+  --ok-line: #b9e4c9;
+  /* Name colours for initials: background and text */
+  --avatar-0-bg: #fde2e4;
+  --avatar-0-fg: #8a1c2b;
+  --avatar-1-bg: #dbe8ff;
+  --avatar-1-fg: #1d3f8f;
+  --avatar-2-bg: #d8f3e1;
+  --avatar-2-fg: #17613a;
+  --avatar-3-bg: #ecdfff;
+  --avatar-3-fg: #5b2a99;
+  --avatar-4-bg: #ffe8cc;
+  --avatar-4-fg: #8a4b00;
+  --avatar-5-bg: #d5f2f4;
+  --avatar-5-fg: #0e5c63;
+  --avatar-6-bg: #f7dcef;
+  --avatar-6-fg: #84205f;
+  --avatar-7-bg: #e5e9d0;
+  --avatar-7-fg: #4d5a12;
   /* The secondary plan colour where a page has no plan theme (spec 3.1 default) */
   --plan-secondary-default: #ff7a45;
   --plan-on-secondary-default: #111111;
@@ -71,6 +91,25 @@
     --on-danger: #111111;
     --warning-bg: #3a2c12;
     --warning-line: #6b5120;
+    --ok: #8fd9a8;
+    --ok-bg: #15271c;
+    --ok-line: #2b5a3c;
+    --avatar-0-bg: #5a1d26;
+    --avatar-0-fg: #ffd6db;
+    --avatar-1-bg: #1f3463;
+    --avatar-1-fg: #d5e3ff;
+    --avatar-2-bg: #174a2c;
+    --avatar-2-fg: #c9f0d7;
+    --avatar-3-bg: #3f2566;
+    --avatar-3-fg: #e7d9ff;
+    --avatar-4-bg: #5a3608;
+    --avatar-4-fg: #ffe2bf;
+    --avatar-5-bg: #124549;
+    --avatar-5-fg: #c8f1f4;
+    --avatar-6-bg: #57203f;
+    --avatar-6-fg: #ffd6ef;
+    --avatar-7-bg: #3b4214;
+    --avatar-7-fg: #e9eec8;
   }
 }
 
@@ -101,6 +140,8 @@ body {
 
 h1 {
   margin: var(--s5) 0 var(--s4);
+  overflow-wrap: break-word;
+  hyphens: auto;
   font-size: var(--text-2xl);
   font-weight: 800;
   line-height: 1.15;
@@ -129,6 +170,15 @@ a {
 :focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 code {
@@ -277,8 +327,24 @@ main,
   }
 }
 
+.icon-calendar {
+  --icon: url("icons/calendar.svg");
+}
+
+.icon-check {
+  --icon: url("icons/check.svg");
+}
+
+.icon-lock {
+  --icon: url("icons/lock.svg");
+}
+
 .icon-menu {
   --icon: url("icons/menu.svg");
+}
+
+.icon-pin {
+  --icon: url("icons/pin.svg");
 }
 
 /* Buttons: one primary per page, quiet secondaries, red for deleting. */
@@ -475,28 +541,38 @@ input[type="checkbox"] {
   border-bottom: 1px solid var(--line);
 }
 
-/* Plan page */
+/* Plan page (decision D27): no boxes around sections; the plan marked by a bar in its primary
+   colour. One column on phones; from 960 px the plan on the left, you and the group on the right. */
 
 .plan-header {
-  margin: 0 calc(-1 * var(--s4)) var(--s4);
-  padding: var(--s4);
-  background: var(--plan-primary, var(--accent));
-  color: var(--plan-on-primary, var(--on-accent));
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 5px solid var(--plan-primary, var(--accent));
 }
 
 .plan-header h1 {
-  margin: var(--s1) 0;
+  margin: var(--s2) 0 var(--s4);
 }
 
-.plan-header p {
+.plan-byline {
   margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
+/* App text only: names keep their case. */
 .plan-activity {
+  display: inline-block;
+  margin-right: var(--s2);
+  padding: 2px var(--s2);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--fg);
   font-size: var(--text-xs);
   font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .badge {
@@ -507,40 +583,333 @@ input[type="checkbox"] {
   color: var(--plan-on-secondary, var(--plan-on-secondary-default));
   font-size: 0.75rem;
   font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.plan-facts {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--s1) var(--s4);
+.when-where {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0 0 var(--s4);
 }
 
-.plan-facts dt {
-  color: var(--muted);
+.pill {
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-weight: 600;
 }
 
-.plan-facts dd {
+.pill {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pill dd {
+  display: flex;
+  gap: var(--s2);
+  align-items: baseline;
   margin: 0;
+}
+
+.pill dd > span:last-child {
+  min-width: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Neutral, so any plan colour stays visible (spec 3.1: the primary marks the header and buttons). */
+.pill .icon {
+  color: var(--muted);
 }
 
 .time-zone {
   color: var(--muted);
+  font-weight: 400;
+}
+
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin: 0;
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line);
+}
+
+.metric {
+  display: flex;
+  gap: var(--s1);
+  align-items: baseline;
+}
+
+.metric dt {
+  color: var(--muted);
+}
+
+.metric dd {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.drop-policy {
+  flex-basis: 100%;
+}
+
+.drop-policy dd {
+  padding: 2px var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.drop-no_drop dd {
+  border-color: var(--ok-line);
+  background: var(--ok-bg);
+  color: var(--ok);
 }
 
 .note {
+  margin: var(--s4) 0;
+  font-size: var(--text-lg);
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
 
+.map.plan-map {
+  height: 300px;
+  margin-top: var(--s5);
+}
+
 .exact-start {
-  padding: var(--s3) var(--s4);
+  margin: var(--s4) 0;
+  padding: var(--s4);
   border: 2px solid var(--plan-secondary, var(--plan-secondary-default));
   border-radius: var(--r-md);
-  background: var(--plan-primary-tint, transparent);
+  background: var(--plan-primary-tint, var(--surface));
 }
 
 .exact-start h2 {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
   margin-top: 0;
+}
+
+.exact-start .hint {
+  font-style: italic;
+}
+
+.plan .share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: var(--s4) 0;
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line);
+}
+
+.plan .share h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.plan .share .hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.plan .share .hint:empty {
+  display: none;
+}
+
+/* You and the group */
+
+.plan-side {
+  margin-top: var(--s5);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--line);
+}
+
+.plan .plan-side > *,
+.plan .plan-after > * {
+  margin: var(--s5) 0;
+}
+
+.plan-after {
+  margin-top: var(--s5);
+  border-top: 1px solid var(--line);
+}
+
+.plan-side h2 {
+  margin-top: 0;
+}
+
+.status {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s1) var(--s3);
+  align-items: center;
+  padding: var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.status-joined {
+  border-color: var(--ok-line);
+  background: var(--ok-bg);
+}
+
+.status-text {
+  grid-column: span 2;
+}
+
+.status-icon + .status-text {
+  grid-column: auto;
+}
+
+.status-text h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.status-joined .status-text h2 {
+  color: var(--ok);
+}
+
+.status-text p {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.status-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ok);
+  color: var(--ok-bg);
+}
+
+.status-action {
+  grid-column: 1 / -1;
+  margin: var(--s1) 0 0;
+}
+
+.status-action a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+}
+
+/* Counters are a secondary-color fill (spec 3.1); text keeps the normal color. */
+.counts {
+  display: inline-block;
+  padding: 2px var(--s3);
+  border-radius: var(--r-pill);
+  background: var(--plan-secondary-tint, var(--surface));
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2) var(--s3);
+  margin-bottom: var(--s3);
+}
+
+.section-head h2,
+.section-head .counts {
+  margin: 0;
+}
+
+.people-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  display: inline-flex;
+  gap: var(--s2);
+  align-items: center;
+  padding: var(--s1) var(--s3) var(--s1) var(--s1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* Initials coloured from the name (never from an account); the host's in the plan's secondary
+   colour (spec 3.1). */
+.avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.avatar-0 {
+  background: var(--avatar-0-bg);
+  color: var(--avatar-0-fg);
+}
+.avatar-1 {
+  background: var(--avatar-1-bg);
+  color: var(--avatar-1-fg);
+}
+.avatar-2 {
+  background: var(--avatar-2-bg);
+  color: var(--avatar-2-fg);
+}
+.avatar-3 {
+  background: var(--avatar-3-bg);
+  color: var(--avatar-3-fg);
+}
+.avatar-4 {
+  background: var(--avatar-4-bg);
+  color: var(--avatar-4-fg);
+}
+.avatar-5 {
+  background: var(--avatar-5-bg);
+  color: var(--avatar-5-fg);
+}
+.avatar-6 {
+  background: var(--avatar-6-bg);
+  color: var(--avatar-6-fg);
+}
+.avatar-7 {
+  background: var(--avatar-7-bg);
+  color: var(--avatar-7-fg);
+}
+
+.avatar-host {
+  background: var(--plan-secondary, var(--plan-secondary-default));
+  color: var(--plan-on-secondary, var(--plan-on-secondary-default));
 }
 
 .deletion {
@@ -548,29 +917,71 @@ input[type="checkbox"] {
   font-size: var(--text-sm);
 }
 
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.actions .button {
+  flex: 1 1 14rem;
+}
+
+@media (min-width: 960px) {
+  .wide {
+    max-width: 72rem;
+  }
+
+  /* The recap sits under the plan, beside you and the group. */
+  .plan {
+    display: grid;
+    grid-template-areas:
+      "main side"
+      "after side";
+    grid-template-rows: auto 1fr;
+    grid-template-columns: minmax(0, 1.6fr) minmax(20rem, 1fr);
+    gap: 0 var(--s6);
+    align-items: start;
+  }
+
+  .plan-main {
+    grid-area: main;
+  }
+
+  .plan-after {
+    grid-area: after;
+  }
+
+  .plan-side {
+    grid-area: side;
+    margin-top: var(--s4);
+    padding: 0 0 0 var(--s6);
+    border-top: 0;
+    border-left: 1px solid var(--line);
+  }
+
+  .plan-side > :first-child {
+    margin-top: var(--s4);
+  }
+
+  .plan-side .actions {
+    flex-direction: column;
+  }
+
+  .plan-side .actions .button {
+    flex: none;
+  }
+
+  .map.plan-map {
+    height: 360px;
+  }
+}
+
 /* Responding and managing */
 
 .respond,
-.own-response,
 .manage form {
   margin: var(--s4) 0;
-}
-
-/* Counters are a secondary-color fill (spec 3.1); text keeps the normal color. */
-.counts {
-  display: inline-block;
-  padding: var(--s1) var(--s3);
-  border-radius: var(--r-pill);
-  background: var(--plan-secondary-tint, var(--surface));
-  font-weight: 600;
-}
-
-.people ul:not(.people-actions) {
-  padding-left: 1.2em;
-}
-
-.people li {
-  margin: var(--s1) 0;
 }
 
 .withdraw {

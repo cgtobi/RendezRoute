@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { AVATAR_COLOURS } from "../../src/adapters/in/http/views/avatar.ts";
 import { contrastRatio } from "../../src/domain/color.ts";
 
 const CSS = readFileSync(join(import.meta.dirname, "../../public/app.css"), "utf8");
@@ -38,6 +39,16 @@ const PAIRS: readonly [string, string, number][] = [
   ["--field-border", "--bg", 3],
   ["--field-border", "--surface", 3],
   ["--focus", "--bg", 3],
+  ["--ok", "--ok-bg", 4.5],
+  ["--fg", "--ok-bg", 4.5],
+  ["--muted", "--ok-bg", 4.5],
+  ["--accent", "--ok-bg", 4.5],
+  // Initials on their name colour (plan page people, decision D27)
+  ...Array.from({ length: AVATAR_COLOURS }, (_, i): [string, string, number] => [
+    `--avatar-${i}-fg`,
+    `--avatar-${i}-bg`,
+    4.5,
+  ]),
 ];
 const NAMES = [...new Set(PAIRS.flatMap(([fg, bg]) => [fg, bg]))];
 

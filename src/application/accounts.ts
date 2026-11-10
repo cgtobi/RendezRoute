@@ -19,9 +19,12 @@ import {
 import { ensureDevice, lookupDevice } from "./devices.ts";
 import type { PlanDeps } from "./plans.ts";
 import type {
+  ChannelOwner,
+  ClaimCounts,
   IdentityProvider,
   IdentityRepository,
   ProviderAccount,
+  LinkedPlan,
   LookupHasher,
   PendingLoginRepository,
 } from "./ports.ts";
@@ -183,7 +186,13 @@ async function accountOf(deps: AccountDeps, deviceToken: string | undefined) {
 
 export type AccountView =
   | { kind: "logged_out" }
-  | { kind: "account"; provider: IdentityProviderKind; displayName: string | undefined };
+  | {
+      kind: "account";
+      provider: IdentityProviderKind;
+      displayName: string | undefined;
+      /** What this browser holds that is not in the account yet (claiming, step 5a). */
+      claimable: ClaimCounts;
+    };
 
 /** What the account page shows: never the subject (spec 7 Identity). */
 export async function viewAccount(
@@ -197,7 +206,23 @@ export async function viewAccount(
         kind: "account",
         provider: account.identity.provider,
         displayName: account.identity.displayName,
+        claimable: await deps.devices.claimable(account.device.id),
       };
+}
+
+/**
+ * Claiming (spec 7 Identity, user decision 2026-11-10): moves this browser's own plans, responses
+ * and templates that no account owns into the account logged in on it, so they reach every device
+ * logged in to it. Only on request; other devices' links and other accounts' items stay.
+ */
+export async function claimDeviceData(
+  deps: AccountDeps,
+  request: { deviceToken: string | undefined },
+): Promise<{ kind: "claimed"; moved: ClaimCounts } | { kind: "logged_out" }> {
+  const account = await accountOf(deps, request.deviceToken);
+  if (account === undefined) return { kind: "logged_out" };
+  const moved = await deps.devices.claimInto(account.device.id, account.identity.id);
+  return { kind: "claimed", moved };
 }
 
 export async function renameAccount(
@@ -214,12 +239,30 @@ export async function renameAccount(
   return { kind: "renamed" };
 }
 
-/** Logs this device out; the account and everything else on the device stay. */
+/**
+ * Logs this device out; the account and everything else on the device stay. The browser's push
+ * subscriptions for what it reached only through the account go, so a borrowed browser stops
+ * receiving them (step 5a).
+ */
 export async function logOut(
   deps: AccountDeps,
   request: { deviceToken: string | undefined },
 ): Promise<{ kind: "logged_out" }> {
   const device = await lookupDevice(deps, request.deviceToken);
-  if (device?.identityId !== undefined) await deps.devices.setIdentity(device.id, undefined);
+  if (device?.identityId === undefined) return { kind: "logged_out" };
+  if (deps.notify !== undefined) {
+    const own = new Set((await deps.plans.findLinkedToDevice(device.id, "device")).map(ownerKey));
+    const throughAccount = (
+      await deps.plans.findLinkedToDevice(device.id, "device_and_account")
+    ).filter((entry) => !own.has(ownerKey(entry)));
+    await deps.notify.channels.removeForDevice(device.id, throughAccount.map(channelOwnerOf));
+  }
+  await deps.devices.setIdentity(device.id, undefined);
   return { kind: "logged_out" };
 }
+
+const channelOwnerOf = (entry: LinkedPlan): ChannelOwner =>
+  entry.role === "host" ? { planId: entry.plan.id } : { responseId: entry.responseId };
+
+const ownerKey = (entry: LinkedPlan) =>
+  entry.role === "host" ? `plan:${entry.plan.id}` : `response:${entry.responseId}`;

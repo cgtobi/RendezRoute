@@ -50,6 +50,7 @@ export interface PlansTable {
   keep_as_template: number;
   template_include_private: number;
   host_token_hash: string;
+  owner_identity_id: Generated<string | null>;
   created_at: string;
   updated_at: string;
 }
@@ -71,9 +72,14 @@ export interface DeviceLinksTable {
   created_at: string;
 }
 
+export type DeviceAccessView = Omit<DeviceLinksTable, "created_at"> & {
+  source: "link" | "account";
+};
+
 export interface PlanTemplatesTable {
   id: string;
   host_token_hash: string | null;
+  owner_identity_id: Generated<string | null>;
   poster_name: string;
   poster_language: string;
   timezone: string;
@@ -107,6 +113,7 @@ export interface PlanTemplatesTable {
 export interface ResponsesTable {
   id: string;
   plan_id: string;
+  identity_id: Generated<string | null>;
   kind: ResponseKind;
   display_name_enc: string;
   request_note_enc: string | null;
@@ -157,6 +164,7 @@ export interface NotificationChannelsTable {
   config_enc: string;
   verified: Generated<number>;
   created_at: string;
+  device_id: Generated<string | null>;
 }
 
 export interface SentRemindersTable {
@@ -191,6 +199,8 @@ export interface DatabaseSchema {
   plans: PlansTable;
   devices: DevicesTable;
   device_links: DeviceLinksTable;
+  /** View: a device's own links and everything its account owns (migration 0019). */
+  device_access: DeviceAccessView;
   plan_creation_nonces: PlanCreationNoncesTable;
   responses: ResponsesTable;
   routes: RoutesTable;

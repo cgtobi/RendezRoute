@@ -46,9 +46,9 @@ export function createCalendarFeedRepository(database: Database): CalendarFeedRe
           eb.not(
             eb.exists(
               eb
-                .selectFrom("device_links")
+                .selectFrom("device_access")
                 .select("device_id")
-                .whereRef("device_links.device_id", "=", "calendar_feeds.device_id"),
+                .whereRef("device_access.device_id", "=", "calendar_feeds.device_id"),
             ),
           ),
         )

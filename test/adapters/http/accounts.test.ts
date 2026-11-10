@@ -311,6 +311,44 @@ describe("deleting a logged-in browser's data (spec 3.7)", () => {
   });
 });
 
+describe("claiming on the account page (spec 7 Identity)", () => {
+  it("offers to move this browser's plans into the account, and does so only on request", async () => {
+    const { app, oidc } = await setup();
+    const phone = new TestClient(app);
+    const { planId } = await createPlanViaUi(phone);
+    await logIn(phone, oidc);
+    const page = text(await (await phone.get("/account")).text());
+    expect(page).toContain(en("account.claimPlans", { count: 1 }));
+    expect(page).toContain('action="/account/claim"');
+
+    const laptop = new TestClient(app);
+    await logIn(laptop, oidc);
+    // Not the laptop's yet: the host page sends it to the plan page.
+    expect((await laptop.get(`/p/${planId}/host`)).status).toBe(303);
+    expect((await phone.postForm("/account/claim", {})).status).toBe(403);
+    const claimed = await phone.postForm("/account/claim", hiddenFields(page));
+    expect(claimed.status).toBe(303);
+    expect(claimed.headers.get("location")).toBe("/account?claimed");
+    const after = text(await (await phone.get("/account?claimed")).text());
+    expect(after).toContain(en("account.claimed"));
+    expect(after).not.toContain('action="/account/claim"');
+    expect((await laptop.get(`/p/${planId}/host`)).status).toBe(200);
+  });
+
+  it("puts plans created while logged in into the account right away", async () => {
+    const { app, oidc } = await setup();
+    const phone = new TestClient(app);
+    await logIn(phone, oidc);
+    const { planId } = await createPlanViaUi(phone);
+    expect(text(await (await phone.get("/account")).text())).not.toContain(
+      'action="/account/claim"',
+    );
+    const laptop = new TestClient(app);
+    await logIn(laptop, oidc);
+    expect((await laptop.get(`/p/${planId}/host`)).status).toBe(200);
+  });
+});
+
 describe("POSTING_MODE=logged_in (spec 7 Moderation)", () => {
   it("lets only logged-in browsers create plans, and says how to log in", async () => {
     const { app, oidc, database } = await setup({ POSTING_MODE: "logged_in" });

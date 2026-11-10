@@ -108,6 +108,8 @@ export async function respond(
       manageTokenHash: deps.tokens.hash(manageToken),
       creationNonce: request.creationNonce,
       deviceId: device.id,
+      // Logged in: the response belongs to the account (step 5a).
+      identityId: device.identityId,
     });
   } catch (error) {
     // A concurrent submit of the same form won the race (nonce is unique).

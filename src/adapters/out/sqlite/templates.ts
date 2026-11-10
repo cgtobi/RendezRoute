@@ -63,7 +63,7 @@ const encryptRoute = (cipher: FieldCipher, route: Route) =>
 export async function insertTemplate(
   trx: Transaction<DatabaseSchema>,
   cipher: FieldCipher,
-  { template, hostTokenHash, route, hostsOfPlan, creationNonce }: NewTemplate,
+  { template, hostTokenHash, route, hostsOfPlan, creationNonce, ownerIdentityId }: NewTemplate,
 ): Promise<void> {
   await trx
     .insertInto("plan_templates")
@@ -73,6 +73,10 @@ export async function insertTemplate(
       ...toRow(cipher, template),
       route_geojson_enc: route === undefined ? null : encryptRoute(cipher, route),
       creation_nonce: creationNonce ?? null,
+      // Saved while logged in: the account's; else that of the plan's account, if any (D25).
+      owner_identity_id:
+        ownerIdentityId ??
+        ((eb) => eb.selectFrom("plans").select("owner_identity_id").where("id", "=", hostsOfPlan)),
     })
     .execute();
   await trx
@@ -220,12 +224,14 @@ export function createTemplateRepository(
       deleted(result.numDeletedRows);
     },
 
-    async listForDevice(deviceId) {
+    async listForDevice(deviceId, scope) {
       const rows = await database.db
         .selectFrom("plan_templates")
-        .innerJoin("device_links", "device_links.template_id", "plan_templates.id")
+        .innerJoin("device_access as link", "link.template_id", "plan_templates.id")
         .selectAll("plan_templates")
-        .where("device_links.device_id", "=", deviceId)
+        .distinct()
+        .where("link.device_id", "=", deviceId)
+        .$if(scope === "device", (query) => query.where("link.source", "=", "link"))
         .orderBy("plan_templates.title")
         .orderBy("plan_templates.id")
         .execute();

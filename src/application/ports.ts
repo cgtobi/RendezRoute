@@ -99,6 +99,8 @@ export interface NewPlan {
   /** One-time value from the create form; detects resubmission (decision I9). */
   creationNonce: string;
   hostDeviceId: string;
+  /** Logged in: the plan belongs to the account, and the device gets no link of its own (5a). */
+  ownerIdentityId?: string | undefined;
   /** Stored with the plan when the poster uploaded a GPX file. */
   route?: Route | undefined;
 }
@@ -124,7 +126,8 @@ export interface PlanRepository {
   /** Active plans being deleted within the range, bounds included (spec 3.10: deletion reminder). */
   findActiveDeletingBetween(from: Date, to: Date): Promise<Plan[]>;
   /** Plans the device hosts or manages a response to, with the response's kind (spec 6 feature 2). */
-  findLinkedToDevice(deviceId: string): Promise<LinkedPlan[]>;
+  /** Plans the device hosts or responded to; with its account's too for "device_and_account". */
+  findLinkedToDevice(deviceId: string, scope: AccessScope): Promise<LinkedPlan[]>;
   /** Plans whose retention exceeds `maxRetentionDays` (apply-retention-max). */
   findWithRetentionAbove(maxRetentionDays: number): Promise<Plan[]>;
   /** The route, decrypted; only for audiences that may see it (spec 3.6). */
@@ -142,13 +145,22 @@ export interface PlanRepository {
 /** A plan as seen from one device: hosted, or responded to with a response of some kind. */
 export type LinkedPlan =
   | { plan: Plan; role: "host" }
-  | { plan: Plan; role: "manage"; responseKind: ResponseKind };
+  | { plan: Plan; role: "manage"; responseId: string; responseKind: ResponseKind };
 
 export interface Device {
   id: string;
   lastSeenAt: Date;
   /** The account logged in on this device, if any (spec 7 Identity). */
   identityId: string | undefined;
+}
+
+/** Only what the device itself links to, or also what its account owns (step 5a). */
+export type AccessScope = "device" | "device_and_account";
+
+export interface ClaimCounts {
+  plans: number;
+  responses: number;
+  templates: number;
 }
 
 /** What a device is linked to, and in which role (spec 3.2). */
@@ -168,6 +180,8 @@ export interface NewTemplate {
   hostsOfPlan: string;
   /** One-time value from the "Save as template" form; detects resubmission (decision I9). */
   creationNonce?: string | undefined;
+  /** Saved while logged in: the account; otherwise the plan's owner, if any (D25). */
+  ownerIdentityId?: string | undefined;
 }
 
 /** Invite links (spec 7 Moderation); only their token hashes are stored. */
@@ -342,7 +356,7 @@ export interface TemplateRepository {
   /** Physical delete (spec 3.10). */
   delete(id: string): Promise<void>;
   /** The templates linked to a device, by title. */
-  listForDevice(deviceId: string): Promise<PlanTemplate[]>;
+  listForDevice(deviceId: string, scope: AccessScope): Promise<PlanTemplate[]>;
   /** Deletes templates whose expiry has passed; returns how many (spec 3.10). */
   deleteExpired(now: Date): Promise<number>;
 }
@@ -354,6 +368,13 @@ export interface DeviceRepository {
   /** Idempotent. */
   link(deviceId: string, target: DeviceLinkTarget, now: Date): Promise<void>;
   hasLink(deviceId: string, target: DeviceLinkTarget): Promise<boolean>;
+  /** What the device links to that no account owns yet, which claiming would move. */
+  claimable(deviceId: string): Promise<ClaimCounts>;
+  /**
+   * Claiming (spec 7 Identity): moves the device's own plans, responses and templates that no
+   * account owns into this one, in one step; the device's links to them go, other devices' stay.
+   */
+  claimInto(deviceId: string, identityId: string): Promise<ClaimCounts>;
   /** Logs the device in to an account, or out of it (undefined). */
   setIdentity(deviceId: string, identityId: string | undefined): Promise<void>;
   /** A new cookie token for the device; the old one stops working, its links stay. */
@@ -380,6 +401,8 @@ export interface NewResponse {
   creationNonce: string;
   /** Linked as manager and kept for blocks; undefined only in tests and imports. */
   deviceId: string | undefined;
+  /** Logged in: the response belongs to the account, and the device gets no link of its own. */
+  identityId?: string | undefined;
 }
 
 export interface ResponseRepository {
@@ -513,8 +536,13 @@ export interface NotificationChannel {
 
 /** Browser push subscriptions per response or hosted plan (spec 6 feature 3), stored encrypted. */
 export interface ChannelRepository {
-  /** Adds a subscription, or returns the existing channel with the same endpoint. */
-  add(owner: ChannelOwner, subscription: PushSubscription): Promise<string>;
+  /**
+   * Adds a subscription made in this browser (the app always names it), or returns the existing
+   * channel with the same endpoint.
+   */
+  add(owner: ChannelOwner, subscription: PushSubscription, deviceId?: string): Promise<string>;
+  /** Removes the browser's subscriptions for these owners, e.g. its account's items at logout. */
+  removeForDevice(deviceId: string, owners: readonly ChannelOwner[]): Promise<void>;
   remove(owner: ChannelOwner, endpoint: string): Promise<void>;
   has(owner: ChannelOwner, endpoint: string): Promise<boolean>;
   /** Oldest first. */

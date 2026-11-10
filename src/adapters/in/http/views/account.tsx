@@ -1,13 +1,14 @@
 // The account page (spec 7 Identity): the ways to log in (an OIDC button, a fediverse server field),
 // or the account's display name and "Log out". Never the provider's identifier.
 import type { AccountView } from "../../../../application/accounts.ts";
+import type { ClaimCounts } from "../../../../application/ports.ts";
 import type { FediverseServerError } from "../../../../domain/fediverse.ts";
 import { type DisplayNameError, IDENTITY_LIMITS } from "../../../../domain/identity.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage } from "./format.ts";
 
-export type AccountNotice = "loggedIn" | "loggedOut" | "renamed" | undefined;
+export type AccountNotice = "loggedIn" | "loggedOut" | "renamed" | "claimed" | undefined;
 
 export type LoginOption =
   /** The button's name for it: OIDC_NAME. */
@@ -89,6 +90,7 @@ export function AccountPage(props: {
             </div>
             <button type="submit">{t("account.save")}</button>
           </form>
+          <ClaimSection t={t} csrfToken={props.csrfToken} claimable={account.claimable} />
           <form method="post" action="/account/logout">
             <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
             <p class="hint">{t("account.logoutHint")}</p>
@@ -99,6 +101,32 @@ export function AccountPage(props: {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * Claiming (spec 7 Identity): what this browser holds outside the account, and the button that
+ * moves it in. Shown only when there is something to move.
+ */
+function ClaimSection(props: { t: Translate; csrfToken: string; claimable: ClaimCounts }) {
+  const { t, claimable } = props;
+  if (claimable.plans + claimable.responses + claimable.templates === 0) return null;
+  return (
+    <form method="post" action="/account/claim" class="account-claim">
+      <h2>{t("account.claimHeading")}</h2>
+      <p>{t("account.claimIntro")}</p>
+      <ul>
+        {claimable.plans > 0 && <li>{t("account.claimPlans", { count: claimable.plans })}</li>}
+        {claimable.responses > 0 && (
+          <li>{t("account.claimResponses", { count: claimable.responses })}</li>
+        )}
+        {claimable.templates > 0 && (
+          <li>{t("account.claimTemplates", { count: claimable.templates })}</li>
+        )}
+      </ul>
+      <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+      <button type="submit">{t("account.claimSubmit")}</button>
+    </form>
   );
 }
 

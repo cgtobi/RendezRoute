@@ -43,7 +43,7 @@ export function createChannelRepository(
     (await listFor(owner)).find((channel) => channel.subscription.endpoint === endpoint);
 
   return {
-    async add(owner, subscription) {
+    async add(owner, subscription, deviceId) {
       const existing = await find(owner, subscription.endpoint);
       if (existing !== undefined) return existing.id;
       const id = ids.rowId();
@@ -58,9 +58,28 @@ export function createChannelRepository(
           // The browser confirmed the subscription itself (spec 3.11: channels confirmed by their owner).
           verified: 1,
           created_at: now().toISOString(),
+          device_id: deviceId ?? null,
         })
         .execute();
       return id;
+    },
+
+    async removeForDevice(deviceId, owners) {
+      const responseIds = owners.flatMap((owner) =>
+        "responseId" in owner ? [owner.responseId] : [],
+      );
+      const planIds = owners.flatMap((owner) => ("planId" in owner ? [owner.planId] : []));
+      if (responseIds.length === 0 && planIds.length === 0) return;
+      await db
+        .deleteFrom("notification_channels")
+        .where("device_id", "=", deviceId)
+        .where((eb) =>
+          eb.or([
+            ...(responseIds.length > 0 ? [eb("response_id", "in", responseIds)] : []),
+            ...(planIds.length > 0 ? [eb("plan_id", "in", planIds)] : []),
+          ]),
+        )
+        .execute();
     },
 
     async remove(owner, endpoint) {

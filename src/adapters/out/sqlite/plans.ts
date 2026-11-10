@@ -139,23 +139,29 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
   };
 
   return {
-    async create({ plan, hostTokenHash, creationNonce, hostDeviceId, route }) {
+    async create({ plan, hostTokenHash, creationNonce, hostDeviceId, ownerIdentityId, route }) {
       const createdAt = iso(plan.createdAt);
       await database.db.transaction().execute(async (trx) => {
-        await trx.insertInto("plans").values(toRow(plan, hostTokenHash)).execute();
+        await trx
+          .insertInto("plans")
+          .values({ ...toRow(plan, hostTokenHash), owner_identity_id: ownerIdentityId ?? null })
+          .execute();
         await trx
           .insertInto("plan_creation_nonces")
           .values({ nonce: creationNonce, plan_id: plan.id, created_at: createdAt })
           .execute();
-        await trx
-          .insertInto("device_links")
-          .values({
-            device_id: hostDeviceId,
-            role: "host",
-            plan_id: plan.id,
-            created_at: createdAt,
-          })
-          .execute();
+        // An account's plan reaches its devices through the account (device_access).
+        if (ownerIdentityId === undefined) {
+          await trx
+            .insertInto("device_links")
+            .values({
+              device_id: hostDeviceId,
+              role: "host",
+              plan_id: plan.id,
+              created_at: createdAt,
+            })
+            .execute();
+        }
         if (route !== undefined) {
           // One route per plan, so the plan ID doubles as the route ID.
           await trx
@@ -221,32 +227,35 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       return rows.map(fromRow);
     },
 
-    async findLinkedToDevice(deviceId) {
+    async findLinkedToDevice(deviceId, scope) {
       const rows = await selectPlans()
-        .innerJoin("device_links", (join) =>
+        .innerJoin("device_access as link", (join) =>
           join.on((eb) =>
             eb.or([
-              eb("device_links.plan_id", "=", eb.ref("plans.id")),
+              eb("link.plan_id", "=", eb.ref("plans.id")),
               eb.exists(
                 eb
                   .selectFrom("responses")
                   .select("responses.id")
-                  .whereRef("responses.id", "=", "device_links.response_id")
+                  .whereRef("responses.id", "=", "link.response_id")
                   .whereRef("responses.plan_id", "=", "plans.id"),
               ),
             ]),
           ),
         )
-        .leftJoin("responses as own", "own.id", "device_links.response_id")
-        .select(["device_links.role as link_role", "own.kind as response_kind"])
-        .where("device_links.device_id", "=", deviceId)
+        .leftJoin("responses as own", "own.id", "link.response_id")
+        .select(["link.role as link_role", "own.id as response_id", "own.kind as response_kind"])
+        .where("link.device_id", "=", deviceId)
+        .$if(scope === "device", (query) => query.where("link.source", "=", "link"))
+        // A plan both linked and in the account is listed once.
+        .distinct()
         .orderBy("plans.starts_at")
-        .orderBy("device_links.role")
+        .orderBy("link.role")
         .execute();
       return rows.map((row): LinkedPlan => {
         const plan = fromRow(row);
-        return row.link_role === "manage" && row.response_kind !== null
-          ? { plan, role: "manage", responseKind: row.response_kind }
+        return row.link_role === "manage" && row.response_kind !== null && row.response_id !== null
+          ? { plan, role: "manage", responseId: row.response_id, responseKind: row.response_kind }
           : { plan, role: "host" };
       });
     },

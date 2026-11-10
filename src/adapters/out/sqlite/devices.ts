@@ -1,6 +1,12 @@
 // Devices and their links (spec 3.2). Only token hashes are stored.
-import type { DeviceLinkTarget, DeviceRepository } from "../../../application/ports.ts";
+import type {
+  ClaimCounts,
+  DeviceLinkTarget,
+  DeviceRepository,
+} from "../../../application/ports.ts";
+import type { Kysely } from "kysely";
 import { checkpoint, type Database } from "./database.ts";
+import type { DatabaseSchema } from "./schema.ts";
 
 /** The column and value that identify a link's target. */
 const targetOf = (target: DeviceLinkTarget) => {
@@ -23,6 +29,112 @@ const columns = (target: DeviceLinkTarget) => {
   const [column, id] = targetOf(target);
   return { plan_id: null, response_id: null, template_id: null, role: target.role, [column]: id };
 };
+
+/** What claiming moves (step 5a): plans hosted, responses managed, templates. */
+const CLAIMS = [
+  { count: "plans", role: "host", table: "plans", owner: "owner_identity_id", link: "plan_id" },
+  {
+    count: "responses",
+    role: "manage",
+    table: "responses",
+    owner: "identity_id",
+    link: "response_id",
+  },
+  {
+    count: "templates",
+    role: "template",
+    table: "plan_templates",
+    owner: "owner_identity_id",
+    link: "template_id",
+  },
+] as const;
+
+/**
+ * IDs the device links to in this role that no account owns yet, and that would not give the
+ * account a second role on a plan: no plan it responded to, no response to a plan it owns or
+ * already responded to (spec 3.2: one response per plan; the host does not respond).
+ */
+async function claimableIds(
+  db: Kysely<DatabaseSchema>,
+  deviceId: string,
+  identityId: string | null,
+  claim: (typeof CLAIMS)[number],
+): Promise<string[]> {
+  const links = db
+    .selectFrom("device_links")
+    .where("device_links.device_id", "=", deviceId)
+    .where("device_links.role", "=", claim.role);
+  let rows: { id: string }[];
+  switch (claim.table) {
+    case "plans":
+      rows = await links
+        .innerJoin("plans", "plans.id", "device_links.plan_id")
+        .select("plans.id")
+        .where("plans.owner_identity_id", "is", null)
+        .where((eb) =>
+          eb.not(
+            eb.exists(
+              eb
+                .selectFrom("responses as answer")
+                .select("answer.id")
+                .whereRef("answer.plan_id", "=", "plans.id")
+                .where("answer.identity_id", "=", identityId),
+            ),
+          ),
+        )
+        .execute();
+      break;
+    case "responses":
+      rows = await links
+        .innerJoin("responses", "responses.id", "device_links.response_id")
+        .select("responses.id")
+        .where("responses.identity_id", "is", null)
+        .where((eb) =>
+          eb.not(
+            eb.exists(
+              eb
+                .selectFrom("plans as hosted")
+                .select("hosted.id")
+                .whereRef("hosted.id", "=", "responses.plan_id")
+                .where("hosted.owner_identity_id", "=", identityId),
+            ),
+          ),
+        )
+        .where((eb) =>
+          eb.not(
+            eb.exists(
+              eb
+                .selectFrom("responses as answer")
+                .select("answer.id")
+                .whereRef("answer.plan_id", "=", "responses.plan_id")
+                .where("answer.identity_id", "=", identityId),
+            ),
+          ),
+        )
+        .execute();
+      break;
+    case "plan_templates":
+      rows = await links
+        .innerJoin("plan_templates", "plan_templates.id", "device_links.template_id")
+        .select("plan_templates.id")
+        .where("plan_templates.owner_identity_id", "is", null)
+        .execute();
+      break;
+  }
+  return rows.map((row) => row.id);
+}
+
+const NOTHING: ClaimCounts = { plans: 0, responses: 0, templates: 0 };
+
+/** The account the device is logged in to, if any. */
+const identityOf = async (db: Kysely<DatabaseSchema>, deviceId: string) =>
+  (
+    await db
+      .selectFrom("devices")
+      .select("identity_id")
+      .where("id", "=", deviceId)
+      .executeTakeFirst()
+  )?.identity_id ?? null;
 
 export function createDeviceRepository(database: Database): DeviceRepository {
   return {
@@ -66,8 +178,9 @@ export function createDeviceRepository(database: Database): DeviceRepository {
     },
 
     async hasLink(deviceId, target) {
+      // Its own links, or its account's (device_access, step 5a).
       const row = await database.db
-        .selectFrom("device_links")
+        .selectFrom("device_access")
         .select("device_id")
         .where("device_id", "=", deviceId)
         .where("role", "=", target.role)
@@ -82,6 +195,43 @@ export function createDeviceRepository(database: Database): DeviceRepository {
         .set({ token_hash: tokenHash })
         .where("id", "=", deviceId)
         .execute();
+    },
+
+    async claimable(deviceId) {
+      const { db } = database;
+      const identityId = await identityOf(db, deviceId);
+      const counts = { ...NOTHING };
+      for (const claim of CLAIMS) {
+        counts[claim.count] = (await claimableIds(db, deviceId, identityId, claim)).length;
+      }
+      return counts;
+    },
+
+    async claimInto(deviceId, identityId) {
+      return database.db.transaction().execute(async (trx) => {
+        // Logged out or into another account a moment ago: nothing moves.
+        if ((await identityOf(trx, deviceId)) !== identityId) return { ...NOTHING };
+        const moved = { ...NOTHING };
+        for (const claim of CLAIMS) {
+          const ids = await claimableIds(trx, deviceId, identityId, claim);
+          if (ids.length > 0) {
+            await trx
+              .updateTable(claim.table)
+              .set({ [claim.owner]: identityId })
+              .where("id", "in", ids)
+              .execute();
+            // This device reaches them through the account now; other devices keep their links.
+            await trx
+              .deleteFrom("device_links")
+              .where("device_id", "=", deviceId)
+              .where("role", "=", claim.role)
+              .where(claim.link, "in", ids)
+              .execute();
+          }
+          moved[claim.count] = ids.length;
+        }
+        return moved;
+      });
     },
 
     async setIdentity(deviceId, identityId) {
@@ -103,10 +253,11 @@ export function createDeviceRepository(database: Database): DeviceRepository {
         .where("role", "=", target.role)
         .where(...targetEquals(target))
         .where("device_id", "!=", keepDeviceId)
+        // The kept device may reach the target through its account (device_access, step 5a).
         .where((eb) =>
           eb.exists(
             eb
-              .selectFrom("device_links as kept")
+              .selectFrom("device_access as kept")
               .select("kept.device_id")
               .where("kept.device_id", "=", keepDeviceId)
               .where("kept.role", "=", target.role)

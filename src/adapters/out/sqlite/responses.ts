@@ -1,5 +1,5 @@
 // Response persistence (spec 3.5, 4). Display names pass through FieldCipher.
-import type { Selectable } from "kysely";
+import { type Selectable, sql } from "kysely";
 import type { FieldCipher, ResponseRepository } from "../../../application/ports.ts";
 import type { PlanResponse } from "../../../domain/response.ts";
 import { checkpoint, type Database } from "./database.ts";
@@ -33,7 +33,7 @@ export function createResponseRepository(
   const selectResponses = () => database.db.selectFrom("responses").selectAll("responses");
 
   return {
-    async create({ response, manageTokenHash, creationNonce, deviceId }) {
+    async create({ response, manageTokenHash, creationNonce, deviceId, identityId }) {
       await database.db.transaction().execute(async (trx) => {
         await trx
           .insertInto("responses")
@@ -45,6 +45,7 @@ export function createResponseRepository(
             request_note_enc: encryptNote(response.requestNote),
             manage_token_hash: manageTokenHash,
             device_id: deviceId ?? null,
+            identity_id: identityId ?? null,
             language: response.language,
             previous_kind: response.previousKind ?? null,
             creation_nonce: creationNonce,
@@ -52,7 +53,8 @@ export function createResponseRepository(
             updated_at: response.updatedAt.toISOString(),
           })
           .execute();
-        if (deviceId !== undefined) {
+        // An account's response reaches its devices through the account (device_access).
+        if (deviceId !== undefined && identityId === undefined) {
           await trx
             .insertInto("device_links")
             .values({
@@ -96,9 +98,13 @@ export function createResponseRepository(
 
     async findForDevice(planId, deviceId) {
       const row = await selectResponses()
-        .innerJoin("device_links", "device_links.response_id", "responses.id")
-        .where("device_links.device_id", "=", deviceId)
-        .where("device_links.role", "=", "manage")
+        .innerJoin("device_access as access", "access.response_id", "responses.id")
+        .where("access.device_id", "=", deviceId)
+        .where("access.role", "=", "manage")
+        // A browser that responded on its own and then logged in to an account that responded
+        // elsewhere: its own response first (spec 3.2), then the oldest.
+        .orderBy(sql`case access.source when 'link' then 0 else 1 end`)
+        .orderBy("responses.created_at")
         .where("responses.plan_id", "=", planId)
         .executeTakeFirst();
       return row === undefined ? undefined : fromRow(row);
@@ -145,12 +151,22 @@ export function createResponseRepository(
     },
 
     async isBlocked(planId, deviceId) {
+      // The same device, or the account it is logged in to (spec 3.5).
       const row = await database.db
         .selectFrom("responses")
         .select("id")
         .where("plan_id", "=", planId)
-        .where("device_id", "=", deviceId)
         .where("kind", "in", ["rejected", "removed"])
+        .where((eb) =>
+          eb.or([
+            eb("device_id", "=", deviceId),
+            eb(
+              "identity_id",
+              "=",
+              eb.selectFrom("devices").select("identity_id").where("id", "=", deviceId),
+            ),
+          ]),
+        )
         .executeTakeFirst();
       return row !== undefined;
     },

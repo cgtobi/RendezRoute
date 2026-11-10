@@ -11,9 +11,11 @@ const ownerKey = (owner: ChannelOwner) =>
 /** In-memory channels; tests delete them per owner to mimic the cascades. */
 export class FakeChannelRepository implements ChannelRepository {
   readonly channels = new Map<string, NotificationChannel>();
+  /** The browser that made each channel. */
+  readonly devices = new Map<string, string>();
   #next = 0;
 
-  add(owner: ChannelOwner, subscription: PushSubscription) {
+  add(owner: ChannelOwner, subscription: PushSubscription, deviceId?: string) {
     const existing = [...this.channels.values()].find(
       (c) =>
         ownerKey(c.owner) === ownerKey(owner) && c.subscription.endpoint === subscription.endpoint,
@@ -21,7 +23,17 @@ export class FakeChannelRepository implements ChannelRepository {
     if (existing !== undefined) return Promise.resolve(existing.id);
     const id = `channel-${++this.#next}`;
     this.channels.set(id, { id, owner, subscription });
+    if (deviceId !== undefined) this.devices.set(id, deviceId);
     return Promise.resolve(id);
+  }
+
+  removeForDevice(deviceId: string, owners: readonly ChannelOwner[]) {
+    const keys = new Set(owners.map(ownerKey));
+    for (const [id, c] of this.channels) {
+      if (this.devices.get(id) === deviceId && keys.has(ownerKey(c.owner)))
+        this.channels.delete(id);
+    }
+    return Promise.resolve();
   }
 
   remove(owner: ChannelOwner, endpoint: string) {

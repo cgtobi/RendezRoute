@@ -694,6 +694,26 @@ export const de: Messages = {
   "admin.deleteConfirm": "Treffen endgültig löschen",
   "admin.deleted": "Das Treffen wurde gelöscht.",
   "admin.back": "Zurück zur Administration",
+  "account.claimHeading": "In dein Konto übernehmen",
+  "account.claimIntro":
+    "Dieser Browser hat diese, außerhalb deines Kontos. In deinem Konto erreichen sie jedes Gerät, auf dem du angemeldet bist; dieser Browser hat sie dann nur noch, solange er angemeldet ist.",
+  "account.claimPlans": {
+    zero: "keine Treffen",
+    one: "{count} Treffen, das du organisierst",
+    other: "{count} Treffen, die du organisierst",
+  },
+  "account.claimResponses": {
+    zero: "keine Antworten",
+    one: "{count} Antwort auf ein Treffen",
+    other: "{count} Antworten auf Treffen",
+  },
+  "account.claimTemplates": {
+    zero: "keine Vorlagen",
+    one: "{count} Vorlage",
+    other: "{count} Vorlagen",
+  },
+  "account.claimSubmit": "In mein Konto übernehmen",
+  "account.claimed": "In dein Konto übernommen.",
   "account.fediverseHeading": "Mit einem Fediverse-Konto anmelden",
   "account.fediverseServer": "Dein Server",
   "account.fediverseHint": "Zum Beispiel mastodon.social oder dein Handle wie @du@dein.server.",
@@ -722,7 +742,7 @@ export const de: Messages = {
   "account.save": "Speichern",
   "account.logout": "Abmelden",
   "account.logoutHint":
-    "Meldet nur diesen Browser ab. Dein Konto und alles, womit dieser Browser verknüpft ist, bleiben.",
+    "Meldet nur diesen Browser ab. Dein Konto und alles, was dieser Browser selbst hat, bleiben; Benachrichtigungen auf diesem Browser für die Treffen deines Kontos enden.",
   "account.loggedIn": "Du bist angemeldet.",
   "account.loggedOut": "Dieser Browser ist abgemeldet.",
   "account.renamed": "Dein Anzeigename wurde gespeichert.",

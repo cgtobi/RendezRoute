@@ -224,6 +224,8 @@ export async function storeNewPlan(
       hostTokenHash: deps.tokens.hash(hostToken),
       creationNonce: request.creationNonce,
       hostDeviceId: device.id,
+      // Logged in: the plan belongs to the account (step 5a).
+      ownerIdentityId: device.identityId,
       route: request.route,
     });
   } catch (error) {

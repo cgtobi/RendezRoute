@@ -91,10 +91,10 @@ describe("SQLite templates (spec 3.10, section 4)", () => {
     expect(
       await devices().hasLink("device-3", { role: "template", templateId: "template-1" }),
     ).toBe(false);
-    expect((await templates().listForDevice("device-2")).map((t) => t.title)).toEqual([
+    expect((await templates().listForDevice("device-2", "device")).map((t) => t.title)).toEqual([
       "Hill repeats",
     ]);
-    expect(await templates().listForDevice("device-3")).toEqual([]);
+    expect(await templates().listForDevice("device-3", "device")).toEqual([]);
   });
 
   it("are kept in the same transaction as the plan's deletion, with nothing from responses", async () => {
@@ -186,6 +186,6 @@ describe("SQLite templates (spec 3.10, section 4)", () => {
       unlinkedLastSeenBefore: later,
       anyLastSeenBefore: fixtureNow,
     });
-    expect(await templates().listForDevice("device-1")).toHaveLength(1);
+    expect(await templates().listForDevice("device-1", "device")).toHaveLength(1);
   });
 });

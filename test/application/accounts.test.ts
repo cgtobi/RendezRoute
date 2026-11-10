@@ -75,6 +75,7 @@ describe("logging in (spec 7 Identity)", () => {
       kind: "account",
       provider: "oidc",
       displayName: "Anna Example",
+      claimable: { plans: 0, responses: 0, templates: 0 },
     });
     expect(repositories.identities.all()).toEqual([
       {

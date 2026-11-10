@@ -2,7 +2,7 @@
 // person who responded, one per hosted plan for the host. Each browser subscribes on its own.
 import { MAX_CHANNELS_PER_OWNER, parsePushSubscription } from "../domain/push.ts";
 import { isBlocked } from "../domain/response.ts";
-import { resolveDevice } from "./devices.ts";
+import { lookupDevice, resolveDevice } from "./devices.ts";
 import { asHost, type Denied, isDenied } from "./host.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { ChannelOwner } from "./ports.ts";
@@ -52,8 +52,10 @@ export async function subscribe(
   if (denied(owner)) return owner;
   const subscription = parsePushSubscription(request.subscription);
   if (!subscription.ok) return { kind: "invalid" };
+  const device = await lookupDevice(deps, request.deviceToken);
+  if (device === undefined) return { kind: "not_found" };
   const channels = channelsOf(deps);
-  await channels.add(owner, subscription.value);
+  await channels.add(owner, subscription.value, device.id);
   const all = await channels.listFor(owner);
   for (const oldest of all.slice(0, Math.max(0, all.length - MAX_CHANNELS_PER_OWNER))) {
     await channels.delete(oldest.id);

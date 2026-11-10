@@ -108,8 +108,11 @@ export async function saveAsTemplate(
   const existing = await deps.templates.findIdByCreationNonce(request.creationNonce);
   if (existing !== undefined) return { kind: "duplicate", templateId: existing };
   const hostToken = deps.tokens.generate();
+  const device = await lookupDevice(deps, request.deviceToken);
   const kept = {
     ...(await newTemplate(deps, plan, request.includePrivate, deps.tokens.hash(hostToken))),
+    // Saved while logged in: the template belongs to the account (D25).
+    ownerIdentityId: device?.identityId,
     creationNonce: request.creationNonce,
   };
   try {
@@ -130,7 +133,7 @@ export async function listTemplates(
 ): Promise<Pick<PlanTemplate, "id" | "title">[]> {
   const device = await lookupDevice(deps, request.deviceToken);
   if (device === undefined) return [];
-  const templates = await deps.templates.listForDevice(device.id);
+  const templates = await deps.templates.listForDevice(device.id, "device_and_account");
   return templates.map(({ id, title }) => ({ id, title }));
 }
 

@@ -98,7 +98,7 @@ async function seedPlanAndResponse() {
 describe("plans linked to a device", () => {
   it("are the hosted ones and those responded to, with the response's kind, in one query", async () => {
     const plans = await seedPlanAndResponse();
-    const linked = await plans.findLinkedToDevice("device-1");
+    const linked = await plans.findLinkedToDevice("device-1", "device");
     expect(
       linked.map((entry) => [
         entry.plan.title,
@@ -109,7 +109,7 @@ describe("plans linked to a device", () => {
       ["Hosted", "host", false],
       ["Joined", "manage", "joined"],
     ]);
-    expect(await plans.findLinkedToDevice("unknown")).toEqual([]);
+    expect(await plans.findLinkedToDevice("unknown", "device")).toEqual([]);
   });
 });
 

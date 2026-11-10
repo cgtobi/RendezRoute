@@ -83,7 +83,7 @@ async function feedPlans(
   deps: PlanDeps,
   deviceId: string,
 ): Promise<{ plan: Plan; hosting: boolean }[]> {
-  const linked = await deps.plans.findLinkedToDevice(deviceId);
+  const linked = await deps.plans.findLinkedToDevice(deviceId, "device_and_account");
   return linked.flatMap((entry): { plan: Plan; hosting: boolean }[] =>
     entry.role === "host"
       ? [{ plan: entry.plan, hosting: true }]

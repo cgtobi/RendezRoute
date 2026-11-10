@@ -61,13 +61,13 @@ export async function viewMyData(
 ): Promise<MyData> {
   const device = await lookupDevice(deps, request.deviceToken);
   if (device === undefined) return EMPTY;
-  const linked = await deps.plans.findLinkedToDevice(device.id);
+  const linked = await deps.plans.findLinkedToDevice(device.id, "device");
   return {
     hosted: linked.flatMap((entry) => (entry.role === "host" ? [itemOf(entry.plan)] : [])),
     responses: linked.flatMap((entry) =>
       entry.role === "manage" ? [{ ...itemOf(entry.plan), responseKind: entry.responseKind }] : [],
     ),
-    templates: (await deps.templates.listForDevice(device.id)).map(
+    templates: (await deps.templates.listForDevice(device.id, "device")).map(
       ({ id, title, expiresAt, timeZone }) => ({ id, title, expiresAt, timeZone }),
     ),
     calendarFeed: (await deps.calendarFeeds.findForDevice(device.id)) !== undefined,
@@ -216,12 +216,12 @@ export async function exportMyData(
     }
     case "device": {
       const plans: ExportedPlan[] = [];
-      for (const entry of await deps.plans.findLinkedToDevice(device.id)) {
+      for (const entry of await deps.plans.findLinkedToDevice(device.id, "device")) {
         const plan = await exportedPlan(deps, entry.plan.id, device);
         if (plan !== undefined) plans.push(plan);
       }
       const templates: ExportedTemplate[] = [];
-      for (const template of await deps.templates.listForDevice(device.id)) {
+      for (const template of await deps.templates.listForDevice(device.id, "device")) {
         templates.push(await exportedTemplate(deps, template));
       }
       const calendarFeed = (await deps.calendarFeeds.findForDevice(device.id)) !== undefined;
@@ -242,18 +242,19 @@ export async function deleteMyData(
 ): Promise<{ kind: "deleted" } | { kind: "not_found" }> {
   const device = await resolveDevice(deps, request.deviceToken);
   if (device === undefined) return { kind: "not_found" };
-  const linked = await deps.plans.findLinkedToDevice(device.id);
+  const linked = await deps.plans.findLinkedToDevice(device.id, "device");
   const hosted = linked.flatMap((entry) => (entry.role === "host" ? [entry.plan] : []));
   for (const entry of linked) {
     if (entry.role !== "manage" || hosted.some((plan) => plan.id === entry.plan.id)) continue;
-    const response = await deps.responses.findForDevice(entry.plan.id, device.id);
+    // This browser's own response, never its account's (step 5a).
+    const response = await deps.responses.findById(entry.responseId);
     if (response !== undefined) await withdrawResponse(deps, entry.plan, response);
   }
   // Notices are collected while the channels still exist, and queued once the plans are gone.
   const notices = await Promise.all(hosted.map((plan) => deletionNotices(deps, plan)));
   await deps.plans.deleteMany(hosted.map((plan) => plan.id));
   for (const send of notices) await send();
-  for (const template of await deps.templates.listForDevice(device.id)) {
+  for (const template of await deps.templates.listForDevice(device.id, "device")) {
     await deps.templates.delete(template.id);
   }
   // Its links, calendar feed and permissions go with it.

@@ -690,6 +690,26 @@ export const fr: Messages = {
   "admin.deleteConfirm": "Supprimer définitivement la sortie",
   "admin.deleted": "La sortie a été supprimée.",
   "admin.back": "Retour à l’administration",
+  "account.claimHeading": "Transférer dans votre compte",
+  "account.claimIntro":
+    "Ce navigateur contient ceci, hors de votre compte. Dans votre compte, ces éléments sont accessibles depuis chaque appareil où vous êtes connecté·e ; ce navigateur ne les a alors plus que lorsqu’il est connecté.",
+  "account.claimPlans": {
+    zero: "aucune sortie",
+    one: "{count} sortie que vous organisez",
+    other: "{count} sorties que vous organisez",
+  },
+  "account.claimResponses": {
+    zero: "aucune réponse",
+    one: "{count} réponse à une sortie",
+    other: "{count} réponses à des sorties",
+  },
+  "account.claimTemplates": {
+    zero: "aucun modèle",
+    one: "{count} modèle",
+    other: "{count} modèles",
+  },
+  "account.claimSubmit": "Transférer dans mon compte",
+  "account.claimed": "Transféré dans votre compte.",
   "account.fediverseHeading": "Se connecter avec un compte du fédivers",
   "account.fediverseServer": "Votre serveur",
   "account.fediverseHint":
@@ -720,7 +740,7 @@ export const fr: Messages = {
   "account.save": "Enregistrer",
   "account.logout": "Se déconnecter",
   "account.logoutHint":
-    "Déconnecte uniquement ce navigateur. Votre compte, et tout ce à quoi ce navigateur est associé, restent.",
+    "Déconnecte uniquement ce navigateur. Votre compte, et tout ce que ce navigateur contient lui-même, restent ; les notifications de ce navigateur pour les sorties de votre compte s’arrêtent.",
   "account.loggedIn": "Vous êtes connecté·e.",
   "account.loggedOut": "Ce navigateur est déconnecté.",
   "account.renamed": "Votre nom affiché a été enregistré.",

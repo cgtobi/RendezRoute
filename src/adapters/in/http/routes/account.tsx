@@ -10,6 +10,7 @@
 import type { Context, Hono } from "hono";
 import {
   type AccountDeps,
+  claimDeviceData,
   finishLogin,
   logOut,
   renameAccount,
@@ -39,7 +40,7 @@ import {
   tooManyRequests,
 } from "./shared.tsx";
 
-const NOTICES = ["loggedIn", "loggedOut", "renamed"] as const;
+const NOTICES = ["loggedIn", "loggedOut", "renamed", "claimed"] as const;
 
 /** Where providers send the browser back. A fediverse server's own key follows this path (I50). */
 export const OIDC_CALLBACK_PATH = "/login/oidc/callback";
@@ -186,6 +187,11 @@ export function registerAccountRoutes(
       case "renamed":
         return c.redirect("/account?renamed", 303);
     }
+  });
+
+  app.post("/account/claim", async (c) => {
+    const result = await claimDeviceData(deps, { deviceToken: deviceToken(c) });
+    return c.redirect(result.kind === "claimed" ? "/account?claimed" : "/account", 303);
   });
 
   app.post("/account/logout", async (c) => {

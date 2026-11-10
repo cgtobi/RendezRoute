@@ -13,6 +13,7 @@ import type {
   FormNonceRepository,
   RatingRepository,
   ReportRepository,
+  AccessScope,
   InviteRepository,
   PermissionRepository,
   IdentityRepository,
@@ -106,8 +107,49 @@ export function createFakeRepositories(): {
         : target.templateId;
   const linkKey = (deviceId: string, target: DeviceLinkTarget) =>
     `${deviceId}|${target.role}|${targetId(target)}`;
+  /** Account ownership by "role|id" (step 5a), like the owner columns. */
+  const owners = new Map<string, string>();
+  /** What a device may act on, as link keys: its links, and its account's items (device_access). */
+  const access = (deviceId: string, scope: AccessScope = "device_and_account") => {
+    const keys = new Set([...links].filter((key) => key.startsWith(`${deviceId}|`)));
+    const identityId = devices.get(deviceId)?.device.identityId;
+    if (scope === "device_and_account" && identityId !== undefined) {
+      for (const [target, owner] of owners) {
+        if (owner === identityId) keys.add(`${deviceId}|${target}`);
+      }
+    }
+    return keys;
+  };
+  /** The device's own links that no account owns yet, by role. */
+  /** The plan a link key's target belongs to, if any. */
+  const planOfKey = (role: string, id: string) =>
+    role === "host" ? id : role === "manage" ? responses.get(id)?.response.planId : undefined;
+  /** Whether the account has a response to the plan, or owns it. */
+  const accountAnswered = (identityId: string, planId: string) =>
+    [...responses.values()].some(
+      (entry) =>
+        entry.response.planId === planId &&
+        owners.get(`manage|${entry.response.id}`) === identityId,
+    );
+  /** The device's own links that claiming may move, like the SQLite adapter's claimableIds. */
+  const claimableKeys = (deviceId: string) => {
+    const identityId = devices.get(deviceId)?.device.identityId;
+    return [...links].filter((key) => {
+      const [device, role = "", id = ""] = key.split("|");
+      if (device !== deviceId || owners.has(`${role}|${id}`)) return false;
+      const planId = planOfKey(role, id);
+      if (identityId === undefined || planId === undefined) return true;
+      if (role === "host") return !accountAnswered(identityId, planId);
+      return owners.get(`host|${planId}`) !== identityId && !accountAnswered(identityId, planId);
+    });
+  };
+  const countClaims = (keys: string[]) => {
+    const count = (role: string) => keys.filter((key) => key.split("|")[1] === role).length;
+    return { plans: count("host"), responses: count("manage"), templates: count("template") };
+  };
   const deleteTemplate = (id: string) => {
     templates.delete(id);
+    owners.delete(`template|${id}`);
     for (const key of links) if (key.endsWith(`|template|${id}`)) links.delete(key);
   };
   /** Stores a template and links the plan's host devices, like the SQLite adapter. */
@@ -117,6 +159,7 @@ export function createFakeRepositories(): {
     route,
     hostsOfPlan,
     creationNonce,
+    ownerIdentityId,
   }: NewTemplate) => {
     if (
       creationNonce !== undefined &&
@@ -130,6 +173,8 @@ export function createFakeRepositories(): {
       hostTokenHash,
       route: structuredClone(route),
     });
+    const planOwner = ownerIdentityId ?? owners.get(`host|${hostsOfPlan}`);
+    if (planOwner !== undefined) owners.set(`template|${template.id}`, planOwner);
     const hostDevices = Array.from(links, (key) => key.split("|"))
       .filter(([, role, id]) => role === "host" && id === hostsOfPlan)
       .map(([device = ""]) => device);
@@ -142,6 +187,7 @@ export function createFakeRepositories(): {
   /** Plan deletion with the cascades the database performs. */
   const deletePlan = (id: string) => {
     plans.delete(id);
+    owners.delete(`host|${id}`);
     routes.delete(id);
     deleteContributions((c) => c.planId === id);
     for (const [responseId, rating] of ratings)
@@ -152,6 +198,7 @@ export function createFakeRepositories(): {
     for (const [responseId, entry] of responses) {
       if (entry.response.planId !== id) continue;
       responses.delete(responseId);
+      owners.delete(`manage|${responseId}`);
       deleteContributions((c) => c.responseId === responseId);
       for (const key of links) if (key.endsWith(`|manage|${responseId}`)) links.delete(key);
     }
@@ -165,12 +212,13 @@ export function createFakeRepositories(): {
 
   return {
     plans: {
-      async create({ plan, hostTokenHash, creationNonce, hostDeviceId, route }) {
+      async create({ plan, hostTokenHash, creationNonce, hostDeviceId, ownerIdentityId, route }) {
         if (plans.has(plan.id) || planNonces.has(creationNonce)) throw new Error("duplicate key");
         if (route !== undefined) routes.set(plan.id, structuredClone(route));
         plans.set(plan.id, { plan: structuredClone(plan), hostTokenHash });
         planNonces.set(creationNonce, plan.id);
-        links.add(linkKey(hostDeviceId, { role: "host", planId: plan.id }));
+        if (ownerIdentityId !== undefined) owners.set(`host|${plan.id}`, ownerIdentityId);
+        else links.add(linkKey(hostDeviceId, { role: "host", planId: plan.id }));
       },
       async findById(id) {
         const entry = plans.get(id);
@@ -224,11 +272,10 @@ export function createFakeRepositories(): {
       async findActiveDeletingBetween(from, to) {
         return activeWhere((plan) => plan.deleteAt >= from && plan.deleteAt <= to);
       },
-      async findLinkedToDevice(deviceId) {
+      async findLinkedToDevice(deviceId, scope) {
         const linked: LinkedPlan[] = [];
-        for (const key of links) {
-          const [device, role, id = ""] = key.split("|");
-          if (device !== deviceId) continue;
+        for (const key of access(deviceId, scope)) {
+          const [, role, id = ""] = key.split("|");
           if (role === "host") {
             const entry = plans.get(id);
             if (entry !== undefined)
@@ -240,6 +287,7 @@ export function createFakeRepositories(): {
               linked.push({
                 plan: structuredClone(entry.plan),
                 role: "manage",
+                responseId: response.id,
                 responseKind: response.kind,
               });
             }
@@ -481,10 +529,11 @@ export function createFakeRepositories(): {
       async delete(id) {
         deleteTemplate(id);
       },
-      async listForDevice(deviceId) {
+      async listForDevice(deviceId, scope) {
+        const keys = access(deviceId, scope);
         return [...templates.values()]
           .filter((e) =>
-            links.has(linkKey(deviceId, { role: "template", templateId: e.template.id })),
+            keys.has(linkKey(deviceId, { role: "template", templateId: e.template.id })),
           )
           .map((e) => structuredClone(e.template))
           .sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
@@ -514,7 +563,21 @@ export function createFakeRepositories(): {
         links.add(linkKey(deviceId, target));
       },
       async hasLink(deviceId, target) {
-        return links.has(linkKey(deviceId, target));
+        return access(deviceId).has(linkKey(deviceId, target));
+      },
+      async claimable(deviceId) {
+        return countClaims(claimableKeys(deviceId));
+      },
+      async claimInto(deviceId, identityId) {
+        if (devices.get(deviceId)?.device.identityId !== identityId) return countClaims([]);
+        const keys = claimableKeys(deviceId);
+        const counts = countClaims(keys);
+        for (const key of keys) {
+          const [, role, id] = key.split("|");
+          owners.set(`${role}|${id}`, identityId);
+          links.delete(key);
+        }
+        return counts;
       },
       async replaceToken(deviceId, tokenHash) {
         const entry = devices.get(deviceId);
@@ -532,7 +595,7 @@ export function createFakeRepositories(): {
       },
       async unlinkOthers(target, keepDeviceId) {
         const suffix = `|${target.role}|${targetId(target)}`;
-        if (!links.has(`${keepDeviceId}${suffix}`)) return 0;
+        if (!access(keepDeviceId).has(`${keepDeviceId}${suffix}`)) return 0;
         let removed = 0;
         for (const key of links) {
           if (key.endsWith(suffix) && !key.startsWith(`${keepDeviceId}|`)) {
@@ -567,12 +630,13 @@ export function createFakeRepositories(): {
     },
 
     responses: {
-      async create({ response, manageTokenHash, creationNonce, deviceId }) {
+      async create({ response, manageTokenHash, creationNonce, deviceId, identityId }) {
         if (responses.has(response.id) || responseNonces.has(creationNonce))
           throw new Error("duplicate key");
         responses.set(response.id, { response: copy(response), manageTokenHash, deviceId });
         responseNonces.set(creationNonce, response.id);
-        if (deviceId !== undefined)
+        if (identityId !== undefined) owners.set(`manage|${response.id}`, identityId);
+        else if (deviceId !== undefined)
           links.add(linkKey(deviceId, { role: "manage", responseId: response.id }));
       },
       async findById(id) {
@@ -593,11 +657,23 @@ export function createFakeRepositories(): {
         return responseNonces.get(nonce);
       },
       async findForDevice(planId, deviceId) {
-        const entry = [...responses.values()].find(
-          (candidate) =>
-            candidate.response.planId === planId &&
-            links.has(linkKey(deviceId, { role: "manage", responseId: candidate.response.id })),
-        );
+        // The device's own response first, then the account's oldest (like SQLite).
+        const reachable = [...responses.values()]
+          .filter(
+            (candidate) =>
+              candidate.response.planId === planId &&
+              access(deviceId).has(
+                linkKey(deviceId, { role: "manage", responseId: candidate.response.id }),
+              ),
+          )
+          .sort(
+            (a, b) =>
+              Number(!links.has(linkKey(deviceId, { role: "manage", responseId: a.response.id }))) -
+                Number(
+                  !links.has(linkKey(deviceId, { role: "manage", responseId: b.response.id })),
+                ) || a.response.createdAt.getTime() - b.response.createdAt.getTime(),
+          );
+        const [entry] = reachable;
         return entry === undefined ? undefined : copy(entry.response);
       },
       async listByPlan(planId) {
@@ -620,15 +696,19 @@ export function createFakeRepositories(): {
       },
       async delete(id) {
         responses.delete(id);
+        owners.delete(`manage|${id}`);
         ratings.delete(id);
         deleteContributions((c) => c.responseId === id);
         for (const key of links) if (key.endsWith(`|manage|${id}`)) links.delete(key);
       },
       async isBlocked(planId, deviceId) {
+        const identityId = devices.get(deviceId)?.device.identityId;
         return [...responses.values()].some(
           (entry) =>
             entry.response.planId === planId &&
-            entry.deviceId === deviceId &&
+            (entry.deviceId === deviceId ||
+              (identityId !== undefined &&
+                owners.get(`manage|${entry.response.id}`) === identityId)) &&
             (entry.response.kind === "rejected" || entry.response.kind === "removed"),
         );
       },
@@ -688,7 +768,7 @@ export function createFakeRepositories(): {
       async deleteUnlinked() {
         let deleted = 0;
         for (const deviceId of feeds.keys()) {
-          if (![...links].some((key) => key.startsWith(`${deviceId}|`))) {
+          if (access(deviceId).size === 0) {
             feeds.delete(deviceId);
             deleted++;
           }

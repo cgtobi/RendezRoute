@@ -669,6 +669,26 @@ export const en = {
   "admin.deleteConfirm": "Delete plan for good",
   "admin.deleted": "The plan was deleted.",
   "admin.back": "Back to the admin page",
+  "account.claimHeading": "Move into your account",
+  "account.claimIntro":
+    "This browser holds these, outside your account. In your account they reach every device you log in on; this browser then has them only while logged in.",
+  "account.claimPlans": {
+    zero: "no plans",
+    one: "{count} plan you host",
+    other: "{count} plans you host",
+  },
+  "account.claimResponses": {
+    zero: "no responses",
+    one: "{count} response to a plan",
+    other: "{count} responses to plans",
+  },
+  "account.claimTemplates": {
+    zero: "no templates",
+    one: "{count} template",
+    other: "{count} templates",
+  },
+  "account.claimSubmit": "Move into my account",
+  "account.claimed": "Moved into your account.",
   "account.fediverseHeading": "Log in with a fediverse account",
   "account.fediverseServer": "Your server",
   "account.fediverseHint": "For example mastodon.social, or your handle such as @you@your.server.",
@@ -695,7 +715,7 @@ export const en = {
   "account.save": "Save",
   "account.logout": "Log out",
   "account.logoutHint":
-    "Logs out this browser only. Your account, and everything this browser is linked to, stay.",
+    "Logs out this browser only. Your account, and everything this browser holds itself, stay; notifications on this browser for your account’s plans stop.",
   "account.loggedIn": "You are logged in.",
   "account.loggedOut": "This browser is logged out.",
   "account.renamed": "Your display name was saved.",

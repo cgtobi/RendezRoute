@@ -10,6 +10,7 @@ export const de: Messages = {
   "layout.imprint": "Impressum",
   "layout.language": "Sprache",
   "layout.change": "Ändern",
+  "layout.menu": "Menü",
   "layout.units": "Einheiten",
   "units.metric": "Metrisch (km)",
   "units.imperial": "Imperial (Meilen)",

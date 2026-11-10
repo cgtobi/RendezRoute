@@ -12,6 +12,7 @@ export const fr: Messages = {
   "layout.imprint": "Mentions légales",
   "layout.language": "Langue",
   "layout.change": "Changer",
+  "layout.menu": "Menu",
   "layout.units": "Unités",
   "units.metric": "Métrique (km)",
   "units.imperial": "Impérial (miles)",

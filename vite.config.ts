@@ -102,11 +102,19 @@ export default defineConfig({
   // Browser code (spec 2: bundled and served by the instance, never from a CDN). Fixed file
   // names, so pages need no build manifest.
   publicDir: false,
+  // Asset URLs relative to the file that uses them (fonts.css), so they work under any path prefix.
+  base: "./",
   build: {
     outDir: "public/build",
     emptyOutDir: true,
     rollupOptions: {
-      input: { app: "src/client/app.ts", map: "src/client/map.ts", sw: "src/client/sw.ts" },
+      input: {
+        app: "src/client/app.ts",
+        map: "src/client/map.ts",
+        sw: "src/client/sw.ts",
+        // Inter from the bundle (decision D27); its subsets load only for the characters a page uses.
+        fonts: "src/client/fonts.css",
+      },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },
   },

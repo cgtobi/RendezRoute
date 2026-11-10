@@ -50,6 +50,7 @@ export function Layout({
         <title>{pageTitle}</title>
         {/* No favicon yet; an empty one keeps browsers from requesting /favicon.ico. */}
         <link rel="icon" href="data:," />
+        <link rel="stylesheet" href={`${pathBase}static/build/fonts.css`} />
         <link rel="stylesheet" href={`${pathBase}static/app.css`} />
         <script src={`${pathBase}static/build/app.js`} defer></script>
         {head}
@@ -65,33 +66,11 @@ export function Layout({
         </header>
         <main>{children}</main>
         <footer class="site-footer">
-          {languageSwitch !== undefined && (
-            <>
-              <PreferenceForm
-                t={t}
-                {...languageSwitch}
-                action="/language"
-                field="language"
-                label={t("layout.language")}
-                options={SUPPORTED_LANGUAGES.map((value) => ({
-                  value,
-                  label: LANGUAGE_NAMES[value],
-                  lang: value,
-                }))}
-                selected={language}
-              />
-              <PreferenceForm
-                t={t}
-                {...languageSwitch}
-                action="/units"
-                field="units"
-                label={t("layout.units")}
-                options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
-                selected={units}
-              />
-            </>
+          {config.instanceName !== SOFTWARE_NAME && (
+            <p class="powered-by">{t("layout.poweredBy", { name: SOFTWARE_NAME })}</p>
           )}
-          <p class="footer-links">
+          {/* Legal notices stay visible (German law asks for an imprint that is easy to find). */}
+          <p class="legal-links">
             {config.privacyUrl === undefined ? (
               <a href={`${pathBase}privacy`}>{t("layout.privacy")}</a>
             ) : (
@@ -99,17 +78,53 @@ export function Layout({
                 {t("layout.privacy")}
               </a>
             )}
-            <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
-            {loginConfigured(config) && <a href={`${pathBase}account`}>{t("layout.account")}</a>}
             {config.imprintUrl !== undefined && (
               <a href={config.imprintUrl.href} rel="noopener noreferrer">
                 {t("layout.imprint")}
               </a>
             )}
           </p>
-          {config.instanceName !== SOFTWARE_NAME && (
-            <p>{t("layout.poweredBy", { name: SOFTWARE_NAME })}</p>
-          )}
+          {/* A menu without JavaScript: the settings and own-data links one tap away (decision D27). */}
+          <details class="footer-menu">
+            <summary>
+              <span class="icon icon-menu" aria-hidden="true"></span>
+              {t("layout.menu")}
+            </summary>
+            <div class="footer-menu-body">
+              {languageSwitch !== undefined && (
+                <>
+                  <PreferenceForm
+                    t={t}
+                    {...languageSwitch}
+                    action="/language"
+                    field="language"
+                    label={t("layout.language")}
+                    options={SUPPORTED_LANGUAGES.map((value) => ({
+                      value,
+                      label: LANGUAGE_NAMES[value],
+                      lang: value,
+                    }))}
+                    selected={language}
+                  />
+                  <PreferenceForm
+                    t={t}
+                    {...languageSwitch}
+                    action="/units"
+                    field="units"
+                    label={t("layout.units")}
+                    options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
+                    selected={units}
+                  />
+                </>
+              )}
+              <p class="footer-links">
+                <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
+                {loginConfigured(config) && (
+                  <a href={`${pathBase}account`}>{t("layout.account")}</a>
+                )}
+              </p>
+            </div>
+          </details>
         </footer>
       </body>
     </html>

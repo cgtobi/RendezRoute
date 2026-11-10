@@ -36,6 +36,7 @@ const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
     "form.date",
     "form.latitude",
     "form.longitude",
+    "layout.menu",
     "plan.distance",
     "privacy.cookiesHeading",
   ],

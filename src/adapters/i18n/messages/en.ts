@@ -9,6 +9,7 @@ export const en = {
   "layout.imprint": "Imprint",
   "layout.language": "Language",
   "layout.change": "Change",
+  "layout.menu": "Menu",
   "layout.units": "Units",
   "units.metric": "Metric (km)",
   "units.imperial": "Imperial (mi)",

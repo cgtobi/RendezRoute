@@ -1,18 +1,57 @@
-/* RendezRoute base styles. Mobile first; no inline styles anywhere (spec 3.8 CSP).
-   Plan pages read --plan-* variables from the per-plan theme stylesheet (step 8). */
+/* RendezRoute styles (design decision D27). Mobile first; no inline styles anywhere (spec 3.8 CSP).
+   Plan pages read --plan-* variables from the per-plan theme stylesheet (spec 3.1).
+
+   Components, for pages added later (milestones B and C):
+   - Buttons: <button> or a.button is the page's one primary action; .secondary for everything
+     else; .danger for deleting. Groups of buttons go in .buttons.
+   - Fields: .field (label, control, .hint, .error); .field-row puts two side by side; .choice is a
+     radio or checkbox with its label; fieldset with legend groups related choices.
+   - Messages: .notice (neutral), .warning (needs care), .error (a field's problem), .link-box (a
+     link to copy, shown once).
+   - Lists: ul.list for rows divided by hairlines.
+   - Icons: <span class="icon icon-NAME" aria-hidden="true">; each needs its SVG in public/icons/
+     and a rule `.icon-NAME { --icon: url("icons/NAME.svg"); }` below.
+   The design tokens below are checked for WCAG AA contrast by test/design/tokens.test.ts. */
 
 :root {
+  /* Colour */
   --bg: #ffffff;
-  --fg: #1b1d21;
-  --muted: #5f6368;
-  --border: #d5d8dc;
-  --surface: #f4f5f7;
+  --fg: #16181d;
+  --muted: #5c636e;
+  --line: #e4e7eb;
+  --control-line: #c5cad1;
+  --field-border: #858c97;
+  --surface: #f3f4f6;
   --accent: #2e5bff;
   --on-accent: #ffffff;
+  --focus: #2e5bff;
   --danger: #b3261e;
   --on-danger: #ffffff;
   --warning-bg: #fff4e5;
-  --radius: 10px;
+  --warning-line: #f3d19c;
+  /* The secondary plan colour where a page has no plan theme (spec 3.1 default) */
+  --plan-secondary-default: #ff7a45;
+  --plan-on-secondary-default: #111111;
+  /* Type: 16 px base; headings tight and heavy */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-2xl: clamp(1.75rem, 1.35rem + 1.8vw, 2.5rem);
+  /* Space: a 4 px scale */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  /* Shape */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-pill: 999px;
+  /* Smallest touch target (WCAG 2.5.8 asks 24 px; 44 px for thumbs) */
+  --target: 44px;
   color-scheme: light dark;
 }
 
@@ -20,14 +59,18 @@
   :root {
     --bg: #121316;
     --fg: #e8eaed;
-    --muted: #a8adb4;
-    --border: #3a3d42;
-    --surface: #1d1f23;
+    --muted: #a3a9b2;
+    --line: #2c2f35;
+    --control-line: #464b53;
+    --field-border: #737a85;
+    --surface: #1d2024;
     --accent: #8ab4ff;
     --on-accent: #111111;
+    --focus: #8ab4ff;
     --danger: #f2b8b5;
     --on-danger: #111111;
     --warning-bg: #3a2c12;
+    --warning-line: #6b5120;
   }
 }
 
@@ -47,25 +90,67 @@ body {
   background: var(--bg);
   color: var(--fg);
   font:
-    16px/1.5 system-ui,
+    var(--text-md) / 1.5 Inter,
+    system-ui,
     -apple-system,
     "Segoe UI",
     Roboto,
     sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+h1 {
+  margin: var(--s5) 0 var(--s4);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  margin: var(--s6) 0 var(--s3);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  margin: var(--s5) 0 var(--s2);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 0.15em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+/* Page frame */
 
 main,
 .site-header,
 .site-footer {
   max-width: 40rem;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 var(--s4);
 }
 
 .site-header {
-  padding-top: 12px;
-  padding-bottom: 12px;
-  font-weight: 600;
+  padding-top: var(--s3);
+  padding-bottom: var(--s3);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .site-header a {
@@ -74,18 +159,75 @@ main,
 }
 
 .site-footer {
-  padding-top: 24px;
-  padding-bottom: 24px;
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.preference {
-  margin-bottom: 8px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-top: var(--s7);
+  padding-top: var(--s4);
+  padding-bottom: var(--s5);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.powered-by,
+.legal-links {
+  margin: 0;
+}
+
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+}
+
+.footer-menu {
+  margin-left: auto;
+}
+
+.footer-menu summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--target);
+  padding: 0 var(--s4);
+  border: 1px solid var(--control-line);
+  border-radius: var(--r-pill);
+  color: var(--fg);
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.footer-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.footer-menu[open] {
+  flex-basis: 100%;
+}
+
+.footer-menu[open] summary {
+  float: right;
+}
+
+.footer-menu-body {
+  clear: both;
+  padding-top: var(--s4);
+}
+
+.preference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+
+.preference label {
+  min-width: 5.5rem;
 }
 
 .preference select,
@@ -94,104 +236,180 @@ main,
   font-size: inherit;
 }
 
+.preference select {
+  width: 10rem;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin: var(--s4) 0 0;
+}
+
 .dev-banner {
   margin: 0;
-  padding: 8px 16px;
+  padding: var(--s2) var(--s4);
   background: var(--danger);
   color: var(--on-danger);
   text-align: center;
   font-weight: 600;
 }
 
-h1 {
-  font-size: 1.6rem;
-  line-height: 1.2;
+/* Icons: SVG files from public/icons/ as masks, so they take the text colour. */
+
+.icon {
+  display: inline-block;
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  background: currentColor;
+  vertical-align: -0.2em;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
 }
 
-a {
-  color: var(--accent);
+/* High-contrast modes replace backgrounds; keep icons in the text colour. */
+@media (forced-colors: active) {
+  .icon {
+    background: CanvasText;
+    forced-color-adjust: none;
+  }
 }
+
+.icon-menu {
+  --icon: url("icons/menu.svg");
+}
+
+/* Buttons: one primary per page, quiet secondaries, red for deleting. */
 
 .button,
 button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
-  min-height: 44px;
-  padding: 10px 18px;
-  border: 0;
-  border-radius: var(--radius);
+  gap: var(--s2);
+  min-height: var(--target);
+  padding: var(--s2) var(--s5);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
   background: var(--accent);
   color: var(--on-accent);
   font: inherit;
   font-weight: 600;
+  text-align: center;
   text-decoration: none;
   cursor: pointer;
 }
 
+.button.secondary,
+button.secondary {
+  border-color: var(--control-line);
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.button.danger,
+button.danger {
+  background: var(--danger);
+  color: var(--on-danger);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+/* Main buttons on plan pages use the plan's primary color (spec 3.1). */
+.plan .button:not(.secondary, .danger),
+.plan button:not(.secondary, .danger) {
+  background: var(--plan-primary, var(--accent));
+  color: var(--plan-on-primary, var(--on-accent));
+}
+
 /* Forms */
 
-.plan-form fieldset {
-  margin: 16px 0;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+fieldset {
+  margin: var(--s4) 0;
+  padding: var(--s3) var(--s4) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
 }
 
 .field {
-  margin: 12px 0;
+  margin: var(--s4) 0;
 }
 
 .field label,
 legend {
   display: block;
+  margin-bottom: var(--s1);
   font-weight: 600;
+}
+
+legend {
+  padding: 0 var(--s1);
 }
 
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--s3);
 }
 
-input:not([type="radio"], [type="color"]),
+input:not([type="radio"], [type="checkbox"], [type="color"]),
 select,
 textarea {
   width: 100%;
-  min-height: 44px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  min-height: var(--target);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-sm);
   background: var(--bg);
   color: var(--fg);
   font: inherit;
 }
 
+textarea {
+  min-height: 6rem;
+}
+
 input[type="color"] {
   width: 100%;
-  height: 44px;
+  height: var(--target);
   padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-sm);
   background: var(--bg);
 }
 
+input[type="radio"],
+input[type="checkbox"] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* A radio or checkbox with its label; the whole row is the touch target. */
 .choice {
   display: flex;
-  gap: 8px;
+  gap: var(--s3);
   align-items: center;
-  min-height: 44px;
+  min-height: var(--target);
+  font-weight: 400;
 }
 
 .hint {
-  margin: 4px 0 0;
+  margin: var(--s1) 0 0;
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 
 .error {
-  margin: 4px 0 0;
+  margin: var(--s1) 0 0;
   color: var(--danger);
   font-weight: 600;
 }
@@ -200,32 +418,74 @@ input[type="color"] {
 .field-invalid select,
 .field-invalid textarea {
   border-color: var(--danger);
+  border-width: 2px;
 }
 
+/* Messages */
+
 .warning {
-  padding: 10px 12px;
-  border-radius: var(--radius);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--warning-line);
+  border-radius: var(--r-md);
   background: var(--warning-bg);
 }
 
+.notice {
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
 .link-box {
-  padding: 10px 12px;
-  border-radius: var(--radius);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   background: var(--surface);
   overflow-wrap: anywhere;
+}
+
+.gone {
+  margin: var(--s6) 0;
+  font-size: var(--text-lg);
+}
+
+/* Lists divided by hairlines */
+
+.list,
+.templates ul,
+.template-facts,
+.my-data-items,
+.rating-notes,
+.report-attached,
+.contributions,
+.people-actions {
+  padding: 0;
+  list-style: none;
+}
+
+.list > li,
+.templates li,
+.template-facts li,
+.my-data-items > li,
+.rating-notes > li,
+.report-attached > li,
+.admin-report,
+.contribution {
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line);
 }
 
 /* Plan page */
 
 .plan-header {
-  margin: 0 -16px 16px;
-  padding: 16px;
-  background: var(--plan-primary, #2e5bff);
-  color: var(--plan-on-primary, #ffffff);
+  margin: 0 calc(-1 * var(--s4)) var(--s4);
+  padding: var(--s4);
+  background: var(--plan-primary, var(--accent));
+  color: var(--plan-on-primary, var(--on-accent));
 }
 
 .plan-header h1 {
-  margin: 4px 0;
+  margin: var(--s1) 0;
 }
 
 .plan-header p {
@@ -233,25 +493,26 @@ input[type="color"] {
 }
 
 .plan-activity {
-  font-size: 0.875rem;
+  font-size: var(--text-xs);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .badge {
   display: inline-block;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--plan-secondary, #ff7a45);
-  color: var(--plan-on-secondary, #111111);
+  padding: 0 var(--s2);
+  border-radius: var(--r-pill);
+  background: var(--plan-secondary, var(--plan-secondary-default));
+  color: var(--plan-on-secondary, var(--plan-on-secondary-default));
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .plan-facts {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
+  gap: var(--s1) var(--s4);
 }
 
 .plan-facts dt {
@@ -272,102 +533,58 @@ input[type="color"] {
 }
 
 .exact-start {
-  padding: 12px;
-  border: 2px solid var(--plan-secondary, #ff7a45);
-  border-radius: var(--radius);
+  padding: var(--s3) var(--s4);
+  border: 2px solid var(--plan-secondary, var(--plan-secondary-default));
+  border-radius: var(--r-md);
   background: var(--plan-primary-tint, transparent);
 }
 
 .exact-start h2 {
   margin-top: 0;
-  font-size: 1.1rem;
-}
-
-.notice {
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  background: var(--surface);
 }
 
 .deletion {
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 
 /* Responding and managing */
 
-.buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.button.secondary,
-button.secondary {
-  border: 2px solid var(--accent);
-  background: transparent;
-  color: var(--accent);
-}
-
-button.danger {
-  background: var(--danger);
-  color: var(--on-danger);
-}
-
-/* Main buttons on plan pages use the plan's primary color (spec 3.1). */
-.plan .button:not(.secondary),
-.plan button:not(.secondary, .danger) {
-  background: var(--plan-primary, var(--accent));
-  color: var(--plan-on-primary, var(--on-accent));
-}
-
 .respond,
 .own-response,
 .manage form {
-  margin: 16px 0;
+  margin: var(--s4) 0;
 }
 
 /* Counters are a secondary-color fill (spec 3.1); text keeps the normal color. */
 .counts {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 999px;
+  padding: var(--s1) var(--s3);
+  border-radius: var(--r-pill);
   background: var(--plan-secondary-tint, var(--surface));
   font-weight: 600;
 }
 
-.people ul {
+.people ul:not(.people-actions) {
   padding-left: 1.2em;
 }
 
 .people li {
-  margin: 4px 0;
+  margin: var(--s1) 0;
 }
 
 .withdraw {
-  margin: 24px 0;
+  margin: var(--s5) 0;
 }
 
 .withdraw summary {
-  min-height: 44px;
   color: var(--danger);
-  cursor: pointer;
 }
 
 /* Recap (spec 6 feature 5) */
 
-.contributions {
-  padding: 0;
-  list-style: none;
-}
-
-.contribution {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
 .contribution p {
-  margin: 4px 0;
+  margin: var(--s1) 0;
 }
 
 .contribution-author {
@@ -385,10 +602,10 @@ button.danger {
 
 .service {
   display: inline-block;
-  padding: 0 8px;
-  border-radius: 999px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
   background: var(--surface);
-  border: 1px solid var(--border);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -400,7 +617,7 @@ button.danger {
 .contribution-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--s3);
   align-items: center;
 }
 
@@ -410,26 +627,33 @@ button.danger {
 
 /* Host page */
 
-.people-actions {
-  padding: 0;
-  list-style: none;
-}
-
 .people-actions li {
   display: flex;
-  gap: 12px;
+  gap: var(--s3);
   align-items: center;
   justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line);
 }
 
 .people-actions form {
   margin: 0;
 }
 
+/* Pending requests on the host page (spec 6 feature 1): name, note, then the two buttons. */
+.people-actions.requests li {
+  flex-wrap: wrap;
+}
+
+.request-note {
+  flex-basis: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
 .danger-zone {
-  margin: 24px 0;
+  margin: var(--s5) 0;
 }
 
 .danger-zone summary,
@@ -437,27 +661,32 @@ button.danger {
   color: var(--danger);
 }
 
+details > summary {
+  min-height: var(--target);
+  cursor: pointer;
+}
+
 /* Maps (spec 3.9, decision D12) */
 
 .map {
   height: 280px;
-  margin: 12px 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  margin: var(--s3) 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   overflow: hidden;
 }
 
 .map-tools {
-  margin: 12px 0;
+  margin: var(--s3) 0;
 }
 
 .map-tools > button {
-  margin: 4px 0;
+  margin: var(--s1) 0;
 }
 
 .inline-input {
   display: flex;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .inline-input input {
@@ -473,12 +702,12 @@ button.danger {
 
 .place-results button {
   width: 100%;
-  margin: 4px 0;
+  margin: var(--s1) 0;
   text-align: left;
 }
 
 .plan-form .map-mode {
-  margin: 8px 0;
+  margin: var(--s2) 0;
   padding: 0;
   border: 0;
 }
@@ -486,47 +715,12 @@ button.danger {
 .share-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-}
-
-.footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-/* Pending requests on the host page (spec 6 feature 1): name, note, then the two buttons. */
-.people-actions.requests li {
-  flex-wrap: wrap;
-}
-
-.request-note {
-  flex-basis: 100%;
-  margin: 0;
-  white-space: pre-wrap;
-  color: var(--muted);
+  gap: var(--s2);
 }
 
 /* Notification switch (spec 6 feature 3), shown only where push works. */
 .push {
-  margin: 24px 0;
-}
-
-/* Templates (spec 3.10): the home page list and the template page's summary. */
-.templates ul,
-.template-facts,
-.my-data-items,
-.rating-notes {
-  padding: 0;
-  list-style: none;
-}
-
-.templates li,
-.template-facts li,
-.my-data-items > li,
-.rating-notes > li {
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  margin: var(--s5) 0;
 }
 
 /* Ratings (spec 6a): the own note keeps its line breaks. */
@@ -537,21 +731,10 @@ button.danger {
 /* Reports (spec 7 Moderation): a quiet link at the foot of the plan page; on the admin pages the
    reporter's details keep their line breaks, and attached copies are listed like ratings. */
 .report-link {
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 
 .report-details,
 .report-attached > li {
   white-space: pre-line;
-}
-
-.report-attached {
-  padding: 0;
-  list-style: none;
-}
-
-.report-attached > li,
-.admin-report {
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
 }

@@ -89,6 +89,34 @@ describe("page layout", () => {
     );
   });
 
+  it("folds the settings and own-data links into a menu that works without JavaScript (decision D27)", async () => {
+    const html = await (await createApp({ config: config() }).request("/")).text();
+    const menu = /<details class="footer-menu">([\s\S]*?)<\/details>/.exec(html)?.[1] ?? "";
+    expect(menu).toMatch(/^<summary>[\s\S]*Menu<\/summary>/);
+    for (const part of ['action="/language"', 'action="/units"', 'href="/my-data"']) {
+      expect(menu).toContain(part);
+    }
+  });
+
+  it("keeps the privacy notice and the imprint visible outside the menu (legal notices)", async () => {
+    const html = await (
+      await createApp({
+        config: config({ IMPRINT_URL: "https://club.example.org/imprint" }),
+      }).request("/")
+    ).text();
+    const footer = /<footer class="site-footer">([\s\S]*?)<\/footer>/.exec(html)?.[1] ?? "";
+    const outside = footer.replace(/<details class="footer-menu">[\s\S]*?<\/details>/, "");
+    expect(outside).toContain('href="/privacy"');
+    expect(outside).toContain('href="https://club.example.org/imprint"');
+  });
+
+  it("loads the bundled font stylesheet before the app's own (decision D27)", async () => {
+    const html = await (await createApp({ config: config() }).request("/")).text();
+    const fonts = html.indexOf('<link rel="stylesheet" href="/static/build/fonts.css"/>');
+    expect(fonts).toBeGreaterThan(-1);
+    expect(fonts).toBeLessThan(html.indexOf('<link rel="stylesheet" href="/static/app.css"/>'));
+  });
+
   it("sets the page language from Accept-Language", async () => {
     const response = await createApp({ config: config() }).request("/", {
       headers: { "accept-language": "fr,en;q=0.5" },

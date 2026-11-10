@@ -100,7 +100,7 @@ const audience = async (planId: string, deviceToken: string | undefined) =>
   (await viewPlan(deps, { planId, deviceToken })).kind;
 
 describe("claiming (spec 7 Identity)", () => {
-  it("Claiming moves a device's plans, responses and templates into the account", async () => {
+  it("moves a browser's plans, responses and templates into the account on request", async () => {
     // A browser that was never logged in: a plan, a response to another plan, a template.
     const hosted = await newPlan(undefined);
     const phone = hosted.newDeviceToken;

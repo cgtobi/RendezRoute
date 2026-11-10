@@ -2,7 +2,7 @@
 
 **RendezRoute** (from French _rendez-vous_ and _route_: "meet on the route") is a self-hosted web app where runners and cyclists post a planned run or ride, optionally with a route, so others can show interest or join. You share it with a link. Accounts are optional, and every plan is deleted automatically a few days after it happens.
 
-> **Status:** v0.1 in development: create, share, join, cancel and delete plans, in English, German and French.
+> **Status:** v0.7 in development. Plans without accounts (create, share, join or request, cancel, delete), maps, place search and weather, Web Push and calendar feeds, recaps and ratings, templates, and "My data" export and deletion all work. New in 0.7: an instance admin page, reports, posting rules with invite links, and optional accounts through OIDC or a fediverse server, with claiming, account export and deletion, and accounts deleted after 12 months unused. English, German and French.
 
 ## Running it
 
@@ -20,7 +20,7 @@ Things to know before going live:
 - **`CONTACT_EMAIL`** identifies the instance to map and place-search providers, as their policies require; without it, place search and map images in link previews are off.
 - **Weather** comes from [Open-Meteo](https://open-meteo.com/), whose free API is for non-commercial use only and has a daily request limit. For commercial use, get an API plan or run your own Open-Meteo and set `WEATHER_URL`, or switch weather off with `WEATHER_ENABLED=false`.
 - **Backups:** `docker compose exec rendezroute node dist/cli.js backup /data/manual-backups` copies the live database safely; copy it off the server together with the key volume, stored separately. Upgrades also back up the database before migrations (`/data/backups`, at most two, deleted after 7 days).
-- **`ADMIN_TOKEN`** turns on the instance admin pages at `/admin`, where you log in with the token to find and delete any plan. It must be at least 32 characters (for example from `openssl rand -base64 32`); without it there are no admin pages.
+- **`ADMIN_TOKEN`** turns on the instance admin pages at `/admin`, where you log in with the token to find and delete any plan, handle reports and, with `POSTING_MODE=invite`, create and revoke invite links. It must be at least 32 characters (for example from `openssl rand -base64 32`); without it there are no admin pages.
 - **`POSTING_MODE`** decides who may create plans: `anyone` (the default), `invite` (only browsers or accounts that opened an invite link from the admin page; needs `ADMIN_TOKEN`) or `logged_in` (needs OIDC or fediverse login).
 - **`OIDC_ISSUER`, `OIDC_CLIENT_ID`** (and `OIDC_CLIENT_SECRET` for a confidential client, `OIDC_NAME` for the button) turn on login with an OpenID Connect provider such as Keycloak or Authelia; it may run on your local network. Register `https://<your domain>/login/oidc/callback` as the redirect URI.
 - **`FEDIVERSE_LOGIN=true`** lets people log in with a Mastodon, GoToSocial, Akkoma or Pleroma account; `FEDIVERSE_LOGIN_SERVERS` (comma-separated domains) limits which servers may be used.
@@ -30,12 +30,12 @@ Things to know before going live:
 
 Node 26 and npm. `npm ci`, then:
 
-| Command         | What it does                                                                            |
-| --------------- | --------------------------------------------------------------------------------------- |
-| `npm run dev`   | Server with reload; needs `BASE_URL=http://localhost:3000 ALLOW_INSECURE_DEV=true`      |
-| `npm run check` | Format, lint, type check and unit/integration tests                                     |
-| `npm run build` | Browser bundles and the server build                                                    |
-| `npm run e2e`   | Browser tests against the Docker image with fake map and search services (needs Docker) |
+| Command         | What it does                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| `npm run dev`   | Server with reload; needs `BASE_URL=http://localhost:3000 ALLOW_INSECURE_DEV=true`                      |
+| `npm run check` | Format, lint, type check and unit/integration tests                                                     |
+| `npm run build` | Browser bundles and the server build                                                                    |
+| `npm run e2e`   | Browser tests against the Docker image with fake map, search, weather and login services (needs Docker) |
 
 `E2E_CHANNEL=chrome npm run e2e` uses an installed Chrome instead of Playwright's Chromium.
 

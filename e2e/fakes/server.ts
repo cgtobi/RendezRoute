@@ -1,7 +1,9 @@
 // Fake external services for end-to-end tests (spec 2b): map tiles, a Nominatim-style place
-// search and an Open-Meteo-style forecast, so E2E runs never touch real providers. Runs with Node's type stripping.
-import { createServer } from "node:http";
+// search, an Open-Meteo-style forecast, and an OIDC provider and a Mastodon-API server
+// (identity.ts), so E2E runs never touch real providers. Runs with Node's type stripping.
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { deflateSync } from "node:zlib";
+import { handleIdentity } from "./identity.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 
@@ -45,8 +47,9 @@ function tile(): Buffer {
 const TILE = tile();
 const PLACES = [{ display_name: "Flaucher, Isar, Munich", lat: "48.1107", lon: "11.5582" }];
 
-createServer((request, response) => {
+async function handle(request: IncomingMessage, response: ServerResponse) {
   const url = new URL(request.url ?? "/", "http://fakes");
+  if (await handleIdentity(request, response, url)) return;
   if (/^\/tiles\/\d+\/\d+\/\d+\.png$/.test(url.pathname)) {
     response.writeHead(200, { "content-type": "image/png", "access-control-allow-origin": "*" });
     response.end(TILE);
@@ -74,4 +77,11 @@ createServer((request, response) => {
   } else {
     response.writeHead(404).end();
   }
+}
+
+createServer((request, response) => {
+  handle(request, response).catch(() => {
+    if (!response.headersSent) response.writeHead(500);
+    response.end();
+  });
 }).listen(PORT);

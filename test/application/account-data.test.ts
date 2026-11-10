@@ -227,7 +227,7 @@ describe("export scopes (decision I52)", () => {
 });
 
 describe("deleting an account (spec 3.7; decision D25)", () => {
-  it("Claiming moves a device's plans, responses and templates into the account, and account deletion removes everything linked to it", async () => {
+  it("removes everything the account owns, claimed or created, and nothing of others", async () => {
     const { phone, hosted, carla, bens, templateId } = await accountWithData();
     // A browser's plan, claimed into the account, goes too.
     const claimedPlan = await newPlan(undefined, "Claimed plan");

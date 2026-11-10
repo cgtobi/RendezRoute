@@ -1,6 +1,7 @@
 # End-to-end environment (spec 2b definition of done): the built image on empty volumes, hardened
-# like production, once with default settings pointed at fake providers and once with maps,
-# geocoder and weather disabled. Started and stopped by global-setup.ts.
+# like production, three times: default settings pointed at fake providers; maps, geocoder and
+# weather disabled; and the 0.7 features (admin, invite-only posting, OIDC and fediverse login
+# against fakes). Started and stopped by global-setup.ts.
 name: rendezroute-e2e
 
 x-app: &app
@@ -67,6 +68,26 @@ services:
     ports:
       - "3102:3000"
 
+  # The 0.7 features: instance admin, invite-only posting, OIDC and fediverse login (fakes).
+  app-accounts:
+    <<: *app
+    environment:
+      <<: *env
+      BASE_URL: http://localhost:3103
+      ADMIN_TOKEN: e2e-admin-token-0123456789abcdefghij
+      POSTING_MODE: invite
+      OIDC_ISSUER: http://fakes:8080/oidc
+      OIDC_CLIENT_ID: rendezroute-e2e
+      OIDC_CLIENT_SECRET: e2e-oidc-secret
+      OIDC_NAME: E2E login
+      FEDIVERSE_LOGIN: "true"
+      FEDIVERSE_LOGIN_SERVERS: fakes:8080
+    volumes:
+      - accounts-data:/data
+    ports:
+      - "3103:3000"
+
 volumes:
   default-data:
   minimal-data:
+  accounts-data:

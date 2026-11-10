@@ -130,6 +130,27 @@ describe("CSRF protection (spec 3.8, decision I8)", () => {
     ).toBe(200);
   });
 
+  it("accepts forms from its own no-referrer pages, sent with Origin: null, only as same-origin", async () => {
+    // Secret-link pages are served with Referrer-Policy: no-referrer (spec 3.8), so their form
+    // posts carry "Origin: null"; only Sec-Fetch-Site: same-origin vouches for them (I53).
+    const hono = app();
+    const { cookie, token } = await session(hono);
+    const withNull = (fetchSite?: string) => ({
+      cookie,
+      origin: "null",
+      ...(fetchSite === undefined ? {} : { "sec-fetch-site": fetchSite }),
+    });
+    expect((await post(hono, withNull("same-origin"), `_csrf=${token}`)).status).toBe(200);
+    // Elsewhere, typed in (no form of ours), or nothing to vouch for it: refused.
+    const refused = [];
+    for (const fetchSite of ["cross-site", "same-site", "none", undefined]) {
+      refused.push((await post(hono, withNull(fetchSite), `_csrf=${token}`)).status);
+    }
+    expect(refused).toEqual([403, 403, 403, 403]);
+    // The token is still needed.
+    expect((await post(hono, withNull("same-origin"))).status).toBe(403);
+  });
+
   it("uses a non-__Host cookie without Secure in development mode", async () => {
     const dev = config({ BASE_URL: "http://localhost:3000", ALLOW_INSECURE_DEV: "true" });
     const { setCookie } = await session(app(dev));

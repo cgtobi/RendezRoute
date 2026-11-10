@@ -2,6 +2,9 @@
 // Locally, E2E_CHANNEL=chrome uses the installed Chrome instead of Playwright's Chromium.
 import { defineConfig, devices } from "@playwright/test";
 
+/** Specs that need the 0.7 configuration (admin, invites, logins): only the third container. */
+const ACCOUNT_SPECS = /v07\.spec\.ts$/;
+
 export default defineConfig({
   testDir: ".",
   globalSetup: "./global-setup.ts",
@@ -21,7 +24,21 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "default settings", use: { baseURL: "http://localhost:3101" } },
-    { name: "maps, geocoder and weather disabled", use: { baseURL: "http://localhost:3102" } },
+    {
+      name: "default settings",
+      testIgnore: ACCOUNT_SPECS,
+      use: { baseURL: "http://localhost:3101" },
+    },
+    {
+      name: "maps, geocoder and weather disabled",
+      testIgnore: ACCOUNT_SPECS,
+      use: { baseURL: "http://localhost:3102" },
+    },
+    // Admin, invites and accounts (0.7) need their own configuration.
+    {
+      name: "0.7 features",
+      testMatch: ACCOUNT_SPECS,
+      use: { baseURL: "http://localhost:3103" },
+    },
   ],
 });

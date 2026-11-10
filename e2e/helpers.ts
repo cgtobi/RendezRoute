@@ -5,7 +5,7 @@ import type { Browser, BrowserContext } from "@playwright/test";
 export const inFiveDays = () =>
   new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-const ALLOWED_HOSTS = new Set(["localhost:3101", "localhost:3102", "fakes:8080"]);
+const ALLOWED_HOSTS = new Set(["localhost:3101", "localhost:3102", "localhost:3103", "fakes:8080"]);
 
 /** A browser profile of its own (own cookies), failing the test on console errors or foreign requests. */
 export async function person(

@@ -67,7 +67,7 @@ describe("POSTING_MODE=anyone (the default)", () => {
 });
 
 describe("POSTING_MODE=invite (spec 7 Moderation)", () => {
-  it("With `POSTING_MODE=invite`, only devices or accounts that opened a valid invite link can create plans", async () => {
+  it("lets only browsers that confirmed an invite link create plans", async () => {
     const { app, admin, database } = await setup();
     const stranger = new TestClient(app);
     const form = await stranger.get("/new");

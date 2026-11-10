@@ -52,13 +52,17 @@ export function csrf({
 
     const origin = c.req.header("origin");
     const fetchSite = c.req.header("sec-fetch-site");
-    if (
-      origin !== undefined
-        ? origin !== config.baseUrl.origin
-        : fetchSite !== undefined && !ALLOWED_FETCH_SITES.has(fetchSite)
-    ) {
-      return forbidden();
-    }
+    const fromHere =
+      origin === "null"
+        ? // Pages served with Referrer-Policy: no-referrer (secret links, spec 3.8) make browsers
+          // send "Origin: null" with their forms. Only Sec-Fetch-Site may vouch for those, and only
+          // as same-origin: no form of ours is sent as "none", and without the header (older
+          // browsers, stripping extensions) a null origin stays refused (decision I53).
+          fetchSite === "same-origin"
+        : origin !== undefined
+          ? origin === config.baseUrl.origin
+          : fetchSite === undefined || ALLOWED_FETCH_SITES.has(fetchSite);
+    if (!fromHere) return forbidden();
 
     let submitted = c.req.header("x-csrf-token");
     if (submitted === undefined) {

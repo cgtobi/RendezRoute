@@ -34,6 +34,8 @@ export interface RateLimits {
   adminLogin: RateLimiter;
   /** Reports to the instance admin (spec 3.11: rate limits on reports). */
   report: RateLimiter;
+  /** Starting a login: each start keeps a pending login and calls the provider (spec 3.11). */
+  login: RateLimiter;
 }
 
 /**
@@ -58,6 +60,7 @@ export function createRateLimits(now: () => number): RateLimits {
     recap: createRateLimiter({ capacity: 10, perHour: 30, now }),
     adminLogin: createRateLimiter({ capacity: 5, perHour: 10, now }),
     report: createRateLimiter({ capacity: 3, perHour: 10, now }),
+    login: createRateLimiter({ capacity: 10, perHour: 30, now }),
   };
 }
 

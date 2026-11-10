@@ -107,10 +107,15 @@ describe("Get a new link (spec 3.2)", () => {
     const request = { kind: "host", id: planId, deviceToken: host, formNonce: nonce() } as const;
     await getNewLink(deps, request);
     const backups = { deleteOlderThan: async () => 0 };
+    const { pendingLogins } = createFakeRepositories();
     (deps.clock as FakeClock).set("2026-06-02T07:59:00Z");
-    expect(await runHousekeeping({ ...deps, backups })).toMatchObject({ deletedFormNonces: 0 });
+    expect(await runHousekeeping({ ...deps, backups, pendingLogins })).toMatchObject({
+      deletedFormNonces: 0,
+    });
     (deps.clock as FakeClock).set("2026-06-02T08:01:00Z");
-    expect(await runHousekeeping({ ...deps, backups })).toMatchObject({ deletedFormNonces: 1 });
+    expect(await runHousekeeping({ ...deps, backups, pendingLogins })).toMatchObject({
+      deletedFormNonces: 1,
+    });
   });
 
   it("replaces a manage link", async () => {

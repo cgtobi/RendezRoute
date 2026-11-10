@@ -1,5 +1,6 @@
 // Spec 2b privacy tests: sentinel values must be absent from every response an audience
 // may not see. Extended by every later step that adds an endpoint or audience.
+import { FakeOidcServer } from "../fakes/oidc-server.ts";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -459,10 +460,21 @@ describe("data at rest (spec 2b)", () => {
     const dir = mkdtempSync(join(tmpdir(), "rendezroute-privacy-"));
     dirs.push(dir);
     const path = join(dir, "rendezroute.db");
+    const oidc = new FakeOidcServer();
     const { app, database, clock } = await createTestApp({
       databasePath: path,
-      env: { ADMIN_TOKEN: "admin-token-for-tests-0123456789abcdef" },
+      env: { ADMIN_TOKEN: "admin-token-for-tests-0123456789abcdef", ...oidc.env() },
+      oidc,
     });
+    // An account, and a login left unfinished (spec 7 Identity).
+    const account = new TestClient(app);
+    const login = new URL((await account.get("/login/oidc")).headers.get("location") ?? "");
+    const callback = oidc.approve(login, {
+      sub: "SENTINEL-subject",
+      name: "SENTINEL-account-name",
+    });
+    expect((await account.get(`${callback.pathname}${callback.search}`)).status).toBe(303);
+    const unfinished = new URL((await account.get("/login/oidc")).headers.get("location") ?? "");
     const host = new TestClient(app);
     const { planId, hostPath } = await createPlanViaUi(host, exactStart);
     const joined = new TestClient(app);
@@ -482,7 +494,13 @@ describe("data at rest (spec 2b)", () => {
     );
     expect(reported.status).toBe(303);
     expect(database.sqlite.prepare("select count(*) from reports").pluck().get()).toBe(1);
+    expect(database.sqlite.prepare("select count(*) from identities").pluck().get()).toBe(1);
+    expect(database.sqlite.prepare("select count(*) from pending_logins").pluck().get()).toBe(1);
     const secrets = [
+      "SENTINEL-subject",
+      "SENTINEL-account-name",
+      unfinished.searchParams.get("state") ?? "missing",
+      unfinished.searchParams.get("nonce") ?? "missing",
       "SENTINEL-report-at-rest",
       RECAP_BODY,
       RECAP_LINK,

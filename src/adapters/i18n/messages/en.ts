@@ -567,6 +567,8 @@ export const en = {
   "myData.calendarOn": "This device has a calendar feed.",
   "myData.calendarOff": "This device has no calendar feed.",
   "myData.calendarManage": "Manage the calendar feed",
+  "myData.loggedIn": "This browser is logged in to your account.",
+  "myData.accountManage": "Your account",
   "myData.exportHeading": "Export or delete",
   "myData.exportHint":
     "The export is a ZIP file with your plans, responses and templates: the details as data.json, calendar files, routes as GPX and your own recap contributions. Other people appear only by name.",
@@ -585,6 +587,8 @@ export const en = {
   "myData.deleteTemplates": { one: "{count} template", other: "{count} templates" },
   "myData.deleteFeed": "the calendar feed",
   "myData.deleteDevice": "this browser’s link to all of it",
+  "myData.deleteKeepsAccount":
+    "This browser is logged in to an account. The account itself stays; this browser is only logged out.",
   "myData.deleteNoTemplates": "No templates are kept from the deleted plans.",
   "myData.deleteConfirm": "Delete everything for good",
   "myData.back": "Back to my data",
@@ -665,6 +669,31 @@ export const en = {
   "admin.deleteConfirm": "Delete plan for good",
   "admin.deleted": "The plan was deleted.",
   "admin.back": "Back to the admin page",
+  "layout.account": "Account",
+  "account.heading": "Your account",
+  "account.intro":
+    "Logging in is optional. It links this browser to your account; you can log out at any time.",
+  "account.loginWith": "Log in with {name}",
+  "account.linked": "This browser is logged in to your account.",
+  "account.displayName": "Display name",
+  "account.displayNameHint": "Filled in as your name when you plan a run or ride.",
+  "account.save": "Save",
+  "account.logout": "Log out",
+  "account.logoutHint":
+    "Logs out this browser only. Your account, and everything this browser is linked to, stay.",
+  "account.loggedIn": "You are logged in.",
+  "account.loggedOut": "This browser is logged out.",
+  "account.renamed": "Your display name was saved.",
+  "account.loginFailed": "The login did not work. Please start it again in this browser.",
+  "account.unavailable": "The login service cannot be reached right now. Please try again later.",
+  "account.tryAgain": "Back to logging in",
+  "posting.loginHeading": "Login needed",
+  "posting.loginNeeded": "On this instance, only people who are logged in can create plans.",
+  "posting.login": "Log in",
+  "privacy.oidc":
+    "Login with {name} ({host}): when you log in, your browser goes to {host}, which tells this instance which account you used. Stored here, encrypted: that account’s identifier and your display name. No password and no tokens are kept.",
+  "privacy.cookieLogin":
+    "While you log in, a login cookie for at most {minutes} minutes, so that only this browser can finish the login.",
   "posting.heading": "Invite needed",
   "posting.inviteNeeded":
     "On this instance, only people with an invite link can create plans. Ask the person who runs it for one.",

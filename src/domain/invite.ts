@@ -4,17 +4,19 @@
 import type { FieldError } from "./result.ts";
 import { localToInstant } from "./timezone.ts";
 
-/** Who may create plans; `logged_in` follows with accounts. */
-export const POSTING_MODES = ["anyone", "invite"] as const;
+/** Who may create plans. */
+export const POSTING_MODES = ["anyone", "invite", "logged_in"] as const;
 export type PostingMode = (typeof POSTING_MODES)[number];
 
-/** What a device needs before it may create plans; accounts add "login". */
-export function postingRequirement(mode: PostingMode): "none" | "invite" {
+/** What a device needs before it may create plans. */
+export function postingRequirement(mode: PostingMode): "none" | "invite" | "login" {
   switch (mode) {
     case "anyone":
       return "none";
     case "invite":
       return "invite";
+    case "logged_in":
+      return "login";
   }
 }
 

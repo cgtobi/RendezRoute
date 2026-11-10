@@ -1,5 +1,6 @@
 // Table types for Kysely (spec section 4). Must match the migrations in ./migrations;
 // repository integration tests and the schema conformance test catch drift.
+import type { IdentityProviderKind } from "../../../domain/identity.ts";
 import type { ReportReason } from "../../../domain/report.ts";
 import type { RatingValue } from "../../../domain/rating.ts";
 import type { Generated } from "kysely";
@@ -58,6 +59,7 @@ export interface DevicesTable {
   token_hash: string;
   created_at: string;
   last_seen_at: string;
+  identity_id: Generated<string | null>;
 }
 
 export interface DeviceLinksTable {
@@ -204,6 +206,8 @@ export interface DatabaseSchema {
   reports: ReportsTable;
   invites: InvitesTable;
   permissions: PermissionsTable;
+  identities: IdentitiesTable;
+  pending_logins: PendingLoginsTable;
 }
 
 export interface PlanRatingsTable {
@@ -236,9 +240,27 @@ export interface InvitesTable {
   created_at: string;
 }
 
+export interface IdentitiesTable {
+  id: string;
+  provider: IdentityProviderKind;
+  subject_hmac: string;
+  subject_enc: string;
+  display_name_enc: string | null;
+  created_at: string;
+  last_active_at: string;
+}
+
+export interface PendingLoginsTable {
+  state_hash: string;
+  provider: IdentityProviderKind;
+  secrets_enc: string;
+  started_at: string;
+}
+
 export interface PermissionsTable {
   id: string;
-  device_id: string;
+  device_id: string | null;
+  identity_id: string | null;
   permission: "may_post";
   invite_id: string | null;
   created_at: string;

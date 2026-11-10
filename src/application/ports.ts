@@ -1,4 +1,5 @@
 import type { GeoPoint } from "../domain/geo.ts";
+import type { Identity, IdentityProviderKind } from "../domain/identity.ts";
 import type { Invite } from "../domain/invite.ts";
 import type { Report, ReportReason } from "../domain/report.ts";
 import type { JobType } from "../domain/jobs.ts";
@@ -53,6 +54,7 @@ export const ENCRYPTED_FIELDS = [
   "reports.attached_content",
   "identities.subject",
   "identities.display_name",
+  "pending_logins.secrets",
 ] as const;
 export type EncryptedField = (typeof ENCRYPTED_FIELDS)[number];
 
@@ -144,6 +146,8 @@ export type LinkedPlan =
 export interface Device {
   id: string;
   lastSeenAt: Date;
+  /** The account logged in on this device, if any (spec 7 Identity). */
+  identityId: string | undefined;
 }
 
 /** What a device is linked to, and in which role (spec 3.2). */
@@ -185,10 +189,72 @@ export interface InviteRepository {
   }): Promise<"granted" | "already_allowed" | "unusable">;
 }
 
-/** What a device may do beyond the defaults (spec 3.10 Other expiry counts these as links). */
+/** What a device or account may do beyond the defaults (spec 3.10 Other expiry counts these as links). */
 export interface PermissionRepository {
-  /** When the device became allowed to post, if it is. */
+  /** When the device, or the account logged in on it, became allowed to post, if it is. */
   mayPostSince(deviceId: string): Promise<Date | undefined>;
+  /** The device's own permission only, which goes with the device's data (spec 3.7). */
+  deviceMayPostSince(deviceId: string): Promise<Date | undefined>;
+}
+
+/** Accounts (spec 7 Identity): subject and display name encrypted, looked up by a keyed hash. */
+export interface IdentityRepository {
+  create(identity: Identity, subjectHash: string): Promise<void>;
+  findBySubjectHash(
+    provider: IdentityProviderKind,
+    subjectHash: string,
+  ): Promise<Identity | undefined>;
+  findById(id: string): Promise<Identity | undefined>;
+  setDisplayName(id: string, displayName: string | undefined): Promise<void>;
+  touch(id: string, now: Date): Promise<void>;
+}
+
+/** Keyed hash for finding encrypted values (spec 3.11: account identities). */
+export interface LookupHasher {
+  hash(value: string): string;
+}
+
+/** The one-time values a login checks on its way back: never sent anywhere but where they belong. */
+export interface LoginSecrets {
+  state: string;
+  nonce: string;
+  codeVerifier: string;
+}
+
+/** A login started and not finished yet (at most LOGIN_WINDOW_MINUTES); encrypted at rest. */
+export interface PendingLogin {
+  provider: IdentityProviderKind;
+  secrets: LoginSecrets;
+  startedAt: Date;
+}
+
+export interface PendingLoginRepository {
+  create(stateHash: string, login: PendingLogin): Promise<void>;
+  /** Removes and returns the pending login: each can be finished once. */
+  take(stateHash: string): Promise<PendingLogin | undefined>;
+  deleteStartedBefore(cutoff: Date): Promise<number>;
+}
+
+/** Who logged in, as the provider says. */
+export interface ProviderAccount {
+  /** Stable for the account at this provider, issuer included. */
+  subject: string;
+  /** Names the provider offers, best first; the first valid one becomes the display name. */
+  names: (string | undefined)[];
+}
+
+/**
+ * A way to log in (spec 7 Identity, 3.11 Account takeover): PKCE, state, nonce and exact redirect
+ * matching are the adapter's job; it keeps no tokens.
+ */
+export interface IdentityProvider {
+  /** Where to send the browser, with the one-time values the callback must match. */
+  startLogin(): Promise<{ authorizationUrl: URL; secrets: LoginSecrets }>;
+  /** Checks the provider's answer at the callback URL against the login's one-time values. */
+  finishLogin(
+    callback: URL,
+    secrets: LoginSecrets,
+  ): Promise<{ ok: true; account: ProviderAccount } | { ok: false }>;
 }
 
 /** Reports to the instance admin (spec 7 Moderation); details and attachments encrypted at rest. */
@@ -273,6 +339,10 @@ export interface DeviceRepository {
   /** Idempotent. */
   link(deviceId: string, target: DeviceLinkTarget, now: Date): Promise<void>;
   hasLink(deviceId: string, target: DeviceLinkTarget): Promise<boolean>;
+  /** Logs the device in to an account, or out of it (undefined). */
+  setIdentity(deviceId: string, identityId: string | undefined): Promise<void>;
+  /** A new cookie token for the device; the old one stops working, its links stay. */
+  replaceToken(deviceId: string, tokenHash: string): Promise<void>;
   /**
    * "Sign out all other devices": removes the target's links of every other device, in one step and
    * only while the kept device is still linked, so two devices signing out at once cannot remove

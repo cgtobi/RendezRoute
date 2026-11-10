@@ -1,7 +1,8 @@
 // Plan routes (spec 5 features 1 and 3).
 import type { Context, Hono } from "hono";
 import { createPlan, viewPlan, viewPlanTheme } from "../../../../application/plans.ts";
-import { mayCreatePlans } from "../../../../application/posting-rules.ts";
+import { viewAccount } from "../../../../application/accounts.ts";
+import { postingNeed } from "../../../../application/posting-rules.ts";
 import { DEFAULT_COLORS } from "../../../../domain/color.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import { previewImage } from "../../../../application/previews.ts";
@@ -20,7 +21,7 @@ import {
   badRequest,
   formField,
   formFile,
-  inviteNeeded,
+  postingClosed,
   mapSettings,
   newNonce,
   planGone,
@@ -35,7 +36,7 @@ import {
 } from "./shared.tsx";
 
 export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
-  const { config, planDeps, geocoder, previewRenderer, limits } = deps;
+  const { config, planDeps, geocoder, previewRenderer, limits, accounts } = deps;
   const emptyForm = (): PlanInput => ({
     ...planInput(() => ""),
     activity: "run",
@@ -76,10 +77,15 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
 
   app.get("/new", async (c) => {
     // With POSTING_MODE=invite, how to get an invite instead of a form the device cannot send.
-    if (!(await mayCreatePlans(planDeps, { deviceToken: readDeviceToken(c, config) }))) {
-      return inviteNeeded(c, config, 200);
-    }
-    return renderForm(c, emptyForm(), [], newNonce());
+    const needs = await postingNeed(planDeps, { deviceToken: readDeviceToken(c, config) });
+    if (needs !== undefined) return postingClosed(c, config, needs, 200);
+    // A logged-in poster's display name fills the name field (spec 7 Identity).
+    const account =
+      accounts === undefined
+        ? undefined
+        : await viewAccount(accounts, { deviceToken: readDeviceToken(c, config) });
+    const posterName = account?.kind === "account" ? (account.displayName ?? "") : "";
+    return renderForm(c, { ...emptyForm(), posterName }, [], newNonce());
   });
 
   app.post("/new", async (c) => {
@@ -113,7 +119,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       case "bad_request":
         return badRequest(c);
       case "not_allowed":
-        return inviteNeeded(c, config, 403);
+        return postingClosed(c, config, result.needs, 403);
       case "duplicate":
         return c.redirect(`/p/${result.planId}`, 303);
       case "invalid":

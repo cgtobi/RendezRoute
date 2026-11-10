@@ -100,6 +100,7 @@ export function Layout({
               </a>
             )}
             <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
+            {config.oidc !== undefined && <a href={`${pathBase}account`}>{t("layout.account")}</a>}
             {config.imprintUrl !== undefined && (
               <a href={config.imprintUrl.href} rel="noopener noreferrer">
                 {t("layout.imprint")}

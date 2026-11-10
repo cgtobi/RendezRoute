@@ -1,7 +1,9 @@
 // Helpers shared by the plan, response and secret-link routes.
-import { InviteNeeded } from "../views/posting.tsx";
+import { PostingClosed } from "../views/posting.tsx";
+import type { PostingNeed } from "../../../../application/posting-rules.ts";
 import { randomBytes } from "node:crypto";
 import type { Context } from "hono";
+import type { AccountDeps } from "../../../../application/accounts.ts";
 import type { PlanDeps } from "../../../../application/plans.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "../../../../application/ports.ts";
 import { planWeather } from "../../../../application/weather.ts";
@@ -29,6 +31,8 @@ export interface RouteDeps {
   vapidPublicKey: string;
   /** Plans can be reported: instance admin authentication is configured (spec 7 Moderation). */
   reporting: boolean;
+  /** Accounts, when a way to log in is configured (spec 7 Identity). */
+  accounts: AccountDeps | undefined;
 }
 
 /** The rate-limit key of the request's client; never logged (decision I18). */
@@ -92,20 +96,27 @@ export function planGone(c: Context<AppEnv>) {
 }
 
 /**
- * The posting rules keep this device from creating plans: how to get an invite (spec 7). The page
- * in place of the form answers 200; a form sent anyway answers 403.
+ * The posting rules keep this device from creating plans: how to get an invite or log in (spec 7
+ * Moderation). The page in place of the form answers 200; a form sent anyway answers 403.
  */
-export function inviteNeeded(c: Context<AppEnv>, config: Config, status: 200 | 403) {
+export function postingClosed(
+  c: Context<AppEnv>,
+  config: Config,
+  requirement: PostingNeed,
+  status: 200 | 403,
+) {
   const t = c.get("t");
+  const heading = t(requirement === "invite" ? "posting.heading" : "posting.loginHeading");
   c.status(status);
   c.header("cache-control", "private, no-store");
   return c.render(
-    <InviteNeeded
+    <PostingClosed
       t={t}
+      requirement={requirement}
       contactEmail={config.contactEmail}
-      heading={{ level: 1, text: t("posting.heading") }}
+      heading={{ level: 1, text: heading }}
     />,
-    { title: t("posting.heading") },
+    { title: heading },
   );
 }
 

@@ -29,7 +29,14 @@ import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { type Config, loadConfig } from "../../src/config.ts";
 import type { PlanDeps } from "../../src/application/plans.ts";
 import type { PreviewRenderer, WeatherProvider } from "../../src/application/ports.ts";
+import { createLookupHasher } from "../../src/adapters/out/crypto/lookup-hasher.ts";
+import { createOidcProvider } from "../../src/adapters/out/identity/oidc.ts";
+import {
+  createIdentityRepository,
+  createPendingLoginRepository,
+} from "../../src/adapters/out/sqlite/identities.ts";
 import { FakeClock } from "../fakes/clock.ts";
+import type { FakeOidcServer } from "../fakes/oidc-server.ts";
 import { FakeGeocoder } from "../fakes/geocoder.ts";
 import { FakePreviewRenderer } from "../fakes/preview-renderer.ts";
 import { fixtureNow } from "../fixtures/plans.ts";
@@ -53,6 +60,7 @@ export async function createTestApp({
   }),
   renderer,
   weather,
+  oidc,
 }: {
   databasePath?: string;
   env?: Record<string, string>;
@@ -61,6 +69,8 @@ export async function createTestApp({
   renderer?: PreviewRenderer;
   /** Forecasts for plan pages; none by default, so tests never depend on weather. */
   weather?: WeatherProvider;
+  /** A fake OIDC provider the app talks to; pass its env() too. */
+  oidc?: FakeOidcServer;
 } = {}) {
   const config = testConfig(env);
   const database: Database = await openDatabase(databasePath);
@@ -92,6 +102,7 @@ export async function createTestApp({
     permissions: createPermissionRepository(database),
     notify: { channels, jobs, reminders: createSentReminderRepository(database) },
   };
+  const pendingLogins = createPendingLoginRepository(database, cipher);
   const app = createApp({
     config,
     geocoder: config.geocoder.enabled ? geocoder : undefined,
@@ -102,6 +113,24 @@ export async function createTestApp({
     adminAuth:
       config.adminToken === undefined ? undefined : createTokenAdminAuth(config.adminToken),
     csrfKey: randomBytes(32),
+    accounts: {
+      identities: createIdentityRepository(database, cipher),
+      pendingLogins,
+      identityLookup: createLookupHasher(randomBytes(32)),
+      identityProviders:
+        config.oidc === undefined || oidc === undefined
+          ? {}
+          : {
+              oidc: createOidcProvider({
+                issuer: config.oidc.issuer,
+                clientId: config.oidc.clientId,
+                clientSecret: config.oidc.clientSecret,
+                redirectUri: new URL("/login/oidc/callback", config.baseUrl),
+                fetch: oidc.fetch,
+                allowHttp: false,
+              }),
+            },
+    },
     logger: createLogger({ write: (line) => logs.push(line) }),
     planDeps,
   });
@@ -117,5 +146,6 @@ export async function createTestApp({
     channels,
     jobs,
     vapidPublicKey,
+    pendingLogins,
   };
 }

@@ -1,5 +1,6 @@
 // Privacy notice (spec 5 feature 13), generated from the configuration: only services that are
 // switched on are mentioned, and only features this version has.
+import { LOGIN_WINDOW_MINUTES } from "../../../../domain/identity.ts";
 import { ADMIN_SESSION_HOURS } from "../../../../application/admin.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { Config } from "../../../../config.ts";
@@ -70,6 +71,9 @@ export function PrivacyPage({
         <li>{t("privacy.cookieCsrf")}</li>
         <li>{t("privacy.cookiePreferences", { days: LONG_COOKIE_DAYS })}</li>
         {adminLogin && <li>{t("privacy.cookieAdmin", { hours: ADMIN_SESSION_HOURS })}</li>}
+        {config.oidc !== undefined && (
+          <li>{t("privacy.cookieLogin", { minutes: LOGIN_WINDOW_MINUTES })}</li>
+        )}
       </ul>
       <p>{t("privacy.cookieOthers")}</p>
 
@@ -79,6 +83,9 @@ export function PrivacyPage({
         {maps.serverSideTiles && <li>{t("privacy.tilesServer")}</li>}
         {geocoder.enabled && (
           <li>{t("privacy.geocoder", { host: geocoder.url.host, days: SERVICE_CACHE_DAYS })}</li>
+        )}
+        {config.oidc !== undefined && (
+          <li>{t("privacy.oidc", { name: config.oidc.name, host: config.oidc.issuer.host })}</li>
         )}
         {weather.enabled && (
           <li>

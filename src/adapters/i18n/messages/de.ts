@@ -589,6 +589,8 @@ export const de: Messages = {
   "myData.calendarOn": "Dieses Gerät hat ein Kalender-Abo.",
   "myData.calendarOff": "Dieses Gerät hat kein Kalender-Abo.",
   "myData.calendarManage": "Kalender-Abo verwalten",
+  "myData.loggedIn": "Dieser Browser ist bei deinem Konto angemeldet.",
+  "myData.accountManage": "Dein Konto",
   "myData.exportHeading": "Exportieren oder löschen",
   "myData.exportHint":
     "Der Export ist eine ZIP-Datei mit deinen Treffen, Antworten und Vorlagen: die Angaben als data.json, Kalenderdateien, Routen als GPX und deine eigenen Beiträge zum Rückblick. Andere Personen erscheinen nur mit ihrem Namen.",
@@ -608,6 +610,8 @@ export const de: Messages = {
   "myData.deleteTemplates": { one: "{count} Vorlage", other: "{count} Vorlagen" },
   "myData.deleteFeed": "das Kalender-Abo",
   "myData.deleteDevice": "die Verknüpfung dieses Browsers mit allem",
+  "myData.deleteKeepsAccount":
+    "Dieser Browser ist bei einem Konto angemeldet. Das Konto selbst bleibt; dieser Browser wird nur abgemeldet.",
   "myData.deleteNoTemplates": "Von den gelöschten Treffen werden keine Vorlagen behalten.",
   "myData.deleteConfirm": "Alles endgültig löschen",
   "myData.back": "Zurück zu meinen Daten",
@@ -690,6 +694,34 @@ export const de: Messages = {
   "admin.deleteConfirm": "Treffen endgültig löschen",
   "admin.deleted": "Das Treffen wurde gelöscht.",
   "admin.back": "Zurück zur Administration",
+  "layout.account": "Konto",
+  "account.heading": "Dein Konto",
+  "account.intro":
+    "Anmelden ist freiwillig. Es verknüpft diesen Browser mit deinem Konto; du kannst dich jederzeit abmelden.",
+  "account.loginWith": "Anmelden mit {name}",
+  "account.linked": "Dieser Browser ist bei deinem Konto angemeldet.",
+  "account.displayName": "Anzeigename",
+  "account.displayNameHint":
+    "Wird als dein Name eingetragen, wenn du einen Lauf oder eine Ausfahrt planst.",
+  "account.save": "Speichern",
+  "account.logout": "Abmelden",
+  "account.logoutHint":
+    "Meldet nur diesen Browser ab. Dein Konto und alles, womit dieser Browser verknüpft ist, bleiben.",
+  "account.loggedIn": "Du bist angemeldet.",
+  "account.loggedOut": "Dieser Browser ist abgemeldet.",
+  "account.renamed": "Dein Anzeigename wurde gespeichert.",
+  "account.loginFailed":
+    "Die Anmeldung hat nicht geklappt. Bitte starte sie in diesem Browser noch einmal.",
+  "account.unavailable":
+    "Der Anmeldedienst ist gerade nicht erreichbar. Bitte versuch es später noch einmal.",
+  "account.tryAgain": "Zurück zur Anmeldung",
+  "posting.loginHeading": "Anmeldung nötig",
+  "posting.loginNeeded": "Auf dieser Instanz können nur angemeldete Menschen Treffen erstellen.",
+  "posting.login": "Anmelden",
+  "privacy.oidc":
+    "Anmeldung mit {name} ({host}): Wenn du dich anmeldest, geht dein Browser zu {host}, das dieser Instanz mitteilt, welches Konto du benutzt hast. Hier gespeichert, verschlüsselt: die Kennung dieses Kontos und dein Anzeigename. Kein Passwort und keine Tokens werden aufbewahrt.",
+  "privacy.cookieLogin":
+    "Während du dich anmeldest, ein Anmelde-Cookie für höchstens {minutes} Minuten, damit nur dieser Browser die Anmeldung abschließen kann.",
   "posting.heading": "Einladung nötig",
   "posting.inviteNeeded":
     "Auf dieser Instanz können nur Menschen mit einem Einladungslink Treffen erstellen. Frag die Person, die sie betreibt, nach einem.",

@@ -95,8 +95,8 @@ describe("posting rules (spec 7 Moderation)", () => {
 
   it("with POSTING_MODE=invite, refuse devices that opened no invite link, without creating a device", async () => {
     expect(await mayCreatePlans(deps, { deviceToken: undefined })).toBe(false);
-    expect(await create(undefined)).toEqual({ kind: "not_allowed" });
-    expect(await create("unknown-device-token")).toEqual({ kind: "not_allowed" });
+    expect(await create(undefined)).toEqual({ kind: "not_allowed", needs: "invite" });
+    expect(await create("unknown-device-token")).toEqual({ kind: "not_allowed", needs: "invite" });
     expect(devices()).toEqual([]);
   });
 
@@ -159,7 +159,7 @@ describe("posting rules (spec 7 Moderation)", () => {
     expect((await repeat(deviceToken)).kind).toBe("created");
     // A device linked to the template through its template link, but never invited.
     const other = await confirmTemplateLinkFor(saved.hostToken);
-    expect(await repeat(other)).toEqual({ kind: "not_allowed" });
+    expect(await repeat(other)).toEqual({ kind: "not_allowed", needs: "invite" });
   });
 });
 

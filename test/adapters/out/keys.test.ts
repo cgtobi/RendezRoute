@@ -179,6 +179,21 @@ describe("deriveKey", () => {
   });
 });
 
+describe("deriveKey across key versions (spec 3.11 key rotation)", () => {
+  it("keeps the lookup key when a newer key is added, while the CSRF key follows the current one", () => {
+    const [first, second] = [Buffer.alloc(32, 1), Buffer.alloc(32, 2)];
+    const before = createKeyring(1, [[1, first]]);
+    const after = createKeyring(2, [
+      [1, first],
+      [2, second],
+    ]);
+    expect(deriveKey(after, "identity-lookup").equals(deriveKey(before, "identity-lookup"))).toBe(
+      true,
+    );
+    expect(deriveKey(after, "csrf").equals(deriveKey(before, "csrf"))).toBe(false);
+  });
+});
+
 describe("createKeyring", () => {
   it("requires 32-byte keys and an existing current version", () => {
     expect(() => createKeyring(1, [[1, Buffer.alloc(16)]])).toThrow(/32 bytes/);

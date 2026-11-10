@@ -9,7 +9,7 @@ type PostingDeps = Pick<
   "postingMode" | "permissions" | "devices" | "tokens" | "ids" | "clock"
 >;
 
-/** Whether an invite link let the device post. Never writes. */
+/** Whether an invite link let the device, or the account logged in on it, post. Never writes. */
 export async function deviceMayPost(
   deps: Pick<PlanDeps, "permissions" | "devices" | "tokens" | "ids" | "clock">,
   deviceToken: string | undefined,
@@ -18,15 +18,30 @@ export async function deviceMayPost(
   return device !== undefined && (await deps.permissions.mayPostSince(device.id)) !== undefined;
 }
 
+/** What keeps a device from creating plans: an invite link or a login it lacks. */
+export type PostingNeed = "invite" | "login";
+
+/** What the device still needs before it may create plans, if anything. Never writes. */
+export async function postingNeed(
+  deps: PostingDeps,
+  request: { deviceToken: string | undefined },
+): Promise<PostingNeed | undefined> {
+  switch (postingRequirement(deps.postingMode)) {
+    case "none":
+      return undefined;
+    case "invite":
+      return (await deviceMayPost(deps, request.deviceToken)) ? undefined : "invite";
+    case "login":
+      return (await lookupDevice(deps, request.deviceToken))?.identityId === undefined
+        ? "login"
+        : undefined;
+  }
+}
+
 /** Whether the device may create plans under the instance's posting rules. Never writes. */
 export async function mayCreatePlans(
   deps: PostingDeps,
   request: { deviceToken: string | undefined },
 ): Promise<boolean> {
-  switch (postingRequirement(deps.postingMode)) {
-    case "none":
-      return true;
-    case "invite":
-      return deviceMayPost(deps, request.deviceToken);
-  }
+  return (await postingNeed(deps, request)) === undefined;
 }

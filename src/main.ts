@@ -14,7 +14,7 @@ import { notificationHandler } from "./application/notifications.ts";
 import type { PlanDeps } from "./application/plans.ts";
 import { reminderStillDue, runReminders } from "./application/reminders.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
-import { createApp } from "./adapters/in/http/app.tsx";
+import { type AccountWiring, createApp } from "./adapters/in/http/app.tsx";
 import { createTokenAdminAuth } from "./adapters/out/admin/token-admin-auth.ts";
 import { createRateLimits } from "./adapters/in/http/rate-limit.ts";
 import {
@@ -56,6 +56,12 @@ import {
   createPermissionRepository,
 } from "./adapters/out/sqlite/invites.ts";
 import { createReportRepository } from "./adapters/out/sqlite/reports.ts";
+import {
+  createIdentityRepository,
+  createPendingLoginRepository,
+} from "./adapters/out/sqlite/identities.ts";
+import { createOidcProvider } from "./adapters/out/identity/oidc.ts";
+import { createTrustedFetch } from "./adapters/out/http/trusted-fetch.ts";
 import { createResponseRepository } from "./adapters/out/sqlite/responses.ts";
 import { systemClock } from "./adapters/out/system-clock.ts";
 import { createTokenService } from "./adapters/out/tokens.ts";
@@ -222,6 +228,30 @@ export async function startServer(
 
   const rateLimits = createRateLimits(() => planDeps.clock.now().getTime());
 
+  // Accounts (spec 7 Identity): the OIDC issuer is trusted configuration and may be on the local
+  // network (decision D23), so it gets the trusted fetch, not OutboundHttp.
+  const accounts: AccountWiring = {
+    identities: createIdentityRepository(database, keys.cipher),
+    pendingLogins: createPendingLoginRepository(database, keys.cipher),
+    identityLookup: keys.identityLookup,
+    identityProviders:
+      config.oidc === undefined
+        ? {}
+        : {
+            oidc: createOidcProvider({
+              issuer: config.oidc.issuer,
+              clientId: config.oidc.clientId,
+              clientSecret: config.oidc.clientSecret,
+              redirectUri: new URL("/login/oidc/callback", config.baseUrl),
+              fetch: createTrustedFetch({
+                userAgent: `RendezRoute (+${config.baseUrl.origin})`,
+                allowHttp: config.allowInsecureDev,
+              }),
+              allowHttp: config.allowInsecureDev,
+            }),
+          },
+  };
+
   // Web Push (spec 6 feature 3): the instance's VAPID keys live next to the encryption key.
   const notify = planDeps.notify;
   if (notify === undefined) throw new Error("notification dependencies missing");
@@ -256,7 +286,12 @@ export async function startServer(
       {
         name: "housekeeping",
         intervalMs: DAY_MS,
-        run: () => runHousekeeping({ ...planDeps, backups: createBackupStore(backupDir(config)) }),
+        run: () =>
+          runHousekeeping({
+            ...planDeps,
+            backups: createBackupStore(backupDir(config)),
+            pendingLogins: accounts.pendingLogins,
+          }),
       },
       // Background jobs (spec 6 feature 12): notifications, with retries.
       {
@@ -284,6 +319,7 @@ export async function startServer(
     vapidPublicKey: vapid.publicKey,
     adminAuth:
       config.adminToken === undefined ? undefined : createTokenAdminAuth(config.adminToken),
+    accounts,
   });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));

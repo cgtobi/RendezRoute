@@ -29,10 +29,16 @@ export function createDeviceRepository(database: Database): DeviceRepository {
     async findByTokenHash(hash) {
       const row = await database.db
         .selectFrom("devices")
-        .select(["id", "last_seen_at"])
+        .select(["id", "last_seen_at", "identity_id"])
         .where("token_hash", "=", hash)
         .executeTakeFirst();
-      return row === undefined ? undefined : { id: row.id, lastSeenAt: new Date(row.last_seen_at) };
+      return row === undefined
+        ? undefined
+        : {
+            id: row.id,
+            lastSeenAt: new Date(row.last_seen_at),
+            identityId: row.identity_id ?? undefined,
+          };
     },
 
     async create({ id, tokenHash, now }) {
@@ -70,6 +76,22 @@ export function createDeviceRepository(database: Database): DeviceRepository {
       return row !== undefined;
     },
 
+    async replaceToken(deviceId, tokenHash) {
+      await database.db
+        .updateTable("devices")
+        .set({ token_hash: tokenHash })
+        .where("id", "=", deviceId)
+        .execute();
+    },
+
+    async setIdentity(deviceId, identityId) {
+      await database.db
+        .updateTable("devices")
+        .set({ identity_id: identityId ?? null })
+        .where("id", "=", deviceId)
+        .execute();
+    },
+
     async delete(id) {
       await database.db.deleteFrom("devices").where("id", "=", id).execute();
       checkpoint(database);
@@ -103,6 +125,8 @@ export function createDeviceRepository(database: Database): DeviceRepository {
             eb("last_seen_at", "<", anyLastSeenBefore.toISOString()),
             eb.and([
               eb("last_seen_at", "<", unlinkedLastSeenBefore.toISOString()),
+              // Logged in to an account counts as linked.
+              eb("identity_id", "is", null),
               eb.not(
                 eb.exists(
                   eb

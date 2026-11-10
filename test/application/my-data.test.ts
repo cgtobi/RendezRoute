@@ -117,6 +117,7 @@ describe("viewMyData", () => {
       responses: [],
       templates: [],
       calendarFeed: false,
+      loggedIn: false,
     });
   });
 });

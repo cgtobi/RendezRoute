@@ -37,7 +37,8 @@ export function MyDataPage(props: MyDataPageProps) {
     data.hosted.length === 0 &&
     data.responses.length === 0 &&
     data.templates.length === 0 &&
-    data.mayPostSince === undefined;
+    data.mayPostSince === undefined &&
+    !data.loggedIn;
   const tools = (base: string, notifications: boolean) => (
     <LinkTools
       t={t}
@@ -149,6 +150,12 @@ export function MyDataPage(props: MyDataPageProps) {
         </p>
       )}
 
+      {data.loggedIn && (
+        <p>
+          {t("myData.loggedIn")} <a href="/account">{t("myData.accountManage")}</a>
+        </p>
+      )}
+
       {!empty && (
         <>
           <h2>{t("myData.exportHeading")}</h2>
@@ -215,6 +222,7 @@ export function DeleteMyDataPage({
         <li>{t("myData.deleteDevice")}</li>
       </ul>
       {data.hosted.length > 0 && <p>{t("myData.deleteNoTemplates")}</p>}
+      {data.loggedIn && <p>{t("myData.deleteKeepsAccount")}</p>}
       <form method="post" action="/my-data/delete">
         <input type="hidden" name={CSRF_FIELD} value={csrfToken} />
         <button type="submit" class="danger">

@@ -39,6 +39,17 @@ export interface Config {
   adminToken: string | undefined;
   /** Who may create plans (spec 7 Moderation). */
   postingMode: PostingMode;
+  /** Login with an OpenID Connect provider (spec 7 Identity); off unless configured. */
+  oidc: OidcConfig | undefined;
+}
+
+export interface OidcConfig {
+  issuer: URL;
+  clientId: string;
+  /** Without one, the client is public and relies on PKCE alone. */
+  clientSecret: string | undefined;
+  /** Shown on the login button and in the privacy notice. */
+  name: string;
 }
 
 export type ConfigResult =
@@ -59,6 +70,7 @@ const DEFAULTS = {
 
 const MAX_INSTANCE_NAME_LENGTH = 60;
 const MIN_ADMIN_TOKEN_LENGTH = 32;
+const MAX_OIDC_NAME_LENGTH = 40;
 
 export function loadConfig(env: ConfigSource): ConfigResult {
   const errors: string[] = [];
@@ -251,15 +263,44 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     errors.push(`ADMIN_TOKEN must be at least ${MIN_ADMIN_TOKEN_LENGTH} characters.`);
   }
 
-  // POSTING_MODE: invite links come from the admin page, so invite needs ADMIN_TOKEN.
+  // OIDC_*: issuer and client ID together; the issuer is trusted configuration (decision D23).
+  const oidc = ((): OidcConfig | undefined => {
+    const issuerSetting = read("OIDC_ISSUER") || undefined;
+    const clientId = read("OIDC_CLIENT_ID") || undefined;
+    if (issuerSetting === undefined && clientId === undefined) return undefined;
+    if (issuerSetting === undefined || clientId === undefined) {
+      errors.push("OIDC_ISSUER and OIDC_CLIENT_ID must be set together.");
+      return undefined;
+    }
+    const issuer = httpUrl("OIDC_ISSUER", issuerSetting);
+    if (issuer === undefined || !rejectCredentials("OIDC_ISSUER", issuer)) return undefined;
+    if (issuer.search !== "" || issuer.hash !== "") {
+      errors.push("OIDC_ISSUER must not contain a query or fragment.");
+      return undefined;
+    }
+    if (!requireHttps("OIDC_ISSUER", issuer)) return undefined;
+    const name = read("OIDC_NAME") || issuer.hostname;
+    if (Array.from(name).length > MAX_OIDC_NAME_LENGTH) {
+      errors.push(`OIDC_NAME must be 1–${MAX_OIDC_NAME_LENGTH} characters.`);
+    }
+    return { issuer, clientId, clientSecret: read("OIDC_CLIENT_SECRET") || undefined, name };
+  })();
+
+  // POSTING_MODE: invite links come from the admin page, so invite needs ADMIN_TOKEN; logged_in
+  // needs a way to log in.
   const postingSetting = read("POSTING_MODE") || "anyone";
   const postingMode = (POSTING_MODES as readonly string[]).includes(postingSetting)
     ? (postingSetting as PostingMode)
     : undefined;
-  if (postingMode === undefined) errors.push("POSTING_MODE must be anyone or invite.");
+  if (postingMode === undefined) errors.push("POSTING_MODE must be anyone, invite or logged_in.");
   if (postingMode === "invite" && adminToken === undefined) {
     errors.push(
       "POSTING_MODE=invite needs ADMIN_TOKEN: only the instance admin can create invite links.",
+    );
+  }
+  if (postingMode === "logged_in" && oidc === undefined && !read("OIDC_ISSUER")) {
+    errors.push(
+      "POSTING_MODE=logged_in needs a way to log in: set OIDC_ISSUER and OIDC_CLIENT_ID.",
     );
   }
 
@@ -293,6 +334,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       allowInsecureDev,
       adminToken,
       postingMode,
+      oidc,
     },
   };
 }

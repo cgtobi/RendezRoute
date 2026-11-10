@@ -44,7 +44,11 @@ export async function ensureDevice(
   if (existing !== undefined) return { device: existing, newToken: undefined };
 
   const newToken = deps.tokens.generate();
-  const device: Device = { id: deps.ids.rowId(), lastSeenAt: deps.clock.now() };
+  const device: Device = {
+    id: deps.ids.rowId(),
+    lastSeenAt: deps.clock.now(),
+    identityId: undefined,
+  };
   await deps.devices.create({
     id: device.id,
     tokenHash: deps.tokens.hash(newToken),

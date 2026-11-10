@@ -330,9 +330,13 @@ describe("template expiry (spec 3.10: 90 days without use)", () => {
     });
     const backups = { deleteOlderThan: async () => 0 };
     clock.set("2026-08-30T07:59:00Z");
-    expect(await runHousekeeping({ ...deps, backups })).toMatchObject({ deletedTemplates: 0 });
+    expect(
+      await runHousekeeping({ ...deps, backups, pendingLogins: repos.pendingLogins }),
+    ).toMatchObject({ deletedTemplates: 0 });
     clock.set("2026-08-30T08:00:00Z");
-    expect(await runHousekeeping({ ...deps, backups })).toMatchObject({ deletedTemplates: 1 });
+    expect(
+      await runHousekeeping({ ...deps, backups, pendingLogins: repos.pendingLogins }),
+    ).toMatchObject({ deletedTemplates: 1 });
     expect(await listTemplates(deps, { deviceToken: host })).toEqual([]);
   });
 });

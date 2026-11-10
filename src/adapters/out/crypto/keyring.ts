@@ -98,11 +98,22 @@ export function keyFingerprint(key: Buffer): string {
   return createHmac("sha256", key).update("rendezroute/key-fingerprint/v1").digest("hex");
 }
 
-/** Purpose-specific key derived from the current key with HKDF. */
+/**
+ * Purpose-specific key derived with HKDF. Lookup hashes are stored, so their key comes from the
+ * oldest key in the ring and stays the same when a newer key is added; a rotation that removes
+ * the oldest key must rehash them, which it can, since it can decrypt what they were made from
+ * (spec 3.11 key rotation). The CSRF key follows the current key: its tokens live for one session.
+ */
 export function deriveKey(keyring: Keyring, purpose: KeyPurpose): Buffer {
-  return Buffer.from(
-    hkdfSync("sha256", currentKey(keyring), "rendezroute", `rendezroute/${purpose}`, KEY_BYTES),
-  );
+  const base = purpose === "identity-lookup" ? oldestKey(keyring) : currentKey(keyring);
+  return Buffer.from(hkdfSync("sha256", base, "rendezroute", `rendezroute/${purpose}`, KEY_BYTES));
+}
+
+function oldestKey(keyring: Keyring): Buffer {
+  const oldest = Math.min(...keyring.keys.keys());
+  const key = keyring.keys.get(oldest);
+  if (key === undefined) throw new KeyError("The keyring has no keys.");
+  return key;
 }
 
 function parseKeyring(file: string, content: string): Keyring {

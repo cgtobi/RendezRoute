@@ -118,7 +118,9 @@ describe("responses enum columns", () => {
 describe("device_links", () => {
   it("accepts only known roles, each with exactly its own target", () => {
     insertPlan({ id: "plan-x", host_token_hash: "hx" });
-    database.sqlite.exec("insert into devices values ('d1', 'th1', 't', 't')");
+    database.sqlite.exec(
+      "insert into devices (id, token_hash, created_at, last_seen_at) values ('d1', 'th1', 't', 't')",
+    );
     database.sqlite.exec(
       "insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language, created_at, updated_at) values ('resp-x', 'plan-x', 'joined', 'v1.x.y', 'mx', 'en', 't', 't')",
     );

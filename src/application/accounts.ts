@@ -1,0 +1,195 @@
+// Accounts (spec 7 Identity, 3.11 Account takeover; plan v1.0 step 4a): logging in through an
+// identity provider links the device to the account; there is no second cookie (plan v1.0, settled
+// 4). A login is bound to the browser that started it (its state in a short-lived cookie), can be
+// finished once and within ten minutes; the provider checks PKCE, nonce and the redirect.
+import {
+  displayNameFromProvider,
+  type Identity,
+  type IdentityProviderKind,
+  loginCutoff,
+  loginExpired,
+  type DisplayNameError,
+  validateDisplayName,
+} from "../domain/identity.ts";
+import { ensureDevice, lookupDevice } from "./devices.ts";
+import type { PlanDeps } from "./plans.ts";
+import type {
+  IdentityProvider,
+  IdentityRepository,
+  ProviderAccount,
+  LookupHasher,
+  PendingLoginRepository,
+} from "./ports.ts";
+
+export interface AccountDeps extends PlanDeps {
+  identities: IdentityRepository;
+  pendingLogins: PendingLoginRepository;
+  /** Keyed hash of provider and subject, for finding an account (spec 4 identities). */
+  identityLookup: LookupHasher;
+  /** The configured ways to log in. */
+  identityProviders: Partial<Record<IdentityProviderKind, IdentityProvider>>;
+}
+
+/**
+ * Starts a login: the provider's URL to send the browser to, and the state the browser keeps in its
+ * login cookie. Logins left unfinished are dropped here.
+ */
+export async function startLogin(
+  deps: AccountDeps,
+  request: { provider: IdentityProviderKind },
+): Promise<
+  | { kind: "redirect"; authorizationUrl: URL; state: string }
+  | { kind: "unavailable" }
+  | { kind: "not_found" }
+> {
+  const provider = deps.identityProviders[request.provider];
+  if (provider === undefined) return { kind: "not_found" };
+  const now = deps.clock.now();
+  await deps.pendingLogins.deleteStartedBefore(loginCutoff(now));
+  let started: Awaited<ReturnType<IdentityProvider["startLogin"]>>;
+  try {
+    started = await provider.startLogin();
+  } catch {
+    return { kind: "unavailable" };
+  }
+  const { authorizationUrl, secrets } = started;
+  await deps.pendingLogins.create(deps.tokens.hash(secrets.state), {
+    provider: request.provider,
+    secrets,
+    startedAt: now,
+  });
+  return { kind: "redirect", authorizationUrl, state: secrets.state };
+}
+
+/**
+ * Finishes a login at the callback: only in the browser that started it (the state in its cookie
+ * must match the callback's), once, within ten minutes, and only if the provider's checks pass.
+ * The account is found by a keyed hash of provider and subject, or created.
+ */
+export async function finishLogin(
+  deps: AccountDeps,
+  request: {
+    provider: IdentityProviderKind;
+    callback: URL;
+    /** The state from the browser's login cookie. */
+    cookieState: string | undefined;
+    deviceToken: string | undefined;
+  },
+): Promise<{ kind: "logged_in"; newDeviceToken: string } | { kind: "failed" }> {
+  const failed = { kind: "failed" } as const;
+  const provider = deps.identityProviders[request.provider];
+  const callbackState = request.callback.searchParams.get("state");
+  if (provider === undefined || request.cookieState === undefined || callbackState === null) {
+    return failed;
+  }
+  // Compared as hashes, so the comparison takes the same time whatever matches.
+  const stateHash = deps.tokens.hash(request.cookieState);
+  if (deps.tokens.hash(callbackState) !== stateHash) return failed;
+  const pending = await deps.pendingLogins.take(stateHash);
+  const now = deps.clock.now();
+  if (
+    pending === undefined ||
+    pending.provider !== request.provider ||
+    loginExpired(pending.startedAt, now)
+  ) {
+    return failed;
+  }
+  const result = await provider.finishLogin(request.callback, pending.secrets);
+  if (!result.ok) return failed;
+
+  const identity = await findOrCreateIdentity(deps, request.provider, result.account, now);
+  const { device, newToken } = await ensureDevice(deps, request.deviceToken);
+  await deps.devices.setIdentity(device.id, identity.id);
+  // Logging in gives the device cookie more power: a new token, so an older or planted one stops
+  // working (session fixation). The device keeps its links.
+  if (newToken !== undefined) return { kind: "logged_in", newDeviceToken: newToken };
+  const renewed = deps.tokens.generate();
+  await deps.devices.replaceToken(device.id, deps.tokens.hash(renewed));
+  return { kind: "logged_in", newDeviceToken: renewed };
+}
+
+/** The account with this provider's subject, found by its keyed hash, or a new one. */
+async function findOrCreateIdentity(
+  deps: AccountDeps,
+  provider: IdentityProviderKind,
+  account: ProviderAccount,
+  now: Date,
+): Promise<Identity> {
+  const subjectHash = deps.identityLookup.hash(`${provider}:${account.subject}`);
+  const existing = await deps.identities.findBySubjectHash(provider, subjectHash);
+  if (existing !== undefined) {
+    await deps.identities.touch(existing.id, now);
+    return existing;
+  }
+  const identity: Identity = {
+    id: deps.ids.rowId(),
+    provider,
+    subject: account.subject,
+    displayName: displayNameFromProvider(account.names),
+    createdAt: now,
+    lastActiveAt: now,
+  };
+  try {
+    await deps.identities.create(identity, subjectHash);
+    return identity;
+  } catch (error) {
+    // The same person's first login finished a moment earlier in another browser.
+    const winner = await deps.identities.findBySubjectHash(provider, subjectHash);
+    if (winner === undefined) throw error;
+    await deps.identities.touch(winner.id, now);
+    return winner;
+  }
+}
+
+/** The account logged in on this device, if any. Never writes. */
+async function accountOf(deps: AccountDeps, deviceToken: string | undefined) {
+  const device = await lookupDevice(deps, deviceToken);
+  const identity =
+    device?.identityId === undefined
+      ? undefined
+      : await deps.identities.findById(device.identityId);
+  return device === undefined || identity === undefined ? undefined : { device, identity };
+}
+
+export type AccountView =
+  | { kind: "logged_out" }
+  | { kind: "account"; provider: IdentityProviderKind; displayName: string | undefined };
+
+/** What the account page shows: never the subject (spec 7 Identity). */
+export async function viewAccount(
+  deps: AccountDeps,
+  request: { deviceToken: string | undefined },
+): Promise<AccountView> {
+  const account = await accountOf(deps, request.deviceToken);
+  return account === undefined
+    ? { kind: "logged_out" }
+    : {
+        kind: "account",
+        provider: account.identity.provider,
+        displayName: account.identity.displayName,
+      };
+}
+
+export async function renameAccount(
+  deps: AccountDeps,
+  request: { deviceToken: string | undefined; displayName: string },
+): Promise<
+  { kind: "renamed" } | { kind: "invalid"; error: DisplayNameError } | { kind: "logged_out" }
+> {
+  const account = await accountOf(deps, request.deviceToken);
+  if (account === undefined) return { kind: "logged_out" };
+  const name = validateDisplayName(request.displayName);
+  if (!name.ok) return { kind: "invalid", error: name.error };
+  await deps.identities.setDisplayName(account.identity.id, name.value);
+  return { kind: "renamed" };
+}
+
+/** Logs this device out; the account and everything else on the device stay. */
+export async function logOut(
+  deps: AccountDeps,
+  request: { deviceToken: string | undefined },
+): Promise<{ kind: "logged_out" }> {
+  const device = await lookupDevice(deps, request.deviceToken);
+  if (device?.identityId !== undefined) await deps.devices.setIdentity(device.id, undefined);
+  return { kind: "logged_out" };
+}

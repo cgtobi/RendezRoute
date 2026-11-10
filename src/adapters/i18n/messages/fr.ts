@@ -586,6 +586,8 @@ export const fr: Messages = {
   "myData.calendarOn": "Cet appareil a un abonnement d’agenda.",
   "myData.calendarOff": "Cet appareil n’a pas d’abonnement d’agenda.",
   "myData.calendarManage": "Gérer l’abonnement d’agenda",
+  "myData.loggedIn": "Ce navigateur est connecté à votre compte.",
+  "myData.accountManage": "Votre compte",
   "myData.exportHeading": "Exporter ou supprimer",
   "myData.exportHint":
     "L’export est un fichier ZIP avec vos sorties, réponses et modèles : les informations dans data.json, des fichiers d’agenda, les parcours en GPX et vos propres contributions au récapitulatif. Les autres personnes n’apparaissent que par leur nom.",
@@ -605,6 +607,8 @@ export const fr: Messages = {
   "myData.deleteTemplates": { one: "{count} modèle", other: "{count} modèles" },
   "myData.deleteFeed": "l’abonnement d’agenda",
   "myData.deleteDevice": "l’association de ce navigateur à tout cela",
+  "myData.deleteKeepsAccount":
+    "Ce navigateur est connecté à un compte. Le compte lui-même reste ; ce navigateur est seulement déconnecté.",
   "myData.deleteNoTemplates": "Aucun modèle n’est gardé des sorties supprimées.",
   "myData.deleteConfirm": "Tout supprimer définitivement",
   "myData.back": "Retour à mes données",
@@ -686,6 +690,34 @@ export const fr: Messages = {
   "admin.deleteConfirm": "Supprimer définitivement la sortie",
   "admin.deleted": "La sortie a été supprimée.",
   "admin.back": "Retour à l’administration",
+  "layout.account": "Compte",
+  "account.heading": "Votre compte",
+  "account.intro":
+    "La connexion est facultative. Elle associe ce navigateur à votre compte ; vous pouvez vous déconnecter à tout moment.",
+  "account.loginWith": "Se connecter avec {name}",
+  "account.linked": "Ce navigateur est connecté à votre compte.",
+  "account.displayName": "Nom affiché",
+  "account.displayNameHint":
+    "Rempli comme votre nom lorsque vous planifiez une course ou une sortie vélo.",
+  "account.save": "Enregistrer",
+  "account.logout": "Se déconnecter",
+  "account.logoutHint":
+    "Déconnecte uniquement ce navigateur. Votre compte, et tout ce à quoi ce navigateur est associé, restent.",
+  "account.loggedIn": "Vous êtes connecté·e.",
+  "account.loggedOut": "Ce navigateur est déconnecté.",
+  "account.renamed": "Votre nom affiché a été enregistré.",
+  "account.loginFailed": "La connexion n’a pas abouti. Veuillez la recommencer dans ce navigateur.",
+  "account.unavailable":
+    "Le service de connexion est injoignable pour le moment. Veuillez réessayer plus tard.",
+  "account.tryAgain": "Retour à la connexion",
+  "posting.loginHeading": "Connexion nécessaire",
+  "posting.loginNeeded":
+    "Sur cette instance, seules les personnes connectées peuvent créer des sorties.",
+  "posting.login": "Se connecter",
+  "privacy.oidc":
+    "Connexion avec {name} ({host}) : lorsque vous vous connectez, votre navigateur passe par {host}, qui indique à cette instance quel compte vous avez utilisé. Conservés ici, chiffrés : l’identifiant de ce compte et votre nom affiché. Aucun mot de passe ni jeton n’est conservé.",
+  "privacy.cookieLogin":
+    "Pendant la connexion, un cookie de connexion pendant au plus {minutes} minutes, pour que seul ce navigateur puisse la terminer.",
   "posting.heading": "Invitation nécessaire",
   "posting.inviteNeeded":
     "Sur cette instance, seules les personnes ayant un lien d’invitation peuvent créer des sorties. Demandez-en un à la personne qui la gère.",

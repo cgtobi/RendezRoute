@@ -83,12 +83,84 @@ describe("POSTING_MODE (spec 7 Moderation)", () => {
     ]);
   });
 
-  it("refuses other values, logged_in included until accounts exist", () => {
-    for (const value of ["logged_in", "Invite", "nobody"]) {
-      expect(errors({ ...minimal, POSTING_MODE: value })).toEqual([
-        "POSTING_MODE must be anyone or invite.",
+  it("accepts logged_in, which needs a way to log in", () => {
+    expect(ok({ ...minimal, ...OIDC, POSTING_MODE: "logged_in" }).config.postingMode).toBe(
+      "logged_in",
+    );
+    for (const env of [{}, { OIDC_ISSUER: "" }]) {
+      expect(errors({ ...minimal, ...env, POSTING_MODE: "logged_in" })).toEqual([
+        "POSTING_MODE=logged_in needs a way to log in: set OIDC_ISSUER and OIDC_CLIENT_ID.",
       ]);
     }
+  });
+
+  it("refuses other values", () => {
+    for (const value of ["Invite", "nobody", "logged-in"]) {
+      expect(errors({ ...minimal, POSTING_MODE: value })).toEqual([
+        "POSTING_MODE must be anyone, invite or logged_in.",
+      ]);
+    }
+  });
+});
+
+const OIDC = { OIDC_ISSUER: "https://id.example.org/realms/club", OIDC_CLIENT_ID: "rendezroute" };
+
+describe("OIDC_* (spec 7 Identity)", () => {
+  it("is off unless an issuer and client ID are set", () => {
+    expect(ok(minimal).config.oidc).toBeUndefined();
+  });
+
+  it("takes the issuer, client, optional secret and a name for the login button", () => {
+    expect(ok({ ...minimal, ...OIDC }).config.oidc).toEqual({
+      issuer: new URL("https://id.example.org/realms/club"),
+      clientId: "rendezroute",
+      clientSecret: undefined,
+      name: "id.example.org",
+    });
+    const named = ok({
+      ...minimal,
+      ...OIDC,
+      OIDC_CLIENT_SECRET: "s3cret",
+      OIDC_NAME: "Club login",
+    });
+    expect(named.config.oidc).toMatchObject({ clientSecret: "s3cret", name: "Club login" });
+  });
+
+  it("needs issuer and client ID together", () => {
+    expect(errors({ ...minimal, OIDC_ISSUER: OIDC.OIDC_ISSUER })).toEqual([
+      "OIDC_ISSUER and OIDC_CLIENT_ID must be set together.",
+    ]);
+    expect(errors({ ...minimal, OIDC_CLIENT_ID: "x", OIDC_CLIENT_SECRET: "y" })).toEqual([
+      "OIDC_ISSUER and OIDC_CLIENT_ID must be set together.",
+    ]);
+  });
+
+  it("needs an HTTPS issuer without credentials, query or fragment, and a short name", () => {
+    for (const issuer of [
+      "http://id.example.org",
+      "https://user:pw@id.example.org",
+      "https://id.example.org/?x=1",
+      "https://id.example.org/#x",
+      "id.example.org",
+    ]) {
+      expect(errors({ ...minimal, ...OIDC, OIDC_ISSUER: issuer })).toEqual([
+        expect.stringContaining("OIDC_ISSUER"),
+      ]);
+    }
+    expect(errors({ ...minimal, ...OIDC, OIDC_NAME: "x".repeat(41) })).toEqual([
+      "OIDC_NAME must be 1–40 characters.",
+    ]);
+  });
+
+  it("allows a plain-HTTP issuer in development mode, for a local fake provider", () => {
+    const dev = ok({
+      ...minimal,
+      ...OIDC,
+      BASE_URL: "http://localhost:3000",
+      ALLOW_INSECURE_DEV: "true",
+      OIDC_ISSUER: "http://localhost:9000",
+    });
+    expect(dev.config.oidc?.issuer.href).toBe("http://localhost:9000/");
   });
 });
 

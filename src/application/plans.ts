@@ -21,7 +21,7 @@ import {
 } from "../domain/route.ts";
 import { canRespond } from "../domain/responding.ts";
 import { type DeviceDeps, ensureDevice, resolveDevice } from "./devices.ts";
-import { mayCreatePlans } from "./posting-rules.ts";
+import { type PostingNeed, postingNeed } from "./posting-rules.ts";
 import {
   type PlanViewForParticipant,
   type PlanViewForPoster,
@@ -93,7 +93,7 @@ export type CreatePlanResult =
   | { kind: "invalid"; errors: FieldError[] }
   | { kind: "bad_request" }
   /** The posting rules do not let this device create plans (spec 7 Moderation). */
-  | { kind: "not_allowed" };
+  | { kind: "not_allowed"; needs: PostingNeed };
 
 /** Parses an upload and hides its ends as chosen; trimmed points are never stored (D13). */
 export function readRoute(
@@ -125,7 +125,8 @@ export async function createPlan(
 ): Promise<CreatePlanResult> {
   const used = await checkCreationNonce(deps, request.creationNonce);
   if (used !== undefined) return used;
-  if (!(await mayCreatePlans(deps, request))) return { kind: "not_allowed" };
+  const needs = await postingNeed(deps, request);
+  if (needs !== undefined) return { kind: "not_allowed", needs };
 
   const now = deps.clock.now();
   const rules = { now, ...deps.limits };

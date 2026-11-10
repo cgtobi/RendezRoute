@@ -31,11 +31,14 @@ export interface MyData {
   responses: (MyDataItem & { responseKind: ResponseKind })[];
   templates: Pick<PlanTemplate, "id" | "title" | "expiresAt" | "timeZone">[];
   calendarFeed: boolean;
-  /** Since when an invite link lets the device create plans, if one does (spec 7 Moderation). */
+  /** Since when an invite link lets the device itself create plans (spec 7 Moderation); not its account's. */
   mayPostSince: Date | undefined;
+  /** Logged in to an account, which deleting the device's data keeps (spec 7 Identity). */
+  loggedIn: boolean;
 }
 
 const EMPTY: MyData = {
+  loggedIn: false,
   hosted: [],
   responses: [],
   templates: [],
@@ -68,7 +71,8 @@ export async function viewMyData(
       ({ id, title, expiresAt, timeZone }) => ({ id, title, expiresAt, timeZone }),
     ),
     calendarFeed: (await deps.calendarFeeds.findForDevice(device.id)) !== undefined,
-    mayPostSince: await deps.permissions.mayPostSince(device.id),
+    mayPostSince: await deps.permissions.deviceMayPostSince(device.id),
+    loggedIn: device.identityId !== undefined,
   };
 }
 
@@ -221,7 +225,7 @@ export async function exportMyData(
         templates.push(await exportedTemplate(deps, template));
       }
       const calendarFeed = (await deps.calendarFeeds.findForDevice(device.id)) !== undefined;
-      const mayPostSince = await deps.permissions.mayPostSince(device.id);
+      const mayPostSince = await deps.permissions.deviceMayPostSince(device.id);
       return data({ plans, templates, calendarFeed, mayPostSince });
     }
   }

@@ -6,7 +6,8 @@ import {
   usedFormNonceCutoff,
 } from "../domain/expiry.ts";
 import type { PlanDeps } from "./plans.ts";
-import type { BackupStore } from "./ports.ts";
+import type { BackupStore, PendingLoginRepository } from "./ports.ts";
+import { loginCutoff } from "../domain/identity.ts";
 import { deletePlansKeepingTemplates } from "./templates.ts";
 import type { Plan } from "../domain/plan.ts";
 
@@ -18,13 +19,16 @@ export async function runRetentionSweep(deps: PlanDeps): Promise<{ deletedPlans:
   return { deletedPlans: due.length };
 }
 
-/** Daily expiry of templates, devices and pre-migration backups (spec 3.10, 11). */
-export async function runHousekeeping(deps: PlanDeps & { backups: BackupStore }): Promise<{
+/** Daily expiry of templates, devices, unfinished logins and pre-migration backups (spec 3.10, 11). */
+export async function runHousekeeping(
+  deps: PlanDeps & { backups: BackupStore; pendingLogins: PendingLoginRepository },
+): Promise<{
   deletedTemplates: number;
   deletedDevices: number;
   deletedFeeds: number;
   deletedBackups: number;
   deletedFormNonces: number;
+  deletedPendingLogins: number;
 }> {
   const now = deps.clock.now();
   // Templates first, so devices linked only to them count as unlinked right away.
@@ -34,7 +38,15 @@ export async function runHousekeeping(deps: PlanDeps & { backups: BackupStore })
   const deletedFeeds = await deps.calendarFeeds.deleteUnlinked();
   const deletedBackups = await deps.backups.deleteOlderThan(backupExpiryCutoff(now));
   const deletedFormNonces = await deps.formNonces.deleteUsedBefore(usedFormNonceCutoff(now));
-  return { deletedTemplates, deletedDevices, deletedFeeds, deletedBackups, deletedFormNonces };
+  const deletedPendingLogins = await deps.pendingLogins.deleteStartedBefore(loginCutoff(now));
+  return {
+    deletedTemplates,
+    deletedDevices,
+    deletedFeeds,
+    deletedBackups,
+    deletedFormNonces,
+    deletedPendingLogins,
+  };
 }
 
 /** Applies a lowered MAX_RETENTION_DAYS to existing plans (CLI `apply-retention-max`, spec 3.10). */

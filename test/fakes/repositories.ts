@@ -15,7 +15,11 @@ import type {
   ReportRepository,
   InviteRepository,
   PermissionRepository,
+  IdentityRepository,
+  PendingLogin,
+  PendingLoginRepository,
 } from "../../src/application/ports.ts";
+import type { Identity } from "../../src/domain/identity.ts";
 import { type Invite, inviteState } from "../../src/domain/invite.ts";
 import type { Report } from "../../src/domain/report.ts";
 import type { Plan } from "../../src/domain/plan.ts";
@@ -38,6 +42,8 @@ export function createFakeRepositories(): {
   reports: ReportRepository;
   invites: InviteRepository;
   permissions: PermissionRepository;
+  identities: IdentityRepository & { all(): Identity[] };
+  pendingLogins: PendingLoginRepository;
 } {
   const plans = new Map<string, { plan: Plan; hostTokenHash: string }>();
   const routes = new Map<string, Route>();
@@ -57,8 +63,19 @@ export function createFakeRepositories(): {
   const ratings = new Map<string, PlanRating>();
   const reports = new Map<string, Report>();
   const invites = new Map<string, { invite: Invite; tokenHash: string }>();
-  /** When each device became allowed to post, by device ID; goes with the device. */
+  /** When each device ("device:<id>") or account ("identity:<id>") became allowed to post. */
   const mayPost = new Map<string, Date>();
+  const identities = new Map<string, { identity: Identity; subjectHash: string }>();
+  const pendingLogins = new Map<string, PendingLogin>();
+  /** The device's own permission, or its account's. */
+  const mayPostOf = (deviceId: string) => {
+    const identityId = devices.get(deviceId)?.device.identityId;
+    const own = mayPost.get(`device:${deviceId}`);
+    const account = identityId === undefined ? undefined : mayPost.get(`identity:${identityId}`);
+    return [own, account]
+      .filter((at) => at !== undefined)
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+  };
   const byCreation = (a: Report, b: Report) =>
     a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id);
   const templates = new Map<
@@ -330,18 +347,71 @@ export function createFakeRepositories(): {
         return true;
       },
       async redeem({ inviteId, deviceId, now }) {
-        if (mayPost.has(deviceId)) return "already_allowed";
+        if (mayPostOf(deviceId) !== undefined) return "already_allowed";
         const entry = invites.get(inviteId);
         if (entry === undefined || inviteState(entry.invite, now) !== "usable") return "unusable";
         entry.invite.uses++;
-        mayPost.set(deviceId, now);
+        const identityId = devices.get(deviceId)?.device.identityId;
+        mayPost.set(
+          identityId === undefined ? `device:${deviceId}` : `identity:${identityId}`,
+          now,
+        );
         return "granted";
       },
     },
 
     permissions: {
       async mayPostSince(deviceId) {
-        return mayPost.get(deviceId);
+        return mayPostOf(deviceId);
+      },
+      async deviceMayPostSince(deviceId) {
+        return mayPost.get(`device:${deviceId}`);
+      },
+    },
+
+    identities: {
+      async create(identity, subjectHash) {
+        identities.set(identity.id, { identity: structuredClone(identity), subjectHash });
+      },
+      async findBySubjectHash(provider, subjectHash) {
+        const entry = [...identities.values()].find(
+          (e) => e.identity.provider === provider && e.subjectHash === subjectHash,
+        );
+        return entry === undefined ? undefined : structuredClone(entry.identity);
+      },
+      async findById(id) {
+        const entry = identities.get(id);
+        return entry === undefined ? undefined : structuredClone(entry.identity);
+      },
+      async setDisplayName(id, displayName) {
+        const entry = identities.get(id);
+        if (entry !== undefined) entry.identity.displayName = displayName;
+      },
+      async touch(id, now) {
+        const entry = identities.get(id);
+        if (entry !== undefined) entry.identity.lastActiveAt = now;
+      },
+      all: () => [...identities.values()].map((e) => structuredClone(e.identity)),
+    },
+
+    pendingLogins: {
+      async create(stateHash, login) {
+        pendingLogins.set(stateHash, structuredClone(login));
+      },
+      async take(stateHash) {
+        const login = pendingLogins.get(stateHash);
+        pendingLogins.delete(stateHash);
+        return login;
+      },
+      async deleteStartedBefore(cutoff) {
+        let deleted = 0;
+        for (const [hash, login] of pendingLogins) {
+          if (login.startedAt.getTime() < cutoff.getTime()) {
+            pendingLogins.delete(hash);
+            deleted++;
+          }
+        }
+        return deleted;
       },
     },
 
@@ -430,7 +500,7 @@ export function createFakeRepositories(): {
         return entry === undefined ? undefined : { ...entry.device };
       },
       async create({ id, tokenHash, now }) {
-        devices.set(id, { device: { id, lastSeenAt: now }, tokenHash });
+        devices.set(id, { device: { id, lastSeenAt: now, identityId: undefined }, tokenHash });
       },
       async touch(id, now) {
         const entry = devices.get(id);
@@ -442,10 +512,18 @@ export function createFakeRepositories(): {
       async hasLink(deviceId, target) {
         return links.has(linkKey(deviceId, target));
       },
+      async replaceToken(deviceId, tokenHash) {
+        const entry = devices.get(deviceId);
+        if (entry !== undefined) entry.tokenHash = tokenHash;
+      },
+      async setIdentity(deviceId, identityId) {
+        const entry = devices.get(deviceId);
+        if (entry !== undefined) entry.device = { ...entry.device, identityId };
+      },
       async delete(id) {
         devices.delete(id);
         feeds.delete(id);
-        mayPost.delete(id);
+        mayPost.delete(`device:${id}`);
         for (const key of links) if (key.startsWith(`${id}|`)) links.delete(key);
       },
       async unlinkOthers(target, keepDeviceId) {
@@ -464,14 +542,17 @@ export function createFakeRepositories(): {
         let deleted = 0;
         for (const [id, entry] of devices) {
           const seen = entry.device.lastSeenAt.getTime();
-          const linked = [...links].some((key) => key.startsWith(`${id}|`)) || mayPost.has(id);
+          const linked =
+            [...links].some((key) => key.startsWith(`${id}|`)) ||
+            mayPost.has(`device:${id}`) ||
+            entry.device.identityId !== undefined;
           if (
             seen < anyLastSeenBefore.getTime() ||
             (!linked && seen < unlinkedLastSeenBefore.getTime())
           ) {
             devices.delete(id);
             feeds.delete(id);
-            mayPost.delete(id);
+            mayPost.delete(`device:${id}`);
             for (const key of links) if (key.startsWith(`${id}|`)) links.delete(key);
             deleted++;
           }

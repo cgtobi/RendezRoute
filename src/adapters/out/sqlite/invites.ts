@@ -1,9 +1,11 @@
 // Invite links and posting permissions (spec 4, 7 Moderation). Only token hashes are stored; a
-// device's permission goes with the device (spec 3.7) and keeps it from expiring early (3.10).
+// permission belongs to a device or to the account logged in on it, goes with its holder (spec
+// 3.7) and keeps a device from expiring early (3.10).
 import type { InviteRepository, PermissionRepository } from "../../../application/ports.ts";
 import type { Invite } from "../../../domain/invite.ts";
+import type { Kysely } from "kysely";
 import type { Database } from "./database.ts";
-import type { InvitesTable } from "./schema.ts";
+import type { DatabaseSchema, InvitesTable } from "./schema.ts";
 
 const date = (value: string | null) => (value === null ? undefined : new Date(value));
 
@@ -80,13 +82,7 @@ export function createInviteRepository(database: Database): InviteRepository {
     async redeem({ inviteId, deviceId, permissionId, now }) {
       const at = now.toISOString();
       return db.transaction().execute(async (trx) => {
-        const allowed = await trx
-          .selectFrom("permissions")
-          .select("id")
-          .where("device_id", "=", deviceId)
-          .where("permission", "=", "may_post")
-          .executeTakeFirst();
-        if (allowed !== undefined) return "already_allowed";
+        if ((await mayPostRow(trx, deviceId)) !== undefined) return "already_allowed";
         // Counts the use only while the invite is usable (domain inviteState), in the same step.
         const used = await trx
           .updateTable("invites")
@@ -97,11 +93,19 @@ export function createInviteRepository(database: Database): InviteRepository {
           .where((eb) => eb.or([eb("max_uses", "is", null), eb("uses", "<", eb.ref("max_uses"))]))
           .executeTakeFirst();
         if (Number(used.numUpdatedRows) === 0) return "unusable";
+        // A logged-in device's permission goes to its account, and so to its other devices.
+        const device = await trx
+          .selectFrom("devices")
+          .select("identity_id")
+          .where("id", "=", deviceId)
+          .executeTakeFirst();
+        const identityId = device?.identity_id ?? null;
         await trx
           .insertInto("permissions")
           .values({
             id: permissionId,
-            device_id: deviceId,
+            device_id: identityId === null ? deviceId : null,
+            identity_id: identityId,
             permission: "may_post",
             invite_id: inviteId,
             created_at: at,
@@ -113,14 +117,38 @@ export function createInviteRepository(database: Database): InviteRepository {
   };
 }
 
+/** The earliest `may_post` of the device itself or of the account logged in on it. */
+const mayPostRow = (db: Kysely<DatabaseSchema>, deviceId: string) =>
+  db
+    .selectFrom("permissions")
+    .select("created_at")
+    .where("permission", "=", "may_post")
+    .where((eb) =>
+      eb.or([
+        eb("device_id", "=", deviceId),
+        eb(
+          "identity_id",
+          "=",
+          eb.selectFrom("devices").select("identity_id").where("id", "=", deviceId),
+        ),
+      ]),
+    )
+    .orderBy("created_at")
+    .executeTakeFirst();
+
 export function createPermissionRepository(database: Database): PermissionRepository {
   return {
     async mayPostSince(deviceId) {
+      const row = await mayPostRow(database.db, deviceId);
+      return row === undefined ? undefined : new Date(row.created_at);
+    },
+
+    async deviceMayPostSince(deviceId) {
       const row = await database.db
         .selectFrom("permissions")
         .select("created_at")
-        .where("device_id", "=", deviceId)
         .where("permission", "=", "may_post")
+        .where("device_id", "=", deviceId)
         .executeTakeFirst();
       return row === undefined ? undefined : new Date(row.created_at);
     },

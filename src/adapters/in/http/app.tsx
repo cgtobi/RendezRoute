@@ -6,6 +6,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { bodyLimit } from "hono/body-limit";
 import type { Child } from "hono/jsx";
 import { jsxRenderer } from "hono/jsx-renderer";
+import type { AccountDeps } from "../../../application/accounts.ts";
 import type { PlanDeps } from "../../../application/plans.ts";
 import { listTemplates } from "../../../application/templates.ts";
 import type {
@@ -37,6 +38,7 @@ import { registerRatingRoutes } from "./routes/ratings.tsx";
 import { registerAdminRoutes } from "./routes/admin.tsx";
 import { registerReportRoutes } from "./routes/reports.tsx";
 import { registerResponseRoutes } from "./routes/responses.tsx";
+import { registerAccountRoutes } from "./routes/account.tsx";
 import { registerInviteRoutes } from "./routes/invites.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { Layout } from "./layout.tsx";
@@ -90,7 +92,11 @@ export interface AppDeps {
   vapidPublicKey: string;
   /** The instance admin's authentication; undefined when none is configured (spec 7). */
   adminAuth?: AdminAuth | undefined;
+  /** Accounts and the configured ways to log in (spec 7 Identity). */
+  accounts?: AccountWiring | undefined;
 }
+
+export type AccountWiring = Omit<AccountDeps, keyof PlanDeps>;
 
 /** Hono context variables set by the app middleware. */
 export type AppEnv = {
@@ -114,6 +120,7 @@ export function createApp({
   rateLimits,
   vapidPublicKey,
   adminAuth,
+  accounts,
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -244,9 +251,16 @@ export function createApp({
     return c.body(script);
   });
 
+  const oidcLogin =
+    config.oidc !== undefined && accounts?.identityProviders.oidc !== undefined
+      ? [{ provider: "oidc" as const, name: config.oidc.name }]
+      : [];
+  const accountDeps =
+    accounts === undefined || oidcLogin.length === 0 ? undefined : { ...planDeps, ...accounts };
   const deps = {
     config,
     planDeps,
+    accounts: accountDeps,
     geocoder,
     previewRenderer,
     weather,
@@ -267,6 +281,9 @@ export function createApp({
   registerLinkToolRoutes(app, deps);
   registerMyDataRoutes(app, deps);
   registerRatingRoutes(app, deps);
+  if (accountDeps !== undefined) {
+    registerAccountRoutes(app, deps, { deps: accountDeps, logins: oidcLogin });
+  }
   if (config.postingMode === "invite") registerInviteRoutes(app, deps);
   if (adminAuth !== undefined) {
     registerReportRoutes(app, deps);

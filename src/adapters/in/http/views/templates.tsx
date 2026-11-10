@@ -1,6 +1,7 @@
 // Repeatable templates (spec 3.10 Templates, decision I43): the options on the plan forms, the
 // list on the home page, the template page with "Repeat", and the page showing a new template link.
-import { InviteNeeded } from "./posting.tsx";
+import type { PostingNeed } from "../../../../application/posting-rules.ts";
+import { PostingClosed } from "./posting.tsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { PlanTemplate, TemplateAdjustment } from "../../../../domain/template.ts";
@@ -115,9 +116,8 @@ export interface TemplatePageProps {
   signedOut: number | undefined;
   /** One-time value for "Get a new link" (decision I44). */
   linkNonce: string;
-  /** Whether the posting rules let this device repeat it; otherwise how to get an invite. */
-  mayRepeat: boolean;
-  contactEmail: string | undefined;
+  /** Set when the posting rules keep this device from repeating it: how to become allowed. */
+  postingClosed: { requirement: PostingNeed; contactEmail: string | undefined } | undefined;
 }
 
 export function TemplatePage(props: TemplatePageProps) {
@@ -161,14 +161,14 @@ export function TemplatePage(props: TemplatePageProps) {
         })}
       </p>
 
-      {!props.mayRepeat && (
-        <InviteNeeded
+      {props.postingClosed !== undefined && (
+        <PostingClosed
           t={t}
-          contactEmail={props.contactEmail}
+          {...props.postingClosed}
           heading={{ level: 2, text: t("template.repeatHeading") }}
         />
       )}
-      {props.mayRepeat && (
+      {props.postingClosed === undefined && (
         <form method="post" action={`${base}/repeat`} class="plan-form">
           <h2>{t("template.repeatHeading")}</h2>
           <p class="hint">{t("template.repeatHint")}</p>

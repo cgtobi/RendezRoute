@@ -20,7 +20,9 @@ export class TestClient {
     for (const cookie of response.headers.getSetCookie()) {
       const [pair = ""] = cookie.split(";");
       const index = pair.indexOf("=");
-      this.cookies.set(pair.slice(0, index), pair.slice(index + 1));
+      // A browser drops a cookie set to expire now.
+      if (/;\s*Max-Age=0(?:;|$)/i.test(cookie)) this.cookies.delete(pair.slice(0, index));
+      else this.cookies.set(pair.slice(0, index), pair.slice(index + 1));
     }
     return response;
   }

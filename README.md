@@ -39,7 +39,7 @@ Node 26 and npm. `npm ci`, then:
 
 `E2E_CHANNEL=chrome npm run e2e` uses an installed Chrome instead of Playwright's Chromium.
 
-`npm run icons -- <folder>` rebuilds the logo and icons in `public/` from the Inkscape exports of the logo (`RendezRoute_AppIcon.svg`, `RendezRoute_icon.svg`, `RendezRoute_logo_white.svg`).
+`npm run icons -- <folder>` rebuilds the logo and icons in `public/` from the Inkscape exports of the logo (`RendezRoute_AppIcon.svg`, `RendezRoute_icon.svg`).
 
 ## License
 

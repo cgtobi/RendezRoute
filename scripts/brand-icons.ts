@@ -2,9 +2,9 @@
 //
 //   npm run icons -- <folder with the exports>
 //
-// The folder holds RendezRoute_AppIcon.svg (the app icon), RendezRoute_icon.svg (the pin) and
-// RendezRoute_logo_white.svg (the pin with the route). Only the marks are taken, as drawn: the
-// hidden traced photo, embedded pictures and editor data stay behind. The element ids and offsets
+// The folder holds RendezRoute_AppIcon.svg (the app icon) and RendezRoute_icon.svg (the pin, the
+// mark wherever it stands alone in the app). Only the marks are taken, as drawn: the hidden traced
+// photo, embedded pictures and editor data stay behind. The element ids and offsets
 // below are those of the current exports; a new export with other ids fails with a message.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -44,21 +44,25 @@ function appIcon(cornerRadius: number): string {
   );
 }
 
-/** The tab icon: the pin without the route, centred in a square; dark on light tabs, white on dark. */
+/** The pin: its size and its offset in the export. */
+const PIN = { width: 64.482018, height: 98.849541, x: -97.486983, y: -219.02708 };
+const pinPath = () =>
+  `<path transform="${translate(PIN.x, PIN.y)}" d="${pathOf("icon", "rect4568-0-7-1-0")}"/>`;
+
+/** The tab icon: the pin centred in a square; dark on light tabs, white on dark. */
 function tabIcon(): string {
-  const [width, height] = [64.482018, 98.849541];
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${num(-(height - width) / 2)} 0 ${num(height)} ${num(height)}">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${num(-(PIN.height - PIN.width) / 2)} 0 ${num(PIN.height)} ${num(PIN.height)}">` +
     `<style>path{fill:#16335e}@media (prefers-color-scheme:dark){path{fill:#fff}}</style>` +
-    `<path transform="${translate(-97.486983, -219.02708)}" d="${pathOf("icon", "rect4568-0-7-1-0")}"/></svg>\n`
+    `${pinPath()}</svg>\n`
   );
 }
 
-/** The header mark: the pin with the route, black, as a CSS mask that takes the text colour. */
+/** The header mark: the pin, black, as a CSS mask that takes the text colour. */
 function headerLogo(): string {
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${num(131.99982)} ${num(98.849556)}">` +
-    `<path transform="${translate(-165.75509 - 3.2378592, -215.8614 + 7.3587708)}" d="${pathOf("logo_white", "path4573")}"/></svg>\n`
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${num(PIN.width)} ${num(PIN.height)}">` +
+    `${pinPath()}</svg>\n`
   );
 }
 

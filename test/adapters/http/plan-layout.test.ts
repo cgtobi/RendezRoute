@@ -3,9 +3,10 @@
 // audience may see at all is tested in test/privacy; this file tests where it goes.
 import { describe, expect, it } from "vite-plus/test";
 import { translator } from "../../../src/adapters/i18n/i18n.ts";
-import { AVATAR_COLOURS, avatarOf } from "../../../src/adapters/in/http/views/avatar.ts";
+import { AVATAR_COLOURS, avatarOf } from "../../../src/adapters/in/http/views/avatar.tsx";
 import { createTestApp } from "../../support/app.ts";
 import { TestClient } from "../../support/client.ts";
+import { primaries } from "../../support/html.ts";
 import { createPlanViaUi, respondViaUi } from "../../support/plans.ts";
 
 const en = translator("en");
@@ -47,18 +48,6 @@ function columns(html: string) {
     side: html.slice(side, after > side ? after : end),
     after: after > side ? html.slice(after, end) : "",
   };
-}
-
-/** The main (primary) buttons and button links of the plan, each with the text after it. */
-function primaries(html: string): string[] {
-  const article = html.slice(html.indexOf('<article class="plan">'), html.indexOf("</article>"));
-  return [...article.matchAll(/<(button|a)\b([^>]*)>([\s\S]*?)<\/\1>/g)]
-    .filter(([, tag, attributes = ""]) => {
-      const classes = /class="([^"]*)"/.exec(attributes)?.[1]?.split(" ") ?? [];
-      const isButton = tag === "button" || classes.includes("button");
-      return isButton && !classes.includes("secondary") && !classes.includes("danger");
-    })
-    .map(([, , , content = ""]) => content.replace(/<[^>]*>/g, "").trim());
 }
 
 describe("plan page layout (decision D27)", () => {
@@ -127,7 +116,7 @@ describe("plan page layout (decision D27)", () => {
   it("gives each page at most one main action, for every audience before and after the start", async () => {
     const { viewer, ben, emma, host, page, start } = await setup();
     const before = await Promise.all([viewer, ben, emma, host].map(page));
-    expect(before.map(primaries)).toEqual([
+    expect(before.map((html) => primaries(html, '<article class="plan">', "</article>"))).toEqual([
       [en("respond.join")],
       [en("plan.addToCalendar")],
       [en("plan.addToCalendar")],
@@ -136,7 +125,12 @@ describe("plan page layout (decision D27)", () => {
     start();
     const after = await Promise.all([viewer, ben, emma, host].map(page));
     // Ben may rate (spec 6a); adding to the recap and the calendar are secondary by then.
-    expect(after.map(primaries)).toEqual([[], [en("rating.submit")], [], []]);
+    expect(after.map((html) => primaries(html, '<article class="plan">', "</article>"))).toEqual([
+      [],
+      [en("rating.submit")],
+      [],
+      [],
+    ]);
   });
 });
 

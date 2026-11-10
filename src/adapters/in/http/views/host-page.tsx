@@ -15,9 +15,12 @@ import type { RatingResultView } from "../../../../application/plan-views.ts";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
 import type { Units } from "../../../../domain/units.ts";
+import { PersonName } from "./avatar.tsx";
+import { BackLink } from "./back-link.tsx";
 
 export interface HostPageProps {
   t: Translate;
+  language: string;
   planId: string;
   title: string;
   scope: "all" | "retention";
@@ -70,9 +73,9 @@ export function HostPage(props: HostPageProps) {
 
   return (
     <section class="host">
-      <p>
-        <a href={`/p/${planId}`}>{t("host.back")}</a>
-      </p>
+      <BackLink href={`/p/${planId}`} label={t("host.back")} />
+      {/* Which plan this page manages; the form itself stays neutral (decision D11). */}
+      <p class="plan-context">{props.title}</p>
       {props.saved && (
         <p class="notice" role="status">
           {t("host.saved")}
@@ -118,6 +121,7 @@ export function HostPage(props: HostPageProps) {
           <>
             <RequestList
               t={t}
+              language={props.language}
               requests={props.people.requests}
               open={props.requestsOpen}
               planId={planId}
@@ -126,6 +130,7 @@ export function HostPage(props: HostPageProps) {
             <p class="hint">{t("host.removeHint")}</p>
             <PeopleList
               t={t}
+              language={props.language}
               heading={t("host.participants")}
               people={props.people.participants}
               action="remove"
@@ -134,6 +139,7 @@ export function HostPage(props: HostPageProps) {
             />
             <PeopleList
               t={t}
+              language={props.language}
               heading={t("host.interested")}
               people={props.people.interested}
               action="remove"
@@ -142,6 +148,7 @@ export function HostPage(props: HostPageProps) {
             />
             <PeopleList
               t={t}
+              language={props.language}
               heading={t("host.rejected")}
               people={props.people.rejected}
               action="restore"
@@ -151,6 +158,7 @@ export function HostPage(props: HostPageProps) {
             />
             <PeopleList
               t={t}
+              language={props.language}
               heading={t("host.removed")}
               people={props.people.removed}
               action="restore"
@@ -241,10 +249,14 @@ function RouteSection(props: HostPageProps) {
             name="gpx"
             accept=".gpx,application/gpx+xml"
             required
+            aria-invalid={props.routeError === undefined ? undefined : "true"}
+            aria-describedby={props.routeError === undefined ? undefined : "field-route-error"}
           />
           <p class="hint">{t("host.routeHint")}</p>
           {props.routeError !== undefined && (
-            <p class="error">{fieldErrorMessage(props.routeError, t)}</p>
+            <p class="error" id="field-route-error" role="alert">
+              {fieldErrorMessage(props.routeError, t)}
+            </p>
           )}
         </div>
         <RouteTrimField
@@ -253,7 +265,7 @@ function RouteSection(props: HostPageProps) {
           selected={props.routeTrim}
           units={props.units}
         />
-        <button type="submit">
+        <button type="submit" class="secondary">
           {props.hasRoute ? t("host.routeReplace") : t("host.routeUpload")}
         </button>
       </form>
@@ -329,6 +341,7 @@ function RetentionForm(props: HostPageProps) {
 /** Pending requests with their notes, each with Accept and Reject (spec 6 feature 1). */
 function RequestList(props: {
   t: Translate;
+  language: string;
   requests: readonly HostRequest[];
   /** Before the start only; afterwards requests stay unanswered (spec 3.1). */
   open: boolean;
@@ -343,7 +356,7 @@ function RequestList(props: {
       <ul class="people-actions requests">
         {props.requests.map((request) => (
           <li>
-            <span>{request.name}</span>
+            <PersonName name={request.name} language={props.language} />
             {request.note !== undefined && <p class="request-note">{request.note}</p>}
             {props.open && (
               <div class="buttons">
@@ -353,7 +366,7 @@ function RequestList(props: {
                     action={`/p/${props.planId}/host/people/${request.responseId}/${action}`}
                   >
                     <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
-                    <button type="submit" class={action === "reject" ? "secondary" : undefined}>
+                    <button type="submit" class="secondary">
                       {t(action === "accept" ? "host.accept" : "host.reject")}
                     </button>
                   </form>
@@ -369,6 +382,7 @@ function RequestList(props: {
 
 function PeopleList(props: {
   t: Translate;
+  language: string;
   heading: string;
   people: readonly HostPerson[];
   action: "remove" | "restore";
@@ -384,13 +398,13 @@ function PeopleList(props: {
       <ul class="people-actions">
         {props.people.map((person) => (
           <li>
-            <span>{person.name}</span>
+            <PersonName name={person.name} language={props.language} />
             <form
               method="post"
               action={`/p/${props.planId}/host/people/${person.responseId}/${props.action}`}
             >
               <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
-              <button type="submit" class={props.action === "remove" ? "secondary" : undefined}>
+              <button type="submit" class="secondary">
                 {props.label ?? props.t(props.action === "remove" ? "host.remove" : "host.restore")}
               </button>
             </form>
@@ -413,6 +427,7 @@ export function DeleteConfirm(props: {
   const { t } = props;
   return (
     <section class="host">
+      <BackLink href={`/p/${props.planId}/host`} label={t("host.heading")} />
       <h1>{t("host.deleteHeading", { title: props.title })}</h1>
       <p class="warning">{t("host.deleteExplain", { count: props.responseCount })}</p>
       {props.keepsTemplate && <p>{t("host.deleteKeepsTemplate")}</p>}
@@ -422,9 +437,6 @@ export function DeleteConfirm(props: {
           {t("host.deleteConfirm")}
         </button>
       </form>
-      <p>
-        <a href={`/p/${props.planId}/host`}>{t("host.back")}</a>
-      </p>
     </section>
   );
 }

@@ -67,7 +67,8 @@ export async function createPlanWithRouteViaUi(
 /** The status line on the person's manage page, e.g. "Request pending". */
 export async function ownStatus(client: TestClient, planId: string): Promise<string> {
   const html = await (await client.get(`/p/${planId}/me`)).text();
-  const status = /<p class="notice">([^<]*)<\/p>/.exec(html)?.[1] ?? "";
+  const status =
+    /<div class="status-text">(?:<h2>[^<]*<\/h2>)?<p>([^<]*)<\/p>/.exec(html)?.[1] ?? "";
   return status.replaceAll("&#39;", "'");
 }
 
@@ -79,7 +80,14 @@ export async function hostActsOn(
   name: string,
 ): Promise<Response> {
   const page = await (await host.get(`/p/${planId}/host`)).text();
-  const row = page.split("<li>").find((item) => item.startsWith(`<span>${name}</span>`)) ?? "";
+  // A row starts with the person's name, after their initial (decision D27).
+  const row =
+    page
+      .split("<li>")
+      .find(
+        (item) =>
+          item.startsWith('<span class="person-name">') && item.includes(`</span>${name}</span>`),
+      ) ?? "";
   const form = new RegExp(`<form[^>]*action="([^"]+/${action})"[^]*?</form>`).exec(row);
   if (form?.[1] === undefined) throw new Error(`no ${action} button for ${name}`);
   return host.postForm(form[1], hiddenFields(form[0]));

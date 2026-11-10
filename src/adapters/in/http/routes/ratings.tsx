@@ -7,6 +7,7 @@ import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
 import { RatingSection } from "../views/rating.tsx";
 import { badRequest, formField, planGone, readForm, type RouteDeps } from "./shared.tsx";
+import { BackLink } from "../views/back-link.tsx";
 
 export function registerRatingRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {
   const request = (c: Context<AppEnv>) => ({
@@ -35,11 +36,10 @@ export function registerRatingRoutes(app: Hono<AppEnv>, { config, planDeps }: Ro
       // meanwhile). Rating has not opened, so say that, keeping the status.
       return c.render(
         <section class="rating-form">
+          <BackLink href={`/p/${request(c).planId}`} label={t("rating.back")} />
+          <h1>{t("rating.heading")}</h1>
           <p class="warning" role="alert">
             {t("rating.notYetOpen")}
-          </p>
-          <p>
-            <a href={`/p/${request(c).planId}`}>{t("rating.back")}</a>
           </p>
         </section>,
         { title: t("rating.heading") },
@@ -47,11 +47,10 @@ export function registerRatingRoutes(app: Hono<AppEnv>, { config, planDeps }: Ro
     }
     return c.render(
       <section class="rating-form">
-        <p>
-          <a href={`/p/${request(c).planId}#rating`}>{t("rating.back")}</a>
-        </p>
+        <BackLink href={`/p/${request(c).planId}#rating`} label={t("rating.back")} />
         <RatingSection
           t={t}
+          placement="page"
           planId={request(c).planId}
           // Errors keep the form with what was typed, even if rating closed meanwhile: the next
           // save then says so.

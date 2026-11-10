@@ -1,6 +1,7 @@
 // Responding and the manage page (spec 5 features 5 and 6).
 import type { Context, Hono } from "hono";
 import { viewPlan } from "../../../../application/plans.ts";
+import { BackLink } from "../views/back-link.tsx";
 import {
   respond,
   updateMyResponse,
@@ -37,10 +38,8 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     c.status(status);
     return c.render(
       <>
-        <p class="notice">{c.get("t")(key)}</p>
-        <p>
-          <a href={`/p/${planId}`}>{c.get("t")("responded.back")}</a>
-        </p>
+        <BackLink href={`/p/${planId}`} label={c.get("t")("responded.back")} />
+        <h1>{c.get("t")(key)}</h1>
       </>,
       { title: c.get("t")(key) },
     );

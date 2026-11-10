@@ -20,6 +20,7 @@ import {
   type RouteDeps,
   tooManyRequests,
 } from "./shared.tsx";
+import { BackLink } from "../views/back-link.tsx";
 
 export function registerRecapRoutes(app: Hono<AppEnv>, { config, planDeps, limits }: RouteDeps) {
   const request = (c: Context<AppEnv>) => ({
@@ -51,11 +52,10 @@ export function registerRecapRoutes(app: Hono<AppEnv>, { config, planDeps, limit
     c.header("cache-control", "private, no-store");
     return c.render(
       <section class="recap-form">
-        <p>
-          <a href={`/p/${request(c).planId}#recap`}>{t("recap.back")}</a>
-        </p>
+        <BackLink href={`/p/${request(c).planId}#recap`} label={t("recap.back")} />
         <ContributionForm
           t={t}
+          placement="page"
           csrfToken={c.get("csrfToken")()}
           errors={form.errors ?? []}
           {...form}

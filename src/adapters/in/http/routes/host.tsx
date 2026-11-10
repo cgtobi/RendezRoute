@@ -63,6 +63,7 @@ export function registerHostRoutes(
     return c.render(
       <HostPage
         t={c.get("t")}
+        language={c.get("language")}
         planId={page.planId}
         title={page.title}
         scope={page.scope}
@@ -91,8 +92,11 @@ export function registerHostRoutes(
         map={mapSettings(config)}
         placeSearch={geocoder !== undefined}
       />,
-      // Map tools exist only in the full edit form.
-      { title: c.get("t")("host.heading"), head: page.scope === "all" ? <MapAssets /> : undefined },
+      {
+        title: c.get("t")("host.heading"),
+        // Map tools exist only in the full edit form; the form stays neutral (decision D11).
+        head: page.scope === "all" ? <MapAssets /> : undefined,
+      },
     );
   };
 

@@ -8,6 +8,7 @@ import type { MessageKey } from "../../../i18n/messages/en.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, formatDay, formatTime } from "./format.ts";
 import { Linkified } from "./linkify.tsx";
+import type { Placement } from "./placement.ts";
 
 /** Known services, labelled by name as text; no brand icons (decision D19). */
 const SERVICES: readonly [RegExp, string][] = [
@@ -123,7 +124,7 @@ function PrivateRecap(props: Parameters<typeof RecapSection>[0] & { recap: Recap
           action={`/p/${planId}/recap`}
           heading={t("recap.add")}
           submit={t("recap.submit")}
-          secondary
+          placement="plan"
           values={{ body: "", linkUrl: "" }}
           errors={[]}
           csrfToken={props.csrfToken}
@@ -205,8 +206,11 @@ export function ContributionForm(props: {
   action: string;
   heading: string;
   submit: string;
-  /** On the plan page, where another action is the page's main one (decision D27). */
-  secondary?: boolean;
+  /**
+   * On the plan page (another action is the page's main one, so its button is secondary, D27),
+   * or the form as a page of its own (editing; its heading is then the page's h1).
+   */
+  placement: Placement;
   values: { body: string; linkUrl: string };
   errors: readonly { field: string; code: string }[];
   csrfToken: string;
@@ -232,7 +236,7 @@ export function ContributionForm(props: {
   };
   return (
     <form method="post" action={props.action} class="contribution-form">
-      <h3>{props.heading}</h3>
+      {props.placement === "page" ? <h1>{props.heading}</h1> : <h3>{props.heading}</h3>}
       <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
       {props.notice !== undefined && (
         <p class="warning" role="alert">
@@ -260,7 +264,7 @@ export function ContributionForm(props: {
         />,
         t("recap.linkHint"),
       )}
-      <button type="submit" class={props.secondary === true ? "secondary" : undefined}>
+      <button type="submit" class={props.placement === "plan" ? "secondary" : undefined}>
         {props.submit}
       </button>
     </form>

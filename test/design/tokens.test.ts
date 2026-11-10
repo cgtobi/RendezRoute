@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
-import { AVATAR_COLOURS } from "../../src/adapters/in/http/views/avatar.ts";
+import { AVATAR_COLOURS } from "../../src/adapters/in/http/views/avatar.tsx";
 import { contrastRatio } from "../../src/domain/color.ts";
 
 const CSS = readFileSync(join(import.meta.dirname, "../../public/app.css"), "utf8");

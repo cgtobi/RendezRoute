@@ -3,7 +3,6 @@
 import type { Child } from "hono/jsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import type {
-  OwnResponseView,
   PersonView,
   PlanViewForParticipant,
   PlanViewForPoster,
@@ -25,11 +24,11 @@ import {
   formatTime,
   formatWindSpeed,
 } from "./format.ts";
-import { avatarOf } from "./avatar.ts";
+import { Initial } from "./avatar.tsx";
+import { ResponseStatus } from "./response-status.tsx";
 import { Linkified } from "./linkify.tsx";
 import { type MapSettings, PlanMap } from "./maps.tsx";
 import type { WeatherView } from "../../../../application/weather.ts";
-import { responseState, statusKey } from "./format.ts";
 import { RatingResultSection, RatingSection } from "./rating.tsx";
 import { RecapSection } from "./recap.tsx";
 import { RespondForm, type RespondFormState } from "./respond-form.tsx";
@@ -222,7 +221,11 @@ export function PlanPage(props: {
       <div class="plan-side">
         {!insider && counts}
         {(audience.kind === "responder" || audience.kind === "participant") && (
-          <OwnResponse t={t} planId={view.id} response={audience.view.ownResponse} />
+          <ResponseStatus
+            t={t}
+            response={audience.view.ownResponse}
+            action={{ href: `/p/${view.id}/me`, label: t("plan.manageResponse") }}
+          />
         )}
         {audience.kind === "viewer" &&
           (props.responsesOpen && props.respondForm !== undefined ? (
@@ -314,35 +317,6 @@ export function PlanPage(props: {
         </div>
       )}
     </article>
-  );
-}
-
-/** The person's own response as a status box, with the way to change it. */
-function OwnResponse({
-  t,
-  planId,
-  response,
-}: {
-  t: Translate;
-  planId: string;
-  response: OwnResponseView;
-}) {
-  const state = responseState(response);
-  return (
-    <section class={`status status-${state}`}>
-      {state === "joined" && (
-        <span class="status-icon" aria-hidden="true">
-          <span class="icon icon-check"></span>
-        </span>
-      )}
-      <div class="status-text">
-        <h2>{t("plan.yourResponse")}</h2>
-        <p>{t(statusKey(response))}</p>
-      </div>
-      <p class="status-action">
-        <a href={`/p/${planId}/me`}>{t("plan.manageResponse")}</a>
-      </p>
-    </section>
   );
 }
 
@@ -441,15 +415,9 @@ function People({
       </div>
       <ul class="people-list">
         {people.map((person) => {
-          const avatar = avatarOf(person.name, language);
           return (
             <li class="person">
-              <span
-                class={person.isHost ? "avatar avatar-host" : `avatar avatar-${avatar.hue}`}
-                aria-hidden="true"
-              >
-                {avatar.initial}
-              </span>
+              <Initial name={person.name} language={language} host={person.isHost} />
               {person.name}
               {person.isHost && (
                 <>

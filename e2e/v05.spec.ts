@@ -83,10 +83,10 @@ test("The app works fully if push permission is denied", async ({ browser, baseU
   await expect(
     ben.getByText("Notifications are blocked in this browser’s settings."),
   ).toBeVisible();
-  await expect(ben.locator(".manage > p.notice")).toHaveText("You're in");
+  await expect(ben.locator(".manage .status-text p")).toHaveText("You're in");
   await ben.getByLabel("Interested").check();
   await ben.getByRole("button", { name: "Save changes" }).click();
-  await expect(ben.locator(".manage > p.notice")).toHaveText("Interested");
+  await expect(ben.locator(".manage .status-text p")).toHaveText("Interested");
 
   // Changes still reach everyone through the pages themselves.
   await cancel(host, planUrl);

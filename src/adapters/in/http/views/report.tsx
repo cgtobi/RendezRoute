@@ -6,6 +6,7 @@ import type { Translate } from "../../../i18n/i18n.ts";
 import type { MessageKey } from "../../../i18n/messages/en.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage } from "./format.ts";
+import { BackLink } from "./back-link.tsx";
 
 export const REASON_LABELS: Readonly<Record<ReportReason, MessageKey>> = {
   spam: "report.reason.spam",
@@ -44,9 +45,7 @@ export function ReportForm({
   const detailsError = errorFor("details");
   return (
     <section class="report">
-      <p>
-        <a href={`/p/${planId}`}>{t("report.back")}</a>
-      </p>
+      <BackLink href={`/p/${planId}`} label={t("report.back")} />
       <h1>{t("report.heading", { title: planTitle })}</h1>
       <p>{t("report.intro")}</p>
       <form method="post" action={`/p/${planId}/report`}>
@@ -122,11 +121,10 @@ export function ReportForm({
 export function ReportSent({ t, planId }: { t: Translate; planId: string }) {
   return (
     <section class="report">
+      <BackLink href={`/p/${planId}`} label={t("report.back")} />
+      <h1>{t("report.sentTitle")}</h1>
       <p class="notice" role="status">
         {t("report.sent")}
-      </p>
-      <p>
-        <a href={`/p/${planId}`}>{t("report.back")}</a>
       </p>
     </section>
   );

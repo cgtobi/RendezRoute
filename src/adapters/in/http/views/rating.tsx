@@ -7,6 +7,7 @@ import type { MessageKey } from "../../../i18n/messages/en.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage } from "./format.ts";
 import { Linkified } from "./linkify.tsx";
+import type { Placement } from "./placement.ts";
 
 const VALUE_LABELS: Readonly<Record<RatingValue, MessageKey>> = {
   up: "rating.up",
@@ -30,6 +31,7 @@ export function RatingSection({
   values,
   errors = [],
   notice,
+  placement = "plan",
 }: {
   t: Translate;
   planId: string;
@@ -40,6 +42,8 @@ export function RatingSection({
   errors?: readonly { field: string; code: string }[];
   /** Shown above the form, e.g. that rating closed meanwhile. */
   notice?: string | undefined;
+  /** On the plan page, or the form as a page of its own (its heading is then the page's h1). */
+  placement?: Placement;
 }) {
   const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
   const own = rating.own;
@@ -49,7 +53,7 @@ export function RatingSection({
   const noteError = errorFor("note");
   return (
     <section class="rating" id="rating">
-      <h3>{t("rating.heading")}</h3>
+      {placement === "page" ? <h1>{t("rating.heading")}</h1> : <h3>{t("rating.heading")}</h3>}
       {notice !== undefined && (
         <p class="warning" role="alert">
           {notice}

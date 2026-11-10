@@ -5,9 +5,11 @@ import type { ResponseChoice } from "../../../../domain/requests.ts";
 import { isBlocked } from "../../../../domain/response.ts";
 import { MAX_DISPLAY_NAME_LENGTH } from "../../../../domain/responding.ts";
 import { CSRF_FIELD } from "../csrf.ts";
-import { fieldErrorMessage, statusKey } from "./format.ts";
+import { BackLink } from "./back-link.tsx";
+import { fieldErrorMessage } from "./format.ts";
 import { LinkTools } from "./link-tools.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
+import { ResponseStatus } from "./response-status.tsx";
 
 export function ManagePage(props: {
   t: Translate;
@@ -34,13 +36,15 @@ export function ManagePage(props: {
 
   return (
     <section class="manage">
+      <BackLink href={`/p/${planId}`} label={t("manage.back")} />
       <h1>{t("manage.heading", { title: props.planTitle })}</h1>
       {props.notice !== undefined && (
         <p class="error" role="alert">
           {props.notice}
         </p>
       )}
-      <p class="notice">{t(statusKey(response))}</p>
+      {/* The page's heading already says whose response this is. */}
+      <ResponseStatus t={t} response={response} titled={false} />
       {blocked ? null : (
         <form method="post" action={`/p/${planId}/me`}>
           <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
@@ -116,10 +120,6 @@ export function ManagePage(props: {
           </button>
         </form>
       </details>
-
-      <p>
-        <a href={`/p/${planId}`}>{t("manage.back")}</a>
-      </p>
     </section>
   );
 }

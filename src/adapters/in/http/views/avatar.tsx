@@ -33,3 +33,31 @@ function colourOf(text: string): number {
   hash ^= hash >>> 16;
   return (hash >>> 0) % AVATAR_COLOURS;
 }
+
+/** A person's initial in their name colour, or the host's in the plan's secondary colour. */
+export function Initial({
+  name,
+  language,
+  host = false,
+}: {
+  name: string;
+  language: string;
+  host?: boolean;
+}) {
+  const avatar = avatarOf(name, language);
+  return (
+    <span class={host ? "avatar avatar-host" : `avatar avatar-${avatar.hue}`} aria-hidden="true">
+      {avatar.initial}
+    </span>
+  );
+}
+
+/** A person's name after their initial, as in the host page's lists. */
+export function PersonName({ name, language }: { name: string; language: string }) {
+  return (
+    <span class="person-name">
+      <Initial name={name} language={language} />
+      {name}
+    </span>
+  );
+}

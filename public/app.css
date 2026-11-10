@@ -327,6 +327,10 @@ main,
   }
 }
 
+.icon-back {
+  --icon: url("icons/back.svg");
+}
+
 .icon-calendar {
   --icon: url("icons/calendar.svg");
 }
@@ -441,6 +445,23 @@ textarea {
   min-height: 6rem;
 }
 
+input[type="file"] {
+  padding: var(--s1);
+}
+
+input[type="file"]::file-selector-button {
+  min-height: calc(var(--target) - 2 * var(--s1) - 2px);
+  margin-right: var(--s3);
+  padding: 0 var(--s4);
+  border: 1px solid var(--control-line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 input[type="color"] {
   width: 100%;
   height: var(--target);
@@ -539,6 +560,52 @@ input[type="checkbox"] {
 .contribution {
   padding: var(--s3) 0;
   border-bottom: 1px solid var(--line);
+}
+
+/* Pages about a plan: the way back comes first (decision D27). */
+
+.back-link {
+  margin: var(--s4) 0 0;
+}
+
+.back-link a {
+  display: inline-flex;
+  gap: var(--s1);
+  align-items: center;
+  min-height: var(--target);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back-link a:hover {
+  text-decoration: underline;
+}
+
+/* The plan a form page manages; forms stay neutral (decision D11). */
+.plan-context {
+  margin: var(--s2) 0 0;
+  color: var(--muted);
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+.host h1 {
+  margin-top: var(--s2);
+}
+
+/* The host page's sections, divided by hairlines like the plan page. */
+.host > section {
+  margin-top: var(--s6);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--line);
+}
+
+.person-name {
+  display: inline-flex;
+  gap: var(--s2);
+  align-items: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Plan page (decision D27): no boxes around sections; the plan marked by a bar in its primary

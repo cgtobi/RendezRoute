@@ -73,11 +73,14 @@ describe("page language (decision D15)", () => {
     expect(page).toContain('name="distanceKm" value="12,5"');
   });
 
-  it("translates plain-text errors", async () => {
+  it("translates error pages", async () => {
     const { client } = await setup("fr");
     const response = await client.postForm("/new", {});
     expect(response.status).toBe(403);
-    expect(await response.text()).toBe(fr("error.csrf"));
+    // The message as the heading of an error page (decision D29).
+    const page = await response.text();
+    expect(page).toContain('<html lang="fr">');
+    expect(page).toContain(`<h1>${html(fr("error.csrf"))}</h1>`);
     expect(response.headers.get("content-language")).toBe("fr");
   });
 

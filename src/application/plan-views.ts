@@ -217,9 +217,15 @@ export interface PlanPreview {
   colors: { primary: HexColor; secondary: HexColor };
   status: PlanStatus;
   language: string;
-  /** Changes whenever the plan changes; versions the image URL and cache. */
+  /** Changes whenever the plan or the card's look changes; versions the image URL and cache. */
   version: string;
 }
+
+/**
+ * Raised when the preview card's look changes (2: like the plan page, decision D29), so cached
+ * cards are drawn again and chat apps fetch the new image.
+ */
+const PREVIEW_LOOK = 2;
 
 export function previewOf(plan: Plan): PlanPreview {
   return {
@@ -235,7 +241,8 @@ export function previewOf(plan: Plan): PlanPreview {
     colors: { primary: plan.colors.primary, secondary: plan.colors.secondary },
     status: plan.status,
     language: plan.posterLanguage,
-    version: plan.updatedAt.getTime().toString(36),
+    // Letters and digits only, e.g. "l2mwb7l1fu": the look, then the plan's last change.
+    version: `l${PREVIEW_LOOK}${plan.updatedAt.getTime().toString(36)}`,
   };
 }
 

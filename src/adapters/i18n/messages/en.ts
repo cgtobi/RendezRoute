@@ -82,6 +82,7 @@ export const en = {
   "error.tooLarge": "This request is too large.",
   "error.busy": "The server is busy. Please try again in a few seconds.",
   "error.rateLimited": "Too many requests from your network. Please try again in a few minutes.",
+  "error.notFound": "This page does not exist.",
   "error.badRequest": "The form could not be processed. Please reload the page and try again.",
 
   "activity.run": "Run",

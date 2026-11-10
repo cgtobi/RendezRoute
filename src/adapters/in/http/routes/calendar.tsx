@@ -13,7 +13,13 @@ import { readDeviceToken } from "../device-cookie.ts";
 import { writeCalendar } from "../ics.ts";
 import { calendarEvents } from "../views/calendar-events.ts";
 import { CalendarPage } from "../views/calendar-page.tsx";
-import { clientOf, type RouteDeps, secretLinkHeaders, tooManyRequests } from "./shared.tsx";
+import {
+  clientOf,
+  planGone,
+  type RouteDeps,
+  secretLinkHeaders,
+  tooManyRequests,
+} from "./shared.tsx";
 
 /** How often subscribed calendars should fetch the feed again. */
 const FEED_REFRESH_HOURS = 1;
@@ -30,7 +36,7 @@ export function registerCalendarRoutes(app: Hono<AppEnv>, { config, planDeps, li
       planId: c.req.param("id"),
       deviceToken: readDeviceToken(c, config),
     });
-    if (result.kind === "not_found") return c.notFound();
+    if (result.kind === "not_found") return planGone(c);
     c.header("cache-control", "private, no-store");
     c.header("content-disposition", 'attachment; filename="plan.ics"');
     const events = calendarEvents([result.entry], {

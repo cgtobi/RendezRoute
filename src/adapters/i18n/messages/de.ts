@@ -86,6 +86,7 @@ export const de: Messages = {
   "error.busy": "Der Server ist ausgelastet. Bitte versuche es in ein paar Sekunden noch einmal.",
   "error.rateLimited":
     "Zu viele Anfragen aus deinem Netzwerk. Bitte versuche es in ein paar Minuten noch einmal.",
+  "error.notFound": "Diese Seite gibt es nicht.",
   "error.badRequest":
     "Das Formular konnte nicht verarbeitet werden. Bitte lade die Seite neu und versuche es noch einmal.",
 

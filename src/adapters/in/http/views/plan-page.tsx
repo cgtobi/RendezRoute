@@ -21,6 +21,7 @@ import {
   formatWindSpeed,
 } from "./format.ts";
 import { Initial } from "./avatar.tsx";
+import { WhenWhere } from "./when-where.tsx";
 import { PlanMetrics } from "./plan-metrics.tsx";
 import { ResponseStatus } from "./response-status.tsx";
 import { Linkified } from "./linkify.tsx";
@@ -114,28 +115,19 @@ export function PlanPage(props: {
           </p>
         )}
 
-        <dl class="when-where">
-          <div class="pill">
-            <dt class="visually-hidden">{t("plan.when")}</dt>
-            <dd>
-              <span class="icon icon-calendar" aria-hidden="true"></span>
-              <span>
-                {formatDay(view.startsAt, view.timeZone, language)},{" "}
-                {formatTime(view.startsAt, view.timeZone, language)}{" "}
-                <span class="time-zone" data-time-zone={view.timeZone}>
-                  ({t("plan.timeZone", { zone: view.timeZone })})
-                </span>
+        <WhenWhere
+          t={t}
+          when={
+            <>
+              {formatDay(view.startsAt, view.timeZone, language)},{" "}
+              {formatTime(view.startsAt, view.timeZone, language)}{" "}
+              <span class="time-zone" data-time-zone={view.timeZone}>
+                ({t("plan.timeZone", { zone: view.timeZone })})
               </span>
-            </dd>
-          </div>
-          <div class="pill">
-            <dt class="visually-hidden">{t("plan.where")}</dt>
-            <dd>
-              <span class="icon icon-pin" aria-hidden="true"></span>
-              <span>{view.area.label}</span>
-            </dd>
-          </div>
-        </dl>
+            </>
+          }
+          where={view.area.label}
+        />
 
         <PlanMetrics t={t} details={view} units={units} language={language}>
           <div class={`metric drop-policy drop-${view.dropPolicy}`}>

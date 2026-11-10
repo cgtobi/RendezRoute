@@ -23,6 +23,7 @@ import {
   formFile,
   postingClosed,
   mapSettings,
+  messagePage,
   newNonce,
   planGone,
   planInput,
@@ -195,7 +196,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     if (result.kind === "limited") return tooManyRequests(c, retryAfterSeconds);
     if (result.kind === "busy") {
       c.header("retry-after", "5");
-      return c.text(c.get("t")("error.busy"), 503);
+      return messagePage(c, 503, c.get("t")("error.busy"));
     }
     c.header("content-type", "image/png");
     c.header("cache-control", "public, max-age=3600");

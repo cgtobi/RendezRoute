@@ -5,7 +5,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { translator } from "../../../src/adapters/i18n/i18n.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
-import { primaries } from "../../support/html.ts";
+import { primaries, unsectioned } from "../../support/html.ts";
 import { createPlanViaUi } from "../../support/plans.ts";
 import { FakeOidcServer } from "../../fakes/oidc-server.ts";
 import { FakeMastodonServer } from "../../fakes/mastodon-server.ts";
@@ -56,37 +56,6 @@ async function setup() {
     );
   };
   return { ...test, oidc, host, planId, templateId, saved, html, logIn, continueLogin };
-}
-
-const VOID = new Set(["input", "br", "img", "hr", "meta", "link"]);
-
-/**
- * What stands outside the page's parts: h2s that start no section, and anything after the first
- * part that is not itself a part (a direct child of the `.sectioned` page that is not a section).
- */
-function unsectioned(html: string): string[] {
-  const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
-  const lone = [...main.matchAll(/(<section\b[^>]*>)?<h2\b[^>]*>([\s\S]*?)<\/h2>/g)]
-    .filter(([, section]) => section === undefined)
-    .map(([, , heading = ""]) => `h2: ${heading.replace(/<[^>]*>/g, "")}`);
-  const root = main.search(/<section class="[^"]*\bsectioned\b/);
-  const stack: string[] = [];
-  let parts = false;
-  const loose: string[] = [];
-  for (const [tag = "", closing, name = ""] of main.slice(root).matchAll(/<(\/?)(\w+)\b[^>]*>/g)) {
-    if (VOID.has(name)) continue;
-    if (closing === "/") {
-      stack.pop();
-      if (stack.length === 0) break;
-      continue;
-    }
-    if (stack.length === 1) {
-      if (name === "section") parts = true;
-      else if (parts) loose.push(tag);
-    }
-    stack.push(name);
-  }
-  return [...lone, ...loose];
 }
 
 describe("own data and account pages (design step 4)", () => {

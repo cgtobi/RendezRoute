@@ -45,6 +45,7 @@ import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-link
 import { Layout } from "./layout.tsx";
 import { PrivacyPage } from "./views/privacy-page.tsx";
 import { TemplateList } from "./views/templates.tsx";
+import { messagePage } from "./routes/shared.tsx";
 import { requestLogger } from "./request-logger.ts";
 import { securityHeaders } from "./security-headers.ts";
 
@@ -72,6 +73,11 @@ declare module "hono" {
         pathBase?: string | undefined;
         /** The page uses the full width on large screens (Layout). */
         wide?: boolean | undefined;
+        /**
+         * A page that only says what happened (decision D29): without the language and units
+         * forms, whose token would set a cookie on every unknown address.
+         */
+        plain?: boolean | undefined;
       },
     ): Response | Promise<Response>;
   }
@@ -154,19 +160,10 @@ export function createApp({
     }
   });
 
-  // Before CSRF, which parses form bodies. Only the GPX upload routes accept more (spec 3.8).
-  const tooLarge = (c: Context) => c.text(translate(c)("error.tooLarge"), 413);
-  const formLimit = bodyLimit({ maxSize: MAX_BODY_BYTES, onError: tooLarge });
-  const uploadLimit = bodyLimit({ maxSize: MAX_UPLOAD_BODY_BYTES, onError: tooLarge });
-  app.use((c, next) =>
-    isUploadRoute(c.req.method, c.req.path) ? uploadLimit(c, next) : formLimit(c, next),
-  );
-
-  app.use(csrf({ key: csrfKey, config, onReject: (c) => c.text(translate(c)("error.csrf"), 403) }));
-
+  // Before the body limit and CSRF, so that their answers are pages of the site too (decision D29).
   app.use(
     jsxRenderer(
-      ({ children, title, head, pathBase, wide }, c: Context<AppEnv>) => (
+      ({ children, title, head, pathBase, wide, plain }, c: Context<AppEnv>) => (
         <Layout
           config={config}
           language={c.get("language")}
@@ -177,7 +174,7 @@ export function createApp({
           languageSwitch={
             // Pages answering a form post (e.g. links shown once) cannot be loaded again; admin
             // pages keep only relative links, and the switch posts to absolute paths.
-            c.req.method === "GET" && pathBase === undefined
+            c.req.method === "GET" && pathBase === undefined && plain !== true
               ? { csrfToken: c.get("csrfToken")(), returnTo: localPath(c.req.url) }
               : undefined
           }
@@ -191,11 +188,35 @@ export function createApp({
     ),
   );
 
-  app.onError((error, c) => {
+  // Before CSRF, which parses form bodies. Only the GPX upload routes accept more (spec 3.8).
+  const tooLarge = (c: Context) => messagePage(c, 413, translate(c)("error.tooLarge"));
+  const formLimit = bodyLimit({ maxSize: MAX_BODY_BYTES, onError: tooLarge });
+  const uploadLimit = bodyLimit({ maxSize: MAX_UPLOAD_BODY_BYTES, onError: tooLarge });
+  app.use((c, next) =>
+    isUploadRoute(c.req.method, c.req.path) ? uploadLimit(c, next) : formLimit(c, next),
+  );
+
+  app.use(
+    csrf({
+      key: csrfKey,
+      config,
+      onReject: (c) => messagePage(c, 403, translate(c)("error.csrf")),
+    }),
+  );
+
+  app.onError(async (error, c) => {
     // Error class only: messages may contain user input.
     logger.error("unhandled_error", { name: error.name });
-    return c.text(translate(c)("error.internal"), 500);
+    const message = translate(c)("error.internal");
+    try {
+      return await messagePage(c, 500, message);
+    } catch {
+      // The page itself failed: the message alone.
+      return c.text(message, 500);
+    }
   });
+
+  app.notFound((c) => messagePage(c, 404, translate(c)("error.notFound")));
 
   app.get("/healthz", (c) => c.text("ok"));
 

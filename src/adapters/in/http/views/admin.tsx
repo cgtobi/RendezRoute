@@ -14,7 +14,10 @@ import type { MessageKey } from "../../../i18n/messages/en.ts";
 import { postText, REASON_LABELS } from "./report.tsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
+import { BackLink } from "./back-link.tsx";
 import { fieldErrorMessage, formatDate, formatDay, formatTime } from "./format.ts";
+import { Item } from "./item.tsx";
+import { WhenWhere } from "./when-where.tsx";
 
 export function AdminLogin({
   t,
@@ -73,8 +76,10 @@ export function AdminHome({
   invites: InvitesSectionProps | undefined;
 }) {
   const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
+  // Finding a plan is the main action; the reports, invites and logging out each in their own
+  // part (decision D27).
   return (
-    <section class="admin">
+    <section class="admin sectioned">
       <h1>{t("admin.title")}</h1>
       {deleted && (
         <p class="notice" role="status">
@@ -104,12 +109,13 @@ export function AdminHome({
       <section class="admin-reports">
         <h2>{t("admin.openReports", { count: openReports.length })}</h2>
         {openReports.length > 0 && (
-          <ul>
+          <ul class="items">
             {openReports.map((report) => (
-              <li>
-                <a href={`${adminDir}plans/${report.planId}#reports`}>{report.planTitle}</a> (
-                {t(REASON_LABELS[report.reason])})
-              </li>
+              <Item
+                href={`${adminDir}plans/${report.planId}#reports`}
+                title={report.planTitle}
+                meta={t(REASON_LABELS[report.reason])}
+              />
             ))}
           </ul>
         )}
@@ -117,12 +123,14 @@ export function AdminHome({
       {invites !== undefined && (
         <InvitesSection {...invites} t={t} csrfToken={csrfToken} adminDir={adminDir} />
       )}
-      <form method="post" action={`${adminDir}logout`}>
-        {csrf}
-        <button type="submit" class="secondary">
-          {t("admin.logout")}
-        </button>
-      </form>
+      <section>
+        <form method="post" action={`${adminDir}logout`}>
+          {csrf}
+          <button type="submit" class="secondary">
+            {t("admin.logout")}
+          </button>
+        </form>
+      </section>
     </section>
   );
 }
@@ -144,30 +152,36 @@ export function AdminPlan({
   reports: { open: readonly ReportView[]; resolved: number };
 }) {
   const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
+  // The public details as on the plan page, then the reports, then deleting: each in its own part
+  // (decision D27). Neutral, as instance chrome (decision D11).
+  const facts = [
+    t(`activity.${view.activity}`),
+    t("admin.postedBy", { name: view.posterName }),
+    t("admin.counts", {
+      participants: view.counts.participants,
+      interested: view.counts.interested,
+    }),
+    ...(view.status === "cancelled" ? [t("plan.cancelled")] : []),
+  ];
   return (
-    <section class="admin">
-      <p>
-        <a href={adminDir}>{t("admin.back")}</a>
-      </p>
+    <section class="admin sectioned">
+      <BackLink href={adminDir} label={t("admin.back")} />
       <h1>{t("admin.planHeading", { title: view.title })}</h1>
       <p class="hint">{t("admin.planPublic")}</p>
-      <ul class="template-facts">
-        <li>{t(`activity.${view.activity}`)}</li>
-        <li>
-          {formatDay(view.startsAt, view.timeZone, language)},{" "}
-          {formatTime(view.startsAt, view.timeZone, language)} ({view.timeZone})
-        </li>
-        <li>{view.areaLabel}</li>
-        <li>{t("admin.postedBy", { name: view.posterName })}</li>
-        <li>
-          {t("admin.counts", {
-            participants: view.counts.participants,
-            interested: view.counts.interested,
-          })}
-        </li>
-        {view.status === "cancelled" && <li>{t("plan.cancelled")}</li>}
-        <li>{t("plan.deletion", { date: formatDate(view.deleteAt, view.timeZone, language) })}</li>
-      </ul>
+      <WhenWhere
+        t={t}
+        when={
+          <>
+            {formatDay(view.startsAt, view.timeZone, language)},{" "}
+            {formatTime(view.startsAt, view.timeZone, language)} ({view.timeZone})
+          </>
+        }
+        where={view.areaLabel}
+      />
+      <p class="item-meta">{facts.join(" · ")}</p>
+      <p class="hint">
+        {t("plan.deletion", { date: formatDate(view.deleteAt, view.timeZone, language) })}
+      </p>
       <section class="admin-reports" id="reports">
         <h2>{t("admin.openReports", { count: reports.open.length })}</h2>
         {reports.open.map((report) => (
@@ -201,13 +215,15 @@ export function AdminPlan({
           <p class="hint">{t("admin.resolvedReports", { count: reports.resolved })}</p>
         )}
       </section>
-      <form method="post" action={`${adminDir}plans/${view.id}/delete`}>
-        {csrf}
-        <p class="warning">{t("admin.deleteExplain")}</p>
-        <button type="submit" class="danger">
-          {t("admin.deleteConfirm")}
-        </button>
-      </form>
+      <section>
+        <form method="post" action={`${adminDir}plans/${view.id}/delete`}>
+          {csrf}
+          <p class="warning">{t("admin.deleteExplain")}</p>
+          <button type="submit" class="danger">
+            {t("admin.deleteConfirm")}
+          </button>
+        </form>
+      </section>
     </section>
   );
 }
@@ -285,26 +301,38 @@ function InvitesSection(
             hint: t("admin.inviteMaxUsesHint"),
           })}
         </div>
-        <button type="submit">{t("admin.inviteCreate")}</button>
+        <button type="submit" class="secondary">
+          {t("admin.inviteCreate")}
+        </button>
       </form>
       {props.list.length === 0 && <p>{t("admin.noInvites")}</p>}
       {props.list.length > 0 && (
-        <ul class="admin-invite-list">
+        <ul class="items">
           {props.list.map((invite) => (
-            <li>
-              <strong>{t(INVITE_STATES[invite.state])}</strong> ·{" "}
-              {t("admin.inviteCreatedOn", {
-                date: formatDate(invite.createdAt, timeZone, language),
-              })}
-              {invite.expiresAt !== undefined &&
-                ` · ${t("admin.inviteLastDay", {
-                  // The link works until the last day ends, at midnight.
-                  date: formatDate(new Date(invite.expiresAt.getTime() - 1), timeZone, language),
-                })}`}{" "}
-              ·{" "}
-              {invite.maxUses === undefined
-                ? t("admin.inviteUsed", { count: invite.uses })
-                : t("admin.inviteUses", { uses: invite.uses, max: invite.maxUses })}
+            <li class="item">
+              <p class="item-title">{t(INVITE_STATES[invite.state])}</p>
+              <p class="item-meta">
+                {[
+                  t("admin.inviteCreatedOn", {
+                    date: formatDate(invite.createdAt, timeZone, language),
+                  }),
+                  ...(invite.expiresAt === undefined
+                    ? []
+                    : [
+                        t("admin.inviteLastDay", {
+                          // The link works until the last day ends, at midnight.
+                          date: formatDate(
+                            new Date(invite.expiresAt.getTime() - 1),
+                            timeZone,
+                            language,
+                          ),
+                        }),
+                      ]),
+                  invite.maxUses === undefined
+                    ? t("admin.inviteUsed", { count: invite.uses })
+                    : t("admin.inviteUses", { uses: invite.uses, max: invite.maxUses }),
+                ].join(" · ")}
+              </p>
               {invite.state === "usable" && (
                 <form method="post" action={`${props.adminDir}invites/${invite.id}/revoke`}>
                   {csrf}
@@ -333,15 +361,13 @@ export function InviteCreated({
 }) {
   return (
     <section class="admin">
+      <BackLink href={`${adminDir}#invites`} label={t("admin.back")} />
       <h1>{t("admin.inviteCreatedHeading")}</h1>
       <p>{t("admin.inviteCreated")}</p>
       <p class="link-box">
         <code>{url}</code>
       </p>
       <p class="warning">{t("admin.inviteWarning")}</p>
-      <p>
-        <a href={`${adminDir}#invites`}>{t("admin.back")}</a>
-      </p>
     </section>
   );
 }

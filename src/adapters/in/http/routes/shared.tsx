@@ -1,8 +1,11 @@
-// Helpers shared by the plan, response and secret-link routes.
+// Helpers shared by the routes: forms, rate limits, plan pages, and pages that only say what
+// happened (errors, "gone"), also for the admin pages and the app itself.
+import { MessagePage } from "../views/message-page.tsx";
 import { PostingClosed } from "../views/posting.tsx";
 import type { PostingNeed } from "../../../../application/posting-rules.ts";
 import { randomBytes } from "node:crypto";
 import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AccountDeps } from "../../../../application/accounts.ts";
 import type { PlanDeps } from "../../../../application/plans.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "../../../../application/ports.ts";
@@ -40,7 +43,7 @@ export const clientOf = (c: Context<AppEnv>) => clientKey(c.get("clientIp"));
 
 export function tooManyRequests(c: Context<AppEnv>, retryAfterSeconds: number) {
   c.header("retry-after", String(retryAfterSeconds));
-  return c.text(c.get("t")("error.rateLimited"), 429);
+  return messagePage(c, 429, c.get("t")("error.rateLimited"));
 }
 
 /** Tile settings for browser maps, or undefined when maps are disabled (spec 3.9). */
@@ -84,15 +87,41 @@ export function secretLinkHeaders(c: Context): void {
   c.header("cache-control", "no-store");
 }
 
+/**
+ * The relative way from an admin page back to the app's root: "../" from /admin/ and
+ * /admin/login, "../../" from /admin/plans/<id>, and so on.
+ */
+export function adminRoot(path: string): string {
+  if (!path.startsWith("/admin/")) throw new Error(`Not an admin page: ${path}`);
+  const depth = path.slice("/admin/".length).split("/").length - 1;
+  return "../".repeat(depth + 1);
+}
+
+/**
+ * A page that only says what happened, e.g. an error (decision D29); it sets no cookie. Under
+ * /admin/ it keeps relative links, so it works under any path prefix, and like every admin
+ * response it is neither stored nor indexed (decision I46).
+ */
+export function messagePage(c: Context, status: ContentfulStatusCode, message: string) {
+  const admin = c.req.path.startsWith("/admin/");
+  if (admin) {
+    c.header("cache-control", "no-store");
+    c.header("x-robots-tag", "noindex");
+  }
+  c.status(status);
+  return c.render(<MessagePage message={message} />, {
+    title: message,
+    pathBase: admin ? adminRoot(c.req.path) : undefined,
+    plain: true,
+  });
+}
+
 export function badRequest(c: Context<AppEnv>) {
-  return c.text(c.get("t")("error.badRequest"), 400);
+  return messagePage(c, 400, c.get("t")("error.badRequest"));
 }
 
 export function planGone(c: Context<AppEnv>) {
-  c.status(404);
-  return c.render(<p class="gone">{c.get("t")("plan.gone")}</p>, {
-    title: c.get("t")("plan.gone"),
-  });
+  return messagePage(c, 404, c.get("t")("plan.gone"));
 }
 
 /**
@@ -125,10 +154,7 @@ export function postingClosed(
  * same (decision I43).
  */
 export function templateGone(c: Context<AppEnv>) {
-  c.status(404);
-  return c.render(<p class="gone">{c.get("t")("template.gone")}</p>, {
-    title: c.get("t")("template.gone"),
-  });
+  return messagePage(c, 404, c.get("t")("template.gone"));
 }
 
 /** Renders a found plan for its audience, with the response form for viewers. */

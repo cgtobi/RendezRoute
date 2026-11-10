@@ -20,6 +20,7 @@ import type { AppEnv } from "../app.tsx";
 import type { RateLimits } from "../rate-limit.ts";
 import { AdminHome, AdminLogin, AdminPlan, InviteCreated } from "../views/admin.tsx";
 import {
+  adminRoot,
   badRequest,
   clientOf,
   formField,
@@ -28,16 +29,6 @@ import {
   secretLinkHeaders,
   tooManyRequests,
 } from "./shared.tsx";
-
-/**
- * The relative way from an admin page back to the app's root: "../" from /admin/ and
- * /admin/login, "../../" from /admin/plans/<id>, and so on.
- */
-export function adminRoot(path: string): string {
-  if (!path.startsWith("/admin/")) throw new Error(`Not an admin page: ${path}`);
-  const depth = path.slice("/admin/".length).split("/").length - 1;
-  return "../".repeat(depth + 1);
-}
 
 const PLAN_ID = /^[A-Za-z0-9_-]{22}$/;
 /** Report and invite IDs (UUIDv7). */

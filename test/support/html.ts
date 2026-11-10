@@ -22,3 +22,35 @@ export function primaries(html: string, from = "<main", to = "</main>"): string[
     })
     .map(([, , , content = ""]) => content.replace(/<[^>]*>/g, "").trim());
 }
+
+const VOID = new Set(["input", "br", "img", "hr", "meta", "link"]);
+
+/**
+ * What stands outside the page's parts: h2s that start no section, and anything after the first
+ * part that is not itself a part (a direct child of the `.sectioned` page that is not a section).
+ */
+export function unsectioned(html: string): string[] {
+  const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
+  const lone = [...main.matchAll(/(<section\b[^>]*>)?<h2\b[^>]*>([\s\S]*?)<\/h2>/g)]
+    .filter(([, section]) => section === undefined)
+    .map(([, , heading = ""]) => `h2: ${heading.replace(/<[^>]*>/g, "")}`);
+  const root = main.search(/<section class="[^"]*\bsectioned\b/);
+  if (root === -1) return [...lone, "the page is not in parts (.sectioned)"];
+  const stack: string[] = [];
+  let parts = false;
+  const loose: string[] = [];
+  for (const [tag = "", closing, name = ""] of main.slice(root).matchAll(/<(\/?)(\w+)\b[^>]*>/g)) {
+    if (VOID.has(name)) continue;
+    if (closing === "/") {
+      stack.pop();
+      if (stack.length === 0) break;
+      continue;
+    }
+    if (stack.length === 1) {
+      if (name === "section") parts = true;
+      else if (parts) loose.push(tag);
+    }
+    stack.push(name);
+  }
+  return [...lone, ...loose];
+}

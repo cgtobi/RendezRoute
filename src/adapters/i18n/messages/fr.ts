@@ -88,6 +88,7 @@ export const fr: Messages = {
   "error.busy": "Le serveur est occupé. Veuillez réessayer dans quelques secondes.",
   "error.rateLimited":
     "Trop de requêtes depuis votre réseau. Veuillez réessayer dans quelques minutes.",
+  "error.notFound": "Cette page n’existe pas.",
   "error.badRequest":
     "Le formulaire n’a pas pu être traité. Veuillez recharger la page et réessayer.",
 

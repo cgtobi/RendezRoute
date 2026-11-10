@@ -13,6 +13,7 @@ import { Item } from "./item.tsx";
 import { LinkTools } from "./link-tools.tsx";
 import { PlanMetrics } from "./plan-metrics.tsx";
 import { WINDOW_LABELS } from "./recap.tsx";
+import { WhenWhere } from "./when-where.tsx";
 
 /** "Keep as repeatable template" and its sub-option, on the create and host forms. */
 export function TemplateOptions({
@@ -152,24 +153,11 @@ export function TemplatePage(props: TemplatePageProps) {
       )}
       <p class="plan-context">{t("template.label")}</p>
       <h1>{template.title}</h1>
-      <dl class="when-where">
-        <div class="pill">
-          <dt class="visually-hidden">{t("plan.when")}</dt>
-          <dd>
-            <span class="icon icon-calendar" aria-hidden="true"></span>
-            <span>
-              {t("template.startTime", { time: template.startTime, zone: template.timeZone })}
-            </span>
-          </dd>
-        </div>
-        <div class="pill">
-          <dt class="visually-hidden">{t("plan.where")}</dt>
-          <dd>
-            <span class="icon icon-pin" aria-hidden="true"></span>
-            <span>{template.area.label}</span>
-          </dd>
-        </div>
-      </dl>
+      <WhenWhere
+        t={t}
+        when={t("template.startTime", { time: template.startTime, zone: template.timeZone })}
+        where={template.area.label}
+      />
       <PlanMetrics t={t} details={template} units={units} language={props.language} />
       <p class="item-meta">{settings.join(" · ")}</p>
       {(template.exactStart !== undefined || template.hasRoute) && (

@@ -551,16 +551,10 @@ input[type="checkbox"] {
   overflow-wrap: anywhere;
 }
 
-.gone {
-  margin: var(--s6) 0;
-  font-size: var(--text-lg);
-}
-
 /* Lists divided by hairlines */
 
 .list,
 .items,
-.template-facts,
 .rating-notes,
 .report-attached,
 .contributions,
@@ -571,7 +565,6 @@ input[type="checkbox"] {
 
 .list > li,
 .item,
-.template-facts li,
 .rating-notes > li,
 .report-attached > li,
 .admin-report,
@@ -611,7 +604,8 @@ input[type="checkbox"] {
   margin-top: var(--s2);
 }
 
-/* Pages in parts (host, template, My data, account): each part divided by a hairline (D27). */
+/* Pages in parts (host, template, My data, account, calendar, admin, privacy): each part divided
+   by a hairline (D27). */
 .sectioned > section:not(.status) {
   margin-top: var(--s6);
   padding-top: var(--s2);
@@ -620,6 +614,7 @@ input[type="checkbox"] {
 
 /* A plan or template in a list: title, a muted line saying when, then its actions (D27). */
 .item-title {
+  margin: 0;
   font-weight: 600;
   overflow-wrap: break-word;
 }
@@ -644,8 +639,14 @@ input[type="checkbox"] {
 }
 
 /* The section's own hairline follows the last item. */
-.items > .item:last-child {
+.items > .item:last-child,
+.admin-report:last-of-type {
   border-bottom: 0;
+}
+
+/* Time and place after a hint, e.g. on the admin's plan page. */
+.hint + .when-where {
+  margin-top: var(--s3);
 }
 
 /* Buttons side by side, wrapping on narrow screens. */

@@ -3,6 +3,7 @@ import { translator } from "../../../src/adapters/i18n/i18n.ts";
 import { createTestApp } from "../../support/app.ts";
 import { TestClient } from "../../support/client.ts";
 import { sampleGpx } from "../../support/gpx.ts";
+import { escaped } from "../../support/html.ts";
 import { hiddenFields } from "../../support/client.ts";
 import { createPlanViaUi, planForm, respondViaUi } from "../../support/plans.ts";
 
@@ -39,7 +40,10 @@ describe("rate limits on creating plans (spec 5 feature 12, decision I32)", () =
     const refused = await client.postForm("/new", { ...hidden, ...planForm() });
     expect(refused.status).toBe(429);
     expect(refused.headers.get("retry-after")).toBe("360");
-    expect(await refused.text()).toBe(en("error.rateLimited"));
+    // The message as the heading of an error page (decision D29).
+    expect(await refused.text()).toContain(
+      `<main><section class="message-page"><h1>${escaped(en("error.rateLimited"))}</h1></section></main>`,
+    );
 
     await createPlanViaUi(at("203.0.113.6"));
   });

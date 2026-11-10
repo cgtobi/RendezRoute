@@ -53,8 +53,15 @@ export function Layout({
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{pageTitle}</title>
-        {/* No favicon yet; an empty one keeps browsers from requesting /favicon.ico. */}
-        <link rel="icon" href="data:," />
+        {/* The PNG for browsers without SVG tab icons; the others prefer the SVG (decision D28). */}
+        <link
+          rel="icon"
+          href={`${pathBase}static/brand/tab-icon-32.png`}
+          sizes="32x32"
+          type="image/png"
+        />
+        <link rel="icon" href={`${pathBase}static/brand/tab-icon.svg`} type="image/svg+xml" />
+        <link rel="apple-touch-icon" href={`${pathBase}static/brand/apple-touch-icon.png`} />
         <link rel="stylesheet" href={`${pathBase}static/build/fonts.css`} />
         <link rel="stylesheet" href={`${pathBase}static/app.css`} />
         <script src={`${pathBase}static/build/app.js`} defer></script>
@@ -67,7 +74,10 @@ export function Layout({
           </p>
         )}
         <header class={widened("site-header")}>
-          <a href={pathBase}>{config.instanceName}</a>
+          <a href={pathBase}>
+            <span class="logo" aria-hidden="true"></span>
+            {config.instanceName}
+          </a>
         </header>
         <main class={widened()}>{children}</main>
         <footer class={widened("site-footer")}>

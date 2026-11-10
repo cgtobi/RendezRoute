@@ -22,9 +22,9 @@
   --control-line: #c5cad1;
   --field-border: #858c97;
   --surface: #f3f4f6;
-  --accent: #2e5bff;
+  --accent: #2c67a8;
   --on-accent: #ffffff;
-  --focus: #2e5bff;
+  --focus: #2c67a8;
   --danger: #b3261e;
   --on-danger: #ffffff;
   --warning-bg: #fff4e5;
@@ -84,9 +84,9 @@
     --control-line: #464b53;
     --field-border: #737a85;
     --surface: #1d2024;
-    --accent: #8ab4ff;
+    --accent: #8bb8ea;
     --on-accent: #111111;
-    --focus: #8ab4ff;
+    --focus: #8bb8ea;
     --danger: #f2b8b5;
     --on-danger: #111111;
     --warning-bg: #3a2c12;

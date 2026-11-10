@@ -1,5 +1,5 @@
-// A plan's measures inline (design decision D27): distance, elevation gain, and pace or speed, on
-// the plan page and the template page.
+// A plan's measures (design decisions D27, D30): distance, elevation gain, and pace or speed, as
+// tiles on the plan page and inline on the template page.
 import type { Child } from "hono/jsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { paceStyleFor } from "../../../../domain/activity.ts";
@@ -14,6 +14,8 @@ export function PlanMetrics(props: {
   language: string;
   /** Further entries after the measures, e.g. the plan page's drop policy. */
   children?: Child;
+  /** As equal tiles, as on the plan page (decision D30); inline otherwise. */
+  tiles?: boolean;
 }) {
   const { t, details, units, language } = props;
   const metrics: { label: string; value: string }[] = [
@@ -44,7 +46,7 @@ export function PlanMetrics(props: {
   ];
   if (metrics.length === 0 && props.children === undefined) return null;
   return (
-    <dl class="metrics">
+    <dl class={props.tiles === true ? "metrics tiles" : "metrics"}>
       {metrics.map((metric) => (
         <div class="metric">
           <dt>{metric.label}</dt>

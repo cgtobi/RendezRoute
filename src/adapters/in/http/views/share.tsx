@@ -1,5 +1,6 @@
 // Share helpers (spec 5 feature 4): WhatsApp and X links work without JavaScript; copy and Web
-// Share buttons start hidden and the app script reveals them where the browser supports them.
+// Share buttons start hidden and the app script reveals them where the browser supports them. The
+// device's share sheet comes first: where it exists, the script hides the app links (decision D30).
 // Only the public plan link is ever shared, never a secret link.
 import type { Translate } from "../../../i18n/i18n.ts";
 
@@ -23,10 +24,22 @@ export function ShareLinks({ t, url, title }: { t: Translate; url: string; title
         >
           {t("share.copy")}
         </button>
-        <a class="button secondary" href={whatsApp} target="_blank" rel="noopener noreferrer">
+        <a
+          class="button secondary"
+          data-share-app=""
+          href={whatsApp}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           WhatsApp
         </a>
-        <a class="button secondary" href={x} target="_blank" rel="noopener noreferrer">
+        <a
+          class="button secondary"
+          data-share-app=""
+          href={x}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           X
         </a>
       </div>

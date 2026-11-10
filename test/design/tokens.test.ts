@@ -4,7 +4,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import { AVATAR_COLOURS } from "../../src/adapters/in/http/views/avatar.tsx";
-import { contrastRatio } from "../../src/domain/color.ts";
+import {
+  contrastRatio,
+  DEFAULT_COLORS,
+  parseHexColor,
+  TINT_PERCENT,
+  tintOn,
+} from "../../src/domain/color.ts";
 
 const CSS = readFileSync(join(import.meta.dirname, "../../public/app.css"), "utf8");
 const DARK = "@media (prefers-color-scheme: dark)";
@@ -63,5 +69,53 @@ describe.each([
   it.each(PAIRS)("%s on %s reaches %s:1", (fg, bg, minimum) => {
     const ratio = contrastRatio(scheme[fg] ?? "#000000", scheme[bg] ?? "#000000");
     expect(ratio).toBeGreaterThanOrEqual(minimum);
+  });
+});
+
+/** Plan colours a poster may pick, from the darkest to the lightest (spec 3.1). */
+const PLAN_COLOURS = [
+  "#000000",
+  "#FFFFFF",
+  "#1D3F8F",
+  "#8A1C2B",
+  "#FF0000",
+  "#00FF00",
+  "#0000FF",
+  "#FFEB3B",
+  DEFAULT_COLORS.primary,
+  DEFAULT_COLORS.secondary,
+];
+const hex = (value: string) => {
+  const parsed = parseHexColor(value);
+  if (!parsed.ok) throw new Error(value);
+  return parsed.value;
+};
+
+// Text on the plan's tints (decision D30): the byline (muted) on the title block's primary tint,
+// and all text of the exact start card, which reads in --fg, on the secondary tint.
+describe.each([
+  ["light", light],
+  ["dark", dark],
+])("text on plan tints in %s mode", (_mode, scheme) => {
+  const page = hex(scheme["--bg"] ?? "#000000");
+  it.each(PLAN_COLOURS)("stays legible with %s as the plan colour", (colour) => {
+    const primaryTint = tintOn(hex(colour), TINT_PERCENT.primary, page);
+    const secondaryTint = tintOn(hex(colour), TINT_PERCENT.secondary, page);
+    const ratios = {
+      title: contrastRatio(scheme["--fg"] ?? "", primaryTint),
+      byline: contrastRatio(scheme["--muted"] ?? "", primaryTint),
+      exactStart: contrastRatio(scheme["--fg"] ?? "", secondaryTint),
+    };
+    // Only the parts below 4.5:1, with their ratio.
+    expect(Object.entries(ratios).filter(([, ratio]) => ratio < 4.5)).toEqual([]);
+  });
+
+  it("reads the exact start card in --fg, its hint and links too", () => {
+    const card = CSS.slice(CSS.indexOf("\n.exact-start {\n"));
+    const rule = card.slice(0, card.indexOf("}"));
+    expect([rule.includes("--muted: var(--fg)"), rule.includes("--accent: var(--fg)")]).toEqual([
+      true,
+      true,
+    ]);
   });
 });

@@ -3,8 +3,8 @@ import { err, ok, type Result } from "./result.ts";
 
 declare const validated: unique symbol;
 /**
- * A strict, upper-case #RRGGBB color. Only parseHexColor (and the constants below)
- * produce it, so unvalidated strings cannot reach the per-plan stylesheet.
+ * A strict, upper-case #RRGGBB color. Only parseHexColor, tintOn (from two of them) and the
+ * constants below produce it, so unvalidated strings cannot reach the per-plan stylesheet.
  */
 export type HexColor = string & { readonly [validated]: true };
 
@@ -16,7 +16,7 @@ export const DEFAULT_COLORS = {
   secondary: constant("#FF7A45"),
 } as const;
 
-const WHITE = constant("#FFFFFF");
+export const WHITE = constant("#FFFFFF");
 const NEAR_BLACK = constant("#111111");
 
 export function parseHexColor(value: string): Result<HexColor, "color_invalid"> {
@@ -47,6 +47,26 @@ export function textColorOn(background: HexColor): HexColor {
   return contrastRatio(background, WHITE) >= contrastRatio(background, NEAR_BLACK)
     ? WHITE
     : NEAR_BLACK;
+}
+
+/** How much of each plan color its tint holds (spec 3.1): behind the title, and the exact start. */
+export const TINT_PERCENT = { primary: 12, secondary: 18 } as const;
+
+/**
+ * `color` mixed into `background` at `percent`, like CSS `color-mix(in srgb, …)`: for images, where
+ * the stylesheet's tints cannot reach (the preview card, decision D30).
+ */
+export function tintOn(color: HexColor, percent: number, background: HexColor): HexColor {
+  if (!(percent >= 0 && percent <= 100)) throw new RangeError(`tint of ${percent}%`);
+  const channel = (hex: string, offset: number) => parseInt(hex.slice(offset, offset + 2), 16);
+  const mixed = [1, 3, 5].map((offset) =>
+    Math.round(
+      (channel(color, offset) * percent + channel(background, offset) * (100 - percent)) / 100,
+    )
+      .toString(16)
+      .padStart(2, "0"),
+  );
+  return `#${mixed.join("")}`.toUpperCase() as HexColor;
 }
 
 export interface PlanTheme {

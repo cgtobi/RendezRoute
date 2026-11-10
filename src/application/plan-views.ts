@@ -222,10 +222,10 @@ export interface PlanPreview {
 }
 
 /**
- * Raised when the preview card's look changes (2: like the plan page, decision D29), so cached
+ * Raised when the preview card's look changes (3: the tinted title block, decision D30), so cached
  * cards are drawn again and chat apps fetch the new image.
  */
-const PREVIEW_LOOK = 2;
+const PREVIEW_LOOK = 3;
 
 export function previewOf(plan: Plan): PlanPreview {
   return {
@@ -241,7 +241,7 @@ export function previewOf(plan: Plan): PlanPreview {
     colors: { primary: plan.colors.primary, secondary: plan.colors.secondary },
     status: plan.status,
     language: plan.posterLanguage,
-    // Letters and digits only, e.g. "l2mwb7l1fu": the look, then the plan's last change.
+    // Letters and digits only, e.g. "l3mwb7l1fu": the look, then the plan's last change.
     version: `l${PREVIEW_LOOK}${plan.updatedAt.getTime().toString(36)}`,
   };
 }

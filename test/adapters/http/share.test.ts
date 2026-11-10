@@ -28,6 +28,8 @@ describe("share helpers (spec 5 feature 4)", () => {
       `href="https://x.com/intent/post?text=${encodeURIComponent("Easy & early")}&amp;url=${encodeURIComponent(url)}"`,
     );
     expect(share).toContain('rel="noopener noreferrer"');
+    // Marked, so the script can hide them where the device's share sheet offers the apps.
+    expect(share.match(/<a class="button secondary" data-share-app=""/g)).toHaveLength(2);
   });
 
   it("add copy and Web Share buttons that only the script reveals", async () => {

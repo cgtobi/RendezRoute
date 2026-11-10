@@ -2,7 +2,7 @@
 // (spec 3.8), so colors arrive as custom properties. Only validated #RRGGBB values (the
 // branded HexColor type) are interpolated into a fixed template. Tints mix with the page
 // background, so they suit light and dark mode.
-import type { PlanTheme } from "../../../../domain/color.ts";
+import { type PlanTheme, TINT_PERCENT } from "../../../../domain/color.ts";
 
 export function themeCss(theme: PlanTheme): string {
   return `:root {
@@ -10,8 +10,8 @@ export function themeCss(theme: PlanTheme): string {
   --plan-on-primary: ${theme.onPrimary};
   --plan-secondary: ${theme.secondary};
   --plan-on-secondary: ${theme.onSecondary};
-  --plan-primary-tint: color-mix(in srgb, ${theme.primary} 12%, var(--bg));
-  --plan-secondary-tint: color-mix(in srgb, ${theme.secondary} 18%, var(--bg));
+  --plan-primary-tint: color-mix(in srgb, ${theme.primary} ${TINT_PERCENT.primary}%, var(--bg));
+  --plan-secondary-tint: color-mix(in srgb, ${theme.secondary} ${TINT_PERCENT.secondary}%, var(--bg));
 }
 `;
 }

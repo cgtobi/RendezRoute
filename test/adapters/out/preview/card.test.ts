@@ -28,7 +28,8 @@ describe("preview card layout", () => {
       "5:30",
       "6:00",
       "Isar Runners",
-      "#2E5BFF",
+      // The primary colour's tint behind the title (decision D30).
+      "#E6EBFF",
     ]) {
       expect(tree).toContain(expected);
     }
@@ -49,8 +50,8 @@ describe("preview card layout", () => {
     expect(tree).toContain("© OpenStreetMap contributors");
   });
 
-  // Like the plan page (decision D27, D29): a light card, the plan marked by a bar in its primary
-  // colour above the title, time and place as boxes with icons, the measures in one line, and the
+  // Like the plan page (decisions D29, D30): a light card, the title in a block tinted in the
+  // plan's primary colour, time and place as boxes with icons, the measures in one line, and the
   // site's mark with its name.
   it("looks like the plan page", () => {
     const card = cardElement({
@@ -94,8 +95,11 @@ describe("preview card layout", () => {
     expect({
       background: card.props.style?.backgroundColor,
       ink: card.props.style?.color,
-      bar: nodes.some(
-        (n) => n.props.style?.backgroundColor === "#2E5BFF" && Number(n.props.style.height) <= 16,
+      header: nodes.some(
+        (n) =>
+          n.props.style?.backgroundColor === "#E6EBFF" &&
+          Number(n.props.style.borderRadius) > 0 &&
+          texts(n).includes(text.title),
       ),
       boxes: boxes.map((box) => ({ text: texts(box), icons: icons(box) })),
       measures: nodes.some(
@@ -109,9 +113,9 @@ describe("preview card layout", () => {
           icons(n).join() === "fill #2c67a8",
       ),
     }).toEqual({
-      background: "#ffffff",
+      background: "#FFFFFF",
       ink: "#16181d",
-      bar: true,
+      header: true,
       boxes: [
         { text: text.when, icons: ["stroke #5c636e"] },
         { text: text.area, icons: ["stroke #5c636e"] },

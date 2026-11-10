@@ -8,7 +8,14 @@
      radio or checkbox with its label; fieldset with legend groups related choices.
    - Messages: .notice (neutral), .warning (needs care), .error (a field's problem), .link-box (a
      link to copy, shown once).
-   - Lists: ul.list for rows divided by hairlines.
+   - Lists: ul.list for rows divided by hairlines; ul.items with li.item (.item-title, .item-meta,
+     .item-actions) for plans, templates and the like.
+   - Pages in parts: .sectioned on the page, each part a <section> divided by a hairline.
+   - States: section.status (with .status-joined, .status-loggedIn, …) for one's own state;
+     section.message-page for a page that only says what happened.
+   - Plan facts: dl.when-where (boxes, or .lines on the plan page), dl.metrics (inline, or .tiles
+     on the plan page); people as li.person with the initial, .person-label and the host's .host-mark.
+   - Radii: --r-sm, --r-md for controls and cards, --r-lg for the plan's title block.
    - Icons: <span class="icon icon-NAME" aria-hidden="true">; each needs its SVG in public/icons/
      and a rule `.icon-NAME { --icon: url("icons/NAME.svg"); }` below.
    The design tokens below are checked for WCAG AA contrast by test/design/tokens.test.ts. */
@@ -69,6 +76,7 @@
   /* Shape */
   --r-sm: 8px;
   --r-md: 12px;
+  --r-lg: 16px;
   --r-pill: 999px;
   /* Smallest touch target (WCAG 2.5.8 asks 24 px; 44 px for thumbs) */
   --target: 44px;
@@ -357,6 +365,10 @@ main,
 
 .icon-check {
   --icon: url("icons/check.svg");
+}
+
+.icon-flag {
+  --icon: url("icons/flag.svg");
 }
 
 .icon-lock {
@@ -670,17 +682,20 @@ input[type="checkbox"] {
   overflow-wrap: anywhere;
 }
 
-/* Plan page (decision D27): no boxes around sections; the plan marked by a bar in its primary
-   colour. One column on phones; from 960 px the plan on the left, you and the group on the right. */
+/* Plan page (decisions D27, D30): the title in a block tinted in the plan's primary colour, the
+   rest without boxes around sections. One column on phones; from 960 px the plan on the left, you
+   and the group on the right. */
 
+/* The title in a block tinted in the plan's primary colour, as in the phone mock-up (D30). */
 .plan-header {
-  margin-top: var(--s4);
-  padding-top: var(--s4);
-  border-top: 5px solid var(--plan-primary, var(--accent));
+  margin: var(--s4) 0;
+  padding: var(--s5);
+  border-radius: var(--r-lg);
+  background: var(--plan-primary-tint, var(--surface));
 }
 
 .plan-header h1 {
-  margin: var(--s2) 0 var(--s4);
+  margin: 0 0 var(--s2);
 }
 
 .plan-byline {
@@ -720,6 +735,23 @@ input[type="checkbox"] {
   flex-wrap: wrap;
   gap: var(--s2);
   margin: 0 0 var(--s4);
+}
+
+/* Date and place as plain lines on the plan page (D30). */
+.when-where.lines {
+  display: block;
+  padding: 0 var(--s2);
+  font-size: var(--text-lg);
+}
+
+.when-where.lines dd {
+  margin: 0;
+}
+
+.when-where.lines div + div {
+  margin-top: var(--s1);
+  color: var(--muted);
+  font-size: var(--text-md);
 }
 
 .pill {
@@ -783,22 +815,30 @@ input[type="checkbox"] {
   font-variant-numeric: tabular-nums;
 }
 
-.drop-policy {
-  flex-basis: 100%;
+/* The measures and the drop policy as equal tiles, value above label (D30). */
+/* Two per row, so values read on one line (user feedback on D30). */
+.metrics.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+  padding-top: 0;
+  border-top: 0;
 }
 
-.drop-policy dd {
-  padding: 2px var(--s3);
-  border: 1px solid var(--line);
-  border-radius: var(--r-pill);
+.tiles .metric {
+  flex-direction: column-reverse;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s3) var(--s2);
+  border-radius: var(--r-md);
   background: var(--surface);
-  font-weight: 600;
+  text-align: center;
+  overflow-wrap: break-word;
 }
 
-.drop-no_drop dd {
-  border-color: var(--ok-line);
-  background: var(--ok-bg);
-  color: var(--ok);
+.tiles .metric dt {
+  font-size: var(--text-xs);
 }
 
 .note {
@@ -813,12 +853,15 @@ input[type="checkbox"] {
   margin-top: var(--s5);
 }
 
+/* Filled with the plan's secondary tint, no border (D30). All text in --fg, the hint and links
+   too: muted grey and the accent blue fall below 4.5:1 on dark secondaries' tints. */
 .exact-start {
+  --muted: var(--fg);
+  --accent: var(--fg);
   margin: var(--s4) 0;
   padding: var(--s4);
-  border: 2px solid var(--plan-secondary, var(--plan-secondary-default));
   border-radius: var(--r-md);
-  background: var(--plan-primary-tint, var(--surface));
+  background: var(--plan-secondary-tint, var(--surface));
 }
 
 .exact-start h2 {
@@ -970,26 +1013,57 @@ input[type="checkbox"] {
 }
 
 .people-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--s4) var(--s2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* A round initial with the name below, the host's badge on the initial (D30). */
 .person {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  align-items: center;
   min-width: 0;
+  text-align: center;
+}
+
+.person .avatar {
+  width: 56px;
+  height: 56px;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* The host's mark: a flag on the initial's top right, in the plan's secondary colour like the
+   host's initial, with a ring in the page colour to set it off. */
+.host-mark {
+  position: absolute;
+  top: -4px;
+  left: calc(50% + 14px);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--plan-secondary, var(--plan-secondary-default));
+  color: var(--plan-on-secondary, var(--plan-on-secondary-default));
+}
+
+.host-mark .icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: 0;
+}
+
+.person-label {
   max-width: 100%;
   overflow-wrap: anywhere;
-  display: inline-flex;
-  gap: var(--s2);
-  align-items: center;
-  padding: var(--s1) var(--s3) var(--s1) var(--s1);
-  border: 1px solid var(--line);
-  border-radius: var(--r-pill);
-  background: var(--surface);
-  font-weight: 600;
 }
 
 /* Initials coloured from the name (never from an account); the host's in the plan's secondary

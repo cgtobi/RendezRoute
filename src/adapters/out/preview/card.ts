@@ -1,9 +1,9 @@
 // Layout of the link preview card (spec 3.3) as a Satori element tree, like the plan page (decisions
-// D27, D29): a light card with a bar in the plan's primary colour (spec 3.1) above the title, time
+// D29, D30): a light card with the title in a block tinted in the plan's primary colour (3.1), time
 // and area as boxes with icons, distance and pace in one line, the rough-area map if available, and
 // the instance name with the site's mark. Built from PreviewText, which only holds public data.
 import { readFileSync } from "node:fs";
-import { type HexColor, planTheme } from "../../../domain/color.ts";
+import { type HexColor, planTheme, TINT_PERCENT, tintOn, WHITE } from "../../../domain/color.ts";
 import type { PreviewText } from "../../in/http/views/preview-text.ts";
 
 export const CARD_SIZE = { width: 1200, height: 630 } as const;
@@ -40,7 +40,7 @@ const clip = (text: string, max: number) => {
 };
 
 /** The page's light colours, named after their tokens in public/app.css (decision D27). */
-const BG = "#ffffff";
+const BG = WHITE;
 const FG = "#16181d";
 const MUTED = "#5c636e";
 const LINE = "#e4e7eb";
@@ -121,38 +121,47 @@ export function cardElement({
       // instance name off the card.
       flexGrow: 1,
       flexBasis: 0,
-      padding: "0 56px 48px",
+      padding: "36px 40px 40px",
     },
     [
-      node("div", { display: "flex", flexDirection: "column" }, [
-        // The plan's mark: a bar in its primary colour above the title, as on the plan page.
-        node("div", { display: "flex", height: 14, backgroundColor: theme.primary }),
-        node(
-          "div",
-          {
-            display: "flex",
-            marginTop: 40,
-            color: MUTED,
-            fontSize: 24,
-            fontWeight: 700,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-          },
-          text.activity,
-        ),
-        node(
-          "div",
-          {
-            display: "block",
-            marginTop: 10,
-            fontSize: map === undefined ? 64 : 56,
-            fontWeight: 700,
-            lineHeight: 1.1,
-            lineClamp: 2,
-          },
-          clip(text.title, MAX_TITLE),
-        ),
-      ]),
+      // The title in a block tinted in the plan's primary colour, the activity below, as on the
+      // plan page (decision D30).
+      node(
+        "div",
+        {
+          display: "flex",
+          flexDirection: "column",
+          padding: "28px 32px",
+          borderRadius: 24,
+          backgroundColor: tintOn(theme.primary, TINT_PERCENT.primary, BG),
+        },
+        [
+          node(
+            "div",
+            {
+              display: "block",
+              fontSize: map === undefined ? 60 : 52,
+              fontWeight: 700,
+              lineHeight: 1.1,
+              lineClamp: 2,
+            },
+            clip(text.title, MAX_TITLE),
+          ),
+          node(
+            "div",
+            {
+              display: "flex",
+              marginTop: 12,
+              color: MUTED,
+              fontSize: 24,
+              fontWeight: 700,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+            },
+            text.activity,
+          ),
+        ],
+      ),
       node("div", { display: "flex", flexDirection: "column" }, [
         box("calendar", text.when),
         box("pin", clip(text.area, 80)),

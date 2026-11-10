@@ -55,7 +55,10 @@ describe("POST /p/:id/respond", () => {
     await respondViaUi(ben, planId, "Ben", "joined");
     const html = await (await ben.get(`/p/${planId}`)).text();
     expect(html).toContain("North gate, by the bike racks");
-    expect(html).toMatch(/Anna\s*<span class="badge">host<\/span>/);
+    // The host's mark after the name: an icon, and the word for screen readers (decision D30).
+    expect(html).toMatch(
+      /Anna<\/span><span class="host-mark"><span class="icon icon-flag" aria-hidden="true"><\/span><span class="visually-hidden">host<\/span>/,
+    );
     expect(html).toContain("Ben");
   });
 

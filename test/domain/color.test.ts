@@ -2,13 +2,13 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   contrastRatio,
   DEFAULT_COLORS,
-  type HexColor,
   parseHexColor,
   planTheme,
   textColorOn,
+  tintOn,
+  WHITE,
 } from "../../src/domain/color.ts";
 
-const WHITE = "#FFFFFF";
 const NEAR_BLACK = "#111111";
 
 describe("parseHexColor (spec 3.1 Plan colors)", () => {
@@ -99,5 +99,20 @@ describe("planTheme (spec 3.1 Plan colors)", () => {
       secondary: "#FFEB3B",
       onSecondary: NEAR_BLACK,
     });
+  });
+});
+
+describe("tintOn", () => {
+  it("mixes a colour into a background like CSS color-mix in sRGB (decision D30)", () => {
+    expect([
+      tintOn(DEFAULT_COLORS.primary, 12, WHITE),
+      tintOn(DEFAULT_COLORS.primary, 100, WHITE),
+      tintOn(DEFAULT_COLORS.primary, 0, WHITE),
+    ]).toEqual(["#E6EBFF", "#2E5BFF", "#FFFFFF"]);
+  });
+
+  it("refuses a share outside 0 to 100 percent, which would be no colour", () => {
+    expect(() => tintOn(DEFAULT_COLORS.primary, 101, WHITE)).toThrow(RangeError);
+    expect(() => tintOn(DEFAULT_COLORS.primary, -1, WHITE)).toThrow(RangeError);
   });
 });

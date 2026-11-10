@@ -21,7 +21,7 @@ import {
   formatWindSpeed,
 } from "./format.ts";
 import { Initial } from "./avatar.tsx";
-import { WhenWhere } from "./when-where.tsx";
+import { WhenWhereLines } from "./when-where.tsx";
 import { PlanMetrics } from "./plan-metrics.tsx";
 import { ResponseStatus } from "./response-status.tsx";
 import { Linkified } from "./linkify.tsx";
@@ -88,13 +88,14 @@ export function PlanPage(props: {
   return (
     <article class="plan">
       <div class="plan-main">
+        {/* The title in a block tinted in the plan's primary colour, who posts it below (D30). */}
         <header class="plan-header">
+          <h1>{view.title}</h1>
           <p class="plan-byline">
             <span class="plan-activity">{t(`activity.${view.activity}`)}</span>{" "}
             <span>{t("plan.postedBy", { name: view.posterName })}</span>{" "}
             <span class="badge">{t("plan.host")}</span>
           </p>
-          <h1>{view.title}</h1>
         </header>
 
         {view.status === "cancelled" && (
@@ -115,7 +116,7 @@ export function PlanPage(props: {
           </p>
         )}
 
-        <WhenWhere
+        <WhenWhereLines
           t={t}
           when={
             <>
@@ -129,8 +130,8 @@ export function PlanPage(props: {
           where={view.area.label}
         />
 
-        <PlanMetrics t={t} details={view} units={units} language={language}>
-          <div class={`metric drop-policy drop-${view.dropPolicy}`}>
+        <PlanMetrics t={t} details={view} units={units} language={language} tiles>
+          <div class="metric">
             <dt class="visually-hidden">{t("plan.group")}</dt>
             <dd>{t(`drop.${view.dropPolicy}`)}</dd>
           </div>
@@ -367,14 +368,16 @@ function People({
       <ul class="people-list">
         {people.map((person) => {
           return (
+            // A round initial with the name below. The host's mark follows the name, so it reads
+            // "Anna, host": an icon on the initial, the same size in every language (D30).
             <li class="person">
               <Initial name={person.name} language={language} host={person.isHost} />
-              {person.name}
+              <span class="person-label">{person.name}</span>
               {person.isHost && (
-                <>
-                  {" "}
-                  <span class="badge">{t("plan.host")}</span>
-                </>
+                <span class="host-mark">
+                  <span class="icon icon-flag" aria-hidden="true"></span>
+                  <span class="visually-hidden">{t("plan.host")}</span>
+                </span>
               )}
             </li>
           );

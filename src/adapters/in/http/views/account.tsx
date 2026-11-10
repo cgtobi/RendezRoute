@@ -7,8 +7,11 @@ import type { FediverseServerError } from "../../../../domain/fediverse.ts";
 import { type DisplayNameError, IDENTITY_LIMITS } from "../../../../domain/identity.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
-import { fieldErrorMessage, formatDate } from "./format.ts";
+import { BackLink } from "./back-link.tsx";
+import { fieldErrorMessage, formatDate, itemWhen } from "./format.ts";
+import { Item, ItemList } from "./item.tsx";
 import { Titles } from "./my-data.tsx";
+import { Status } from "./status.tsx";
 
 export type AccountNotice =
   | "loggedIn"
@@ -46,9 +49,15 @@ export function AccountPage(props: {
   timeZone: string;
 }) {
   const { t, account } = props;
-  const notice = props.notice === undefined ? undefined : t(`account.${props.notice}`);
+  // Just after logging in, the status says so; no separate notice (decision D27).
+  const notice =
+    props.notice === undefined || props.notice === "loggedIn"
+      ? undefined
+      : t(`account.${props.notice}`);
+  // Each part in its own section, divided by hairlines; the first way to log in, or moving this
+  // browser's things into the account, is the page's main action (decision D27).
   return (
-    <section class="account">
+    <section class="account sectioned">
       <h1>{t("account.heading")}</h1>
       {notice !== undefined && (
         <p class="notice" role="status">
@@ -58,10 +67,10 @@ export function AccountPage(props: {
       {account.kind === "logged_out" ? (
         <>
           <p>{t("account.intro")}</p>
-          {props.logins.map((login) =>
+          {props.logins.map((login, index) =>
             login.provider === "oidc" ? (
               <p>
-                <a class="button" href="/login/oidc">
+                <a class={index === 0 ? "button" : "button secondary"} href="/login/oidc">
                   {t("account.loginWith", { name: login.name })}
                 </a>
               </p>
@@ -71,38 +80,49 @@ export function AccountPage(props: {
                 csrfToken={props.csrfToken}
                 servers={login.servers}
                 form={props.fediverse}
+                primary={index === 0}
               />
             ),
           )}
         </>
       ) : (
         <>
-          <p>{t("account.linked")}</p>
-          <form method="post" action="/account/name">
-            <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
-            <div class={props.rename === undefined ? "field" : "field field-invalid"}>
-              <label for="field-displayName">{t("account.displayName")}</label>
-              <input
-                id="field-displayName"
-                name="displayName"
-                maxlength={IDENTITY_LIMITS.displayName}
-                value={props.rename?.value ?? account.displayName ?? ""}
-                aria-invalid={props.rename === undefined ? undefined : "true"}
-                aria-describedby={
-                  props.rename === undefined ? "field-displayName-hint" : "field-displayName-error"
-                }
-              />
-              <p class="hint" id="field-displayName-hint">
-                {t("account.displayNameHint")}
-              </p>
-              {props.rename !== undefined && (
-                <p class="error" id="field-displayName-error">
-                  {fieldErrorMessage(props.rename.error, t)}
+          <Status
+            state="loggedIn"
+            text={t(props.notice === "loggedIn" ? "account.loggedIn" : "account.linked")}
+            announce={props.notice === "loggedIn"}
+          />
+          <section>
+            <form method="post" action="/account/name">
+              <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+              <div class={props.rename === undefined ? "field" : "field field-invalid"}>
+                <label for="field-displayName">{t("account.displayName")}</label>
+                <input
+                  id="field-displayName"
+                  name="displayName"
+                  maxlength={IDENTITY_LIMITS.displayName}
+                  value={props.rename?.value ?? account.displayName ?? ""}
+                  aria-invalid={props.rename === undefined ? undefined : "true"}
+                  aria-describedby={
+                    props.rename === undefined
+                      ? "field-displayName-hint"
+                      : "field-displayName-error"
+                  }
+                />
+                <p class="hint" id="field-displayName-hint">
+                  {t("account.displayNameHint")}
                 </p>
-              )}
-            </div>
-            <button type="submit">{t("account.save")}</button>
-          </form>
+                {props.rename !== undefined && (
+                  <p class="error" id="field-displayName-error">
+                    {fieldErrorMessage(props.rename.error, t)}
+                  </p>
+                )}
+              </div>
+              <button type="submit" class="secondary">
+                {t("account.save")}
+              </button>
+            </form>
+          </section>
           <ClaimSection t={t} csrfToken={props.csrfToken} claimable={account.claimable} />
           {props.data !== undefined && (
             <AccountDataSection
@@ -112,13 +132,15 @@ export function AccountPage(props: {
               timeZone={props.timeZone}
             />
           )}
-          <form method="post" action="/account/logout">
-            <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
-            <p class="hint">{t("account.logoutHint")}</p>
-            <button type="submit" class="secondary">
-              {t("account.logout")}
-            </button>
-          </form>
+          <section>
+            <form method="post" action="/account/logout">
+              <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+              <p class="hint">{t("account.logoutHint")}</p>
+              <button type="submit" class="secondary">
+                {t("account.logout")}
+              </button>
+            </form>
+          </section>
         </>
       )}
     </section>
@@ -139,42 +161,28 @@ function AccountDataSection(props: {
     <section class="account-data">
       <h2>{t("account.dataHeading")}</h2>
       {empty && <p>{t("account.dataEmpty")}</p>}
-      {data.hosted.length > 0 && (
-        <>
-          <h3>{t("myData.hosted")}</h3>
-          <ul>
-            {data.hosted.map((item) => (
-              <li>
-                <a href={`/p/${item.planId}`}>{item.title}</a>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {data.responses.length > 0 && (
-        <>
-          <h3>{t("myData.responses")}</h3>
-          <ul>
-            {data.responses.map((item) => (
-              <li>
-                <a href={`/p/${item.planId}`}>{item.title}</a>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {data.templates.length > 0 && (
-        <>
-          <h3>{t("myData.templates")}</h3>
-          <ul>
-            {data.templates.map((template) => (
-              <li>
-                <a href={`/templates/${template.id}`}>{template.title}</a>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <ItemList
+        heading={t("myData.hosted")}
+        level={3}
+        items={data.hosted}
+        item={(item) => (
+          <Item href={`/p/${item.planId}`} title={item.title} meta={itemWhen(t, item, language)} />
+        )}
+      />
+      <ItemList
+        heading={t("myData.responses")}
+        level={3}
+        items={data.responses}
+        item={(item) => (
+          <Item href={`/p/${item.planId}`} title={item.title} meta={itemWhen(t, item, language)} />
+        )}
+      />
+      <ItemList
+        heading={t("myData.templates")}
+        level={3}
+        items={data.templates}
+        item={(template) => <Item href={`/templates/${template.id}`} title={template.title} />}
+      />
       {data.mayPostSince !== undefined && (
         <p>
           {t("account.mayPost", {
@@ -185,10 +193,10 @@ function AccountDataSection(props: {
       <p class="hint">
         {t("account.deleteAt", { date: formatDate(data.deleteAt, props.timeZone, language) })}
       </p>
-      <p>
+      <p class="button-row">
         <a class="button secondary" href="/account/export.zip">
           {t("account.export")}
-        </a>{" "}
+        </a>
         <a class="button danger" href="/account/delete">
           {t("account.deleteLink")}
         </a>
@@ -202,6 +210,7 @@ export function DeleteAccountPage(props: { t: Translate; csrfToken: string; data
   const { t, data } = props;
   return (
     <section class="account">
+      <BackLink href="/account" label={t("account.back")} />
       <h1>{t("account.deleteHeading")}</h1>
       <p>{t("myData.deleteExplain")}</p>
       <ul>
@@ -234,9 +243,6 @@ export function DeleteAccountPage(props: { t: Translate; csrfToken: string; data
           {t("account.deleteConfirm")}
         </button>
       </form>
-      <p>
-        <a href="/account">{t("account.back")}</a>
-      </p>
     </section>
   );
 }
@@ -249,7 +255,7 @@ function ClaimSection(props: { t: Translate; csrfToken: string; claimable: Claim
   const { t, claimable } = props;
   if (claimable.plans + claimable.responses + claimable.templates === 0) return null;
   return (
-    <form method="post" action="/account/claim" class="account-claim">
+    <section class="account-claim">
       <h2>{t("account.claimHeading")}</h2>
       <p>{t("account.claimIntro")}</p>
       <ul>
@@ -261,9 +267,11 @@ function ClaimSection(props: { t: Translate; csrfToken: string; claimable: Claim
           <li>{t("account.claimTemplates", { count: claimable.templates })}</li>
         )}
       </ul>
-      <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
-      <button type="submit">{t("account.claimSubmit")}</button>
-    </form>
+      <form method="post" action="/account/claim">
+        <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+        <button type="submit">{t("account.claimSubmit")}</button>
+      </form>
+    </section>
   );
 }
 
@@ -273,38 +281,44 @@ function FediverseLogin(props: {
   csrfToken: string;
   servers: readonly string[] | undefined;
   form: FediverseLoginForm | undefined;
+  /** The first way to log in: the page's main action. */
+  primary: boolean;
 }) {
   const { t, form } = props;
   return (
-    <form method="post" action="/login/fediverse">
+    <section>
       <h2>{t("account.fediverseHeading")}</h2>
-      <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
-      <div class={form === undefined ? "field" : "field field-invalid"}>
-        <label for="field-server">{t("account.fediverseServer")}</label>
-        <input
-          id="field-server"
-          name="server"
-          required
-          autocomplete="off"
-          spellcheck={false}
-          value={form?.value ?? ""}
-          aria-invalid={form === undefined ? undefined : "true"}
-          aria-describedby={form === undefined ? "field-server-hint" : "field-server-error"}
-        />
-        <p class="hint" id="field-server-hint">
-          {props.servers === undefined
-            ? t("account.fediverseHint")
-            : t("account.fediverseServers", { servers: props.servers.join(", ") })}{" "}
-          {t("account.fediverseHandleHint")}
-        </p>
-        {form !== undefined && (
-          <p class="error" id="field-server-error">
-            {fieldErrorMessage(form.error, t)}
+      <form method="post" action="/login/fediverse">
+        <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
+        <div class={form === undefined ? "field" : "field field-invalid"}>
+          <label for="field-server">{t("account.fediverseServer")}</label>
+          <input
+            id="field-server"
+            name="server"
+            required
+            autocomplete="off"
+            spellcheck={false}
+            value={form?.value ?? ""}
+            aria-invalid={form === undefined ? undefined : "true"}
+            aria-describedby={form === undefined ? "field-server-hint" : "field-server-error"}
+          />
+          <p class="hint" id="field-server-hint">
+            {props.servers === undefined
+              ? t("account.fediverseHint")
+              : t("account.fediverseServers", { servers: props.servers.join(", ") })}{" "}
+            {t("account.fediverseHandleHint")}
           </p>
-        )}
-      </div>
-      <button type="submit">{t("account.fediverseSubmit")}</button>
-    </form>
+          {form !== undefined && (
+            <p class="error" id="field-server-error">
+              {fieldErrorMessage(form.error, t)}
+            </p>
+          )}
+        </div>
+        <button type="submit" class={props.primary ? undefined : "secondary"}>
+          {t("account.fediverseSubmit")}
+        </button>
+      </form>
+    </section>
   );
 }
 
@@ -316,6 +330,7 @@ export function ContinueLogin(props: { t: Translate; server: string; authorizati
   const { t } = props;
   return (
     <section class="account">
+      <BackLink href="/account" label={t("account.back")} />
       <h1>{t("account.continue", { server: props.server })}</h1>
       <p>{t("account.continueText")}</p>
       <p>
@@ -331,11 +346,10 @@ export function ContinueLogin(props: { t: Translate; server: string; authorizati
 export function LoginFailed({ t, message }: { t: Translate; message: string }) {
   return (
     <section class="account">
+      <BackLink href="/account" label={t("account.tryAgain")} />
+      <h1>{t("account.heading")}</h1>
       <p class="warning" role="alert">
         {message}
-      </p>
-      <p>
-        <a href="/account">{t("account.tryAgain")}</a>
       </p>
     </section>
   );

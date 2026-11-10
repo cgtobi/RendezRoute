@@ -559,9 +559,8 @@ input[type="checkbox"] {
 /* Lists divided by hairlines */
 
 .list,
-.templates ul,
+.items,
 .template-facts,
-.my-data-items,
 .rating-notes,
 .report-attached,
 .contributions,
@@ -571,9 +570,8 @@ input[type="checkbox"] {
 }
 
 .list > li,
-.templates li,
+.item,
 .template-facts li,
-.my-data-items > li,
 .rating-notes > li,
 .report-attached > li,
 .admin-report,
@@ -613,11 +611,54 @@ input[type="checkbox"] {
   margin-top: var(--s2);
 }
 
-/* The host page's sections, divided by hairlines like the plan page. */
-.host > section {
+/* Pages in parts (host, template, My data, account): each part divided by a hairline (D27). */
+.sectioned > section:not(.status) {
   margin-top: var(--s6);
   padding-top: var(--s2);
   border-top: 1px solid var(--line);
+}
+
+/* A plan or template in a list: title, a muted line saying when, then its actions (D27). */
+.item-title {
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+.item-meta {
+  margin: var(--s1) 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  align-items: baseline;
+  margin-top: var(--s2);
+}
+
+/* An opened fold takes the whole row. */
+.item-actions details[open] {
+  flex-basis: 100%;
+}
+
+/* The section's own hairline follows the last item. */
+.items > .item:last-child {
+  border-bottom: 0;
+}
+
+/* Buttons side by side, wrapping on narrow screens. */
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: center;
+  margin: var(--s4) 0;
+}
+
+.button-row form {
+  margin: 0;
 }
 
 .person-name {
@@ -850,7 +891,8 @@ input[type="checkbox"] {
   background: var(--surface);
 }
 
-.status-joined {
+.status-joined,
+.status-loggedIn {
   border-color: var(--ok-line);
   background: var(--ok-bg);
 }
@@ -870,7 +912,8 @@ input[type="checkbox"] {
   font-weight: 600;
 }
 
-.status-joined .status-text h2 {
+.status-joined .status-text h2,
+.status-loggedIn .status-text h2 {
   color: var(--ok);
 }
 

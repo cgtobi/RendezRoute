@@ -3,6 +3,7 @@ import type { OwnResponseView } from "../../../../application/plan-views.ts";
 import { localeOf as locale, type Translate } from "../../../i18n/i18n.ts";
 import { en, type MessageKey } from "../../../i18n/messages/en.ts";
 import { type ActivityType, paceStyleFor } from "../../../../domain/activity.ts";
+import type { PlanStatus } from "../../../../domain/plan.ts";
 import type { ResponseKind } from "../../../../domain/response.ts";
 import { formatPace, formatSpeed, type PaceBand } from "../../../../domain/pace.ts";
 import {
@@ -134,4 +135,17 @@ export function responseState(response: OwnResponseView): ResponseKind | "notAns
 /** The status text of one's own response. */
 export function statusKey(response: OwnResponseView): MessageKey {
   return `status.${responseState(response)}`;
+}
+
+/** When a listed plan starts, and whether it was cancelled (decision D27). */
+export function itemWhen(
+  t: Translate,
+  item: { startsAt: Date; timeZone: string; status: PlanStatus },
+  language: string,
+): string {
+  return [
+    formatDay(item.startsAt, item.timeZone, language),
+    formatTime(item.startsAt, item.timeZone, language),
+    ...(item.status === "cancelled" ? [t("myData.cancelled")] : []),
+  ].join(" · ");
 }

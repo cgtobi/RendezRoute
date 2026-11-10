@@ -9,22 +9,19 @@ import type {
   PlanViewForResponder,
   PlanViewForViewer,
 } from "../../../../application/plan-views.ts";
-import { paceStyleFor } from "../../../../domain/activity.ts";
 import type { Units } from "../../../../domain/units.ts";
 import { ShareLinks } from "./share.tsx";
 import type { ExactStart } from "../../../../domain/geo.ts";
 import {
   formatDate,
   formatDay,
-  formatDistance,
-  formatElevation,
-  formatPaceBand,
   formatPercent,
   formatTemperature,
   formatTime,
   formatWindSpeed,
 } from "./format.ts";
 import { Initial } from "./avatar.tsx";
+import { PlanMetrics } from "./plan-metrics.tsx";
 import { ResponseStatus } from "./response-status.tsx";
 import { Linkified } from "./linkify.tsx";
 import { type MapSettings, PlanMap } from "./maps.tsx";
@@ -32,12 +29,6 @@ import type { WeatherView } from "../../../../application/weather.ts";
 import { RatingResultSection, RatingSection } from "./rating.tsx";
 import { RecapSection } from "./recap.tsx";
 import { RespondForm, type RespondFormState } from "./respond-form.tsx";
-
-/** One of the plan's measures, as shown: distance, elevation gain, pace or speed. */
-interface Metric {
-  label: string;
-  value: string;
-}
 
 export type PlanPageAudience =
   | { kind: "viewer"; view: PlanViewForViewer }
@@ -83,32 +74,6 @@ export function PlanPage(props: {
     (audience.kind === "poster" && audience.view.ratingResult !== undefined) ||
     (audience.kind === "participant" && audience.view.rating !== undefined);
   const calendarIsMain = inFeed && view.status === "active" && !props.hasRecap;
-  const metrics: Metric[] = [
-    ...(view.distanceMeters === undefined
-      ? []
-      : [
-          {
-            label: t("plan.distance"),
-            value: formatDistance(view.distanceMeters, units, language, t),
-          },
-        ]),
-    ...(view.elevationGainMeters === undefined
-      ? []
-      : [
-          {
-            label: t("plan.elevation"),
-            value: formatElevation(view.elevationGainMeters, units, language, t),
-          },
-        ]),
-    ...(view.pace === undefined
-      ? []
-      : [
-          {
-            label: paceStyleFor(view.activity) === "pace" ? t("plan.pace") : t("plan.speed"),
-            value: formatPaceBand(view.pace, view.activity, units, t),
-          },
-        ]),
-  ];
   const counts = (
     <p class="counts">
       {t("plan.counts", {
@@ -172,18 +137,12 @@ export function PlanPage(props: {
           </div>
         </dl>
 
-        <dl class="metrics">
-          {metrics.map((metric) => (
-            <div class="metric">
-              <dt>{metric.label}</dt>
-              <dd>{metric.value}</dd>
-            </div>
-          ))}
+        <PlanMetrics t={t} details={view} units={units} language={language}>
           <div class={`metric drop-policy drop-${view.dropPolicy}`}>
             <dt class="visually-hidden">{t("plan.group")}</dt>
             <dd>{t(`drop.${view.dropPolicy}`)}</dd>
           </div>
-        </dl>
+        </PlanMetrics>
 
         {view.note !== undefined && (
           <p class="note">

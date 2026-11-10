@@ -1,10 +1,12 @@
 // "My data on this device" (spec 3.2, 3.7, decision I45): what this browser is linked to, with
 // notification switches, link tools and export per item, and deleting all of it.
-import type { MyData, MyDataItem } from "../../../../application/my-data.ts";
+import type { MyData } from "../../../../application/my-data.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { isBlocked } from "../../../../domain/response.ts";
 import { CSRF_FIELD } from "../csrf.ts";
-import { formatDate, formatDay, formatTime } from "./format.ts";
+import { BackLink } from "./back-link.tsx";
+import { formatDate, itemWhen } from "./format.ts";
+import { Item, ItemList } from "./item.tsx";
 import { LinkTools } from "./link-tools.tsx";
 import { PushSwitch } from "./push-switch.tsx";
 
@@ -19,16 +21,6 @@ export interface MyDataPageProps {
   /** One-time values for the "Get a new link" forms, one per item (decision I44). */
   nonce: () => string;
   signedOut: number | undefined;
-}
-
-function When({ t, item, language }: { t: Translate; item: MyDataItem; language: string }) {
-  return (
-    <span class="hint">
-      {formatDay(item.startsAt, item.timeZone, language)} ·{" "}
-      {formatTime(item.startsAt, item.timeZone, language)}
-      {item.status === "cancelled" && ` · ${t("myData.cancelled")}`}
-    </span>
-  );
 }
 
 export function MyDataPage(props: MyDataPageProps) {
@@ -51,8 +43,9 @@ export function MyDataPage(props: MyDataPageProps) {
       returnToMyData
     />
   );
+  // Each part in its own section, divided by hairlines (decision D27).
   return (
-    <section class="my-data">
+    <section class="my-data sectioned">
       <h1>{t("myData.heading")}</h1>
       {props.signedOut !== undefined && (
         <p class="notice" role="status">
@@ -62,115 +55,116 @@ export function MyDataPage(props: MyDataPageProps) {
       <p>{t("myData.intro")}</p>
       {empty && <p>{t("myData.empty")}</p>}
 
-      {data.hosted.length > 0 && (
-        <>
-          <h2>{t("myData.hosted")}</h2>
-          <ul class="my-data-items">
-            {data.hosted.map((item) => (
-              <li>
-                <a href={`/p/${item.planId}/host`}>{item.title}</a>{" "}
-                <When t={t} item={item} language={language} />
-                <PushSwitch
-                  t={t}
-                  push={{
-                    endpoint: `/p/${item.planId}/host/notifications`,
-                    vapidPublicKey: props.vapidPublicKey,
-                  }}
-                  hint={t("push.hostHint")}
-                />
-                <p>
-                  <a href={`/p/${item.planId}/host/export.zip`}>{t("myData.export")}</a>
-                </p>
-                {tools(`/p/${item.planId}/host`, true)}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {data.responses.length > 0 && (
-        <>
-          <h2>{t("myData.responses")}</h2>
-          <ul class="my-data-items">
-            {data.responses.map((item) => {
-              const blocked = isBlocked(item.responseKind);
-              return (
-                <li>
-                  <a href={`/p/${item.planId}/me`}>{item.title}</a>{" "}
-                  <When t={t} item={item} language={language} />
-                  <p class="hint">{t(`status.${item.responseKind}`)}</p>
-                  <PushSwitch
-                    t={t}
-                    push={{
-                      endpoint: `/p/${item.planId}/me/notifications`,
-                      vapidPublicKey: props.vapidPublicKey,
-                    }}
-                    hint={t("push.hint")}
-                    offOnly={blocked}
-                  />
-                  <p>
-                    <a href={`/p/${item.planId}/me/export.zip`}>{t("myData.export")}</a>
-                  </p>
-                  {tools(`/p/${item.planId}/me`, !blocked)}
-                </li>
-              );
+      <ItemList
+        heading={t("myData.hosted")}
+        level={2}
+        items={data.hosted}
+        item={(item) => (
+          <Item
+            href={`/p/${item.planId}/host`}
+            title={item.title}
+            meta={itemWhen(t, item, language)}
+          >
+            <PushSwitch
+              t={t}
+              push={{
+                endpoint: `/p/${item.planId}/host/notifications`,
+                vapidPublicKey: props.vapidPublicKey,
+              }}
+              hint={t("push.hostHint")}
+            />
+            <div class="item-actions">
+              <a href={`/p/${item.planId}/host/export.zip`}>{t("myData.export")}</a>
+              {tools(`/p/${item.planId}/host`, true)}
+            </div>
+          </Item>
+        )}
+      />
+      <ItemList
+        heading={t("myData.responses")}
+        level={2}
+        items={data.responses}
+        item={(item) => {
+          const blocked = isBlocked(item.responseKind);
+          return (
+            <Item
+              href={`/p/${item.planId}/me`}
+              title={item.title}
+              meta={`${itemWhen(t, item, language)} · ${t(`status.${item.responseKind}`)}`}
+            >
+              <PushSwitch
+                t={t}
+                push={{
+                  endpoint: `/p/${item.planId}/me/notifications`,
+                  vapidPublicKey: props.vapidPublicKey,
+                }}
+                hint={t("push.hint")}
+                offOnly={blocked}
+              />
+              <div class="item-actions">
+                <a href={`/p/${item.planId}/me/export.zip`}>{t("myData.export")}</a>
+                {tools(`/p/${item.planId}/me`, !blocked)}
+              </div>
+            </Item>
+          );
+        }}
+      />
+      <ItemList
+        heading={t("myData.templates")}
+        level={2}
+        items={data.templates}
+        item={(template) => (
+          <Item
+            href={`/templates/${template.id}`}
+            title={template.title}
+            meta={t("template.expires", {
+              date: formatDate(template.expiresAt, template.timeZone, language),
             })}
-          </ul>
-        </>
-      )}
+          >
+            <div class="item-actions">{tools(`/templates/${template.id}`, false)}</div>
+          </Item>
+        )}
+      />
 
-      {data.templates.length > 0 && (
-        <>
-          <h2>{t("myData.templates")}</h2>
-          <ul class="my-data-items">
-            {data.templates.map((template) => (
-              <li>
-                <a href={`/templates/${template.id}`}>{template.title}</a>
-                <p class="hint">
-                  {t("template.expires", {
-                    date: formatDate(template.expiresAt, template.timeZone, language),
-                  })}
-                </p>
-                {tools(`/templates/${template.id}`, false)}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <h2>{t("myData.calendar")}</h2>
-      <p>
-        {t(data.calendarFeed ? "myData.calendarOn" : "myData.calendarOff")}{" "}
-        <a href="/calendar">{t("myData.calendarManage")}</a>
-      </p>
-
-      {data.mayPostSince !== undefined && (
+      <section>
+        <h2>{t("myData.calendar")}</h2>
         <p>
-          {t("myData.mayPost", { date: formatDate(data.mayPostSince, props.timeZone, language) })}
+          {t(data.calendarFeed ? "myData.calendarOn" : "myData.calendarOff")}{" "}
+          <a href="/calendar">{t("myData.calendarManage")}</a>
         </p>
-      )}
+      </section>
 
-      {data.loggedIn && (
-        <p>
-          {t("myData.loggedIn")} <a href="/account">{t("myData.accountManage")}</a>
-        </p>
+      {(data.mayPostSince !== undefined || data.loggedIn) && (
+        <section>
+          <h2>{t("myData.browserHeading")}</h2>
+          {data.mayPostSince !== undefined && (
+            <p>
+              {t("myData.mayPost", {
+                date: formatDate(data.mayPostSince, props.timeZone, language),
+              })}
+            </p>
+          )}
+          {data.loggedIn && (
+            <p>
+              {t("myData.loggedIn")} <a href="/account">{t("myData.accountManage")}</a>
+            </p>
+          )}
+        </section>
       )}
 
       {!empty && (
-        <>
+        <section>
           <h2>{t("myData.exportHeading")}</h2>
           <p>{t("myData.exportHint")}</p>
-          <p>
+          <p class="button-row">
             <a class="button secondary" href="/my-data/export.zip">
               {t("myData.exportAll")}
             </a>
-          </p>
-          <p>
             <a class="button danger" href="/my-data/delete">
               {t("myData.delete")}
             </a>
           </p>
-        </>
+        </section>
       )}
     </section>
   );
@@ -196,6 +190,7 @@ export function DeleteMyDataPage({
 }) {
   return (
     <section class="my-data">
+      <BackLink href="/my-data" label={t("myData.back")} />
       <h1>{t("myData.deleteHeading")}</h1>
       <p>{t("myData.deleteExplain")}</p>
       <ul>
@@ -229,9 +224,6 @@ export function DeleteMyDataPage({
           {t("myData.deleteConfirm")}
         </button>
       </form>
-      <p>
-        <a href="/my-data">{t("myData.back")}</a>
-      </p>
     </section>
   );
 }

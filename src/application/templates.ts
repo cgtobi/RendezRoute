@@ -126,15 +126,30 @@ export async function saveAsTemplate(
   return { kind: "saved", templateId: kept.template.id, title: plan.title, hostToken };
 }
 
+/** A template in the home page's list: what it is, when it starts and where (spec 3.10). */
+export type TemplateSummary = Pick<
+  PlanTemplate,
+  "id" | "title" | "activity" | "startTime" | "timeZone"
+> & {
+  area: { label: string };
+};
+
 /** The templates linked to this device, for the home page (spec 3.10). Never changes state. */
 export async function listTemplates(
   deps: PlanDeps,
   request: { deviceToken: string | undefined },
-): Promise<Pick<PlanTemplate, "id" | "title">[]> {
+): Promise<TemplateSummary[]> {
   const device = await lookupDevice(deps, request.deviceToken);
   if (device === undefined) return [];
   const templates = await deps.templates.listForDevice(device.id, "device_and_account");
-  return templates.map(({ id, title }) => ({ id, title }));
+  return templates.map(({ id, title, activity, startTime, timeZone, area }) => ({
+    id,
+    title,
+    activity,
+    startTime,
+    timeZone,
+    area: { label: area.label },
+  }));
 }
 
 export async function viewTemplate(

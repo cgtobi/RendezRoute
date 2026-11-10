@@ -16,6 +16,7 @@ import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { formatDate } from "../views/format.ts";
 import { LinksPage } from "../views/links-page.tsx";
 import { MapAssets } from "../views/maps.tsx";
+import { BackLink } from "../views/back-link.tsx";
 import { PlanForm } from "../views/plan-form.tsx";
 import { TemplatePage, TemplateSavedPage } from "../views/templates.tsx";
 import {
@@ -88,9 +89,7 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     c.header("cache-control", "private, no-store");
     return c.render(
       <section class="host">
-        <p>
-          <a href={base(c)}>{t("template.back")}</a>
-        </p>
+        <BackLink href={base(c)} label={t("template.back")} />
         <PlanForm
           t={t}
           values={

@@ -1,8 +1,9 @@
 // One's own response as a status box (design decision D27), on the plan page and on one's own
-// response page; green with a tick when one is in.
+// response page.
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { OwnResponseView } from "../../../../application/plan-views.ts";
 import { responseState, statusKey } from "./format.ts";
+import { Status } from "./status.tsx";
 
 export function ResponseStatus({
   t,
@@ -17,23 +18,12 @@ export function ResponseStatus({
   /** With the "Your response" heading; left out where the page's heading says it. */
   titled?: boolean;
 }) {
-  const state = responseState(response);
   return (
-    <section class={`status status-${state}`}>
-      {state === "joined" && (
-        <span class="status-icon" aria-hidden="true">
-          <span class="icon icon-check"></span>
-        </span>
-      )}
-      <div class="status-text">
-        {titled && <h2>{t("plan.yourResponse")}</h2>}
-        <p>{t(statusKey(response))}</p>
-      </div>
-      {action !== undefined && (
-        <p class="status-action">
-          <a href={action.href}>{action.label}</a>
-        </p>
-      )}
-    </section>
+    <Status
+      state={responseState(response)}
+      heading={titled ? t("plan.yourResponse") : undefined}
+      text={t(statusKey(response))}
+      action={action}
+    />
   );
 }

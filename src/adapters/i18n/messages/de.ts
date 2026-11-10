@@ -790,6 +790,7 @@ export const de: Messages = {
     "Dieser Einladungslink ist ungültig. Vielleicht ist er abgelaufen, aufgebraucht oder wurde widerrufen. Frag nach einem neuen.",
   "privacy.invites":
     "Einladungslinks: Nur Menschen mit einem Einladungslink können hier Treffen erstellen. Wenn du einen bestätigst, wird für diesen Browser vermerkt, dass er Treffen erstellen darf, und über welche Einladung. Das wird gelöscht, wenn du deine Daten auf diesem Gerät löschst, oder nach 12 Monaten ohne Nutzung.",
+  "myData.browserHeading": "Dieser Browser",
   "myData.mayPost":
     "Ein Einladungslink erlaubt diesem Browser, hier Treffen zu erstellen (seit {date}).",
   "myData.deleteMayPost":

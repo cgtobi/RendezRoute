@@ -760,6 +760,7 @@ export const en = {
     "This invite link is not valid. It may have expired, been used up or been revoked. Ask for a new one.",
   "privacy.invites":
     "Invite links: only people with an invite link can create plans here. When you confirm one, this browser is noted as allowed to create plans, together with the invite it used. This is deleted when you delete your data on this device, or after 12 months without use.",
+  "myData.browserHeading": "This browser",
   "myData.mayPost": "An invite link lets this browser create plans here (since {date}).",
   "myData.deleteMayPost": "the permission to create plans that an invite link gave this browser",
   "field.date_invalid": "Please enter a valid date.",

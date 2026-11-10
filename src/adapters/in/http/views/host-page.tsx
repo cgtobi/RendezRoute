@@ -72,7 +72,7 @@ export function HostPage(props: HostPageProps) {
   const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
 
   return (
-    <section class="host">
+    <section class="host sectioned">
       <BackLink href={`/p/${planId}`} label={t("host.back")} />
       {/* Which plan this page manages; the form itself stays neutral (decision D11). */}
       <p class="plan-context">{props.title}</p>

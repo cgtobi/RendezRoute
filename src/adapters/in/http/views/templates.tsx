@@ -1,14 +1,17 @@
 // Repeatable templates (spec 3.10 Templates, decision I43): the options on the plan forms, the
 // list on the home page, the template page with "Repeat", and the page showing a new template link.
 import type { PostingNeed } from "../../../../application/posting-rules.ts";
+import type { TemplateSummary } from "../../../../application/templates.ts";
 import { PostingClosed } from "./posting.tsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { PlanTemplate, TemplateAdjustment } from "../../../../domain/template.ts";
 import type { Units } from "../../../../domain/units.ts";
 import { CSRF_FIELD } from "../csrf.ts";
-import { fieldErrorMessage, formatDate, formatDistance, formatPaceBand } from "./format.ts";
+import { fieldErrorMessage, formatDate } from "./format.ts";
+import { Item } from "./item.tsx";
 import { LinkTools } from "./link-tools.tsx";
+import { PlanMetrics } from "./plan-metrics.tsx";
 import { WINDOW_LABELS } from "./recap.tsx";
 
 /** "Keep as repeatable template" and its sub-option, on the create and host forms. */
@@ -51,23 +54,29 @@ export function TemplateOptions({
   );
 }
 
-/** "Your templates" on the home page, for the devices linked to them. */
+/** "Your templates" on the home page, for the devices linked to them: what, when and where. */
 export function TemplateList({
   t,
   templates,
 }: {
   t: Translate;
-  templates: readonly Pick<PlanTemplate, "id" | "title">[];
+  templates: readonly TemplateSummary[];
 }) {
   if (templates.length === 0) return null;
   return (
     <section class="templates">
       <h2>{t("home.templates")}</h2>
-      <ul>
+      <ul class="items">
         {templates.map((template) => (
-          <li>
-            <a href={`/templates/${template.id}`}>{template.title}</a>
-          </li>
+          <Item
+            href={`/templates/${template.id}`}
+            title={template.title}
+            meta={[
+              t(`activity.${template.activity}`),
+              `${template.startTime} (${template.timeZone})`,
+              template.area.label,
+            ].join(" · ")}
+          />
         ))}
       </ul>
     </section>
@@ -125,42 +134,57 @@ export function TemplatePage(props: TemplatePageProps) {
   const csrf = <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />;
   const base = `/templates/${template.id}`;
   const errorFor = (field: "date" | "time") => props.repeat.errors.find((e) => e.field === field);
-  const facts: string[] = [
+  // The settings without a place of their own on the plan page, in one line.
+  const settings = [
     t(`activity.${template.activity}`),
-    t("template.startTime", { time: template.startTime, zone: template.timeZone }),
-    template.area.label,
-    ...(template.distanceMeters === undefined
-      ? []
-      : [formatDistance(template.distanceMeters, units, props.language, t)]),
-    ...(template.pace === undefined
-      ? []
-      : [formatPaceBand(template.pace, template.activity, units, t)]),
     t(template.joinMode === "open" ? "form.joinOpen" : "form.joinApproval"),
     t("form.retentionDays", { count: template.retentionDays }),
     `${t("form.recapWindow")}: ${t(WINDOW_LABELS[template.recapWindow])}`,
+    t(`drop.${template.dropPolicy}`),
   ];
+  // Each part in its own section, divided by hairlines; neutral, as a form page (decisions D11, D27).
   return (
-    <section class="template">
+    <section class="template sectioned">
       {props.saved && (
         <p class="notice" role="status">
           {t("template.saved")}
         </p>
       )}
-      <p class="hint">{t("template.label")}</p>
+      <p class="plan-context">{t("template.label")}</p>
       <h1>{template.title}</h1>
-      <ul class="template-facts">
-        {facts.map((fact) => (
-          <li>{fact}</li>
-        ))}
-        {template.exactStart !== undefined && <li>{t("template.includesExactStart")}</li>}
-        {template.hasRoute && <li>{t("template.includesRoute")}</li>}
-      </ul>
-      <p>
+      <dl class="when-where">
+        <div class="pill">
+          <dt class="visually-hidden">{t("plan.when")}</dt>
+          <dd>
+            <span class="icon icon-calendar" aria-hidden="true"></span>
+            <span>
+              {t("template.startTime", { time: template.startTime, zone: template.timeZone })}
+            </span>
+          </dd>
+        </div>
+        <div class="pill">
+          <dt class="visually-hidden">{t("plan.where")}</dt>
+          <dd>
+            <span class="icon icon-pin" aria-hidden="true"></span>
+            <span>{template.area.label}</span>
+          </dd>
+        </div>
+      </dl>
+      <PlanMetrics t={t} details={template} units={units} language={props.language} />
+      <p class="item-meta">{settings.join(" · ")}</p>
+      {(template.exactStart !== undefined || template.hasRoute) && (
+        <p class="item-meta">
+          {[
+            ...(template.exactStart === undefined ? [] : [t("template.includesExactStart")]),
+            ...(template.hasRoute ? [t("template.includesRoute")] : []),
+          ].join(" · ")}
+        </p>
+      )}
+      <p class="hint">
         {t("template.expires", {
           date: formatDate(template.expiresAt, template.timeZone, props.language),
         })}
       </p>
-
       {props.postingClosed !== undefined && (
         <PostingClosed
           t={t}
@@ -169,51 +193,54 @@ export function TemplatePage(props: TemplatePageProps) {
         />
       )}
       {props.postingClosed === undefined && (
-        <form method="post" action={`${base}/repeat`} class="plan-form">
+        <section>
           <h2>{t("template.repeatHeading")}</h2>
-          <p class="hint">{t("template.repeatHint")}</p>
-          {csrf}
-          <input type="hidden" name="nonce" value={props.nonce} />
-          <div class="field-row">
-            {(["date", "time"] as const).map((field) => {
-              const error = errorFor(field);
-              return (
-                <div class={error === undefined ? "field" : "field field-invalid"}>
-                  <label for={`field-${field}`}>
-                    {t(field === "date" ? "form.date" : "form.time")}
-                  </label>
-                  <input
-                    id={`field-${field}`}
-                    name={field}
-                    type={field}
-                    required
-                    value={props.repeat[field]}
-                  />
-                  {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
-                </div>
-              );
-            })}
-          </div>
-          <button type="submit">{t("template.repeatSubmit")}</button>
-        </form>
+          <form method="post" action={`${base}/repeat`} class="plan-form">
+            <p class="hint">{t("template.repeatHint")}</p>
+            {csrf}
+            <input type="hidden" name="nonce" value={props.nonce} />
+            <div class="field-row">
+              {(["date", "time"] as const).map((field) => {
+                const error = errorFor(field);
+                return (
+                  <div class={error === undefined ? "field" : "field field-invalid"}>
+                    <label for={`field-${field}`}>
+                      {t(field === "date" ? "form.date" : "form.time")}
+                    </label>
+                    <input
+                      id={`field-${field}`}
+                      name={field}
+                      type={field}
+                      required
+                      value={props.repeat[field]}
+                    />
+                    {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+                  </div>
+                );
+              })}
+            </div>
+            <button type="submit">{t("template.repeatSubmit")}</button>
+          </form>
+        </section>
       )}
-
-      <p>
-        <a class="button secondary" href={`${base}/edit`}>
-          {t("template.edit")}
-        </a>{" "}
-        <a class="button secondary" href={`${base}/export.zip`}>
-          {t("export.template")}
-        </a>
-      </p>
-      {template.hasRoute && (
-        <form method="post" action={`${base}/route/remove`}>
-          {csrf}
-          <button type="submit" class="secondary">
-            {t("template.removeRoute")}
-          </button>
-        </form>
-      )}
+      <section>
+        <div class="button-row">
+          <a class="button secondary" href={`${base}/edit`}>
+            {t("template.edit")}
+          </a>
+          <a class="button secondary" href={`${base}/export.zip`}>
+            {t("export.template")}
+          </a>
+          {template.hasRoute && (
+            <form method="post" action={`${base}/route/remove`}>
+              {csrf}
+              <button type="submit" class="secondary">
+                {t("template.removeRoute")}
+              </button>
+            </form>
+          )}
+        </div>
+      </section>
       <LinkTools
         t={t}
         base={base}
@@ -222,16 +249,18 @@ export function TemplatePage(props: TemplatePageProps) {
         notifications={false}
         nonce={props.linkNonce}
       />
-      <details class="danger-zone">
-        <summary>{t("template.delete")}</summary>
-        <p>{t("template.deleteExplain")}</p>
-        <form method="post" action={`${base}/delete`}>
-          {csrf}
-          <button type="submit" class="danger">
-            {t("template.deleteConfirm")}
-          </button>
-        </form>
-      </details>
+      <section>
+        <details class="danger-zone">
+          <summary>{t("template.delete")}</summary>
+          <p>{t("template.deleteExplain")}</p>
+          <form method="post" action={`${base}/delete`}>
+            {csrf}
+            <button type="submit" class="danger">
+              {t("template.deleteConfirm")}
+            </button>
+          </form>
+        </details>
+      </section>
     </section>
   );
 }

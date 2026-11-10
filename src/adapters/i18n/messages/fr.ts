@@ -789,6 +789,7 @@ export const fr: Messages = {
     "Ce lien d’invitation n’est pas valide. Il a peut-être expiré, été épuisé ou été révoqué. Demandez-en un nouveau.",
   "privacy.invites":
     "Liens d’invitation : seules les personnes ayant un lien d’invitation peuvent créer des sorties ici. Lorsque vous en confirmez un, ce navigateur est enregistré comme autorisé à créer des sorties, avec l’invitation utilisée. Cela est supprimé lorsque vous supprimez vos données sur cet appareil, ou après 12 mois sans utilisation.",
+  "myData.browserHeading": "Ce navigateur",
   "myData.mayPost":
     "Un lien d’invitation permet à ce navigateur de créer des sorties ici (depuis le {date}).",
   "myData.deleteMayPost":

@@ -119,3 +119,28 @@ describe.each([
     ]);
   });
 });
+
+// Maps follow dark mode (user request after D30): the tiles darkened in the browser, so it works
+// with any tile server, and only the tiles, so the area circle, pins and route keep their colours.
+describe("maps in dark mode", () => {
+  /** The rules inside the dark-mode media queries, without the token blocks. */
+  const darkRules = [...CSS.matchAll(/@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n\}/g)]
+    .map(([, body = ""]) => body)
+    .join("\n");
+  const ruleFor = (selector: string) => {
+    const start = darkRules.indexOf(`${selector} {`);
+    return start === -1 ? "" : darkRules.slice(start, darkRules.indexOf("}", start));
+  };
+
+  it("darkens the tiles, and only the tiles", () => {
+    expect(ruleFor(".map .leaflet-tile-pane")).toContain("filter: invert(1) hue-rotate(180deg)");
+    expect(darkRules).not.toMatch(/\.leaflet-(overlay|marker)-pane[^{]*\{[^}]*filter/);
+  });
+
+  it("gives the zoom buttons and the attribution the page's dark colours", () => {
+    expect(ruleFor(".map .leaflet-bar a")).toContain("background: var(--surface)");
+    expect(ruleFor(".map.leaflet-container .leaflet-control-attribution")).toContain(
+      "color: var(--muted)",
+    );
+  });
+});

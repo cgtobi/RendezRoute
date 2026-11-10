@@ -1292,6 +1292,39 @@ details > summary {
   overflow: hidden;
 }
 
+/* Dark mode: the tiles darkened in the browser, so it works with any tile server; only the tiles,
+   so the area circle, pins and route keep their colours. Controls in the page's dark colours. */
+@media (prefers-color-scheme: dark) {
+  .map.leaflet-container {
+    background: var(--surface);
+  }
+
+  .map .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+  }
+
+  .map .leaflet-bar a {
+    border-color: var(--line);
+    background: var(--surface);
+    color: var(--fg);
+  }
+
+  .map .leaflet-bar a:hover,
+  .map .leaflet-bar a:focus {
+    background: var(--line);
+  }
+
+  /* As specific as Leaflet's own rule, which comes later. */
+  .map.leaflet-container .leaflet-control-attribution {
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    color: var(--muted);
+  }
+
+  .map.leaflet-container .leaflet-control-attribution a {
+    color: var(--accent);
+  }
+}
+
 .map-tools {
   margin: var(--s3) 0;
 }

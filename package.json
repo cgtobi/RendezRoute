@@ -17,7 +17,8 @@
     "fmt": "vp fmt",
     "test": "vp test",
     "check": "vp check --deny-warnings && npm run typecheck && vp test",
-    "e2e": "playwright test -c e2e/playwright.config.ts"
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "icons": "node scripts/brand-icons.ts"
   },
   "dependencies": {
     "@fontsource/inter": "5.3.0",

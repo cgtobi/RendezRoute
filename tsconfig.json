@@ -21,6 +21,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "test", "e2e", "vitest.config.ts"],
+  "include": ["src", "test", "e2e", "scripts", "vitest.config.ts"],
   "exclude": ["src/client"]
 }

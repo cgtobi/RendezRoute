@@ -88,6 +88,17 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect((await page({ WEATHER_ENABLED: "false" })).html).not.toMatch(/weather|open-meteo/i);
   });
 
+  it("explains email addresses only when email is configured (decision D31)", async () => {
+    expect(text((await page()).html)).not.toContain(en("privacy.email"));
+    expect(text((await page()).html)).not.toContain(en("privacy.emailRateLimit"));
+    const withSmtp = await page({ SMTP_HOST: "mail.example.org", SMTP_FROM: "runs@example.org" });
+    expect(text(withSmtp.html)).toContain(en("privacy.email"));
+    // Typed addresses are counted too (spec 3.11), as an in-memory hash.
+    expect(text(withSmtp.html)).toContain(
+      `${en("privacy.rateLimits")} ${en("privacy.emailRateLimit")}`,
+    );
+  });
+
   it("mentions the admin login cookie only when admin login is configured (spec 7)", async () => {
     expect(text((await page()).html)).not.toContain(en("privacy.cookieAdmin", { hours: 12 }));
     const withAdmin = await page({ ADMIN_TOKEN: "admin-token-for-tests-0123456789abcdef" });

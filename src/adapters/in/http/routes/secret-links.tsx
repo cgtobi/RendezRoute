@@ -9,10 +9,11 @@ import { badRequest, formField, readForm, type RouteDeps, secretLinkHeaders } fr
 
 /**
  * Paths that carry a secret token (spec 3.2): host, manage, template and invite links, calendar
- * feeds, and login callbacks with the provider's code. They must never be echoed into other URLs.
+ * feeds, email links (decision D31), and login callbacks with the provider's code. They must never
+ * be echoed into other URLs.
  */
 export function isSecretLinkPath(path: string): boolean {
-  return /^\/(?:a|m|t|c|i|login)(?:\/|$)/.test(path);
+  return /^\/(?:a|m|t|c|i|e|login)(?:\/|$)/.test(path);
 }
 
 export function registerSecretLinkRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {

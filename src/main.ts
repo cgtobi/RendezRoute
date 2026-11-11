@@ -10,9 +10,8 @@ import {
   runRetentionSweep,
 } from "./application/maintenance.ts";
 import { runDueJobs } from "./application/jobs.ts";
-import { notificationHandler } from "./application/notifications.ts";
 import type { PlanDeps } from "./application/plans.ts";
-import { reminderStillDue, runReminders } from "./application/reminders.ts";
+import { runReminders } from "./application/reminders.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
 import { type AccountWiring, createApp } from "./adapters/in/http/app.tsx";
 import { createTokenAdminAuth } from "./adapters/out/admin/token-admin-auth.ts";
@@ -43,6 +42,8 @@ import { createChannelRepository } from "./adapters/out/sqlite/channels.ts";
 import { loadOrCreateVapidKeys } from "./adapters/out/crypto/vapid-keys.ts";
 import { createSentReminderRepository } from "./adapters/out/sqlite/reminders.ts";
 import { createWebPushNotifier } from "./adapters/out/push/notifier.ts";
+import { createSmtpMailer } from "./adapters/out/email/smtp-mailer.ts";
+import { createJobHandlers } from "./job-handlers.ts";
 import { isPushServiceHost } from "./domain/push.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "./adapters/out/sqlite/devices.ts";
@@ -215,6 +216,11 @@ async function openInstance(
       channels: createChannelRepository(database, keys.cipher, ids, () => systemClock.now()),
       jobs: createJobQueue(database, keys.cipher, ids),
       reminders: createSentReminderRepository(database),
+      email: {
+        links: keys.channelLinks,
+        sending: config.smtp !== undefined,
+        reportAlerts: config.smtp !== undefined && config.contactEmail !== undefined,
+      },
     },
   };
   return { ok: true, instance: { config, database, keys, planDeps, warnings } };
@@ -284,13 +290,21 @@ export async function startServer(
     baseUrl: config.baseUrl,
     now: () => planDeps.clock.now(),
   });
-  const jobHandlers = {
-    notification: notificationHandler({
-      notifier,
-      onGone: (channelId) => notify.channels.delete(channelId),
-      stillDue: (reminder) => reminderStillDue(planDeps, reminder),
-    }),
-  };
+  // Email (decision D31): the mail server is trusted configuration, so no SSRF checks here.
+  const jobHandlers = createJobHandlers({
+    planDeps,
+    push: notifier,
+    email:
+      config.smtp === undefined
+        ? undefined
+        : {
+            mailer: createSmtpMailer({ smtp: config.smtp, instanceName: config.instanceName }),
+            links: keys.channelLinks,
+            baseUrl: config.baseUrl,
+            instanceName: config.instanceName,
+            contactEmail: config.contactEmail,
+          },
+  });
   const sweepLimits = () => {
     for (const limiter of Object.values(rateLimits)) limiter.sweep();
     return Promise.resolve({});

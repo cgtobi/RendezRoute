@@ -39,6 +39,7 @@ import type { Result } from "../domain/result.ts";
 import type {
   AccessScope,
   CalendarFeedRepository,
+  ChannelLinks,
   ChannelRepository,
   FormNonceRepository,
   InviteRepository,
@@ -78,7 +79,16 @@ export interface PlanDeps extends DeviceDeps {
   permissions: PermissionRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
   notify?:
-    | { channels: ChannelRepository; jobs: JobQueue; reminders: SentReminderRepository }
+    | {
+        channels: ChannelRepository;
+        jobs: JobQueue;
+        reminders: SentReminderRepository;
+        /**
+         * Email channels (decision D31): links always work, so stored addresses can be turned off
+         * also after SMTP is switched off; `sending` says whether SMTP is configured.
+         */
+        email?: { links: ChannelLinks; sending: boolean; reportAlerts: boolean } | undefined;
+      }
     | undefined;
 }
 

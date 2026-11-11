@@ -176,6 +176,10 @@ describe("deriveKey", () => {
     expect(csrf).toHaveLength(32);
     expect(deriveKey(keyring, "csrf").equals(csrf)).toBe(true);
     expect(deriveKey(keyring, "identity-lookup").equals(csrf)).toBe(false);
+    expect(deriveKey(keyring, "channel-links").equals(csrf)).toBe(false);
+    expect(deriveKey(keyring, "channel-links").equals(deriveKey(keyring, "identity-lookup"))).toBe(
+      false,
+    );
   });
 });
 
@@ -191,6 +195,16 @@ describe("deriveKey across key versions (spec 3.11 key rotation)", () => {
       true,
     );
     expect(deriveKey(after, "csrf").equals(deriveKey(before, "csrf"))).toBe(false);
+  });
+
+  it("keeps the email link key too, so links in sent emails keep working (decision D31)", () => {
+    const [first, second] = [Buffer.alloc(32, 1), Buffer.alloc(32, 2)];
+    const before = createKeyring(1, [[1, first]]);
+    const after = createKeyring(2, [
+      [1, first],
+      [2, second],
+    ]);
+    expect(deriveKey(after, "channel-links").equals(deriveKey(before, "channel-links"))).toBe(true);
   });
 });
 

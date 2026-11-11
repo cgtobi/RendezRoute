@@ -14,7 +14,15 @@ import {
   startsToday,
 } from "../domain/reminders.ts";
 import type { ResponseKind } from "../domain/response.ts";
-import { hostOf, notify, type Recipient, responderOf, responsesStillIn } from "./notify.ts";
+import {
+  deliverableChannels,
+  hostOf,
+  notify,
+  ownerIds,
+  type Recipient,
+  responderOf,
+  responsesStillIn,
+} from "./notify.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { SentReminder } from "./ports.ts";
 
@@ -108,10 +116,10 @@ async function remind(
     const once: SentReminder = {
       ...reminder,
       planId: plan.id,
-      responseId: "responseId" in owner ? owner.responseId : undefined,
+      responseId: ownerIds(owner).responseId,
     };
     if (await deps.notify.reminders.wasSent(once)) continue;
-    if ((await deps.notify.channels.listFor(owner)).length === 0) continue;
+    if ((await deliverableChannels(deps, owner)).length === 0) continue;
     // Marked first: a crash before queueing loses this reminder rather than sending it twice.
     await deps.notify.reminders.record(once);
     await notify(deps, plan, recipient, notice, { expiresAt, reminder: once });

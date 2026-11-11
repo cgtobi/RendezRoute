@@ -399,6 +399,48 @@ export const de: Messages = {
     "Nur Neuigkeiten zu diesem Treffen: Änderungen, Absage, deine Anfrage und Erinnerungen.",
   "push.hostHint": "Neuigkeiten zu Antworten, Anfragen und zurückgezogenen Antworten.",
 
+  "email.refuse": "Nicht du? Dann nichts an diese Adresse senden",
+  "email.lastWhy": "Dieses Treffen gibt es nicht mehr, deshalb kommen keine weiteren E-Mails dazu.",
+  "emailLink.refuse": "Keine E-Mails senden",
+  "privacy.emailRateLimit":
+    "Anfragen nach einem Bestätigungslink werden auch je E-Mail-Adresse gezählt, als Hash, der nur im Arbeitsspeicher liegt, damit niemand fremde Postfächer überfluten kann.",
+  "email.label": "E-Mail für Neuigkeiten zu diesem Treffen",
+  "email.hint":
+    "Zuerst schicken wir einen Link, um die Adresse zu bestätigen. Jede E-Mail enthält einen Link zum Abschalten.",
+  "email.submit": "Bestätigungslink senden",
+  "email.pending":
+    "Öffne den Link, den wir an {address} geschickt haben, um sie zu bestätigen. Vorher wird nichts anderes gesendet.",
+  "email.resend": "Link noch einmal senden",
+  "email.on": "E-Mails zu diesem Treffen gehen an {address}.",
+  "email.off": "E-Mails abschalten",
+  "email.openPlan": "Treffen öffnen",
+  "email.why":
+    "Du bekommst diese E-Mail, weil du auf {instance} E-Mails zu „{title}“ eingeschaltet hast.",
+  "email.turnOff": "Diese E-Mails abschalten",
+  "email.confirmSubject": "E-Mails zu „{title}“ bestätigen",
+  "email.confirmBody":
+    "Jemand möchte an diese Adresse E-Mails zu diesem Treffen bekommen. Wenn du das warst, bestätige es mit dem Link unten. Wenn nicht, ignoriere diese E-Mail: Es wird nichts weiter gesendet.",
+  "email.confirmAction": "Adresse bestätigen",
+  "email.confirmWhy":
+    "Du bekommst diese E-Mail, weil diese Adresse auf {instance} eingegeben wurde.",
+  "email.reportSubject": "Neue Meldung auf {instance}",
+  "email.reportBody": "Jemand hat ein Treffen gemeldet. Die Admin-Seite zeigt die Meldung.",
+  "email.reportAction": "Admin-Seite öffnen",
+  "email.reportWhy":
+    "Du bekommst diese E-Mail, weil diese Adresse die Kontaktadresse von {instance} ist.",
+  "emailLink.confirmHeading": "E-Mail-Adresse bestätigen",
+  "emailLink.confirmBody": "E-Mails zu „{title}“ an {address} bekommen?",
+  "emailLink.confirm": "Adresse bestätigen",
+  "emailLink.offHeading": "E-Mails abschalten",
+  "emailLink.offBody": "Keine E-Mails mehr zu „{title}“ an {address}?",
+  "emailLink.off": "E-Mails abschalten",
+  "emailLink.confirmed": "Adresse bestätigt. Du bekommst E-Mails zu diesem Treffen.",
+  "emailLink.turnedOff": "E-Mails zu diesem Treffen sind abgeschaltet.",
+  "emailLink.invalid":
+    "Dieser Link funktioniert nicht mehr. Die E-Mails sind vielleicht schon abgeschaltet, oder das Treffen gibt es nicht mehr.",
+  "field.email_invalid": "Gib eine E-Mail-Adresse ein, zum Beispiel name@example.org.",
+  "privacy.email":
+    "Wenn du E-Mails zu einem Treffen einschaltest, wird deine Adresse verschlüsselt gespeichert, nur für diese E-Mails genutzt und mit deiner Antwort oder dem Treffen gelöscht. Jede E-Mail enthält einen Link zum Abschalten; vor deiner Bestätigung wird nichts gesendet.",
   "calendar.title": "Kalender-Abo",
   "calendar.intro":
     "Deine Kalender-App kann alle Treffen zeigen, die du in diesem Browser organisierst oder auf die du geantwortet hast. Sie aktualisiert sie selbst, wenn ein Treffen geändert, abgesagt oder gelöscht wird.",

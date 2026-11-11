@@ -35,7 +35,12 @@ import {
   createIdentityRepository,
   createPendingLoginRepository,
 } from "../../src/adapters/out/sqlite/identities.ts";
+import { createChannelLinks } from "../../src/adapters/out/crypto/channel-links.ts";
+import { createJobHandlers } from "../../src/job-handlers.ts";
+import { runDueJobs } from "../../src/application/jobs.ts";
 import { FakeClock } from "../fakes/clock.ts";
+import { FakeMailer } from "../fakes/mailer.ts";
+import { FakeNotifier } from "../fakes/notifier.ts";
 import type { FakeOidcServer } from "../fakes/oidc-server.ts";
 import { type FakeMastodonServer, fediverse } from "../fakes/mastodon-server.ts";
 import { createFediverseProvider } from "../../src/adapters/out/identity/fediverse.ts";
@@ -88,6 +93,7 @@ export async function createTestApp({
   const channels = createChannelRepository(database, cipher, ids, () => clock.now());
   const jobs = createJobQueue(database, cipher, ids);
   const vapidPublicKey = generateVapidKeys().publicKey;
+  const channelLinks = createChannelLinks(randomBytes(32));
   const planDeps: PlanDeps = {
     plans: createPlanRepository(database, cipher),
     devices: createDeviceRepository(database),
@@ -106,8 +112,35 @@ export async function createTestApp({
     postingMode: config.postingMode,
     invites: createInviteRepository(database),
     permissions: createPermissionRepository(database),
-    notify: { channels, jobs, reminders: createSentReminderRepository(database) },
+    notify: {
+      channels,
+      jobs,
+      reminders: createSentReminderRepository(database),
+      email: {
+        links: channelLinks,
+        sending: config.smtp !== undefined,
+        reportAlerts: config.smtp !== undefined && config.contactEmail !== undefined,
+      },
+    },
   };
+  // Jobs run on demand with the real handlers; email goes to the fake mailer (decision D31).
+  const mailer = new FakeMailer();
+  const pushed = new FakeNotifier();
+  const jobHandlers = createJobHandlers({
+    planDeps,
+    push: pushed,
+    email:
+      config.smtp === undefined
+        ? undefined
+        : {
+            mailer,
+            links: channelLinks,
+            baseUrl: config.baseUrl,
+            instanceName: config.instanceName,
+            contactEmail: config.contactEmail,
+          },
+  });
+  const runJobs = () => runDueJobs({ jobs, clock }, jobHandlers);
   const pendingLogins = createPendingLoginRepository(database, cipher);
   const identities = createIdentityRepository(database, cipher);
   const identityLookup = createLookupHasher(randomBytes(32));
@@ -168,5 +201,9 @@ export async function createTestApp({
     vapidPublicKey,
     pendingLogins,
     identities,
+    mailer,
+    pushed,
+    runJobs,
+    channelLinks,
   };
 }

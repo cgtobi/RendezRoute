@@ -16,9 +16,9 @@ import { calendarEvents } from "./views/calendar-events.ts";
 /**
  * Changes whenever data.json changes shape, so importers can tell versions apart (2: ratings;
  * 3: mayPostSince, set in device exports when an invite link lets the device create plans;
- * 4: account, set in account exports).
+ * 4: account, set in account exports; 5: notificationEmail per plan, decision D31).
  */
-export const EXPORT_VERSION = 4;
+export const EXPORT_VERSION = 5;
 
 const orNull = <T>(value: T | undefined): T | null => value ?? null;
 const pointJson = (point: GeoPoint | undefined) =>
@@ -138,6 +138,10 @@ export function exportZip(
       role: plan.role,
       plan: planJson(plan),
       ownResponse: ownResponseJson(plan),
+      notificationEmail:
+        plan.email === undefined
+          ? null
+          : { address: plan.email.address, confirmed: plan.email.confirmed },
       ownContributions: plan.ownContributions.map((c) => ({
         body: orNull(c.body),
         link: orNull(c.linkUrl),

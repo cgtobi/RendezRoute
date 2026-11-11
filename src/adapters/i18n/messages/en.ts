@@ -382,6 +382,46 @@ export const en = {
   "push.hint": "Only news about this plan: changes, cancellation, your request and reminders.",
   "push.hostHint": "News about responses, requests and withdrawals.",
 
+  "email.refuse": "Not you? Don’t send anything to this address",
+  "email.lastWhy": "This plan is gone, so no more emails about it will be sent.",
+  "emailLink.refuse": "Don’t send emails",
+  "privacy.emailRateLimit":
+    "Requests for a confirmation link are also counted per email address, as a hash kept only in memory, so nobody can flood someone’s mailbox.",
+  "email.label": "Email for news about this plan",
+  "email.hint":
+    "First we send a link to confirm the address. Every email has a link to turn them off.",
+  "email.submit": "Send confirmation link",
+  "email.pending":
+    "Open the link we sent to {address} to confirm it. Nothing else is sent before that.",
+  "email.resend": "Send the link again",
+  "email.on": "Emails about this plan go to {address}.",
+  "email.off": "Turn off emails",
+  "email.openPlan": "Open the plan",
+  "email.why": "You get this email because you turned on emails for “{title}” on {instance}.",
+  "email.turnOff": "Turn off these emails",
+  "email.confirmSubject": "Confirm emails about “{title}”",
+  "email.confirmBody":
+    "Someone asked for emails about this plan at this address. If it was you, confirm it with the link below. If not, ignore this email: nothing else will be sent.",
+  "email.confirmAction": "Confirm address",
+  "email.confirmWhy": "You get this email because this address was entered on {instance}.",
+  "email.reportSubject": "New report on {instance}",
+  "email.reportBody": "Someone reported a plan. The admin page shows the report.",
+  "email.reportAction": "Open the admin page",
+  "email.reportWhy":
+    "You get this email because this address is the contact address of {instance}.",
+  "emailLink.confirmHeading": "Confirm your email address",
+  "emailLink.confirmBody": "Get emails about “{title}” at {address}?",
+  "emailLink.confirm": "Confirm address",
+  "emailLink.offHeading": "Turn off emails",
+  "emailLink.offBody": "Stop the emails about “{title}” to {address}?",
+  "emailLink.off": "Turn off emails",
+  "emailLink.confirmed": "Address confirmed. You’ll get emails about this plan.",
+  "emailLink.turnedOff": "Emails about this plan are turned off.",
+  "emailLink.invalid":
+    "This link no longer works. The emails may already be off, or the plan is gone.",
+  "field.email_invalid": "Enter one email address, such as name@example.org.",
+  "privacy.email":
+    "If you turn on emails for a plan, your address is stored encrypted, used only for its emails and deleted with your response or the plan. Every email has a link to turn them off; nothing is sent before you confirm the address.",
   "calendar.title": "Calendar subscription",
   "calendar.intro":
     "Your calendar app can show all plans you host or responded to in this browser. It updates them by itself when a plan changes, is cancelled or deleted.",

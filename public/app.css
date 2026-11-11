@@ -1387,8 +1387,19 @@ details > summary {
 }
 
 /* Notification switch (spec 6 feature 3), shown only where push works. */
-.push {
+.push,
+.email-switch {
   margin: var(--s5) 0;
+}
+
+/* The email setting under the push switch (decision D31): its notice and buttons close together;
+   the row's forms keep no margin of their own, also where a page gives its forms one (.manage). */
+.email-switch .notice {
+  margin-bottom: var(--s3);
+}
+
+.email-switch .button-row form {
+  margin: 0;
 }
 
 /* Ratings (spec 6a): the own note keeps its line breaks. */

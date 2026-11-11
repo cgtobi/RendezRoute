@@ -16,13 +16,16 @@ export const CSRF_FIELD = "_csrf";
 export function csrf({
   key,
   config,
-  exemptPaths = [],
+  exempt = () => false,
   onReject = (c) => c.body(null, 403),
 }: {
   key: Buffer;
   config: Config;
-  /** e.g. the signature-verified ActivityPub inbox (v1.0). */
-  exemptPaths?: readonly string[];
+  /**
+   * Posts that carry their own secret and no cookie: one-click unsubscribe from the mail app
+   * (decision D31), later the signature-verified ActivityPub inbox.
+   */
+  exempt?: (method: string, path: string) => boolean;
   /** Renders the 403 response; the app supplies a translated page. */
   onReject?: (c: Context) => Response | Promise<Response>;
 }): MiddlewareHandler<CsrfEnv> {
@@ -46,7 +49,7 @@ export function csrf({
       return sign(value);
     });
 
-    if (SAFE_METHODS.has(c.req.method) || exemptPaths.includes(c.req.path)) return next();
+    if (SAFE_METHODS.has(c.req.method) || exempt(c.req.method, c.req.path)) return next();
 
     const forbidden = () => onReject(c);
 

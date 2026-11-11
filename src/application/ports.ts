@@ -521,7 +521,11 @@ export type SendResult = "sent" | "gone" | "retry" | "failed";
  * Where a notification goes: a stored channel, or a subscription carried by the job itself, for
  * messages that outlive their plan and its channels (spec 3.10 deletion notifications).
  */
-export type NotificationTarget = { channelId: string } | { subscription: PushSubscription };
+export type NotificationTarget =
+  | { channelId: string }
+  | { subscription: PushSubscription }
+  /** An email address, carried the same way; nothing is left to turn off once it is gone. */
+  | { email: { address: string } };
 
 /** Delivers a notification (spec 2a); one adapter per channel kind. */
 export interface Notifier {
@@ -547,13 +551,31 @@ export interface SentReminderRepository {
 /** Who a notification channel belongs to: a response, or the host of a plan (spec 4). */
 export type ChannelOwner = { responseId: string } | { planId: string };
 
-export interface NotificationChannel {
+interface ChannelBase {
   id: string;
   owner: ChannelOwner;
+  /** Confirmed by its owner (spec 3.11); nothing is sent to an unconfirmed channel. */
+  verified: boolean;
+}
+
+/** A browser's push subscription; the browser confirmed it by subscribing. */
+export interface PushChannel extends ChannelBase {
+  kind: "webpush";
   subscription: PushSubscription;
 }
 
-/** Browser push subscriptions per response or hosted plan (spec 6 feature 3), stored encrypted. */
+/** An email address, confirmed through the link sent to it (decision D31). */
+export interface EmailChannel extends ChannelBase {
+  kind: "email";
+  address: string;
+}
+
+export type NotificationChannel = PushChannel | EmailChannel;
+
+/**
+ * Browser push subscriptions and email addresses per response or hosted plan (spec 6 feature 3,
+ * decision D31), stored encrypted.
+ */
 export interface ChannelRepository {
   /**
    * Adds a subscription made in this browser (the app always names it), or returns the existing
@@ -568,6 +590,33 @@ export interface ChannelRepository {
   listFor(owner: ChannelOwner): Promise<NotificationChannel[]>;
   findById(id: string): Promise<NotificationChannel | undefined>;
   delete(id: string): Promise<void>;
+  /** Sets the owner's one email address, unconfirmed, replacing any earlier one. */
+  setEmail(owner: ChannelOwner, address: string): Promise<string>;
+  /** Marks a channel confirmed; false when it no longer exists. */
+  confirm(id: string): Promise<boolean>;
+  emailFor(owner: ChannelOwner): Promise<EmailChannel | undefined>;
+}
+
+/**
+ * The secret in an email channel's link (decision D31): derived from its id with an instance key,
+ * so only messages carry it and nothing is stored. The link confirms the address, and later turns
+ * the emails off.
+ */
+export interface ChannelLinks {
+  tokenFor(channelId: string): string;
+  /** The channel a token was made for, or undefined for a made-up one. */
+  channelOf(token: string): string | undefined;
+}
+
+/** Emails that are not notifications (decision D31). */
+export interface EmailOutbox {
+  /** The link that confirms a new address, before anything else is sent to it. */
+  confirmation(
+    to: { channelId: string; address: string },
+    about: { planTitle: string; language: string },
+  ): Promise<SendResult>;
+  /** Tells CONTACT_EMAIL that a report came in, without its content (spec 7 Moderation). */
+  reportAlert(): Promise<SendResult>;
 }
 
 /** A personal calendar feed (spec 6 feature 2); only the hash of its token is stored. */

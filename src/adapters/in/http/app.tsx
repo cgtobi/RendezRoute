@@ -42,6 +42,7 @@ import { registerAccountRoutes } from "./routes/account.tsx";
 import type { LoginOption } from "./views/account.tsx";
 import { registerInviteRoutes } from "./routes/invites.tsx";
 import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
+import { EMAIL_LINK_PATH, registerEmailLinkRoutes } from "./routes/email.tsx";
 import { Layout } from "./layout.tsx";
 import { PrivacyPage } from "./views/privacy-page.tsx";
 import { TemplateList } from "./views/templates.tsx";
@@ -200,6 +201,7 @@ export function createApp({
     csrf({
       key: csrfKey,
       config,
+      exempt: (method, path) => method === "POST" && EMAIL_LINK_PATH.test(path),
       onReject: (c) => messagePage(c, 403, translate(c)("error.csrf")),
     }),
   );
@@ -301,6 +303,8 @@ export function createApp({
   registerPlanRoutes(app, deps);
   registerResponseRoutes(app, deps);
   registerSecretLinkRoutes(app, deps);
+  // Also without SMTP: links in emails sent before it was switched off still turn them off.
+  if (planDeps.notify?.email !== undefined) registerEmailLinkRoutes(app, deps);
   registerHostRoutes(app, deps);
   if (geocoder !== undefined) registerPlaceRoutes(app, { geocoder, limits: rateLimits });
   registerPreferenceRoutes(app, { config });

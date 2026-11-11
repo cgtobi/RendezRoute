@@ -2,6 +2,7 @@
 // Takes a plain key/value record so sources other than process.env (e.g. a
 // Home Assistant options file, spec section 8) can be mapped onto it later.
 import { isAbsolute } from "node:path";
+import { parseEmailAddress } from "./domain/email.ts";
 import { parseFediverseServer } from "./domain/fediverse.ts";
 import { POSTING_MODES, type PostingMode } from "./domain/invite.ts";
 import { validateTimeZone } from "./domain/timezone.ts";
@@ -44,7 +45,23 @@ export interface Config {
   oidc: OidcConfig | undefined;
   /** Login with a fediverse account (decision D24); off unless FEDIVERSE_LOGIN=true. */
   fediverseLogin: { servers: readonly string[] | undefined } | undefined;
+  /** Sending email (spec 7 Optional notification channels, decision D31); off unless SMTP_HOST. */
+  smtp: SmtpConfig | undefined;
 }
+
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  /** "starttls": STARTTLS required; "tls": TLS from the start; "none": development only. */
+  tls: SmtpTls;
+  auth: { user: string; password: string } | undefined;
+  /** The address emails are sent from; the instance name is its display name. */
+  from: string;
+}
+
+const SMTP_TLS_MODES = ["starttls", "tls", "none"] as const;
+type SmtpTls = (typeof SMTP_TLS_MODES)[number];
+const SMTP_DEFAULT_PORTS: Readonly<Record<SmtpTls, number>> = { starttls: 587, tls: 465, none: 25 };
 
 export interface OidcConfig {
   issuer: URL;
@@ -343,6 +360,56 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     );
   }
 
+  // SMTP_*: the mail server is trusted configuration, like the OIDC issuer (decision D31).
+  const smtp = ((): SmtpConfig | undefined => {
+    const host = read("SMTP_HOST") || undefined;
+    const others = ["SMTP_FROM", "SMTP_PORT", "SMTP_TLS", "SMTP_USER", "SMTP_PASSWORD"];
+    if (host === undefined) {
+      if (others.some((name) => read(name))) {
+        errors.push(`${others.slice(0, -1).join(", ")} and ${others.at(-1)} need SMTP_HOST.`);
+      }
+      return undefined;
+    }
+    if (!/^[A-Za-z0-9.-]+$|^\[[0-9A-Fa-f:.]+\]$/.test(host)) {
+      errors.push(`SMTP_HOST must be a host name or IP address, got "${host}".`);
+    }
+    const from = read("SMTP_FROM") || undefined;
+    if (from === undefined) {
+      errors.push("SMTP_FROM is required with SMTP_HOST: the address emails are sent from.");
+    } else if (!parseEmailAddress(from).ok) {
+      errors.push(`SMTP_FROM must be an email address, got "${from}".`);
+    }
+    const tlsSetting = read("SMTP_TLS") || "starttls";
+    const tls = SMTP_TLS_MODES.find((mode) => mode === tlsSetting);
+    if (tls === undefined) {
+      errors.push(`SMTP_TLS must be starttls, tls or none, got "${tlsSetting}".`);
+    } else if (tls === "none" && !allowInsecureDev) {
+      errors.push("SMTP_TLS=none needs ALLOW_INSECURE_DEV=true (development only).");
+    }
+    const portSetting = read("SMTP_PORT");
+    const port =
+      portSetting === undefined || portSetting === ""
+        ? SMTP_DEFAULT_PORTS[tls ?? "starttls"]
+        : /^\d+$/.test(portSetting)
+          ? Number(portSetting)
+          : Number.NaN;
+    if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+      errors.push(`SMTP_PORT must be a port number from 1 to 65535, got "${portSetting}".`);
+    }
+    const user = read("SMTP_USER") || undefined;
+    const password = read("SMTP_PASSWORD") || undefined;
+    if ((user === undefined) !== (password === undefined)) {
+      errors.push("SMTP_USER and SMTP_PASSWORD must be set together.");
+    }
+    return {
+      host,
+      port,
+      tls: tls ?? "starttls",
+      auth: user === undefined || password === undefined ? undefined : { user, password },
+      from: from ?? "",
+    };
+  })();
+
   if (errors.length > 0 || postingMode === undefined) return { ok: false, errors };
 
   return {
@@ -375,6 +442,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       postingMode,
       oidc,
       fediverseLogin,
+      smtp,
     },
   };
 }

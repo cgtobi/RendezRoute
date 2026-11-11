@@ -14,23 +14,9 @@ import {
   type Units,
 } from "../../../../domain/units.ts";
 
-export function formatDay(date: Date, zone: string, language: string): string {
-  return new Intl.DateTimeFormat(locale(language), { dateStyle: "full", timeZone: zone }).format(
-    date,
-  );
-}
+import { formatDay, formatTime } from "../../../i18n/dates.ts";
 
-export function formatTime(date: Date, zone: string, language: string): string {
-  return new Intl.DateTimeFormat(locale(language), { timeStyle: "short", timeZone: zone }).format(
-    date,
-  );
-}
-
-export function formatDate(date: Date, zone: string, language: string): string {
-  return new Intl.DateTimeFormat(locale(language), { dateStyle: "long", timeZone: zone }).format(
-    date,
-  );
-}
+export { formatDate, formatDay, formatTime } from "../../../i18n/dates.ts";
 
 /** "12.5 km" or "7.8 mi" (decision P5). */
 export function formatDistance(

@@ -11,6 +11,7 @@ import {
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { ManagePage } from "../views/manage-page.tsx";
+import { emailProps, registerEmailForms } from "./email.tsx";
 import { formatDate } from "../views/format.ts";
 import { RespondedPage } from "../views/responded-page.tsx";
 import {
@@ -115,13 +116,18 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       displayName?: string | undefined;
       errorCode?: string | undefined;
       notice?: string | undefined;
+      email?: { value: string; error: string } | undefined;
     } = {},
   ) => {
-    const result = await viewMyResponse(planDeps, {
-      planId,
-      deviceToken: readDeviceToken(c, config),
-    });
+    const deviceToken = readDeviceToken(c, config);
+    const result = await viewMyResponse(planDeps, { planId, deviceToken });
     if (result.kind === "not_found") return c.redirect(`/p/${planId}`, 303);
+    const email = await emailProps(
+      planDeps,
+      { planId, deviceToken, role: "responder" },
+      `/p/${planId}/me`,
+      form.email,
+    );
     c.header("cache-control", "private, no-cache");
     return c.render(
       <ManagePage
@@ -138,12 +144,19 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         notice={form.notice}
         signedOut={signedOutCount(c)}
         linkNonce={newNonce()}
+        email={email}
       />,
       { title: result.planTitle },
     );
   };
 
   app.get("/p/:id/me", (c) => renderManagePage(c, c.req.param("id")));
+
+  registerEmailForms(app, deps, {
+    role: "responder",
+    base: "/p/:id/me",
+    rerender: (c, email) => renderManagePage(c, c.req.param("id") ?? "", { email }),
+  });
 
   app.post("/p/:id/me", async (c) => {
     const planId = c.req.param("id");

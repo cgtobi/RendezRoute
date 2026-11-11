@@ -497,3 +497,75 @@ describe("IMPRINT_URL and PRIVACY_URL", () => {
     ]);
   });
 });
+
+const SMTP = { SMTP_HOST: "mail.example.org", SMTP_FROM: "runs@example.org" };
+
+describe("SMTP_* (spec 7 Optional notification channels, decision D31)", () => {
+  it("is off unless SMTP_HOST is set", () => {
+    expect(ok(minimal).config.smtp).toBeUndefined();
+  });
+
+  it("uses STARTTLS on port 587 by default, without login", () => {
+    expect(ok({ ...minimal, ...SMTP }).config.smtp).toEqual({
+      host: "mail.example.org",
+      port: 587,
+      tls: "starttls",
+      auth: undefined,
+      from: "runs@example.org",
+    });
+  });
+
+  it("takes TLS from the start on port 465, another port, and a login", () => {
+    expect(
+      ok({
+        ...minimal,
+        ...SMTP,
+        SMTP_TLS: "tls",
+        SMTP_USER: "runs",
+        SMTP_PASSWORD: "s3cret",
+      }).config.smtp,
+    ).toMatchObject({ port: 465, tls: "tls", auth: { user: "runs", password: "s3cret" } });
+    expect(ok({ ...minimal, ...SMTP, SMTP_PORT: "2525" }).config.smtp?.port).toBe(2525);
+  });
+
+  it("refuses incomplete or invalid settings", () => {
+    expect(errors({ ...minimal, SMTP_FROM: "runs@example.org" })).toEqual([
+      "SMTP_FROM, SMTP_PORT, SMTP_TLS, SMTP_USER and SMTP_PASSWORD need SMTP_HOST.",
+    ]);
+    expect(errors({ ...minimal, SMTP_HOST: "mail.example.org" })).toEqual([
+      "SMTP_FROM is required with SMTP_HOST: the address emails are sent from.",
+    ]);
+    expect(errors({ ...minimal, ...SMTP, SMTP_FROM: "Runs <runs@example.org>" })).toEqual([
+      'SMTP_FROM must be an email address, got "Runs <runs@example.org>".',
+    ]);
+    expect(errors({ ...minimal, ...SMTP, SMTP_HOST: "smtp://mail.example.org" })).toEqual([
+      'SMTP_HOST must be a host name or IP address, got "smtp://mail.example.org".',
+    ]);
+    for (const port of ["0", "65536", "25x"]) {
+      expect(errors({ ...minimal, ...SMTP, SMTP_PORT: port })).toEqual([
+        `SMTP_PORT must be a port number from 1 to 65535, got "${port}".`,
+      ]);
+    }
+    expect(errors({ ...minimal, ...SMTP, SMTP_TLS: "ssl" })).toEqual([
+      'SMTP_TLS must be starttls, tls or none, got "ssl".',
+    ]);
+    expect(errors({ ...minimal, ...SMTP, SMTP_USER: "runs" })).toEqual([
+      "SMTP_USER and SMTP_PASSWORD must be set together.",
+    ]);
+  });
+
+  it("sends without TLS only in development", () => {
+    expect(errors({ ...minimal, ...SMTP, SMTP_TLS: "none" })).toEqual([
+      "SMTP_TLS=none needs ALLOW_INSECURE_DEV=true (development only).",
+    ]);
+    expect(
+      ok({
+        ...minimal,
+        ...SMTP,
+        SMTP_TLS: "none",
+        ALLOW_INSECURE_DEV: "true",
+        BASE_URL: "http://localhost:3000",
+      }).config.smtp,
+    ).toMatchObject({ port: 25, tls: "none" });
+  });
+});

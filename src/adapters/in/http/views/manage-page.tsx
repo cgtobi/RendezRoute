@@ -8,6 +8,7 @@ import { CSRF_FIELD } from "../csrf.ts";
 import { BackLink } from "./back-link.tsx";
 import { fieldErrorMessage } from "./format.ts";
 import { LinkTools } from "./link-tools.tsx";
+import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { ResponseStatus } from "./response-status.tsx";
 
@@ -29,6 +30,8 @@ export function ManagePage(props: {
   signedOut: number | undefined;
   /** One-time value for "Get a new link" (decision I44). */
   linkNonce: string;
+  /** Email notifications; undefined without SMTP (decision D31). */
+  email: EmailSwitchProps | undefined;
 }) {
   const { t, planId, response } = props;
   const blocked = isBlocked(response.kind);
@@ -94,6 +97,9 @@ export function ManagePage(props: {
       )}
 
       <PushSwitch t={t} push={props.push} hint={t("push.hint")} offOnly={blocked} />
+      {props.email !== undefined && (
+        <EmailSwitch t={t} csrfToken={props.csrfToken} {...props.email} offOnly={blocked} />
+      )}
 
       <p>
         <a class="button secondary" href={`/p/${planId}/me/export.zip`}>

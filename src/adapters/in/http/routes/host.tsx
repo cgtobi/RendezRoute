@@ -18,6 +18,7 @@ import { recapWindowParam } from "../views/recap.tsx";
 import { MapAssets } from "../views/maps.tsx";
 import { ROUTE_TRIM_FIELD } from "../views/route-trim.tsx";
 import { deleteRecap } from "../../../../application/recap.ts";
+import { emailProps, registerEmailForms } from "./email.tsx";
 import { removeRoute, setRoute } from "../../../../application/routes.ts";
 import {
   badRequest,
@@ -36,10 +37,8 @@ import {
   signedOutCount,
 } from "./shared.tsx";
 
-export function registerHostRoutes(
-  app: Hono<AppEnv>,
-  { config, planDeps, geocoder, limits, vapidPublicKey }: RouteDeps,
-) {
+export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
+  const { config, planDeps, geocoder, limits, vapidPublicKey } = deps;
   const request = (c: Context<AppEnv>) => ({
     planId: c.req.param("id") ?? "",
     deviceToken: readDeviceToken(c, config),
@@ -54,11 +53,18 @@ export function registerHostRoutes(
       confirmAcceptPending?: number;
       routeError?: string;
       routeTrim?: string;
+      email?: { value: string; error: string };
     } = {},
   ) => {
     const page = await viewHostPage(planDeps, { ...request(c), units: c.get("units") });
     if (page.kind === "not_found") return planGone(c);
     if (page.kind === "forbidden") return c.redirect(`/p/${request(c).planId}`, 303);
+    const email = await emailProps(
+      planDeps,
+      { ...request(c), role: "host" },
+      `/p/${page.planId}/host`,
+      form.email,
+    );
     c.header("cache-control", "private, no-store");
     return c.render(
       <HostPage
@@ -91,6 +97,7 @@ export function registerHostRoutes(
         routeTrim={form.routeTrim ?? ""}
         map={mapSettings(config)}
         placeSearch={geocoder !== undefined}
+        email={email}
       />,
       {
         title: c.get("t")("host.heading"),
@@ -110,6 +117,12 @@ export function registerHostRoutes(
   };
 
   app.get("/p/:id/host", (c) => render(c));
+
+  registerEmailForms(app, deps, {
+    role: "host",
+    base: "/p/:id/host",
+    rerender: (c, email) => render(c, { email }),
+  });
 
   app.post("/p/:id/host", async (c) => {
     const body = await readForm(c);

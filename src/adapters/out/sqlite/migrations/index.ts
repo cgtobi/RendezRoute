@@ -19,6 +19,7 @@ import * as m0017 from "./0017-identities.ts";
 import * as m0018 from "./0018-identity-handles.ts";
 import * as m0019 from "./0019-account-ownership.ts";
 import * as m0020 from "./0020-channel-devices.ts";
+import * as m0021 from "./0021-email-channels.ts";
 
 /** Statically imported so migrations work identically from src/ and dist/. Keys sort in order. */
 export const migrations: Readonly<Record<string, Migration>> = {
@@ -42,4 +43,5 @@ export const migrations: Readonly<Record<string, Migration>> = {
   "0018-identity-handles": m0018,
   "0019-account-ownership": m0019,
   "0020-channel-devices": m0020,
+  "0021-email-channels": m0021,
 };

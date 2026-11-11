@@ -398,6 +398,50 @@ export const fr: Messages = {
     "Seulement les nouvelles de cette sortie : modifications, annulation, votre demande et rappels.",
   "push.hostHint": "Les nouvelles des réponses, des demandes et des retraits.",
 
+  "email.refuse": "Ce n’est pas vous ? Ne rien envoyer à cette adresse",
+  "email.lastWhy":
+    "Cette sortie n’existe plus, aucun autre e-mail ne sera donc envoyé à son sujet.",
+  "emailLink.refuse": "Ne pas envoyer d’e-mails",
+  "privacy.emailRateLimit":
+    "Les demandes de lien de confirmation sont aussi comptées par adresse e-mail, sous forme d’empreinte gardée uniquement en mémoire, pour que personne ne puisse inonder la boîte d’autrui.",
+  "email.label": "E-mail pour les nouvelles de cette sortie",
+  "email.hint":
+    "Nous envoyons d’abord un lien pour confirmer l’adresse. Chaque e-mail contient un lien pour les désactiver.",
+  "email.submit": "Envoyer le lien de confirmation",
+  "email.pending":
+    "Ouvrez le lien envoyé à {address} pour la confirmer. Rien d’autre n’est envoyé avant.",
+  "email.resend": "Renvoyer le lien",
+  "email.on": "Les e-mails sur cette sortie vont à {address}.",
+  "email.off": "Désactiver les e-mails",
+  "email.openPlan": "Ouvrir la sortie",
+  "email.why":
+    "Vous recevez cet e-mail parce que vous avez activé les e-mails pour « {title} » sur {instance}.",
+  "email.turnOff": "Désactiver ces e-mails",
+  "email.confirmSubject": "Confirmer les e-mails sur « {title} »",
+  "email.confirmBody":
+    "Quelqu’un a demandé des e-mails sur cette sortie à cette adresse. Si c’était vous, confirmez avec le lien ci-dessous. Sinon, ignorez cet e-mail : rien d’autre ne sera envoyé.",
+  "email.confirmAction": "Confirmer l’adresse",
+  "email.confirmWhy":
+    "Vous recevez cet e-mail parce que cette adresse a été saisie sur {instance}.",
+  "email.reportSubject": "Nouveau signalement sur {instance}",
+  "email.reportBody":
+    "Quelqu’un a signalé une sortie. La page d’administration affiche le signalement.",
+  "email.reportAction": "Ouvrir la page d’administration",
+  "email.reportWhy":
+    "Vous recevez cet e-mail parce que cette adresse est l’adresse de contact de {instance}.",
+  "emailLink.confirmHeading": "Confirmer votre adresse e-mail",
+  "emailLink.confirmBody": "Recevoir les e-mails sur « {title} » à {address} ?",
+  "emailLink.confirm": "Confirmer l’adresse",
+  "emailLink.offHeading": "Désactiver les e-mails",
+  "emailLink.offBody": "Arrêter les e-mails sur « {title} » à {address} ?",
+  "emailLink.off": "Désactiver les e-mails",
+  "emailLink.confirmed": "Adresse confirmée. Vous recevrez les e-mails sur cette sortie.",
+  "emailLink.turnedOff": "Les e-mails sur cette sortie sont désactivés.",
+  "emailLink.invalid":
+    "Ce lien ne fonctionne plus. Les e-mails sont peut-être déjà désactivés, ou la sortie n’existe plus.",
+  "field.email_invalid": "Saisissez une adresse e-mail, par exemple name@example.org.",
+  "privacy.email":
+    "Si vous activez les e-mails pour une sortie, votre adresse est stockée chiffrée, utilisée uniquement pour ces e-mails et supprimée avec votre réponse ou la sortie. Chaque e-mail contient un lien pour les désactiver ; rien n’est envoyé avant votre confirmation.",
   "calendar.title": "Abonnement de calendrier",
   "calendar.intro":
     "Votre application de calendrier peut afficher toutes les sorties que vous organisez ou auxquelles vous avez répondu dans ce navigateur. Elle les met à jour d’elle-même quand une sortie est modifiée, annulée ou supprimée.",

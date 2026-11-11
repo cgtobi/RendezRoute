@@ -1,5 +1,5 @@
 // Shared by the end-to-end specs.
-import type { Browser, BrowserContext } from "@playwright/test";
+import { type Browser, type BrowserContext, expect, type Page } from "@playwright/test";
 
 /** A date five days from now, as the date field expects it: within the weather horizon. */
 export const inFiveDays = () =>
@@ -30,4 +30,44 @@ export async function person(
     }
   });
   return { context, page };
+}
+
+// The instance with admin, invites, logins and email (third container, decisions D21, D31).
+const ADMIN_TOKEN = "e2e-admin-token-0123456789abcdefghij";
+
+export async function adminLogIn(admin: Page) {
+  await admin.goto("/admin/login");
+  await admin.getByLabel("Admin token").fill(ADMIN_TOKEN);
+  await admin.getByRole("button", { name: "Log in" }).click();
+  await expect(admin.getByRole("heading", { name: "Instance admin" })).toBeVisible();
+}
+
+/** The admin creates an invite link; returns it. */
+export async function newInvite(admin: Page): Promise<string> {
+  await admin.goto("/admin/");
+  await admin.getByRole("button", { name: "Create invite link" }).click();
+  const link = (await admin.locator(".link-box code").textContent()) ?? "";
+  expect(link).toMatch(/\/i\/[A-Za-z0-9_-]{43}$/);
+  return link;
+}
+
+export async function useInvite(page: Page, link: string) {
+  await page.goto(link);
+  await expect(
+    page.getByRole("heading", { name: "Use this invite on this device?" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Use on this device" }).click();
+  await expect(page).toHaveURL(/\/new$/);
+}
+
+/** Creates a plan from the create form the page is on; returns the plan's address. */
+export async function createPlan(page: Page, title: string): Promise<string> {
+  await page.getByLabel("Your name").fill("Anna");
+  await page.getByLabel("Title").fill(title);
+  await page.getByLabel("Date").fill(inFiveDays());
+  await page.getByLabel("Start time").fill("08:30");
+  await page.locator("#field-areaLabel").fill("Flaucher");
+  await page.getByRole("button", { name: "Create plan" }).click();
+  await expect(page.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
+  return (await page.locator(".links .link-box a").textContent()) ?? "";
 }

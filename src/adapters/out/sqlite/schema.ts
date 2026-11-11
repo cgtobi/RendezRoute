@@ -160,7 +160,9 @@ export interface NotificationChannelsTable {
   id: string;
   response_id: string | null;
   plan_id: string | null;
-  kind: "webpush";
+  /** An account's own channel (spec 4), from v1.0 step 6b. */
+  identity_id: Generated<string | null>;
+  kind: "webpush" | "email";
   config_enc: string;
   verified: Generated<number>;
   created_at: string;

@@ -1,18 +1,27 @@
-// Notification channels in SQLite (spec 4): subscriptions encrypted with the field cipher,
-// deleted with their response or plan by the foreign keys.
+// Notification channels in SQLite (spec 4): push subscriptions and email addresses encrypted with
+// the field cipher, deleted with their response or plan by the foreign keys.
 import type { Selectable } from "kysely";
 import type {
   ChannelOwner,
   ChannelRepository,
+  EmailChannel,
   FieldCipher,
   IdGenerator,
   NotificationChannel,
+  PushChannel,
 } from "../../../application/ports.ts";
 import type { PushSubscription } from "../../../domain/push.ts";
 import type { Database } from "./database.ts";
 import type { NotificationChannelsTable } from "./schema.ts";
 
 const CONFIG = "notification_channels.config";
+
+/** Account channels (identity_id) come with step 6b; until then no row may have another owner. */
+function ownerOf(row: Selectable<NotificationChannelsTable>): ChannelOwner {
+  if (row.response_id !== null) return { responseId: row.response_id };
+  if (row.plan_id !== null) return { planId: row.plan_id };
+  throw new Error("Notification channel without a response or plan.");
+}
 
 export function createChannelRepository(
   database: Database,
@@ -22,12 +31,21 @@ export function createChannelRepository(
 ): ChannelRepository {
   const { db } = database;
 
-  const fromRow = (row: Selectable<NotificationChannelsTable>): NotificationChannel => ({
-    id: row.id,
-    owner:
-      row.response_id !== null ? { responseId: row.response_id } : { planId: row.plan_id ?? "" },
-    subscription: JSON.parse(cipher.decrypt(row.config_enc, CONFIG)) as PushSubscription,
+  const fromRow = (row: Selectable<NotificationChannelsTable>): NotificationChannel => {
+    const base = { id: row.id, owner: ownerOf(row), verified: row.verified === 1 };
+    const config = JSON.parse(cipher.decrypt(row.config_enc, CONFIG)) as unknown;
+    return row.kind === "email"
+      ? { ...base, kind: "email", address: (config as { address: string }).address }
+      : { ...base, kind: "webpush", subscription: config as PushSubscription };
+  };
+
+  const ownerColumns = (owner: ChannelOwner) => ({
+    response_id: "responseId" in owner ? owner.responseId : null,
+    plan_id: "planId" in owner ? owner.planId : null,
   });
+
+  const pushChannels = async (owner: ChannelOwner) =>
+    (await listFor(owner)).filter((channel): channel is PushChannel => channel.kind === "webpush");
 
   const ownedBy = (owner: ChannelOwner) => {
     const query = db.selectFrom("notification_channels").selectAll();
@@ -40,7 +58,10 @@ export function createChannelRepository(
     (await ownedBy(owner).orderBy("created_at").orderBy("id").execute()).map(fromRow);
 
   const find = async (owner: ChannelOwner, endpoint: string) =>
-    (await listFor(owner)).find((channel) => channel.subscription.endpoint === endpoint);
+    (await pushChannels(owner)).find((channel) => channel.subscription.endpoint === endpoint);
+
+  const emailFor = async (owner: ChannelOwner) =>
+    (await listFor(owner)).find((channel): channel is EmailChannel => channel.kind === "email");
 
   return {
     async add(owner, subscription, deviceId) {
@@ -51,8 +72,7 @@ export function createChannelRepository(
         .insertInto("notification_channels")
         .values({
           id,
-          response_id: "responseId" in owner ? owner.responseId : null,
-          plan_id: "planId" in owner ? owner.planId : null,
+          ...ownerColumns(owner),
           kind: "webpush",
           config_enc: cipher.encrypt(JSON.stringify(subscription), CONFIG),
           // The browser confirmed the subscription itself (spec 3.11: channels confirmed by their owner).
@@ -105,5 +125,44 @@ export function createChannelRepository(
     async delete(id) {
       await db.deleteFrom("notification_channels").where("id", "=", id).execute();
     },
+
+    async setEmail(owner, address) {
+      const id = ids.rowId();
+      await db.transaction().execute(async (trx) => {
+        const columns = ownerColumns(owner);
+        await trx
+          .deleteFrom("notification_channels")
+          .where("kind", "=", "email")
+          .where((eb) =>
+            columns.response_id !== null
+              ? eb("response_id", "=", columns.response_id)
+              : eb("plan_id", "=", columns.plan_id),
+          )
+          .execute();
+        await trx
+          .insertInto("notification_channels")
+          .values({
+            id,
+            ...columns,
+            kind: "email",
+            config_enc: cipher.encrypt(JSON.stringify({ address }), CONFIG),
+            verified: 0,
+            created_at: now().toISOString(),
+          })
+          .execute();
+      });
+      return id;
+    },
+
+    async confirm(id) {
+      const result = await db
+        .updateTable("notification_channels")
+        .set({ verified: 1 })
+        .where("id", "=", id)
+        .executeTakeFirst();
+      return result.numUpdatedRows > 0n;
+    },
+
+    emailFor,
   };
 }

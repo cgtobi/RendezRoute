@@ -1,14 +1,18 @@
 // Queues notifications for the people a plan event concerns (spec 6 feature 3, decision D17):
 // one job per channel, in the recipient's stored language, tied to the plan or response so that
 // deleting them removes the jobs (spec 3.10).
-import type { NotificationKind } from "../domain/notification.ts";
+import type { NotificationFacts, NotificationKind } from "../domain/notification.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { ResponseChoice } from "../domain/requests.ts";
-import type { PushSubscription } from "../domain/push.ts";
 import type { PlanResponse, ResponseKind } from "../domain/response.ts";
 import { enqueueNotification } from "./notifications.ts";
 import type { PlanDeps } from "./plans.ts";
-import type { ChannelOwner, SentReminder } from "./ports.ts";
+import type {
+  ChannelOwner,
+  NotificationChannel,
+  NotificationTarget,
+  SentReminder,
+} from "./ports.ts";
 
 /** People still in a plan: rejected and removed people get one notice and nothing after (spec 3.5). */
 const STILL_IN: ReadonlySet<ResponseKind> = new Set(["interested", "requested", "joined"]);
@@ -32,7 +36,31 @@ export const responderOf = (response: PlanResponse): Recipient => ({
   language: response.language,
 });
 
-/** Queues the notification for every channel of the recipient; returns how many. */
+/**
+ * The recipient's channels that may be sent to: confirmed by their owner (spec 3.11), and email
+ * ones only while SMTP is configured (decision D31).
+ */
+export async function deliverableChannels(
+  deps: PlanDeps,
+  owner: ChannelOwner,
+): Promise<NotificationChannel[]> {
+  const notify = deps.notify;
+  if (notify === undefined) return [];
+  const sending = notify.email?.sending === true;
+  return (await notify.channels.listFor(owner)).filter(
+    (channel) => channel.verified && (channel.kind !== "email" || sending),
+  );
+}
+
+/** A channel owner as the plan and response a job or reminder is tied to (spec 3.10). */
+export const ownerIds = (
+  owner: ChannelOwner,
+): { planId: string | undefined; responseId: string | undefined } =>
+  "responseId" in owner
+    ? { planId: undefined, responseId: owner.responseId }
+    : { planId: owner.planId, responseId: undefined };
+
+/** Queues the notification for every confirmed channel of the recipient; returns how many. */
 export async function notify(
   deps: PlanDeps,
   plan: Plan,
@@ -46,15 +74,21 @@ export async function notify(
   } = {},
 ): Promise<number> {
   if (deps.notify === undefined) return 0;
-  const channels = await deps.notify.channels.listFor(owner);
+  const channels = await deliverableChannels(deps, owner);
   for (const channel of channels) {
     await enqueueNotification(
       { jobs: deps.notify.jobs, clock: deps.clock },
       {
         to: { channelId: channel.id },
-        notification: { kind, planTitle: plan.title, planPath: `/p/${plan.id}`, language },
+        notification: {
+          kind,
+          planTitle: plan.title,
+          facts: factsOf(plan),
+          planPath: `/p/${plan.id}`,
+          language,
+        },
         planId: plan.id,
-        responseId: "responseId" in owner ? owner.responseId : undefined,
+        responseId: ownerIds(owner).responseId,
         ...options,
       },
     );
@@ -108,8 +142,8 @@ export async function notifyHostOfArrival(
 /**
  * Notices for everyone still in that an upcoming plan was deleted (spec 3.10). Collected before
  * the deletion, since the channels go with the plan; the returned function queues them once the
- * plan is gone. The jobs carry the subscriptions themselves and no plan or response, and expire
- * after 24 hours. No link: the plan is gone.
+ * plan is gone. The jobs carry the subscriptions and addresses themselves and no plan or response,
+ * and expire after 24 hours. No link to the plan: it is gone.
  */
 export async function deletionNotices(deps: PlanDeps, plan: Plan): Promise<() => Promise<void>> {
   const notify = deps.notify;
@@ -117,23 +151,36 @@ export async function deletionNotices(deps: PlanDeps, plan: Plan): Promise<() =>
   if (notify === undefined || plan.status !== "active" || plan.startsAt <= now) {
     return () => Promise.resolve();
   }
-  const notices: { subscription: PushSubscription; language: string }[] = [];
+  const notices: { to: NotificationTarget; language: string }[] = [];
   for (const response of await responsesStillIn(deps, plan)) {
-    for (const channel of await notify.channels.listFor({ responseId: response.id })) {
-      notices.push({ subscription: channel.subscription, language: response.language });
+    for (const channel of await deliverableChannels(deps, { responseId: response.id })) {
+      notices.push({ to: carriedTarget(channel), language: response.language });
     }
   }
   return async () => {
     const expiresAt = new Date(deps.clock.now().getTime() + DELETION_NOTICE_LIFETIME_MS);
-    for (const { subscription, language } of notices) {
+    for (const { to, language } of notices) {
       await enqueueNotification(
         { jobs: notify.jobs, clock: deps.clock },
         {
-          to: { subscription },
-          notification: { kind: "deleted", planTitle: plan.title, language },
+          to,
+          notification: { kind: "deleted", planTitle: plan.title, facts: factsOf(plan), language },
           expiresAt,
         },
       );
     }
   };
 }
+
+/** A channel as a job carries it once the channel itself is gone. */
+const carriedTarget = (channel: NotificationChannel): NotificationTarget =>
+  channel.kind === "webpush"
+    ? { subscription: channel.subscription }
+    : { email: { address: channel.address } };
+
+/** The plan's public time and place (spec 3.6), for emails. */
+const factsOf = (plan: Plan): NotificationFacts => ({
+  startsAt: plan.startsAt.toISOString(),
+  timeZone: plan.timeZone,
+  area: plan.area.label,
+});

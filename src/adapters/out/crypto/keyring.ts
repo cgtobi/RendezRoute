@@ -15,7 +15,7 @@ export class KeyError extends Error {
 }
 
 /** Purposes for derived keys; each gets an independent key via HKDF. */
-export type KeyPurpose = "csrf" | "identity-lookup";
+export type KeyPurpose = "csrf" | "identity-lookup" | "channel-links";
 
 const KEY_BYTES = 32;
 const KEYS_VOLUME = "/keys";
@@ -102,10 +102,12 @@ export function keyFingerprint(key: Buffer): string {
  * Purpose-specific key derived with HKDF. Lookup hashes are stored, so their key comes from the
  * oldest key in the ring and stays the same when a newer key is added; a rotation that removes
  * the oldest key must rehash them, which it can, since it can decrypt what they were made from
- * (spec 3.11 key rotation). The CSRF key follows the current key: its tokens live for one session.
+ * (spec 3.11 key rotation). Email links are in sent messages, so their key stays too (decision
+ * D31); a rotation that removes the oldest key ends them, and new emails carry new ones. The CSRF
+ * key follows the current key: its tokens live for one session.
  */
 export function deriveKey(keyring: Keyring, purpose: KeyPurpose): Buffer {
-  const base = purpose === "identity-lookup" ? oldestKey(keyring) : currentKey(keyring);
+  const base = purpose === "csrf" ? currentKey(keyring) : oldestKey(keyring);
   return Buffer.from(hkdfSync("sha256", base, "rendezroute", `rendezroute/${purpose}`, KEY_BYTES));
 }
 

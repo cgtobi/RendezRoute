@@ -15,7 +15,7 @@ import { createPlan, type PlanDeps } from "../../src/application/plans.ts";
 import { reminderStillDue, runReminders } from "../../src/application/reminders.ts";
 import { respond } from "../../src/application/responses.ts";
 import { planToInput } from "../../src/domain/plan-edit.ts";
-import { FakeChannelRepository } from "../fakes/channels.ts";
+import { endpointOf, FakeChannelRepository } from "../fakes/channels.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { FakeJobQueue } from "../fakes/job-queue.ts";
@@ -113,7 +113,7 @@ function takeQueued(): string[] {
     };
     const channel =
       payload.to.channelId === undefined ? undefined : channels.channels.get(payload.to.channelId);
-    const endpoint = payload.to.subscription?.endpoint ?? channel?.subscription.endpoint ?? "";
+    const endpoint = payload.to.subscription?.endpoint ?? endpointOf(channel) ?? "";
     return `${payload.notification.kind} ${endpoint.split("/").pop() ?? ""}`;
   });
   jobs.jobs.clear();

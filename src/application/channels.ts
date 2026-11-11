@@ -18,7 +18,7 @@ export interface SwitchRequest {
  * The channel owner this device may manage. Rejected and removed people get their one notice and
  * nothing after (spec 3.5): they cannot turn notifications on, but can still turn them off.
  */
-async function ownerFor(
+export async function ownerFor(
   deps: PlanDeps,
   request: SwitchRequest,
   purpose: "subscribe" | "manage",
@@ -56,7 +56,8 @@ export async function subscribe(
   if (device === undefined) return { kind: "not_found" };
   const channels = channelsOf(deps);
   await channels.add(owner, subscription.value, device.id);
-  const all = await channels.listFor(owner);
+  // Browsers only: an email address is not one of the five (decision D31).
+  const all = (await channels.listFor(owner)).filter((channel) => channel.kind === "webpush");
   for (const oldest of all.slice(0, Math.max(0, all.length - MAX_CHANNELS_PER_OWNER))) {
     await channels.delete(oldest.id);
   }

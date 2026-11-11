@@ -7,6 +7,7 @@ import {
   type ReportError,
   validateReport,
 } from "../domain/report.ts";
+import { queueReportAlert } from "./email.ts";
 import { CREATION_NONCE, type PlanDeps, viewPlan } from "./plans.ts";
 
 type Request = { planId: string; deviceToken: string | undefined };
@@ -70,5 +71,6 @@ export async function reportPlan(
     createdAt: now,
     resolvedAt: undefined,
   });
+  await queueReportAlert(deps, request.planId);
   return { kind: "sent", created: true };
 }

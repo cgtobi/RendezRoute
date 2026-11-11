@@ -1,49 +1,11 @@
 // The 0.7 features in a real browser against the built image (plan v1.0 0.7 wrap-up, spec 2b):
 // the instance admin, invite links, reporting, and accounts with OIDC and fediverse login, against
-// fake providers. Runs only in the "0.7 features" project (ADMIN_TOKEN, POSTING_MODE=invite).
+// fake providers. Runs only in the "0.7 and 0.8 features" project (ADMIN_TOKEN, POSTING_MODE=invite).
 import { expect, type Page, test } from "@playwright/test";
-import { inFiveDays, person } from "./helpers.ts";
+import { adminLogIn, createPlan, newInvite, person, useInvite } from "./helpers.ts";
 
-const ADMIN_TOKEN = "e2e-admin-token-0123456789abcdefghij";
 /** Plan titles of this run, so a kept volume (E2E_KEEP=true) cannot mix runs up. */
 const RUN = Date.now().toString(36);
-
-async function adminLogIn(admin: Page) {
-  await admin.goto("/admin/login");
-  await admin.getByLabel("Admin token").fill(ADMIN_TOKEN);
-  await admin.getByRole("button", { name: "Log in" }).click();
-  await expect(admin.getByRole("heading", { name: "Instance admin" })).toBeVisible();
-}
-
-/** The admin creates an invite link; returns it. */
-async function newInvite(admin: Page): Promise<string> {
-  await admin.goto("/admin/");
-  await admin.getByRole("button", { name: "Create invite link" }).click();
-  const link = (await admin.locator(".link-box code").textContent()) ?? "";
-  expect(link).toMatch(/\/i\/[A-Za-z0-9_-]{43}$/);
-  return link;
-}
-
-async function useInvite(page: Page, link: string) {
-  await page.goto(link);
-  await expect(
-    page.getByRole("heading", { name: "Use this invite on this device?" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Use on this device" }).click();
-  await expect(page).toHaveURL(/\/new$/);
-}
-
-/** Creates a plan from the create form the page is on; returns the plan's address. */
-async function createPlan(page: Page, title: string): Promise<string> {
-  await page.getByLabel("Your name").fill("Anna");
-  await page.getByLabel("Title").fill(title);
-  await page.getByLabel("Date").fill(inFiveDays());
-  await page.getByLabel("Start time").fill("08:30");
-  await page.locator("#field-areaLabel").fill("Flaucher");
-  await page.getByRole("button", { name: "Create plan" }).click();
-  await expect(page.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
-  return (await page.locator(".links .link-box a").textContent()) ?? "";
-}
 
 /** Logs in on the account page through the fake OIDC provider, which approves at once. */
 async function oidcLogIn(page: Page) {

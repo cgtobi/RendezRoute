@@ -27,10 +27,15 @@ export function createWebPushNotifier({
 }): Notifier {
   return {
     async send(to, notification: Notification) {
+      // Addresses are the email delivery's (decision D31).
+      if ("email" in to) return "failed";
+      const channel = "channelId" in to ? await channels.findById(to.channelId) : undefined;
       const subscription =
         "subscription" in to
           ? to.subscription
-          : (await channels.findById(to.channelId))?.subscription;
+          : channel?.kind === "webpush"
+            ? channel.subscription
+            : undefined;
       if (subscription === undefined) return "gone";
       const { title, body } = notificationText(notification);
       const message = {

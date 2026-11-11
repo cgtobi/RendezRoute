@@ -36,6 +36,10 @@ export interface RateLimits {
   report: RateLimiter;
   /** Starting a login: each start keeps a pending login and calls the provider (spec 3.11). */
   login: RateLimiter;
+  /** Sending a confirmation link to an email address, per client (decision D31). */
+  email: RateLimiter;
+  /** The same, per address, whoever types it: no flooding someone's mailbox (spec 3.11). */
+  emailAddress: RateLimiter;
 }
 
 /**
@@ -44,9 +48,9 @@ export interface RateLimits {
  * count (parsing is the costly part), as does every place search; previews count only renders.
  * Switching to joined or requested on the manage page counts as responding, since it notifies the
  * host; every attempt to turn notifications on counts too, and every created calendar link, recap
- * contribution and report.
- * A client is forgotten once its bucket is full again, after at most 30 minutes (create: 5
- * tokens at 10 per hour).
+ * contribution and report, and every confirmation link asked for, per client and per address.
+ * A client is forgotten once its bucket is full again, after at most an hour (an address asking
+ * for confirmation links: 3 tokens at 3 per hour).
  */
 export function createRateLimits(now: () => number): RateLimits {
   return {
@@ -61,6 +65,8 @@ export function createRateLimits(now: () => number): RateLimits {
     adminLogin: createRateLimiter({ capacity: 5, perHour: 10, now }),
     report: createRateLimiter({ capacity: 3, perHour: 10, now }),
     login: createRateLimiter({ capacity: 10, perHour: 30, now }),
+    email: createRateLimiter({ capacity: 5, perHour: 10, now }),
+    emailAddress: createRateLimiter({ capacity: 3, perHour: 3, now }),
   };
 }
 

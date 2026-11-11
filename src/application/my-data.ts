@@ -93,6 +93,8 @@ export interface ExportedPlan {
     | PlanViewForResponder;
   /** One's own request note while it waits for a decision. */
   requestNote: string | undefined;
+  /** The address for this plan's or response's emails (decision D31). */
+  email: { address: string; confirmed: boolean } | undefined;
   ownContributions: ExportedContribution[];
   /** Only where the page offers it: the host and accepted participants. */
   route: Route | undefined;
@@ -156,14 +158,27 @@ export async function exportedPlan(
   const insider = hosting || result.kind === "participant";
   const exactStart = insider ? result.view.exactStart : undefined;
   const calendar = entryOf(result.view, { hosting, exactStart });
-  const requestNote = hosting
+  const response = hosting
     ? undefined
-    : (await deps.responses.findForDevice(planId, device.id, scope))?.requestNote;
+    : await deps.responses.findForDevice(planId, device.id, scope);
+  const requestNote = response?.requestNote;
+  const emailOwner = hosting
+    ? { planId }
+    : response === undefined
+      ? undefined
+      : { responseId: response.id };
+  const emailChannel =
+    emailOwner === undefined ? undefined : await deps.notify?.channels.emailFor(emailOwner);
+  const email =
+    emailChannel === undefined
+      ? undefined
+      : { address: emailChannel.address, confirmed: emailChannel.verified };
   if (result.kind === "responder") {
     return {
       role: "response",
       view: result.view,
       requestNote,
+      email,
       ownContributions: [],
       route: undefined,
       calendar,
@@ -179,6 +194,7 @@ export async function exportedPlan(
     role: hosting ? "host" : "response",
     view,
     requestNote,
+    email,
     ownContributions: (recap?.contributions ?? [])
       .filter((c) => c.own)
       .map(({ body, linkUrl, hidden }) => ({ body, linkUrl, hidden })),

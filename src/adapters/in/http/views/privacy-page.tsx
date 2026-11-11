@@ -43,6 +43,7 @@ export function PrivacyPage({
         <p>{t("privacy.storedRecap")}</p>
         <p>{t("privacy.ratings")}</p>
         <p>{t("privacy.templates")}</p>
+        {config.smtp !== undefined && <p>{t("privacy.email")}</p>}
         {adminLogin && <p>{t("privacy.reports")}</p>}
         {config.postingMode === "invite" && <p>{t("privacy.invites")}</p>}
         <p>{t("privacy.noTracking")}</p>
@@ -121,7 +122,10 @@ export function PrivacyPage({
       <section>
         <h2>{t("privacy.logsHeading")}</h2>
         <p>{t("privacy.logs")}</p>
-        <p>{t("privacy.rateLimits")}</p>
+        <p>
+          {t("privacy.rateLimits")}
+          {config.smtp !== undefined && ` ${t("privacy.emailRateLimit")}`}
+        </p>
       </section>
     </section>
   );

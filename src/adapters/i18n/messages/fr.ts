@@ -761,6 +761,8 @@ export const fr: Messages = {
     "Les sorties de ce site ne peuvent pas être publiques : il n’y a donc rien à trouver ici.",
   "home.nearby": "Trouver des sorties publiques à proximité",
   "layout.nearby": "À proximité",
+  "privacy.federation":
+    "Ce site participe au fédivers en tant que @{host}@{host}. D’autres serveurs peuvent récupérer les informations publiques d’une sortie par son adresse, comme toute personne ayant le lien peut les voir. Quand un serveur envoie un message à ce site, celui-ci récupère la clé publique de ce serveur pour vérifier la signature du message, et la conserve jusqu’à {days} jours. Rien d’autre n’est partagé pour l’instant.",
   "privacy.nearby":
     "« À proximité » n’utilise le lieu d’où vous cherchez que pour cette recherche. Un endroit choisi sur la carte ou votre position est arrondi à environ 2 km par votre navigateur avant d’être envoyé, puis à nouveau par le serveur. Un lieu saisi est recherché comme pour la recherche de lieux ci-dessus, et la recherche continue depuis son endroit arrondi ; sans JavaScript, le lieu saisi figure dans l’adresse de cette première requête. Rien n’en est enregistré ni écrit dans les journaux de ce site. L’endroit arrondi figure dans l’adresse de la page de résultats et peut donc rester dans l’historique de votre navigateur et dans le journal d’accès du serveur web placé devant ce site.",
   "field.range_invalid": "Le dernier jour précède le premier.",

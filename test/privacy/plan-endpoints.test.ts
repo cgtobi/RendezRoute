@@ -133,6 +133,24 @@ async function pages(client: TestClient, planId: string): Promise<string> {
   return bodies.join("\n");
 }
 
+describe("ActivityPub (spec 7; plan v1.0 step 9a)", () => {
+  it("gives every audience the Event with public fields only, whatever cookies it sends", async () => {
+    const { planId, viewer, interested, pending, rejected, removed, joined, host } =
+      await audiences();
+    // Each audience's own browser asks for the Event: always a viewer's view (spec 3.6).
+    for (const client of [viewer, interested, pending, rejected, removed, joined, host]) {
+      const body = await (
+        await client.request(`/p/${planId}`, {
+          headers: { accept: "application/activity+json" },
+        })
+      ).text();
+      expect(body).toContain('"type":"Event"');
+      expectNoExactStart(body);
+      for (const name of ALL_NAMES) expect(body).not.toContain(name);
+    }
+  });
+});
+
 describe("names and exact start per audience (spec 3.6)", () => {
   it("viewers see neither names nor the exact start", async () => {
     const { viewer, planId } = await audiences();

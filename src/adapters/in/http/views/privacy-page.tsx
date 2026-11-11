@@ -1,5 +1,6 @@
 // Privacy notice (spec 5 feature 13), generated from the configuration: only services that are
 // switched on are mentioned, and only features this version has.
+import { PUBLIC_KEY_DAYS } from "../../activitypub/federation.ts";
 import { LOGIN_WINDOW_MINUTES } from "../../../../domain/identity.ts";
 import { ADMIN_SESSION_HOURS } from "../../../../application/admin.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
@@ -47,6 +48,9 @@ export function PrivacyPage({
           <p>{t("privacy.publicPlans")}</p>
         )}
         {config.nearbyEnabled && <p>{t("privacy.nearby")}</p>}
+        {config.federationEnabled && (
+          <p>{t("privacy.federation", { host: config.baseUrl.hostname, days: PUBLIC_KEY_DAYS })}</p>
+        )}
         {config.smtp !== undefined && <p>{t("privacy.email")}</p>}
         {config.ntfy !== undefined && <p>{t("privacy.ntfy", { server: config.ntfy.url.host })}</p>}
         {config.telegram !== undefined && <p>{t("privacy.telegram")}</p>}

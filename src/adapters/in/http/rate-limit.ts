@@ -42,6 +42,8 @@ export interface RateLimits {
   emailAddress: RateLimiter;
   /** Nearby searches, against scraping public plans (spec 3.11, 7 Nearby). */
   nearby: RateLimiter;
+  /** Posts to the inboxes, per server address (spec 3.11: inbox rate limits). */
+  inbox: RateLimiter;
 }
 
 /**
@@ -71,6 +73,8 @@ export function createRateLimits(now: () => number): RateLimits {
     emailAddress: createRateLimiter({ capacity: 3, perHour: 3, now }),
     // Searches against scraping (spec 3.11); changing a filter is a new search.
     nearby: createRateLimiter({ capacity: 20, perHour: 120, now }),
+    // Posts from fediverse servers: a busy server delivers in bursts.
+    inbox: createRateLimiter({ capacity: 120, perHour: 3600, now }),
   };
 }
 

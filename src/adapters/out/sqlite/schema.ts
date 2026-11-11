@@ -195,9 +195,19 @@ export interface RecapContributionsTable {
   updated_at: string;
 }
 
+export interface FedifyKvTable {
+  /** The key as a JSON array of strings. */
+  key: string;
+  /** JSON. */
+  value: string;
+  expires_at: string | null;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
+  /** Fedify's federation state (spec 4, plan v1.0 step 9a). */
+  fedify_kv: FedifyKvTable;
   plans: PlansTable;
   devices: DevicesTable;
   device_links: DeviceLinksTable;

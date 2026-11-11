@@ -132,6 +132,22 @@ describe("layer boundaries (spec 2a)", () => {
     expect(linesFor(diagnostics, file, rule)).toEqual([1, 2, 3]);
   });
 
+  it("keeps Fedify out of the application layer and the domain (spec 2a: no leaking types)", () => {
+    const application = "src/application/federation.ts";
+    const domain = "src/domain/event.ts";
+    const diagnostics = lint({
+      [application]: [
+        'import type { Federation } from "@fedify/fedify";',
+        "export type F = Federation<void>;",
+      ].join("\n"),
+      [domain]: ['import { Event } from "@fedify/fedify/vocab";', "export const E = Event;"].join(
+        "\n",
+      ),
+    });
+    expect(linesFor(diagnostics, application, rule)).toEqual([1]);
+    expect(linesFor(diagnostics, domain, rule)).toEqual([1]);
+  });
+
   it("lets browser code import only client modules and Leaflet (spec 2)", () => {
     const file = "src/client/map.ts";
     const diagnostics = lint({

@@ -729,6 +729,8 @@ export const en = {
   "nearby.nothingPublic": "Plans on this site can’t be public, so there is nothing to find here.",
   "home.nearby": "Find public plans nearby",
   "layout.nearby": "Nearby",
+  "privacy.federation":
+    "This site takes part in the fediverse as @{host}@{host}. Other servers can fetch a plan’s public details by its address, as anyone with the link can see them. When a server sends this site a message, this site fetches that server’s public key to check the message’s signature, and keeps the key for up to {days} days. Nothing else is shared yet.",
   "privacy.nearby":
     "Nearby uses the place you search from only for that search. A spot from the map or your location is rounded to about 2 km by your browser before it is sent, and again by the server. A typed place is looked up like place search above, and the search continues from its rounded spot; without JavaScript the typed place is in the address of that first request. Nothing of it is stored or written to this site’s logs. The rounded spot is in the address of the results page, so it can stay in your browser history and in the access log of a web server in front of this site.",
   "field.range_invalid": "The last day comes before the first.",

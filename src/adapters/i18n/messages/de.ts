@@ -760,6 +760,8 @@ export const de: Messages = {
     "Treffen auf dieser Seite können nicht öffentlich sein, darum gibt es hier nichts zu finden.",
   "home.nearby": "Öffentliche Treffen in der Nähe finden",
   "layout.nearby": "In der Nähe",
+  "privacy.federation":
+    "Diese Seite ist im Fediverse als @{host}@{host} dabei. Andere Server können die öffentlichen Angaben eines Treffens über seine Adresse abrufen, so wie alle mit dem Link sie sehen. Schickt ein Server dieser Seite eine Nachricht, ruft sie den öffentlichen Schlüssel dieses Servers ab, um die Signatur der Nachricht zu prüfen, und behält ihn bis zu {days} Tage. Mehr wird bisher nicht geteilt.",
   "privacy.nearby":
     "„In der Nähe“ nutzt den Ort, von dem aus du suchst, nur für diese Suche. Eine Stelle von der Karte oder dein Standort wird von deinem Browser vor dem Senden auf etwa 2 km gerundet und vom Server noch einmal. Ein eingetippter Ort wird wie bei der Ortssuche oben nachgeschlagen, und die Suche geht von seiner gerundeten Stelle aus weiter; ohne JavaScript steht der eingetippte Ort in der Adresse dieser ersten Anfrage. Nichts davon wird gespeichert oder in die Protokolle dieser Seite geschrieben. Die gerundete Stelle steht in der Adresse der Ergebnisseite und kann so in deinem Browserverlauf und im Zugriffsprotokoll des Webservers vor dieser Seite bleiben.",
   "field.range_invalid": "Der letzte Tag liegt vor dem ersten.",

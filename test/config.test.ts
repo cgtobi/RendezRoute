@@ -79,6 +79,13 @@ describe("PUBLIC_REQUIRES_LOGIN (spec 7 Visibility and Nearby plans)", () => {
   });
 });
 
+describe("FEDERATION_ENABLED (spec 7 ActivityPub)", () => {
+  it("is on unless turned off", () => {
+    expect(ok(minimal).config.federationEnabled).toBe(true);
+    expect(ok({ ...minimal, FEDERATION_ENABLED: "false" }).config.federationEnabled).toBe(false);
+  });
+});
+
 describe("NEARBY_ENABLED (spec 7 Visibility and Nearby plans)", () => {
   it("is on unless turned off", () => {
     expect(ok(minimal).config.nearbyEnabled).toBe(true);

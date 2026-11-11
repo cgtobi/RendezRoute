@@ -45,6 +45,8 @@ export interface Config {
   publicRequiresLogin: boolean;
   /** The Nearby page (spec 7 Visibility and Nearby plans); off: no page, no link, no query. */
   nearbyEnabled: boolean;
+  /** The instance in the fediverse (spec 7 ActivityPub); off: no actor, no WebFinger. */
+  federationEnabled: boolean;
   /** Login with an OpenID Connect provider (spec 7 Identity); off unless configured. */
   oidc: OidcConfig | undefined;
   /** Login with a fediverse account (decision D24); off unless FEDIVERSE_LOGIN=true. */
@@ -323,6 +325,8 @@ export function loadConfig(env: ConfigSource): ConfigResult {
   // Nearby page, on unless turned off (decision D35).
   const publicRequiresLogin = bool("PUBLIC_REQUIRES_LOGIN", true);
   const nearbyEnabled = bool("NEARBY_ENABLED", true);
+  // FEDERATION_ENABLED: on unless turned off (plan v1.0 step 9a).
+  const federationEnabled = bool("FEDERATION_ENABLED", true);
 
   // FEDIVERSE_LOGIN: off unless turned on; FEDIVERSE_LOGIN_SERVERS limits the servers (decision D24).
   const fediverseOn = bool("FEDIVERSE_LOGIN", false);
@@ -494,6 +498,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       postingMode,
       publicRequiresLogin,
       nearbyEnabled,
+      federationEnabled,
       oidc,
       fediverseLogin,
       smtp,

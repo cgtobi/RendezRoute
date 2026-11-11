@@ -1,3 +1,5 @@
+import type { Federation } from "@fedify/fedify";
+import { federation as federationMiddleware } from "@fedify/hono";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,7 +25,7 @@ import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
 import { readDeviceToken } from "./device-cookie.ts";
 import { readPreference } from "./preference-cookies.ts";
-import type { RateLimits } from "./rate-limit.ts";
+import { clientKey, type RateLimits } from "./rate-limit.ts";
 import { registerCalendarRoutes } from "./routes/calendar.tsx";
 import { registerHostRoutes } from "./routes/host.tsx";
 import { registerNotificationRoutes } from "./routes/notifications.ts";
@@ -90,6 +92,11 @@ declare module "hono" {
   }
 }
 
+/** The shared inbox and each actor's own (plan v1.0 step 9a). */
+const INBOX_PATH = /^\/(?:inbox|actors\/[^/]+\/inbox)$/;
+/** A plan's page, which ActivityPub clients get as an Event (spec 7). */
+const PLAN_PAGE = /^\/p\/[A-Za-z0-9_-]+$/;
+
 export interface AppDeps {
   config: Config;
   /** Derived from the encryption key (deriveKey(keyring, "csrf")). */
@@ -110,6 +117,8 @@ export interface AppDeps {
   adminAuth?: AdminAuth | undefined;
   /** Accounts and the configured ways to log in (spec 7 Identity). */
   accounts?: AccountWiring | undefined;
+  /** The instance in the fediverse; undefined while FEDERATION_ENABLED is false (step 9a). */
+  federation?: Federation<void> | undefined;
 }
 
 export type AccountWiring = Omit<AccountDeps, keyof PlanDeps>;
@@ -137,6 +146,7 @@ export function createApp({
   vapidPublicKey,
   adminAuth,
   accounts,
+  federation,
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -164,6 +174,10 @@ export function createApp({
     if (/^text\/(html|plain)/.test(c.res.headers.get("content-type") ?? "")) {
       c.res.headers.set("content-language", language);
       c.res.headers.append("vary", "Accept-Language, Cookie");
+      // A plan's address also answers ActivityPub clients: caches keep the two apart.
+      if (federation !== undefined && PLAN_PAGE.test(c.req.path)) {
+        c.res.headers.append("vary", "Accept");
+      }
     }
   });
 
@@ -202,6 +216,25 @@ export function createApp({
   app.use((c, next) =>
     isUploadRoute(c.req.method, c.req.path) ? uploadLimit(c, next) : formLimit(c, next),
   );
+
+  // ActivityPub (spec 7): after the body limit, which bounds inbox posts too, and before CSRF,
+  // since remote servers sign their posts instead of sending a form token. Anything not for
+  // ActivityPub clients (the plan page in a browser) passes on to the routes below.
+  if (federation !== undefined) {
+    // Inbox posts are rate limited per client (spec 3.11): each may make the instance fetch the
+    // sender's key.
+    app.use(async (c, next) => {
+      if (c.req.method === "POST" && INBOX_PATH.test(c.req.path)) {
+        const allowed = rateLimits.inbox.take(clientKey(c.get("clientIp")));
+        if (!allowed.ok) {
+          c.header("retry-after", String(allowed.retryAfterSeconds));
+          return c.text("Too many requests", 429);
+        }
+      }
+      return next();
+    });
+    app.use(federationMiddleware(federation, () => undefined));
+  }
 
   app.use(
     csrf({

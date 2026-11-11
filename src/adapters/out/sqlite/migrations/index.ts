@@ -22,6 +22,7 @@ import * as m0020 from "./0020-channel-devices.ts";
 import * as m0021 from "./0021-email-channels.ts";
 import * as m0022 from "./0022-account-notices.ts";
 import * as m0023 from "./0023-channel-kinds.ts";
+import * as m0024 from "./0024-fedify-kv.ts";
 
 /** Statically imported so migrations work identically from src/ and dist/. Keys sort in order. */
 export const migrations: Readonly<Record<string, Migration>> = {
@@ -48,4 +49,5 @@ export const migrations: Readonly<Record<string, Migration>> = {
   "0021-email-channels": m0021,
   "0022-account-notices": m0022,
   "0023-channel-kinds": m0023,
+  "0024-fedify-kv": m0024,
 };

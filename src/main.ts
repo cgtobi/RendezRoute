@@ -1,4 +1,7 @@
 // Composition root (spec 2a): reads configuration and wires the enabled adapters.
+import { createInstanceFederation } from "./adapters/in/activitypub/federation.ts";
+import { loadOrCreateInstanceKeys } from "./adapters/out/crypto/federation-keys.ts";
+import { createFedifyKvStore } from "./adapters/out/sqlite/fedify-kv.ts";
 import { existsSync, mkdirSync } from "node:fs";
 import { createGpxRouteParser } from "./adapters/out/gpx/route-parser.ts";
 import type { AddressInfo } from "node:net";
@@ -397,6 +400,23 @@ export async function startServer(
     return Promise.resolve({});
   };
 
+  // The instance in the fediverse (plan v1.0 step 9a): its state in the database file, its actor's
+  // keys in the key directory (decision D36).
+  const federationKv = createFedifyKvStore(database, () => planDeps.clock.now());
+  const federation = config.federationEnabled
+    ? createInstanceFederation({
+        settings: {
+          baseUrl: config.baseUrl,
+          instanceName: config.instanceName,
+        },
+        kv: federationKv,
+        // Fediverse servers are named by others: full SSRF protection (spec 3.11).
+        http: outboundHttp(config, config.contactEmail),
+        instanceKeys: await loadOrCreateInstanceKeys(keys.directory),
+        planDeps,
+      })
+    : undefined;
+
   // The first sweep finishes before the server listens, so plans past their deletion
   // date are never served after downtime (spec 3.10: sweep at startup).
   const scheduler = await startScheduler(
@@ -412,6 +432,12 @@ export async function startServer(
             pendingLogins: accounts.pendingLogins,
             identities: accounts.identities,
           }),
+      },
+      // Cached remote documents and other expired federation state.
+      {
+        name: "federation_sweep",
+        intervalMs: DAY_MS,
+        run: async () => ({ deleted: await federationKv.deleteExpired() }),
       },
       // Background jobs (spec 6 feature 12): notifications, with retries.
       {
@@ -456,6 +482,7 @@ export async function startServer(
     adminAuth:
       config.adminToken === undefined ? undefined : createTokenAdminAuth(config.adminToken),
     accounts,
+    federation,
   });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));

@@ -1,3 +1,7 @@
+import { FakeOutboundHttp } from "../fakes/outbound-http.ts";
+import { generateCryptoKeyPair } from "@fedify/fedify";
+import { createInstanceFederation } from "../../src/adapters/in/activitypub/federation.ts";
+import { createFedifyKvStore } from "../../src/adapters/out/sqlite/fedify-kv.ts";
 import { randomBytes } from "node:crypto";
 import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts";
 import { createApp } from "../../src/adapters/in/http/app.tsx";
@@ -64,6 +68,9 @@ export function testConfig(env: Record<string, string> = {}): Config {
   if (!result.ok) throw new Error(result.errors.join("; "));
   return result.config;
 }
+
+/** The instance actor's keys: generating RSA keys is slow, so all test apps share one pair. */
+let instanceKeys: Promise<CryptoKeyPair[]> | undefined;
 
 /** The real app on a fresh SQLite database (":memory:" unless a path is given) with a fake clock. */
 export async function createTestApp({
@@ -192,7 +199,25 @@ export async function createTestApp({
   const runJobs = () => runDueJobs({ jobs, clock }, jobHandlers);
   const pendingLogins = createPendingLoginRepository(database, cipher);
   const identityLookup = createLookupHasher(randomBytes(32));
+  // The instance in the fediverse (plan v1.0 step 9a), its keys made once per test run; remote
+  // fetches go to a fake that refuses everything unless a test says otherwise.
+  const federationKv = createFedifyKvStore(database, () => clock.now());
+  const federationHttp = new FakeOutboundHttp();
+  const federation = config.federationEnabled
+    ? createInstanceFederation({
+        settings: { baseUrl: config.baseUrl, instanceName: config.instanceName },
+        kv: federationKv,
+        http: federationHttp,
+        instanceKeys: await (instanceKeys ??= Promise.all([
+          generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+          generateCryptoKeyPair("Ed25519"),
+        ])),
+        planDeps,
+      })
+    : undefined;
+
   const app = createApp({
+    federation,
     config,
     geocoder: config.geocoder.enabled ? geocoder : undefined,
     previewRenderer: renderer ?? previewRenderer,
@@ -256,5 +281,7 @@ export async function createTestApp({
     pushed,
     runJobs,
     channelLinks,
+    /** Fedify's remote fetches (spec 3.11): refuses everything unless a test says otherwise. */
+    federationHttp,
   };
 }

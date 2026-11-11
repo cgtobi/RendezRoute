@@ -154,3 +154,86 @@ describe("upgrading an existing database (migration 0003 rebuilds device_links)"
     expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
   });
 });
+
+describe("upgrading an existing database (migration 0025 rebuilds plans)", () => {
+  it("keeps every plan and every row referring to one, then allows followers only with an owner", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rendezroute-upgrade-"));
+    dirs.push(dir);
+    const path = join(dir, "rendezroute.db");
+
+    // A database as released with 0.8: migrations up to 0024.
+    const old = new Kysely<unknown>({
+      dialect: new SqliteDialect({ database: new BetterSqlite3(path) }),
+    });
+    const upTo0024 = Object.fromEntries(
+      Object.entries(migrations).filter(([name]) => name < "0025"),
+    );
+    expect(
+      (
+        await new Migrator({
+          db: old,
+          provider: { getMigrations: () => Promise.resolve(upTo0024) },
+        }).migrateToLatest()
+      ).error,
+    ).toBeUndefined();
+    const t = "2026-06-01T08:00:00.000Z";
+    await sql`insert into identities (id, provider, subject_hmac, subject_enc, created_at, last_active_at)
+      values ('identity-1', 'oidc', 'hmac', 'enc', ${t}, ${t})`.execute(old);
+    await sql`insert into plans (id, poster_name, poster_language, activity_type, title, starts_at, timezone, area_label,
+      drop_policy, recap_window, retention_days, delete_at, host_token_hash, created_at, updated_at, visibility, owner_identity_id)
+      values ('plan-1', 'Anna', 'en', 'run', 'Run', ${t}, 'UTC', 'Park', 'no_drop', '1w', 14, ${t}, 'hash', ${t}, ${t}, 'public', 'identity-1')`.execute(
+      old,
+    );
+    await sql`insert into devices values ('device-1', 'token-hash', ${t}, ${t}, null)`.execute(old);
+    // Logged in to the account that owns the plan.
+    await sql`insert into devices values ('device-2', 'token-hash-2', ${t}, ${t}, 'identity-1')`.execute(
+      old,
+    );
+    await sql`insert into device_links (device_id, role, plan_id, created_at) values ('device-1', 'host', 'plan-1', ${t})`.execute(
+      old,
+    );
+    await sql`insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language, created_at, updated_at)
+      values ('response-1', 'plan-1', 'joined', 'enc', 'manage-hash', 'en', ${t}, ${t})`.execute(
+      old,
+    );
+    await old.destroy();
+
+    const upgraded = await openDatabase(path);
+    open.push(upgraded);
+    const one = (query: string) => upgraded.sqlite.prepare(query).all();
+    expect(one("select id, visibility, owner_identity_id, federated_at from plans")).toEqual([
+      { id: "plan-1", visibility: "public", owner_identity_id: "identity-1", federated_at: null },
+    ]);
+    expect(one("select id from responses")).toEqual([{ id: "response-1" }]);
+    expect(one("select plan_id from device_links")).toEqual([{ plan_id: "plan-1" }]);
+    // The view of what each device may reach survived the rebuild: by link and by account.
+    expect(one("select device_id, plan_id from device_access where source = 'link'")).toEqual([
+      { device_id: "device-1", plan_id: "plan-1" },
+    ]);
+    expect(
+      one("select device_id, role, plan_id from device_access where source = 'account'"),
+    ).toEqual([{ device_id: "device-2", role: "host", plan_id: "plan-1" }]);
+    expect(
+      one(
+        "select name from sqlite_master where type = 'index' and tbl_name = 'plans' and name not like 'sqlite_%' order by name",
+      ),
+    ).toEqual([
+      { name: "plans_delete_at" },
+      { name: "plans_owner_identity_id" },
+      { name: "plans_public_area" },
+      { name: "plans_starts_at" },
+    ]);
+    expect(upgraded.sqlite.pragma("foreign_keys", { simple: true })).toBe(1);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
+
+    // Followers needs an account owner (spec 4); deleting a plan still cascades.
+    upgraded.sqlite.prepare("update plans set visibility = 'followers' where id = 'plan-1'").run();
+    expect(() =>
+      upgraded.sqlite
+        .prepare("update plans set owner_identity_id = null where id = 'plan-1'")
+        .run(),
+    ).toThrow(/CHECK constraint failed/);
+    upgraded.sqlite.prepare("delete from plans where id = 'plan-1'").run();
+    expect(one("select id from responses")).toEqual([]);
+  });
+});

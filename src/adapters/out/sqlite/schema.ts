@@ -43,6 +43,7 @@ export interface PlansTable {
   recap_window: RecapWindow;
   recap_window_set_at: string | null;
   recap_closed_at: string | null;
+  federated_at: string | null;
   ratings_closed_at: string | null;
   rating_tally: string | null;
   retention_days: number;
@@ -203,11 +204,23 @@ export interface FedifyKvTable {
   expires_at: string | null;
 }
 
+export interface FediverseProfilesTable {
+  id: string;
+  identity_id: string | null;
+  handle: string | null;
+  handle_hmac: string;
+  keys_enc: string | null;
+  created_at: string;
+  retired_at: string | null;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
   /** Fedify's federation state (spec 4, plan v1.0 step 9a). */
   fedify_kv: FedifyKvTable;
+  /** Poster actors (decisions D36, D37). */
+  fediverse_profiles: FediverseProfilesTable;
   plans: PlansTable;
   devices: DevicesTable;
   device_links: DeviceLinksTable;

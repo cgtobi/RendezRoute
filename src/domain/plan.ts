@@ -4,8 +4,12 @@ import type { RatingResult } from "./rating.ts";
 // Plan-level enumerations (spec section 4). Changing a list requires a migration.
 export const VISIBILITIES = ["link", "followers", "public"] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
-/** What the forms offer in 0.8: `followers` comes with federation (decision D35). */
-export const CHOOSABLE_VISIBILITIES = ["link", "public"] as const satisfies readonly Visibility[];
+/** What the forms offer; whether followers or public may be chosen is the use case's (D35, D37). */
+export const CHOOSABLE_VISIBILITIES = [
+  "link",
+  "followers",
+  "public",
+] as const satisfies readonly Visibility[];
 
 /**
  * Whether a plan may be public (spec 7 Visibility and Nearby plans): with PUBLIC_REQUIRES_LOGIN
@@ -41,6 +45,11 @@ export interface Plan extends PlanDraft {
   recapWindowSetAt: Date | undefined;
   /** Set when the host closed the recap after the start. */
   recapClosedAt: Date | undefined;
+  /**
+   * When the plan was saved as followers or public under the fediverse wording, by an owner with a
+   * profile (decisions D35, D37); only such plans are shared in the fediverse (step 10).
+   */
+  federatedAt: Date | undefined;
   /** Set when a host reopens a closed recap: ratings stay closed from then on (spec 6a). */
   ratingsClosedAt: Date | undefined;
   /** The rating counts, stored before anything changes them after the close (spec 6a). */

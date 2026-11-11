@@ -45,10 +45,19 @@ export async function openDatabase(path: string, options: OpenOptions = {}): Pro
     }
   }
 
-  const { error } = await migrator.migrateToLatest();
-  if (error !== undefined) {
+  // Off while migrating, as SQLite's procedure for rebuilding a table asks: dropping a table that
+  // others reference would otherwise run their ON DELETE actions (0025 rebuilds plans). After a
+  // migration ran, every reference is checked before the connection is used.
+  sqlite.pragma("foreign_keys = OFF");
+  const { error, results = [] } = await migrator.migrateToLatest();
+  const migrated = results.some((result) => result.status === "Success");
+  const broken = error === undefined && migrated ? sqlite.pragma("foreign_key_check") : [];
+  sqlite.pragma("foreign_keys = ON");
+  if (error !== undefined || (Array.isArray(broken) && broken.length > 0)) {
     await db.destroy();
-    throw new Error("Database migration failed", { cause: error });
+    throw new Error("Database migration failed", {
+      cause: error ?? new Error(`Broken references: ${JSON.stringify(broken)}`),
+    });
   }
 
   return { sqlite, db, close: () => db.destroy() };

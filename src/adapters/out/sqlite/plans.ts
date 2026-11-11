@@ -55,6 +55,7 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     recap_window: plan.recapWindow,
     recap_window_set_at: plan.recapWindowSetAt === undefined ? null : iso(plan.recapWindowSetAt),
     recap_closed_at: plan.recapClosedAt === undefined ? null : iso(plan.recapClosedAt),
+    federated_at: plan.federatedAt === undefined ? null : iso(plan.federatedAt),
     ratings_closed_at: plan.ratingsClosedAt === undefined ? null : iso(plan.ratingsClosedAt),
     rating_tally: plan.ratingTally === undefined ? null : JSON.stringify(plan.ratingTally),
     retention_days: plan.retentionDays,
@@ -90,6 +91,7 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     recapWindowSetAt:
       row.recap_window_set_at === null ? undefined : new Date(row.recap_window_set_at),
     recapClosedAt: row.recap_closed_at === null ? undefined : new Date(row.recap_closed_at),
+    federatedAt: row.federated_at === null ? undefined : new Date(row.federated_at),
     ratingsClosedAt: row.ratings_closed_at === null ? undefined : new Date(row.ratings_closed_at),
     ratingTally:
       row.rating_tally === null ? undefined : (JSON.parse(row.rating_tally) as RatingResult),

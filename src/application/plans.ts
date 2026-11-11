@@ -12,7 +12,12 @@ import type { PostingMode } from "../domain/invite.ts";
 import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
 import type { RecapWindow } from "../domain/schedule.ts";
 import { audienceFor, canSee } from "../domain/visibility.ts";
-import { publicRefused } from "./public-plans.ts";
+import {
+  federatedAtFor,
+  type VisibilityChoices,
+  visibilityChoices,
+  visibilityRefused,
+} from "./public-plans.ts";
 import {
   applyRouteDefaults,
   parseRouteTrim,
@@ -58,6 +63,8 @@ import type {
   RouteParser,
   SentReminderRepository,
   TemplateRepository,
+  ActorKeyFactory,
+  FediverseProfileRepository,
 } from "./ports.ts";
 
 export interface PlanDeps extends DeviceDeps {
@@ -89,6 +96,13 @@ export interface PlanDeps extends DeviceDeps {
    * while it is off (decision I59). Absent means true.
    */
   publicPlansOffered?: boolean | undefined;
+  /**
+   * Poster actors (spec 7 ActivityPub, decisions D36, D37). The profiles are always there, so an
+   * account can be deleted after federation was turned off; `enabled` while FEDERATION_ENABLED.
+   */
+  posterActors?:
+    | { profiles: FediverseProfileRepository; actorKeys: ActorKeyFactory; enabled: boolean }
+    | undefined;
   invites: InviteRepository;
   permissions: PermissionRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
@@ -189,12 +203,12 @@ export async function createPlan(
     return { kind: "invalid", errors };
   }
 
-  const refused = await publicRefused(deps, draft.value.visibility, {
-    deviceToken: request.deviceToken,
-  });
+  // The plan belongs to the device's account, whose profile would share it (decision D35).
+  const choices = await visibilityChoices(deps, { deviceToken: request.deviceToken });
+  const refused = visibilityRefused(draft.value.visibility, choices);
   if (refused !== undefined) return { kind: "invalid", errors: refused };
 
-  const stored = await storeNewPlan(deps, draft.value, { ...request, route });
+  const stored = await storeNewPlan(deps, draft.value, { ...request, route, choices });
   return stored.kind === "created"
     ? {
         ...stored,
@@ -238,6 +252,8 @@ export async function storeNewPlan(
     creationNonce: string;
     deviceToken: string | undefined;
     route: Route | undefined;
+    /** What the device's account may choose, which the draft was checked against. */
+    choices: VisibilityChoices;
   },
 ): Promise<CreatedPlan | { kind: "duplicate"; planId: string }> {
   const now = deps.clock.now();
@@ -251,6 +267,7 @@ export async function storeNewPlan(
     hasRoute: request.route !== undefined,
     recapWindowSetAt: undefined,
     recapClosedAt: undefined,
+    federatedAt: federatedAtFor(draft.visibility, request.choices, undefined, now),
     ratingsClosedAt: undefined,
     ratingTally: undefined,
     createdAt: now,

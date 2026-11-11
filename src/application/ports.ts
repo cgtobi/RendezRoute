@@ -58,6 +58,8 @@ export const ENCRYPTED_FIELDS = [
   "identities.display_name",
   "pending_logins.secrets",
   "identities.handle",
+  // Poster actors' signing keys (decision D36).
+  "fediverse_profiles.keys",
 ] as const;
 export type EncryptedField = (typeof ENCRYPTED_FIELDS)[number];
 
@@ -255,6 +257,45 @@ export interface IdentityRepository {
   /** A fediverse account's handle as shown, after a rename (D23). */
   setHandle(id: string, handle: string | undefined): Promise<void>;
   touch(id: string, now: Date): Promise<void>;
+}
+
+/** A poster's fediverse profile while it is active (spec 7 ActivityPub, decision D36). */
+export interface FediverseProfile {
+  /** The actor's identifier in its URI (`/actors/<id>`), never reused. */
+  id: string;
+  identityId: string;
+  /** The name part of @handle@host. */
+  handle: string;
+  createdAt: Date;
+}
+
+/**
+ * Fediverse profiles (decisions D36, D37): one active per account, with its signing keys stored
+ * encrypted; a retired one keeps only its identifier and a keyed hash of its handle, so the actor
+ * answers as gone and the handle is never taken again.
+ */
+export interface FediverseProfileRepository {
+  findActive(identityId: string): Promise<FediverseProfile | undefined>;
+  findByHandle(handle: string): Promise<FediverseProfile | undefined>;
+  /** An actor by its identifier, with its keys while active; retired ones only say so. */
+  findActor(
+    id: string,
+  ): Promise<
+    | { kind: "active"; profile: FediverseProfile; keys: string }
+    | { kind: "retired"; retiredAt: Date }
+    | undefined
+  >;
+  /** Whether the handle is or ever was used, or the account has an active profile. */
+  isTaken(profile: { identityId: string; handle: string }): Promise<boolean>;
+  /** "taken" as `isTaken` says, checked again as it is stored. */
+  create(profile: FediverseProfile & { keys: string }): Promise<"created" | "taken">;
+  /** Retires the account's active profile, if any; returns its identifier. */
+  retire(identityId: string, now: Date): Promise<string | undefined>;
+}
+
+/** New signing keys for a poster actor, serialized for storage (decision D36). */
+export interface ActorKeyFactory {
+  generate(): Promise<string>;
 }
 
 /** Keyed hash for finding encrypted values (spec 3.11: account identities). */

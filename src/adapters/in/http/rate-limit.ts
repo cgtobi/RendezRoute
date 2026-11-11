@@ -44,6 +44,8 @@ export interface RateLimits {
   nearby: RateLimiter;
   /** Posts to the inboxes, per server address (spec 3.11: inbox rate limits). */
   inbox: RateLimiter;
+  /** Turning a fediverse profile on, which makes signing keys (decision D36). */
+  profile: RateLimiter;
 }
 
 /**
@@ -52,7 +54,8 @@ export interface RateLimits {
  * count (parsing is the costly part), as does every place search; previews count only renders.
  * Switching to joined or requested on the manage page counts as responding, since it notifies the
  * host; every attempt to turn notifications on counts too, and every created calendar link, recap
- * contribution and report, and every confirmation link asked for, per client and per address.
+ * contribution and report, and every confirmation link asked for, per client and per address;
+ * turning a fediverse profile on counts only when it made keys.
  * A client is forgotten once its bucket is full again, after at most an hour (an address asking
  * for confirmation links: 3 tokens at 3 per hour).
  */
@@ -75,6 +78,7 @@ export function createRateLimits(now: () => number): RateLimits {
     nearby: createRateLimiter({ capacity: 20, perHour: 120, now }),
     // Posts from fediverse servers: a busy server delivers in bursts.
     inbox: createRateLimiter({ capacity: 120, perHour: 3600, now }),
+    profile: createRateLimiter({ capacity: 5, perHour: 10, now }),
   };
 }
 

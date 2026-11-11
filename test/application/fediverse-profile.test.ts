@@ -1,0 +1,373 @@
+// A poster's fediverse profile (spec 7 ActivityPub; decisions D35, D36, D37; plan v1.0 step 9b):
+// the handle chosen once, followers plans only with a profile, plans shared from when they are
+// saved under the fediverse wording, and turning off (or deleting the account) retiring the handle.
+import { beforeEach, describe, expect, it } from "vite-plus/test";
+import { deleteAccount, expireAccounts } from "../../src/application/account-data.ts";
+import { type AccountDeps, finishLogin, startLogin } from "../../src/application/accounts.ts";
+import {
+  createProfile,
+  planActor,
+  posterActor,
+  posterActorFor,
+  profileSetting,
+  retireProfile,
+  viewProfilePage,
+} from "../../src/application/fediverse-profile.ts";
+import { editPlan, viewHostPage } from "../../src/application/host.ts";
+import { createPlan } from "../../src/application/plans.ts";
+import { visibilityChoices } from "../../src/application/public-plans.ts";
+import { repeatTemplate, saveAsTemplate } from "../../src/application/templates.ts";
+import type { ProviderAccount } from "../../src/application/ports.ts";
+import { planToInput } from "../../src/domain/plan-edit.ts";
+import type { PlanInput } from "../../src/domain/plan-input.ts";
+import { FakeClock } from "../fakes/clock.ts";
+import { FakeActorKeys, FakeFediverseProfiles } from "../fakes/fediverse-profiles.ts";
+import { FakeIdentityProvider } from "../fakes/identity-provider.ts";
+import { SequentialIdGenerator } from "../fakes/ids.ts";
+import { createFakeRepositories } from "../fakes/repositories.ts";
+import { FakeRouteParser } from "../fakes/route-parser.ts";
+import { FakeTokenService } from "../fakes/tokens.ts";
+import { fixtureNow, sampleInput } from "../fixtures/plans.ts";
+
+let deps: AccountDeps;
+let provider: FakeIdentityProvider;
+let profiles: FakeFediverseProfiles;
+let actorKeys: FakeActorKeys;
+let clock: FakeClock;
+let n = 0;
+const nonce = () => `nonce-${String(++n).padStart(16, "0")}`;
+
+beforeEach(() => {
+  provider = new FakeIdentityProvider();
+  profiles = new FakeFediverseProfiles();
+  actorKeys = new FakeActorKeys();
+  clock = new FakeClock(fixtureNow);
+  deps = {
+    ...createFakeRepositories(),
+    routeParser: new FakeRouteParser(),
+    tokens: new FakeTokenService(),
+    ids: new SequentialIdGenerator(),
+    clock,
+    limits: { horizonDays: 180, maxRetentionDays: 30 },
+    postingMode: "anyone",
+    publicRequiresLogin: true,
+    posterActors: { profiles, actorKeys, enabled: true },
+    identityLookup: { hash: (value) => `hmac(${value})` },
+    identityProviders: { oidc: provider },
+    fediverse: { servers: undefined, allowInsecure: false },
+  };
+});
+
+async function logIn(name = "Anna Müller", subject = "anna"): Promise<string> {
+  const account: ProviderAccount = { subject: `https://id.example.org ${subject}`, names: [name] };
+  const started = await startLogin(deps, { provider: "oidc" });
+  if (started.kind !== "redirect") throw new Error("not started");
+  const done = await finishLogin(deps, {
+    provider: "oidc",
+    callback: provider.approve(started.authorizationUrl, account),
+    cookieState: started.state,
+    deviceToken: undefined,
+  });
+  if (done.kind !== "logged_in" || done.newDeviceToken === undefined) throw new Error("login");
+  return done.newDeviceToken;
+}
+
+async function plan(deviceToken: string, input: Partial<PlanInput> = {}) {
+  const result = await createPlan(deps, {
+    input: { ...sampleInput, ...input },
+    units: "metric",
+    language: "en",
+    creationNonce: nonce(),
+    deviceToken,
+  });
+  if (result.kind !== "created") throw new Error(`create failed: ${JSON.stringify(result)}`);
+  return result.planId;
+}
+
+const stored = async (planId: string) => {
+  const found = await deps.plans.findById(planId);
+  if (found === undefined) throw new Error("no plan");
+  return found;
+};
+
+const edit = async (deviceToken: string, planId: string, input: Partial<PlanInput>) =>
+  editPlan(deps, {
+    planId,
+    deviceToken,
+    input: { ...planToInput(await stored(planId), "metric"), ...input },
+    units: "metric",
+    confirmDeleteNow: false,
+  });
+
+const later = (minutes: number) =>
+  clock.set(new Date(clock.now().getTime() + minutes * 60_000).toISOString());
+
+const withFederation = (enabled: boolean) => {
+  deps = { ...deps, posterActors: { ...deps.posterActors!, enabled } };
+};
+
+describe("turning the profile on (decision D36)", () => {
+  it("is offered to a logged-in account with a handle suggested from the display name", async () => {
+    expect(await profileSetting(deps, { deviceToken: undefined })).toEqual({ kind: "unavailable" });
+    const device = await logIn();
+    expect(await profileSetting(deps, { deviceToken: device })).toEqual({
+      kind: "off",
+      suggestion: "anna_muller",
+    });
+    expect(await createProfile(deps, { deviceToken: device, handle: "Anna_M" })).toEqual({
+      kind: "created",
+      handle: "anna_m",
+    });
+    expect(await profileSetting(deps, { deviceToken: device })).toEqual({
+      kind: "on",
+      handle: "anna_m",
+    });
+  });
+
+  it("refuses handles that are malformed, reserved or taken", async () => {
+    const anna = await logIn();
+    const ben = await logIn("Ben", "ben");
+    const create = (deviceToken: string, handle: string) =>
+      createProfile(deps, { deviceToken, handle });
+    expect(await create(anna, "anna.m")).toEqual({ kind: "invalid", code: "handle_invalid" });
+    expect(await create(anna, "admin")).toEqual({ kind: "invalid", code: "handle_reserved" });
+    await create(anna, "anna");
+    expect(await create(ben, "anna")).toEqual({ kind: "invalid", code: "handle_taken" });
+    // One profile per account.
+    expect(await create(anna, "anna_2")).toEqual({ kind: "invalid", code: "handle_taken" });
+    // Keys are made only for the profile that was created: refusals come first.
+    expect(actorKeys.made).toBe(1);
+  });
+
+  it("finds a handle in any case, as WebFinger may ask for it", async () => {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    expect(await posterActorFor(deps, "Anna")).toBe((await profiles.findByHandle("anna"))?.id);
+  });
+
+  it("is not offered while federation is off", async () => {
+    const device = await logIn();
+    withFederation(false);
+    expect(await profileSetting(deps, { deviceToken: device })).toEqual({ kind: "unavailable" });
+    expect(await createProfile(deps, { deviceToken: device, handle: "anna" })).toEqual({
+      kind: "unavailable",
+    });
+  });
+});
+
+describe("followers and the fediverse wording (decisions D35, D37)", () => {
+  it("allows followers only with a profile, and shares public and followers plans from then on", async () => {
+    const device = await logIn();
+    const before = await plan(device, { visibility: "public" });
+    expect(
+      await createPlan(deps, {
+        input: { ...sampleInput, visibility: "followers" },
+        units: "metric",
+        language: "en",
+        creationNonce: nonce(),
+        deviceToken: device,
+      }),
+    ).toEqual({
+      kind: "invalid",
+      errors: [{ field: "visibility", code: "followers_needs_profile" }],
+    });
+    // Public without a profile: listed in Nearby, not shared in the fediverse.
+    expect((await stored(before)).federatedAt).toBeUndefined();
+    expect(await planActor(deps, await stored(before))).toBeUndefined();
+
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    const followers = await plan(device, { visibility: "followers" });
+    expect((await stored(followers)).federatedAt).toEqual(fixtureNow);
+    const actor = (await profiles.findByHandle("anna"))?.id;
+    expect(await planActor(deps, await stored(followers))).toBe(actor);
+    // The public plan from before is shared once it is saved under the new wording, not sooner.
+    expect((await stored(before)).federatedAt).toBeUndefined();
+    expect(await planActor(deps, await stored(before))).toBeUndefined();
+    later(1);
+    await edit(device, before, { title: "Saved again" });
+    expect((await stored(before)).federatedAt).toEqual(clock.now());
+    // Saving again keeps when it was first shared.
+    const firstShared = clock.now();
+    later(1);
+    await edit(device, before, { title: "Saved once more" });
+    expect((await stored(before)).federatedAt).toEqual(firstShared);
+    // Narrowed to link-only: not shared any more.
+    await edit(device, followers, { visibility: "link" });
+    expect((await stored(followers)).federatedAt).toBeUndefined();
+  });
+
+  it("repeats a followers template as link-only where the account has no profile", async () => {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    const planId = await plan(device, { visibility: "followers" });
+    const saved = await saveAsTemplate(deps, {
+      planId,
+      deviceToken: device,
+      includePrivate: false,
+      creationNonce: nonce(),
+    });
+    if (saved.kind !== "saved") throw new Error("not saved");
+    await retireProfile(deps, { deviceToken: device });
+    const repeated = await repeatTemplate(deps, {
+      templateId: saved.templateId,
+      deviceToken: device,
+      date: "2026-06-14",
+      time: "07:30",
+      units: "metric",
+      creationNonce: nonce(),
+    });
+    if (repeated.kind !== "created") throw new Error(`repeat failed: ${repeated.kind}`);
+    expect(repeated.adjustments).toEqual([{ field: "visibility", from: "followers", to: "link" }]);
+    expect((await stored(repeated.planId)).visibility).toBe("link");
+  });
+});
+
+describe("public plans with Nearby off (decision I59)", () => {
+  it("may be chosen only where a profile shares them", async () => {
+    deps = { ...deps, publicPlansOffered: false };
+    const device = await logIn();
+    expect(await visibilityChoices(deps, { deviceToken: device })).toMatchObject({
+      publicAllowed: false,
+      sharedBy: undefined,
+    });
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    expect(await visibilityChoices(deps, { deviceToken: device })).toMatchObject({
+      publicAllowed: true,
+      sharedBy: "anna",
+    });
+    const planId = await plan(device, { visibility: "public" });
+    expect(await planActor(deps, await stored(planId))).toBe(
+      (await profiles.findByHandle("anna"))?.id,
+    );
+  });
+});
+
+describe("federation turned off later (decision I58)", () => {
+  it("keeps a followers plan for followers, and when it was first shared, through edits", async () => {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    const followers = await plan(device, { visibility: "followers" });
+    withFederation(false);
+    const page = await viewHostPage(deps, {
+      planId: followers,
+      deviceToken: device,
+      units: "metric",
+    });
+    if (page.kind !== "found") throw new Error(`not the host page: ${page.kind}`);
+    expect(page.visibility.followers).toEqual({ allowed: true });
+    // Nothing new can be for followers meanwhile.
+    expect(await visibilityChoices(deps, { deviceToken: device })).toMatchObject({
+      followers: undefined,
+    });
+    later(1);
+    expect(await edit(device, followers, { title: "Still for followers" })).toMatchObject({
+      kind: "updated",
+    });
+    expect(await stored(followers)).toMatchObject({
+      visibility: "followers",
+      federatedAt: fixtureNow,
+    });
+    // Back on: shared again by the same actor, without saving anew.
+    withFederation(true);
+    expect(await planActor(deps, await stored(followers))).toBe(
+      (await profiles.findByHandle("anna"))?.id,
+    );
+  });
+});
+
+describe("the profile page (decision D36)", () => {
+  it("lists only the owner's upcoming public plans", async () => {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    const shown = await plan(device, { visibility: "public", title: "Shown" });
+    await plan(device, { visibility: "followers", title: "Followers only" });
+    await plan(device, { title: "Link only" });
+    expect(await viewProfilePage(deps, "anna")).toEqual({
+      kind: "found",
+      handle: "anna",
+      displayName: "Anna Müller",
+      plans: [expect.objectContaining({ planId: shown, title: "Shown" })],
+    });
+    expect(await viewProfilePage(deps, "nobody")).toEqual({ kind: "not_found" });
+  });
+});
+
+describe("turning the profile off (decision D37)", () => {
+  it("retires the handle for good and makes followers plans link-only", async () => {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    const followers = await plan(device, { visibility: "followers" });
+    const publicOne = await plan(device, { visibility: "public" });
+    expect((await stored(publicOne)).federatedAt).toEqual(fixtureNow);
+    const actor = (await profiles.findByHandle("anna"))?.id ?? "";
+    expect(await retireProfile(deps, { deviceToken: device })).toEqual({
+      kind: "retired",
+      plansNowLinkOnly: 1,
+    });
+    expect(await stored(followers)).toMatchObject({ visibility: "link", federatedAt: undefined });
+    // Public stays public, listed in Nearby, no longer shared by an actor.
+    expect(await stored(publicOne)).toMatchObject({ visibility: "public", federatedAt: undefined });
+    expect(await planActor(deps, await stored(publicOne))).toBeUndefined();
+    expect(await posterActor(deps, actor)).toMatchObject({ kind: "retired" });
+    expect(await viewProfilePage(deps, "anna")).toEqual({ kind: "not_found" });
+    // A new profile needs a new handle; the old one is nobody's again.
+    expect(await createProfile(deps, { deviceToken: device, handle: "anna" })).toEqual({
+      kind: "invalid",
+      code: "handle_taken",
+    });
+    expect(await createProfile(deps, { deviceToken: device, handle: "anna_new" })).toMatchObject({
+      kind: "created",
+    });
+    // The new profile shares only what is saved under its own handle (D35).
+    expect(await planActor(deps, await stored(publicOne))).toBeUndefined();
+  });
+
+  it("finishes on a retry after failing halfway", async () => {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    const first = await plan(device, { visibility: "followers" });
+    const second = await plan(device, { visibility: "followers" });
+    const plans = deps.plans;
+    let updates = 0;
+    deps = {
+      ...deps,
+      plans: {
+        ...plans,
+        update: async (changed) => {
+          if (++updates === 2) throw new Error("disk full");
+          await plans.update(changed);
+        },
+      },
+    };
+    await expect(retireProfile(deps, { deviceToken: device })).rejects.toThrow("disk full");
+    // Not retired yet, so turning it off again is still offered.
+    expect(await profileSetting(deps, { deviceToken: device })).toEqual({
+      kind: "on",
+      handle: "anna",
+    });
+    expect(await retireProfile(deps, { deviceToken: device })).toEqual({
+      kind: "retired",
+      plansNowLinkOnly: 1,
+    });
+    expect((await stored(first)).visibility).toBe("link");
+    expect((await stored(second)).visibility).toBe("link");
+    expect(await profileSetting(deps, { deviceToken: device })).toMatchObject({ kind: "off" });
+  });
+
+  it("happens when the account is deleted", async () => {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    const actor = (await profiles.findByHandle("anna"))?.id ?? "";
+    expect(await deleteAccount(deps, { deviceToken: device })).toEqual({ kind: "deleted" });
+    expect(await posterActor(deps, actor)).toMatchObject({ kind: "retired" });
+  });
+
+  it("happens when the account expires unused", async () => {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    const actor = (await profiles.findByHandle("anna"))?.id ?? "";
+    later(366 * 24 * 60);
+    expect(await expireAccounts(deps)).toBe(1);
+    expect(await posterActor(deps, actor)).toMatchObject({ kind: "retired" });
+  });
+});

@@ -118,7 +118,7 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
           units={c.get("units")}
           forTemplate
           notice={form.notice}
-          visibility={visibilityChoice(config, result.publicAllowed)}
+          visibility={visibilityChoice(config, result.visibility)}
         />
       </section>,
       { title: t("template.editHeading"), head: <MapAssets /> },

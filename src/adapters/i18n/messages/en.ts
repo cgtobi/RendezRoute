@@ -162,6 +162,45 @@ export const en = {
   "form.publicLogIn": "Log in",
   "field.public_needs_login":
     "Public plans need an account on this site: log in, or keep the plan to people with the link.",
+  "form.visibilityFollowers": "Followers of {handle} in the fediverse, and people with the link",
+  "form.visibilityFollowersNone": "Followers in the fediverse, and people with the link",
+  "form.visibilityPublicShared":
+    "Anyone: listed in Nearby on this site and shared in the fediverse by {handle}",
+  "form.visibilityPublicProfile": "Anyone: shared in the fediverse by {handle}",
+  "form.followersNeedsProfile":
+    "Followers need a fediverse profile, set up once on the account page.",
+  "form.followersSetUp": "Set it up",
+  "field.followers_needs_profile":
+    "Followers need your fediverse profile: set it up on the account page, or choose another option.",
+  "field.handle_invalid": "Please use 1 to 30 lowercase letters, digits or _.",
+  "field.handle_reserved": "This name is kept for the site itself. Please choose another.",
+  "field.handle_taken": "This name is taken or was used before. Please choose another.",
+  "profile.heading": "Fediverse profile",
+  "profile.intro":
+    "With a profile, people in the fediverse (for example on Mastodon) can find you as @name@{host}, follow you, and see your upcoming public plans.",
+  "profile.notice":
+    "Turning it on makes you discoverable in the fediverse: anyone there can see your display name and your upcoming public plans, and their servers may keep copies. The name is yours for good: it cannot be changed, and once you turn the profile off it is retired and nobody can use it again.",
+  "profile.handle": "Your name in the fediverse",
+  "profile.handleHint": "Lowercase letters, digits and _, up to 30.",
+  "profile.turnOn": "Turn on my fediverse profile",
+  "profile.on": "Your fediverse profile is {handle}.",
+  "profile.view": "View it",
+  "profile.turnOff": "Turn off my fediverse profile…",
+  "profile.turnOffExplain":
+    "Turning it off retires {handle} for good: it cannot be used again, by you or anyone. Plans for your followers become plans for people with the link.",
+  "profile.turnOffConfirm": "Turn off and retire {handle}",
+  "profile.turnedOn": "Your fediverse profile is on.",
+  "profile.turnedOff": {
+    one: "Your fediverse profile is off. 1 plan for followers is now for people with the link.",
+    other:
+      "Your fediverse profile is off. {count} plans for followers are now for people with the link.",
+  },
+  "actorProfile.organises": "Organises runs and rides on {instance}.",
+  "actorProfile.upcoming": "Upcoming public plans",
+  "actorProfile.none": "No upcoming public plans right now.",
+  "actorProfile.gone": "This fediverse profile was turned off.",
+  "privacy.profiles":
+    "If you turn on a fediverse profile, the name you choose, your display name and your upcoming public plans can be seen by anyone in the fediverse, and other servers may keep copies. Its signing keys are stored encrypted. Turning it off, or deleting your account, retires the name: only a keyed hash of it is kept, so it is never used again.",
   "form.joinMode": "Who can join",
   "form.joinOpen": "Anyone with the link",
   "form.joinApproval": "Only people I accept",
@@ -461,6 +500,8 @@ export const en = {
   "ntfyLink.turnedOff": "ntfy notifications are turned off.",
   "privacy.publicPlans":
     "A host can make a plan public. Anyone can then find it in Nearby and see what the plan page shows to everyone: the title, the host’s name, date and time, meeting area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
+  "privacy.publicPlansProfile":
+    "A host with a fediverse profile can make a plan public. Anyone can then find it on that profile and in the fediverse and see what the plan page shows to everyone: the title, the host’s name, date and time, meeting area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
   "privacy.ntfy":
     "If you turn on ntfy, notifications are posted to the ntfy server {server} under a random topic the app makes; anyone who knows the topic can read them. The topic is stored encrypted and deleted with your response, the plan or the account.",
   "channelLink.invalid":
@@ -869,6 +910,7 @@ export const en = {
   "account.deleteItself": "the account itself and its display name",
   "account.mayPost": "An invite link lets your account create plans here (since {date}).",
   "account.deleteMayPost": "its permission to create plans, from an invite link",
+  "account.deleteProfile": "its fediverse profile {handle}: the name is retired for good",
   "account.deleteLogsOut":
     "Browsers logged in to it are logged out; what they hold themselves stays.",
   "account.deleteConfirm": "Delete account for good",

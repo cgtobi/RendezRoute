@@ -1,7 +1,7 @@
 // Repeatable templates (spec 3.10 Templates, decision I43): kept when a plan that opted in is
 // deleted by retention or its host, or saved from a live plan; viewed, edited, repeated and
 // deleted by the devices linked to them.
-import { publicAllowedFor, publicRefused } from "./public-plans.ts";
+import { type VisibilityChoices, visibilityChoices, visibilityRefused } from "./public-plans.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { FieldError, PlanInput } from "../domain/plan-input.ts";
 import {
@@ -161,8 +161,8 @@ export async function viewTemplate(
       kind: "found";
       template: PlanTemplate;
       postingNeed: PostingNeed | undefined;
-      /** Whether the edit form may offer public (decision D35). */
-      publicAllowed: boolean;
+      /** What the edit form may offer for who can find the plan (decisions D35, D37). */
+      visibility: VisibilityChoices;
     }
   | Denied
 > {
@@ -173,7 +173,7 @@ export async function viewTemplate(
     template,
     // Repeating creates a plan, so the posting rules decide (spec 7 Moderation).
     postingNeed: await postingNeed(deps, request),
-    publicAllowed: await publicAllowedFor(deps, { template, deviceToken: request.deviceToken }),
+    visibility: await visibilityChoices(deps, { template, deviceToken: request.deviceToken }),
   };
 }
 
@@ -196,10 +196,10 @@ export async function editTemplate(
   );
   if (!edit.ok) return { kind: "invalid", errors: edit.errors };
   // As for plans: chosen only where allowed; a public template stays (Repeat checks again).
-  const refused = await publicRefused(deps, edit.value.visibility, {
-    template,
-    deviceToken: request.deviceToken,
-  });
+  const refused = visibilityRefused(
+    edit.value.visibility,
+    await visibilityChoices(deps, { template, deviceToken: request.deviceToken }),
+  );
   if (refused !== undefined) return { kind: "invalid", errors: refused };
   await deps.templates.update({ ...template, ...edit.value, updatedAt: now });
   await markUsed(deps, template.id, now);
@@ -262,10 +262,12 @@ export async function repeatTemplate(
   if (needs !== undefined) return { kind: "not_allowed", needs };
 
   const now = deps.clock.now();
+  // The new plan belongs to the repeating device's account, if it is logged in.
+  const choices = await visibilityChoices(deps, { deviceToken: request.deviceToken });
   const { input, adjustments } = repeatInput(template, request, request.units, {
     maxRetentionDays: deps.limits.maxRetentionDays,
-    // The new plan belongs to the repeating device's account, if it is logged in.
-    publicAllowed: await publicAllowedFor(deps, { deviceToken: request.deviceToken }),
+    publicAllowed: choices.publicAllowed,
+    followersAllowed: choices.followers?.allowed === true,
   });
   const draft = validatePlanInput(input, { now, ...deps.limits }, request.units);
   if (!draft.ok) {
@@ -278,6 +280,7 @@ export async function repeatTemplate(
     creationNonce: request.creationNonce,
     deviceToken: request.deviceToken,
     route,
+    choices,
   });
   if (stored.kind === "created") await markUsed(deps, template.id, now);
   return stored.kind === "created" ? { ...stored, adjustments } : stored;

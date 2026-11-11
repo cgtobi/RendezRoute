@@ -1,3 +1,5 @@
+import { actorKeyFactory } from "../../src/adapters/out/crypto/federation-keys.ts";
+import { createFediverseProfileRepository } from "../../src/adapters/out/sqlite/fediverse-profiles.ts";
 import { FakeOutboundHttp } from "../fakes/outbound-http.ts";
 import { generateCryptoKeyPair } from "@fedify/fedify";
 import { createInstanceFederation } from "../../src/adapters/in/activitypub/federation.ts";
@@ -165,6 +167,15 @@ export async function createTestApp({
     postingMode: config.postingMode,
     publicRequiresLogin: config.publicRequiresLogin,
     publicPlansOffered: config.nearbyEnabled,
+    posterActors: {
+      profiles: createFediverseProfileRepository(
+        database,
+        cipher,
+        createLookupHasher(randomBytes(32)),
+      ),
+      actorKeys: actorKeyFactory,
+      enabled: config.federationEnabled,
+    },
     invites: createInviteRepository(database),
     permissions: createPermissionRepository(database),
     notify: {
@@ -208,6 +219,7 @@ export async function createTestApp({
         settings: { baseUrl: config.baseUrl, instanceName: config.instanceName },
         kv: federationKv,
         http: federationHttp,
+        identities,
         instanceKeys: await (instanceKeys ??= Promise.all([
           generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
           generateCryptoKeyPair("Ed25519"),

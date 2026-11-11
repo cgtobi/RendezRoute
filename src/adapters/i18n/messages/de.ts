@@ -167,6 +167,47 @@ export const de: Messages = {
   "form.publicLogIn": "Anmelden",
   "field.public_needs_login":
     "Öffentliche Treffen brauchen ein Konto auf dieser Seite: Melde dich an oder lass das Treffen bei denen mit dem Link.",
+  "form.visibilityFollowers": "Follower:innen von {handle} im Fediverse und alle mit dem Link",
+  "form.visibilityFollowersNone": "Follower:innen im Fediverse und alle mit dem Link",
+  "form.visibilityPublicShared":
+    "Alle: gelistet unter „In der Nähe“ auf dieser Seite und im Fediverse geteilt von {handle}",
+  "form.visibilityPublicProfile": "Alle: im Fediverse geteilt von {handle}",
+  "form.followersNeedsProfile":
+    "Für Follower:innen brauchst du ein Fediverse-Profil, einmal eingerichtet auf der Kontoseite.",
+  "form.followersSetUp": "Einrichten",
+  "field.followers_needs_profile":
+    "Für Follower:innen brauchst du dein Fediverse-Profil: Richte es auf der Kontoseite ein oder wähle eine andere Möglichkeit.",
+  "field.handle_invalid": "Bitte nimm 1 bis 30 Kleinbuchstaben, Ziffern oder _.",
+  "field.handle_reserved":
+    "Dieser Name ist für die Seite selbst reserviert. Bitte wähle einen anderen.",
+  "field.handle_taken":
+    "Dieser Name ist vergeben oder war schon einmal in Gebrauch. Bitte wähle einen anderen.",
+  "profile.heading": "Fediverse-Profil",
+  "profile.intro":
+    "Mit einem Profil finden dich Leute im Fediverse (zum Beispiel auf Mastodon) als @name@{host}, können dir folgen und sehen deine kommenden öffentlichen Treffen.",
+  "profile.notice":
+    "Wenn du es einschaltest, bist du im Fediverse auffindbar: Alle dort sehen deinen Anzeigenamen und deine kommenden öffentlichen Treffen, und ihre Server können Kopien behalten. Der Name gehört dir dauerhaft: Er lässt sich nicht ändern, und sobald du das Profil ausschaltest, wird er stillgelegt und kann von niemandem mehr verwendet werden.",
+  "profile.handle": "Dein Name im Fediverse",
+  "profile.handleHint": "Kleinbuchstaben, Ziffern und _, bis zu 30.",
+  "profile.turnOn": "Mein Fediverse-Profil einschalten",
+  "profile.on": "Dein Fediverse-Profil ist {handle}.",
+  "profile.view": "Ansehen",
+  "profile.turnOff": "Mein Fediverse-Profil ausschalten…",
+  "profile.turnOffExplain":
+    "Beim Ausschalten wird {handle} dauerhaft stillgelegt: Niemand kann den Namen wieder verwenden, auch du nicht. Treffen für deine Follower:innen werden zu Treffen für alle mit dem Link.",
+  "profile.turnOffConfirm": "{handle} ausschalten und stilllegen",
+  "profile.turnedOn": "Dein Fediverse-Profil ist eingeschaltet.",
+  "profile.turnedOff": {
+    one: "Dein Fediverse-Profil ist ausgeschaltet. 1 Treffen für Follower:innen ist jetzt für alle mit dem Link.",
+    other:
+      "Dein Fediverse-Profil ist ausgeschaltet. {count} Treffen für Follower:innen sind jetzt für alle mit dem Link.",
+  },
+  "actorProfile.organises": "Organisiert Läufe und Ausfahrten auf {instance}.",
+  "actorProfile.upcoming": "Kommende öffentliche Treffen",
+  "actorProfile.none": "Gerade keine kommenden öffentlichen Treffen.",
+  "actorProfile.gone": "Dieses Fediverse-Profil wurde ausgeschaltet.",
+  "privacy.profiles":
+    "Wenn du ein Fediverse-Profil einschaltest, können alle im Fediverse den gewählten Namen, deinen Anzeigenamen und deine kommenden öffentlichen Treffen sehen, und andere Server können Kopien behalten. Seine Signaturschlüssel werden verschlüsselt gespeichert. Schaltest du es aus oder löschst du dein Konto, wird der Name stillgelegt: Nur ein verschlüsselter Prüfwert bleibt, damit er nie wieder verwendet wird.",
   "form.joinMode": "Wer mitkommen kann",
   "form.joinOpen": "Alle mit dem Link",
   "form.joinApproval": "Nur, wen ich annehme",
@@ -482,6 +523,8 @@ export const de: Messages = {
   "ntfyLink.turnedOff": "ntfy-Benachrichtigungen sind abgeschaltet.",
   "privacy.publicPlans":
     "Wer ein Treffen organisiert, kann es öffentlich machen. Dann finden es alle unter „In der Nähe“ und sehen, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Treffgebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
+  "privacy.publicPlansProfile":
+    "Wer ein Treffen organisiert und ein Fediverse-Profil hat, kann es öffentlich machen. Dann finden es alle auf diesem Profil und im Fediverse und sehen, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Treffgebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
   "privacy.ntfy":
     "Wenn du ntfy einschaltest, werden Benachrichtigungen an den ntfy-Server {server} unter einem zufälligen Thema gesendet, das die App erzeugt; wer das Thema kennt, kann sie lesen. Das Thema wird verschlüsselt gespeichert und mit deiner Antwort, dem Treffen oder dem Konto gelöscht.",
   "channelLink.invalid":
@@ -904,6 +947,7 @@ export const de: Messages = {
   "account.mayPost":
     "Ein Einladungslink erlaubt deinem Konto, hier Treffen zu erstellen (seit {date}).",
   "account.deleteMayPost": "seine Erlaubnis, Treffen zu erstellen, aus einem Einladungslink",
+  "account.deleteProfile": "sein Fediverse-Profil {handle}: Der Name wird dauerhaft stillgelegt",
   "account.deleteLogsOut":
     "Browser, die bei ihm angemeldet sind, werden abgemeldet; was sie selbst haben, bleibt.",
   "account.deleteConfirm": "Konto endgültig löschen",

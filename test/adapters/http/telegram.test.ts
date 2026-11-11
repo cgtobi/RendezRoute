@@ -138,7 +138,7 @@ describe("exports (spec 3.7: everything attached)", () => {
     await pressStart(startCode(await (await ben.get(`/p/${planId}/me`)).text()) ?? "", "42");
     await pressStart(startCode(await (await host.get(`/p/${planId}/host`)).text()) ?? "", "7");
     const response = await exported(ben, `/p/${planId}/me/export.zip`);
-    expect(response.version).toBe(6);
+    expect(response.version).toBe(7);
     expect(response.plans[0]?.telegramChat).toBe("42");
     expect((await exported(host, `/p/${planId}/host/export.zip`)).plans[0]?.telegramChat).toBe("7");
   });

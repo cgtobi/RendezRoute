@@ -47,7 +47,12 @@ export function PrivacyPage({
         {config.nearbyEnabled && (!config.publicRequiresLogin || loginConfigured(config)) && (
           <p>{t("privacy.publicPlans")}</p>
         )}
+        {/* Nearby off: only a fediverse profile shares public plans (decision I59). */}
+        {!config.nearbyEnabled && config.federationEnabled && loginConfigured(config) && (
+          <p>{t("privacy.publicPlansProfile")}</p>
+        )}
         {config.nearbyEnabled && <p>{t("privacy.nearby")}</p>}
+        {config.federationEnabled && loginConfigured(config) && <p>{t("privacy.profiles")}</p>}
         {config.federationEnabled && (
           <p>{t("privacy.federation", { host: config.baseUrl.hostname, days: PUBLIC_KEY_DAYS })}</p>
         )}

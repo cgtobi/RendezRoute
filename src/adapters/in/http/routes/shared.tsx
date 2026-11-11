@@ -1,5 +1,6 @@
 // Helpers shared by the routes: forms, rate limits, plan pages, and pages that only say what
 // happened (errors, "gone"), also for the admin pages and the app itself.
+import type { VisibilityChoices } from "../../../../application/public-plans.ts";
 import { MessagePage } from "../views/message-page.tsx";
 import { PostingClosed } from "../views/posting.tsx";
 import type { PostingNeed } from "../../../../application/posting-rules.ts";
@@ -12,6 +13,7 @@ import type { Geocoder, PreviewRenderer, WeatherProvider } from "../../../../app
 import { planWeather } from "../../../../application/weather.ts";
 import type { VisibilityChoice } from "../views/plan-form.tsx";
 import type { ViewPlanResult } from "../../../../application/plans.ts";
+import { fediverseAddress } from "../../../../domain/actor.ts";
 import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input.ts";
 import { clientKey, type RateLimits } from "../rate-limit.ts";
 import { type Config, loginConfigured } from "../../../../config.ts";
@@ -268,8 +270,16 @@ export function switchRoute(
  * may be chosen, as the use case decided, and the account page to log in on, if the instance
  * offers a login.
  */
-export const visibilityChoice = (config: Config, publicAllowed: boolean): VisibilityChoice => ({
-  publicAllowed,
+export const visibilityChoice = (config: Config, choices: VisibilityChoices): VisibilityChoice => ({
+  publicAllowed: choices.publicAllowed,
   // Logging in cannot help while public plans are not offered (Nearby off, decision I59).
   loginHref: loginConfigured(config) && config.nearbyEnabled ? "/account" : undefined,
+  // Only accounts have profiles: without a login, followers could never be chosen anew.
+  followers:
+    loginConfigured(config) || choices.followers?.allowed === true ? choices.followers : undefined,
+  sharedBy:
+    choices.sharedBy === undefined
+      ? undefined
+      : fediverseAddress(choices.sharedBy, config.baseUrl.hostname),
+  nearby: config.nearbyEnabled,
 });

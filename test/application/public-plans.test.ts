@@ -1,11 +1,11 @@
 // Public plans (spec 3.3, 7 Visibility and Nearby plans; decision D35; plan v1.0 step 8a): chosen
 // on the create and edit forms; with PUBLIC_REQUIRES_LOGIN only for plans that belong to an
-// account; `followers` waits for federation (step 9).
+// account; `followers` only with a fediverse profile (step 9b).
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { type AccountDeps, finishLogin, startLogin } from "../../src/application/accounts.ts";
 import { editPlan, viewHostPage } from "../../src/application/host.ts";
 import { createPlan, viewPlan } from "../../src/application/plans.ts";
-import { publicAllowedFor } from "../../src/application/public-plans.ts";
+import { type PlanFor, visibilityChoices } from "../../src/application/public-plans.ts";
 import { confirmHostLink } from "../../src/application/secret-links.ts";
 import {
   editTemplate,
@@ -26,6 +26,9 @@ import { FakeTokenService } from "../fakes/tokens.ts";
 import { fixtureNow, sampleInput } from "../fixtures/plans.ts";
 
 const anna: ProviderAccount = { subject: "https://id.example.org anna", names: ["Anna"] };
+
+const publicAllowedFor = async (about: PlanFor) =>
+  (await visibilityChoices(deps, about)).publicAllowed;
 
 let deps: AccountDeps;
 let provider: FakeIdentityProvider;
@@ -86,7 +89,7 @@ async function created(deviceToken: string | undefined, input: Partial<PlanInput
 /** What the host page's edit form offers this device. */
 async function hostPageAllowsPublic(planId: string, deviceToken: string | undefined) {
   const page = await viewHostPage(deps, { planId, deviceToken, units: "metric" });
-  return page.kind === "found" && page.publicAllowed;
+  return page.kind === "found" && page.visibility.publicAllowed;
 }
 
 const visibilityOf = async (planId: string) => (await deps.plans.findById(planId))?.visibility;
@@ -131,22 +134,22 @@ describe("choosing who can find a plan (spec 3.3, decision D35)", () => {
   it("requires an account when the setting is not given: the stricter rule", async () => {
     const { publicRequiresLogin: _, ...withoutSetting } = deps;
     deps = withoutSetting;
-    expect(await publicAllowedFor(deps, { deviceToken: undefined })).toBe(false);
+    expect(await publicAllowedFor({ deviceToken: undefined })).toBe(false);
   });
 
-  it("does not offer followers before federation (step 9)", async () => {
+  it("refuses followers without a fediverse profile (decision D37)", async () => {
     const device = await logIn();
     expect(await create(device, { visibility: "followers" })).toEqual({
       kind: "invalid",
-      errors: [{ field: "visibility", code: "choice_invalid" }],
+      errors: [{ field: "visibility", code: "followers_needs_profile" }],
     });
   });
 
   it("says on the forms whether public can be chosen", async () => {
-    expect(await publicAllowedFor(deps, { deviceToken: undefined })).toBe(false);
-    expect(await publicAllowedFor(deps, { deviceToken: await logIn() })).toBe(true);
+    expect(await publicAllowedFor({ deviceToken: undefined })).toBe(false);
+    expect(await publicAllowedFor({ deviceToken: await logIn() })).toBe(true);
     deps = { ...deps, publicRequiresLogin: false };
-    expect(await publicAllowedFor(deps, { deviceToken: undefined })).toBe(true);
+    expect(await publicAllowedFor({ deviceToken: undefined })).toBe(true);
   });
 });
 
@@ -220,7 +223,7 @@ describe("repeating a public template (spec 3.10)", () => {
     const found = await viewTemplate(deps, { templateId, deviceToken: device });
     if (found.kind !== "found") throw new Error("no template");
     return {
-      publicAllowed: found.publicAllowed,
+      publicAllowed: found.visibility.publicAllowed,
       result: await editTemplate(deps, {
         templateId,
         deviceToken: device,

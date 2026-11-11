@@ -138,6 +138,8 @@ export interface ExportedAccount {
   email: { address: string; confirmed: boolean } | undefined;
   /** The account's linked Telegram chat (decision D34). */
   telegramChat: string | undefined;
+  /** The fediverse profile's handle while it is active (decision D36). */
+  fediverseHandle: string | undefined;
 }
 
 /** Everything linked to the device, one plan it hosts, one's own response, or one template. */

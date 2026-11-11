@@ -1,5 +1,5 @@
 // Plan routes (spec 5 features 1 and 3).
-import { publicAllowedFor } from "../../../../application/public-plans.ts";
+import { visibilityChoices } from "../../../../application/public-plans.ts";
 import type { Context, Hono } from "hono";
 import { createPlan, viewPlan, viewPlanTheme } from "../../../../application/plans.ts";
 import { viewAccount } from "../../../../application/accounts.ts";
@@ -57,7 +57,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     routeTrim = "",
   ) => {
     // Public is chosen for the plan this device will own (decision D35).
-    const publicAllowed = await publicAllowedFor(planDeps, {
+    const choices = await visibilityChoices(planDeps, {
       deviceToken: readDeviceToken(c, config),
     });
     return c.render(
@@ -78,7 +78,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         units={c.get("units")}
         detectZoneFrom={errors.length === 0 ? config.defaultTimezone : undefined}
         routeTrim={routeTrim}
-        visibility={visibilityChoice(config, publicAllowed)}
+        visibility={visibilityChoice(config, choices)}
       />,
       { title: c.get("t")("form.heading"), head: <MapAssets /> },
     );

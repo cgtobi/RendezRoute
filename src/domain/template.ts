@@ -133,7 +133,11 @@ export function repeatInput(
   template: PlanTemplate,
   when: { date: string; time: string },
   units: Units,
-  { maxRetentionDays, publicAllowed }: { maxRetentionDays: number; publicAllowed: boolean },
+  {
+    maxRetentionDays,
+    publicAllowed,
+    followersAllowed,
+  }: { maxRetentionDays: number; publicAllowed: boolean; followersAllowed: boolean },
 ): { input: PlanInput; adjustments: TemplateAdjustment[] } {
   const adjustments: TemplateAdjustment[] = [];
   const retentionDays = Math.min(template.retentionDays, maxRetentionDays);
@@ -144,8 +148,12 @@ export function repeatInput(
   if (recapWindow !== template.recapWindow) {
     adjustments.push({ field: "recapWindow", from: template.recapWindow, to: recapWindow });
   }
+  // Back to link-only where the new plan may not be public, or the owner has no profile (D37).
   const visibility =
-    template.visibility === "public" && !publicAllowed ? "link" : template.visibility;
+    (template.visibility === "public" && !publicAllowed) ||
+    (template.visibility === "followers" && !followersAllowed)
+      ? "link"
+      : template.visibility;
   if (visibility !== template.visibility) {
     adjustments.push({ field: "visibility", from: template.visibility, to: visibility });
   }

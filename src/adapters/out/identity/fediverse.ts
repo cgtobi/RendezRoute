@@ -11,6 +11,7 @@
 //   server the login started at, the account read, and the token given back in any case.
 // - Every request goes through OutboundHttp: people type the server's name (SSRF, spec 3.11).
 import { createHash, randomBytes } from "node:crypto";
+import { fediverseAddress } from "../../../domain/actor.ts";
 import { fediverseAccount } from "../../../domain/fediverse.ts";
 import type {
   IdentityProvider,
@@ -152,7 +153,7 @@ export function createFediverseProvider(options: FediverseProviderOptions): Iden
           ok: true,
           account: {
             subject: `${server} ${account.id}`,
-            handle: `@${account.username}@${new URL(server).host}`,
+            handle: fediverseAddress(account.username, new URL(server).host),
             names: [nonEmptyString(answer?.display_name), account.username],
           },
         };

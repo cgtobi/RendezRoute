@@ -1,6 +1,10 @@
 // Composition root (spec 2a): reads configuration and wires the enabled adapters.
 import { createInstanceFederation } from "./adapters/in/activitypub/federation.ts";
-import { loadOrCreateInstanceKeys } from "./adapters/out/crypto/federation-keys.ts";
+import {
+  actorKeyFactory,
+  loadOrCreateInstanceKeys,
+} from "./adapters/out/crypto/federation-keys.ts";
+import { createFediverseProfileRepository } from "./adapters/out/sqlite/fediverse-profiles.ts";
 import { createFedifyKvStore } from "./adapters/out/sqlite/fedify-kv.ts";
 import { existsSync, mkdirSync } from "node:fs";
 import { createGpxRouteParser } from "./adapters/out/gpx/route-parser.ts";
@@ -291,6 +295,12 @@ async function openInstance(
     postingMode: config.postingMode,
     publicRequiresLogin: config.publicRequiresLogin,
     publicPlansOffered: config.nearbyEnabled,
+    // Always there, so accounts can be deleted after federation was turned off (decision D37).
+    posterActors: {
+      profiles: createFediverseProfileRepository(database, keys.cipher, keys.identityLookup),
+      actorKeys: actorKeyFactory,
+      enabled: config.federationEnabled,
+    },
     invites: createInviteRepository(database),
     permissions: createPermissionRepository(database),
     notify: {
@@ -414,6 +424,7 @@ export async function startServer(
         http: outboundHttp(config, config.contactEmail),
         instanceKeys: await loadOrCreateInstanceKeys(keys.directory),
         planDeps,
+        identities: accounts.identities,
       })
     : undefined;
 

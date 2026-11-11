@@ -2,7 +2,6 @@
 // PlanInput keys.
 import type { Child } from "hono/jsx";
 import type { Translate } from "../../../i18n/i18n.ts";
-import type { MessageKey } from "../../../i18n/messages/en.ts";
 import { ACTIVITY_TYPES } from "../../../../domain/activity.ts";
 import { CHOOSABLE_VISIBILITIES, DROP_POLICIES, JOIN_MODES } from "../../../../domain/plan.ts";
 import type { FieldError, PlanField, PlanInput } from "../../../../domain/plan-input.ts";
@@ -69,7 +68,15 @@ export interface VisibilityChoice {
   publicAllowed: boolean;
   /** Where to log in; undefined when the instance offers no login. */
   loginHref: string | undefined;
+  /** Undefined while federation is off: followers is not offered (decision D37). */
+  followers: { allowed: boolean } | undefined;
+  /** The owner's full handle while it has a profile, e.g. "@anna@runs.example.org". */
+  sharedBy: string | undefined;
+  /** Whether public plans are listed in Nearby, which the public option then says. */
+  nearby: boolean;
 }
+
+type Choosable = (typeof CHOOSABLE_VISIBILITIES)[number];
 
 export function PlanForm({
   t,
@@ -387,15 +394,11 @@ export function PlanForm({
   );
 }
 
-const VISIBILITY_LABELS = {
-  link: "form.visibilityLink",
-  public: "form.visibilityPublic",
-} as const satisfies Record<(typeof CHOOSABLE_VISIBILITIES)[number], MessageKey>;
-
 /**
- * "Who can find this plan": link-only, or public where the plan may be (decision D35). Where it
- * may not, link-only is the choice shown: a disabled radio is never sent, so showing public as
- * chosen would save something else than the form says.
+ * "Who can find this plan": link-only, followers or public, each where the plan may be (decisions
+ * D35, D37), the fediverse named where the owner's profile shares it. Where a choice may not be
+ * made, link-only is the one shown: a disabled radio is never sent, so showing it as chosen would
+ * save something else than the form says.
  */
 function VisibilityFieldset({
   t,
@@ -408,25 +411,56 @@ function VisibilityFieldset({
   value: string;
   error: FieldError | undefined;
 }) {
-  if (!choice.publicAllowed && choice.loginHref === undefined) return null;
-  const chosen = value === "public" && choice.publicAllowed ? "public" : "link";
+  const { followers, sharedBy } = choice;
+  const handle = { handle: sharedBy ?? "" };
+  const options: Record<Choosable, { shown: boolean; allowed: boolean; label: string }> = {
+    link: { shown: true, allowed: true, label: t("form.visibilityLink") },
+    followers: {
+      shown: followers !== undefined,
+      allowed: followers?.allowed === true,
+      label:
+        sharedBy === undefined
+          ? t("form.visibilityFollowersNone")
+          : t("form.visibilityFollowers", handle),
+    },
+    public: {
+      // Public that nothing would find, and logging in would not help: not offered (I59).
+      shown: choice.publicAllowed || choice.loginHref !== undefined,
+      allowed: choice.publicAllowed,
+      label:
+        sharedBy === undefined
+          ? t("form.visibilityPublic")
+          : choice.nearby
+            ? t("form.visibilityPublicShared", handle)
+            : t("form.visibilityPublicProfile", handle),
+    },
+  };
+  const shown = CHOOSABLE_VISIBILITIES.filter((visibility) => options[visibility].shown);
+  if (shown.length === 1) return null;
+  const chosen = shown.find((visibility) => visibility === value && options[visibility].allowed);
   return (
     <fieldset>
       <legend>{t("form.visibility")}</legend>
       <p class="hint">{t("form.visibilityPublicHint")}</p>
-      {CHOOSABLE_VISIBILITIES.map((visibility) => (
+      {shown.map((visibility) => (
         <label class="choice">
           <input
             type="radio"
             name="visibility"
             value={visibility}
-            checked={chosen === visibility}
-            disabled={visibility === "public" && !choice.publicAllowed}
+            checked={(chosen ?? "link") === visibility}
+            disabled={!options[visibility].allowed}
           />
-          {t(VISIBILITY_LABELS[visibility])}
+          {options[visibility].label}
         </label>
       ))}
-      {!choice.publicAllowed && (
+      {followers !== undefined && !followers.allowed && (
+        <p class="hint">
+          {t("form.followersNeedsProfile")}{" "}
+          <a href="/account#profile">{t("form.followersSetUp")}</a>
+        </p>
+      )}
+      {!choice.publicAllowed && choice.loginHref !== undefined && (
         <p class="hint">
           {t("form.publicNeedsLogin")} <a href={choice.loginHref}>{t("form.publicLogIn")}</a>
         </p>

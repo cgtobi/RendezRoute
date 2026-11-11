@@ -17,9 +17,10 @@ import { calendarEvents } from "./views/calendar-events.ts";
  * Changes whenever data.json changes shape, so importers can tell versions apart (2: ratings;
  * 3: mayPostSince, set in device exports when an invite link lets the device create plans;
  * 4: account, set in account exports; 5: notificationEmail per plan and for the account, D31;
- * 6: telegramChat per plan and for the account, D34; visibility per plan and template, D35).
+ * 6: telegramChat per plan and for the account, D34; visibility per plan and template, D35;
+ * 7: fediverseHandle for the account, D36).
  */
-export const EXPORT_VERSION = 6;
+export const EXPORT_VERSION = 7;
 
 const orNull = <T>(value: T | undefined): T | null => value ?? null;
 const pointJson = (point: GeoPoint | undefined) =>
@@ -215,6 +216,7 @@ export function exportZip(
                         confirmed: data.account.email.confirmed,
                       },
                 telegramChat: orNull(data.account.telegramChat),
+                fediverseHandle: orNull(data.account.fediverseHandle),
               },
       },
       null,

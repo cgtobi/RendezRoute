@@ -165,7 +165,8 @@ describe("Nearby turned off (NEARBY_ENABLED=false)", () => {
   it("offers no public plans: in 0.8 they would be listed nowhere (decision I59)", async () => {
     const { client } = await setup({ ...PUBLIC, NEARBY_ENABLED: "false" });
     const form = await (await client().get("/new")).text();
-    expect(form).not.toContain('name="visibility"');
+    // Public is not offered: without Nearby and without a profile, nothing would find it.
+    expect(form).not.toContain('name="visibility" value="public"');
     const ben = client();
     const refused = await ben.postForm("/new", {
       ...(await ben.hiddenFields("/new")),

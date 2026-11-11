@@ -303,11 +303,11 @@ describe("who can find the plan (spec 3.3, decision D35)", () => {
     return draft.ok ? draft.value.visibility : draft.errors;
   };
 
-  it("is link-only unless public is chosen; followers waits for federation", () => {
+  it("is link-only unless followers or public is chosen; whether they may be, the use case decides", () => {
     expect(visibilityOf("")).toBe("link");
     expect(visibilityOf("link")).toBe("link");
     expect(visibilityOf("public")).toBe("public");
-    expect(visibilityOf("followers")).toEqual([{ field: "visibility", code: "choice_invalid" }]);
+    expect(visibilityOf("followers")).toBe("followers");
     expect(visibilityOf("everyone")).toEqual([{ field: "visibility", code: "choice_invalid" }]);
   });
 });

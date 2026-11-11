@@ -9,6 +9,12 @@
 // the person also sees where they are sent (decision D24).
 import type { Context, Hono } from "hono";
 import {
+  createProfile,
+  profileSetting,
+  retireProfile,
+} from "../../../../application/fediverse-profile.ts";
+import type { ProfileSectionProps } from "../views/fediverse-profile.tsx";
+import {
   type AccountDeps,
   claimDeviceData,
   finishLogin,
@@ -80,11 +86,15 @@ export function registerAccountRoutes(
       rename?: { value: string; error: DisplayNameError };
       fediverse?: FediverseLoginForm;
       email?: { value: string; error: string };
+      profile?: { value: string; error: string };
     } = {},
   ) => {
     const t = c.get("t");
     const failed =
-      forms.rename !== undefined || forms.fediverse !== undefined || forms.email !== undefined;
+      forms.rename !== undefined ||
+      forms.fediverse !== undefined ||
+      forms.email !== undefined ||
+      forms.profile !== undefined;
     const notice: AccountNotice = failed
       ? undefined
       : NOTICES.find((name) => c.req.query(name) !== undefined);
@@ -105,6 +115,8 @@ export function registerAccountRoutes(
         email={await accountEmailProps(deps, deviceToken(c), forms.email)}
         ntfy={await accountNtfyProps(deps, deviceToken(c))}
         telegram={await accountTelegramProps(deps, deviceToken(c))}
+        profile={await profileProps(deviceToken(c), forms.profile)}
+        profileNotice={failed ? undefined : profileNotice(c)}
       />,
       { title: t("account.heading") },
     );
@@ -116,7 +128,57 @@ export function registerAccountRoutes(
     return c.render(<LoginFailed t={t} message={message} />, { title: t("account.heading") });
   };
 
+  /** The fediverse profile's part of the page (decision D36); none while federation is off. */
+  const profileProps = async (
+    token: string | undefined,
+    form: { value: string; error: string } | undefined,
+  ): Promise<ProfileSectionProps | undefined> => {
+    const setting = await profileSetting(deps, { deviceToken: token });
+    return setting.kind === "unavailable"
+      ? undefined
+      : { setting, host: config.baseUrl.hostname, form };
+  };
+  const profileNotice = (c: Context<AppEnv>) => {
+    const t = c.get("t");
+    if (c.req.query("profileOn") !== undefined) return t("profile.turnedOn");
+    const off = c.req.query("profileOff");
+    return off === undefined ? undefined : t("profile.turnedOff", { count: Number(off) || 0 });
+  };
+
   app.get("/account", (c) => renderAccount(c));
+
+  // Turning the fediverse profile on: the handle is chosen once (decision D36).
+  app.post("/account/profile", async (c) => {
+    const body = await readForm(c);
+    if (body === undefined) return badRequest(c);
+    const handle = formField(body, "handle");
+    const client = clientOf(c);
+    const allowed = limits.profile.take(client);
+    if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
+    const result = await createProfile(deps, { deviceToken: deviceToken(c), handle });
+    // Only made keys count; a refused handle is checked before any are made.
+    if (result.kind !== "created") limits.profile.refund(client);
+    switch (result.kind) {
+      case "unavailable":
+        return c.redirect("/account", 303);
+      case "created":
+        return c.redirect("/account?profileOn#profile", 303);
+      case "invalid":
+        c.status(422);
+        return renderAccount(c, { profile: { value: handle, error: result.code } });
+    }
+  });
+
+  // Turning it off retires the handle for good (decision D37).
+  app.post("/account/profile/off", async (c) => {
+    const result = await retireProfile(deps, { deviceToken: deviceToken(c) });
+    return c.redirect(
+      result.kind === "retired"
+        ? `/account?profileOff=${result.plansNowLinkOnly}#profile`
+        : "/account",
+      303,
+    );
+  });
   registerAccountEmailForms(app, routeDeps, (c, email) => renderAccount(c, { email }));
   registerAccountNtfyForms(app, routeDeps);
   registerAccountTelegramForms(app, routeDeps);
@@ -235,7 +297,12 @@ export function registerAccountRoutes(
     const t = c.get("t");
     c.header("cache-control", "private, no-store");
     return c.render(
-      <DeleteAccountPage t={t} csrfToken={c.get("csrfToken")()} data={result.data} />,
+      <DeleteAccountPage
+        t={t}
+        csrfToken={c.get("csrfToken")()}
+        data={result.data}
+        host={config.baseUrl.hostname}
+      />,
       { title: t("account.deleteHeading") },
     );
   });

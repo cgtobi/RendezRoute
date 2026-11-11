@@ -4,16 +4,22 @@
 // plan page's viewer read model (spec 3.6), so it can hold nothing a viewer may not see. Fedify's
 // types stay in the adapters (spec 2a).
 import { createFederation, type Federation, type KvStore } from "@fedify/fedify";
-import { Application, Endpoints, Event, Place } from "@fedify/fedify/vocab";
+import { Application, Endpoints, Event, Person, Place, Tombstone } from "@fedify/fedify/vocab";
 import { type PlanDeps, viewPlan } from "../../../application/plans.ts";
-import type { OutboundHttp } from "../../../application/ports.ts";
+import type { IdentityRepository, OutboundHttp } from "../../../application/ports.ts";
+import {
+  planActor,
+  posterActor,
+  posterActorFor,
+  posterActorKeys,
+} from "../../../application/fediverse-profile.ts";
 import { resolveLanguage, translator } from "../../i18n/i18n.ts";
 import {
   outboundContextLoader,
   outboundDocumentLoader,
 } from "../../out/federation/document-loader.ts";
 import type { PlanViewForViewer } from "../../../application/plan-views.ts";
-import type { SigningKeyPair } from "../../out/crypto/federation-keys.ts";
+import { parseKeyPairs, type SigningKeyPair } from "../../out/crypto/federation-keys.ts";
 
 /** The instance actor's identifier in its URI (`/actors/instance`). */
 export const INSTANCE_ACTOR = "instance";
@@ -32,6 +38,7 @@ export function createInstanceFederation({
   http,
   instanceKeys,
   planDeps,
+  identities,
 }: {
   settings: FederationSettings;
   kv: KvStore;
@@ -39,7 +46,10 @@ export function createInstanceFederation({
   http: OutboundHttp;
   instanceKeys: readonly SigningKeyPair[];
   planDeps: PlanDeps;
+  /** The display names of poster actors. */
+  identities: Pick<IdentityRepository, "findById">;
 }): Federation<void> {
+  const actorDeps = { ...planDeps, identities };
   const { baseUrl } = settings;
   // The instance's own handle is its host, as Mastodon names its instance actor.
   const handle = baseUrl.hostname;
@@ -54,7 +64,30 @@ export function createInstanceFederation({
 
   federation
     .setActorDispatcher("/actors/{identifier}", async (ctx, identifier) => {
-      if (identifier !== INSTANCE_ACTOR) return null;
+      if (identifier !== INSTANCE_ACTOR) {
+        // A poster's actor (decision D36), or gone for good once retired (D37).
+        const actor = await posterActor(actorDeps, identifier);
+        if (actor === undefined) return null;
+        if (actor.kind === "retired") {
+          return new Tombstone({
+            id: ctx.getActorUri(identifier),
+            deleted: Temporal.Instant.from(actor.retiredAt.toISOString()),
+          });
+        }
+        const keys = await ctx.getActorKeyPairs(identifier);
+        return new Person({
+          id: ctx.getActorUri(identifier),
+          preferredUsername: actor.handle,
+          name: actor.displayName ?? actor.handle,
+          url: new URL(`/@${actor.handle}`, baseUrl),
+          inbox: ctx.getInboxUri(identifier),
+          endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+          publicKey: keys[0]?.cryptographicKey ?? null,
+          assertionMethods: keys.map((key) => key.multikey),
+          discoverable: true,
+          manuallyApprovesFollowers: false,
+        });
+      }
       const keys = await ctx.getActorKeyPairs(identifier);
       return new Application({
         id: ctx.getActorUri(identifier),
@@ -67,10 +100,16 @@ export function createInstanceFederation({
         assertionMethods: keys.map((key) => key.multikey),
       });
     })
-    .setKeyPairsDispatcher((_ctx, identifier) =>
-      identifier === INSTANCE_ACTOR ? [...instanceKeys] : [],
-    )
-    .mapHandle((_ctx, username) => (username === handle ? INSTANCE_ACTOR : null));
+    .setKeyPairsDispatcher(async (_ctx, identifier) => {
+      if (identifier === INSTANCE_ACTOR) return [...instanceKeys];
+      const keys = await posterActorKeys(planDeps, identifier);
+      return keys === undefined ? [] : parseKeyPairs(keys);
+    })
+    .mapHandle(async (_ctx, username) =>
+      username.toLowerCase() === handle
+        ? INSTANCE_ACTOR
+        : ((await posterActorFor(actorDeps, username)) ?? null),
+    );
 
   federation.setObjectDispatcher(Event, "/p/{id}", async (ctx, { id }) => {
     const result = await viewPlan(planDeps, { planId: id, deviceToken: undefined });
@@ -87,10 +126,13 @@ export function createInstanceFederation({
       result.view.status === "cancelled"
         ? t("preview.cancelled", { title: result.view.title })
         : result.view.title;
+    // The owner's actor once the plan is shared in the fediverse (D35, D37); else the instance's.
+    const plan = await planDeps.plans.findById(id);
+    const author = plan === undefined ? undefined : await planActor(actorDeps, plan);
     return planEvent(result.view, name, {
       id: ctx.getObjectUri(Event, { id }),
       page: new URL(`/p/${id}`, baseUrl),
-      attributedTo: ctx.getActorUri(INSTANCE_ACTOR),
+      attributedTo: ctx.getActorUri(author ?? INSTANCE_ACTOR),
     });
   });
 

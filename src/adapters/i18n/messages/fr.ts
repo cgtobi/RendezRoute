@@ -170,6 +170,46 @@ export const fr: Messages = {
   "form.publicLogIn": "Se connecter",
   "field.public_needs_login":
     "Les sorties publiques demandent un compte sur ce site : connectez-vous, ou réservez la sortie aux personnes ayant le lien.",
+  "form.visibilityFollowers":
+    "Les abonné·e·s de {handle} dans le fédivers, et les personnes ayant le lien",
+  "form.visibilityFollowersNone": "Les abonné·e·s dans le fédivers, et les personnes ayant le lien",
+  "form.visibilityPublicShared":
+    "Tout le monde : listée dans « À proximité » sur ce site et partagée dans le fédivers par {handle}",
+  "form.visibilityPublicProfile": "Tout le monde : partagée dans le fédivers par {handle}",
+  "form.followersNeedsProfile":
+    "Les abonné·e·s demandent un profil fédivers, à configurer une fois sur la page du compte.",
+  "form.followersSetUp": "Le configurer",
+  "field.followers_needs_profile":
+    "Les abonné·e·s demandent votre profil fédivers : configurez-le sur la page du compte, ou choisissez une autre option.",
+  "field.handle_invalid": "Veuillez utiliser de 1 à 30 lettres minuscules, chiffres ou _.",
+  "field.handle_reserved": "Ce nom est réservé au site lui-même. Veuillez en choisir un autre.",
+  "field.handle_taken": "Ce nom est pris ou a déjà été utilisé. Veuillez en choisir un autre.",
+  "profile.heading": "Profil fédivers",
+  "profile.intro":
+    "Avec un profil, les personnes du fédivers (par exemple sur Mastodon) vous trouvent sous @nom@{host}, peuvent vous suivre et voient vos prochaines sorties publiques.",
+  "profile.notice":
+    "En l’activant, vous devenez visible dans le fédivers : tout le monde peut y voir votre nom d’affichage et vos prochaines sorties publiques, et leurs serveurs peuvent en garder des copies. Le nom vous appartient pour de bon : il ne peut pas être changé, et une fois le profil désactivé, il est retiré et personne ne peut plus l’utiliser.",
+  "profile.handle": "Votre nom dans le fédivers",
+  "profile.handleHint": "Lettres minuscules, chiffres et _, jusqu’à 30.",
+  "profile.turnOn": "Activer mon profil fédivers",
+  "profile.on": "Votre profil fédivers est {handle}.",
+  "profile.view": "Le voir",
+  "profile.turnOff": "Désactiver mon profil fédivers…",
+  "profile.turnOffExplain":
+    "Le désactiver retire {handle} pour de bon : personne ne peut plus l’utiliser, vous non plus. Les sorties pour vos abonné·e·s deviennent des sorties pour les personnes ayant le lien.",
+  "profile.turnOffConfirm": "Désactiver et retirer {handle}",
+  "profile.turnedOn": "Votre profil fédivers est activé.",
+  "profile.turnedOff": {
+    one: "Votre profil fédivers est désactivé. 1 sortie pour les abonné·e·s est maintenant pour les personnes ayant le lien.",
+    other:
+      "Votre profil fédivers est désactivé. {count} sorties pour les abonné·e·s sont maintenant pour les personnes ayant le lien.",
+  },
+  "actorProfile.organises": "Organise des sorties à pied et à vélo sur {instance}.",
+  "actorProfile.upcoming": "Prochaines sorties publiques",
+  "actorProfile.none": "Pas de sortie publique à venir pour le moment.",
+  "actorProfile.gone": "Ce profil fédivers a été désactivé.",
+  "privacy.profiles":
+    "Si vous activez un profil fédivers, le nom choisi, votre nom d’affichage et vos prochaines sorties publiques peuvent être vus par tout le monde dans le fédivers, et d’autres serveurs peuvent en garder des copies. Ses clés de signature sont stockées chiffrées. Le désactiver, ou supprimer votre compte, retire le nom : seule une empreinte chiffrée en est gardée, pour qu’il ne soit jamais réutilisé.",
   "form.joinMode": "Qui peut participer",
   "form.joinOpen": "Toute personne ayant le lien",
   "form.joinApproval": "Seulement les personnes que j’accepte",
@@ -483,6 +523,8 @@ export const fr: Messages = {
   "ntfyLink.turnedOff": "Les notifications ntfy sont désactivées.",
   "privacy.publicPlans":
     "Les organisateur·rice·s peuvent rendre une sortie publique. Tout le monde peut alors la trouver dans « À proximité » et voir ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone de rendez-vous, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
+  "privacy.publicPlansProfile":
+    "Les organisateur·rice·s ayant un profil fédivers peuvent rendre une sortie publique. Tout le monde peut alors la trouver sur ce profil et dans le fédivers et voir ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone de rendez-vous, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
   "privacy.ntfy":
     "Si vous activez ntfy, les notifications sont envoyées au serveur ntfy {server} sous un sujet aléatoire créé par l’application ; quiconque connaît le sujet peut les lire. Le sujet est stocké chiffré et supprimé avec votre réponse, la sortie ou le compte.",
   "channelLink.invalid":
@@ -905,6 +947,7 @@ export const fr: Messages = {
     "Un lien d’invitation permet à votre compte de créer des sorties ici (depuis le {date}).",
   "account.deleteMayPost":
     "son autorisation de créer des sorties, obtenue par un lien d’invitation",
+  "account.deleteProfile": "son profil fédivers {handle} : le nom est retiré pour de bon",
   "account.deleteLogsOut":
     "Les navigateurs connectés à ce compte sont déconnectés ; ce qu’ils contiennent eux-mêmes reste.",
   "account.deleteConfirm": "Supprimer le compte définitivement",

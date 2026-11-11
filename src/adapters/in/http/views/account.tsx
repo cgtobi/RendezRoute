@@ -1,8 +1,10 @@
 // The account page (spec 7 Identity): the ways to log in (an OIDC button, a fediverse server field),
 // or the account's display name and "Log out". Never the provider's identifier.
+import { ProfileSection, type ProfileSectionProps } from "./fediverse-profile.tsx";
 import type { AccountData } from "../../../../application/account-data.ts";
 import type { AccountView } from "../../../../application/accounts.ts";
 import type { ClaimCounts } from "../../../../application/ports.ts";
+import { fediverseAddress } from "../../../../domain/actor.ts";
 import type { FediverseServerError } from "../../../../domain/fediverse.ts";
 import { type DisplayNameError, IDENTITY_LIMITS } from "../../../../domain/identity.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
@@ -55,6 +57,10 @@ export function AccountPage(props: {
   ntfy?: NtfySwitchProps | undefined;
   /** The account's own Telegram chat (decision D34); undefined without a bot. */
   telegram?: TelegramSwitchProps | undefined;
+  /** The fediverse profile (decision D36); undefined while federation is off. */
+  profile?: ProfileSectionProps | undefined;
+  /** After turning the profile on or off. */
+  profileNotice?: string | undefined;
 }) {
   const { t, account } = props;
   // Just after logging in, the status says so; no separate notice (decision D27).
@@ -146,6 +152,14 @@ export function AccountPage(props: {
               />
             </section>
           )}
+          {props.profileNotice !== undefined && (
+            <p class="notice" role="status">
+              {props.profileNotice}
+            </p>
+          )}
+          {props.profile !== undefined && (
+            <ProfileSection t={t} csrfToken={props.csrfToken} {...props.profile} />
+          )}
           <ClaimSection t={t} csrfToken={props.csrfToken} claimable={account.claimable} />
           {props.data !== undefined && (
             <AccountDataSection
@@ -229,7 +243,13 @@ function AccountDataSection(props: {
 }
 
 /** Lists what deleting the account removes, by name, before doing it (spec 3.7). */
-export function DeleteAccountPage(props: { t: Translate; csrfToken: string; data: AccountData }) {
+export function DeleteAccountPage(props: {
+  t: Translate;
+  csrfToken: string;
+  data: AccountData;
+  /** The instance's host, for the profile's @handle@host. */
+  host: string;
+}) {
   const { t, data } = props;
   return (
     <section class="account">
@@ -256,6 +276,13 @@ export function DeleteAccountPage(props: { t: Translate; csrfToken: string; data
           </li>
         )}
         {data.mayPostSince !== undefined && <li>{t("account.deleteMayPost")}</li>}
+        {data.fediverseHandle !== undefined && (
+          <li>
+            {t("account.deleteProfile", {
+              handle: fediverseAddress(data.fediverseHandle, props.host),
+            })}
+          </li>
+        )}
         <li>{t("account.deleteItself")}</li>
       </ul>
       {data.hosted.length > 0 && <p>{t("myData.deleteNoTemplates")}</p>}

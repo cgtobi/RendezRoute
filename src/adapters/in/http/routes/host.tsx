@@ -73,7 +73,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     return c.render(
       <HostPage
         t={c.get("t")}
-        visibility={visibilityChoice(config, page.publicAllowed)}
+        visibility={visibilityChoice(config, page.visibility)}
         language={c.get("language")}
         planId={page.planId}
         title={page.title}

@@ -2,6 +2,7 @@
 // plan v1.0 step 5b; decisions D25, I52): what it owns, its export, its deletion, and deletion after
 // 12 months unused. Deleting removes everything the account owns, as "Delete my data" does for a
 // browser, then the account; its devices are logged out and keep only their own data.
+import { activeHandle, retireAccountProfile } from "./fediverse-profile.ts";
 import { accountDeleteAt, accountExpiryCutoff, accountWarningCutoff } from "../domain/expiry.ts";
 import type { Identity } from "../domain/identity.ts";
 import type { ResponseKind } from "../domain/response.ts";
@@ -47,6 +48,8 @@ export interface AccountData {
   templates: Pick<PlanTemplate, "id" | "title" | "expiresAt" | "timeZone">[];
   /** Since when an invite link lets the account create plans, if one does. */
   mayPostSince: Date | undefined;
+  /** The fediverse profile's handle while it is active: deleting retires it (decision D37). */
+  fediverseHandle: string | undefined;
   /** Deleted then, with everything it owns, unless used again (spec 3.10). */
   deleteAt: Date;
 }
@@ -73,6 +76,7 @@ export async function viewAccountData(
         ({ id, title, expiresAt, timeZone }) => ({ id, title, expiresAt, timeZone }),
       ),
       mayPostSince: await deps.permissions.accountMayPostSince(identity.id),
+      fediverseHandle: await activeHandle(deps, identity.id),
       deleteAt: accountDeleteAt(identity.lastActiveAt),
     },
   };
@@ -119,6 +123,7 @@ export async function exportAccountData(
         lastActiveAt: identity.lastActiveAt,
         email: await exportedEmail(deps, { identityId: identity.id }),
         telegramChat: await exportedTelegramChat(deps, { identityId: identity.id }),
+        fediverseHandle: await activeHandle(deps, identity.id),
       },
     },
   };
@@ -130,6 +135,8 @@ export async function exportAccountData(
  * its secret link; retention removes it (I52).
  */
 async function deleteIdentity(deps: AccountDataDeps, identity: Identity): Promise<void> {
+  // Its actor is gone for good, its handle never taken again (decision D37).
+  await retireAccountProfile(deps, identity.id);
   await removeOwnData(
     deps,
     await deps.plans.findOwnedBy(identity.id),

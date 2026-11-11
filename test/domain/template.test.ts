@@ -86,7 +86,7 @@ describe("repeatInput (spec 3.10: re-validated, adjusted, the host is told)", ()
       template(true),
       { date: "2026-07-05", time: "08:00" },
       "metric",
-      { maxRetentionDays: 30, publicAllowed: true },
+      { maxRetentionDays: 30, publicAllowed: true, followersAllowed: true },
     );
     expect(adjustments).toEqual([]);
     expect(input).toMatchObject({ date: "2026-07-05", time: "08:00", keepAsTemplate: "" });
@@ -106,7 +106,7 @@ describe("repeatInput (spec 3.10: re-validated, adjusted, the host is told)", ()
       template(),
       { date: "2026-07-05", time: "08:00" },
       "metric",
-      { maxRetentionDays: 3, publicAllowed: true },
+      { maxRetentionDays: 3, publicAllowed: true, followersAllowed: true },
     );
     expect(adjustments).toEqual([
       { field: "retentionDays", from: 14, to: 3 },
@@ -121,12 +121,14 @@ describe("repeatInput (spec 3.10: re-validated, adjusted, the host is told)", ()
     const kept = repeatInput(publicOne, when, "metric", {
       maxRetentionDays: 30,
       publicAllowed: true,
+      followersAllowed: true,
     });
     expect(kept.adjustments).toEqual([]);
     expect(kept.input.visibility).toBe("public");
     const back = repeatInput(publicOne, when, "metric", {
       maxRetentionDays: 30,
       publicAllowed: false,
+      followersAllowed: true,
     });
     expect(back.adjustments).toEqual([{ field: "visibility", from: "public", to: "link" }]);
     expect(back.input.visibility).toBe("link");

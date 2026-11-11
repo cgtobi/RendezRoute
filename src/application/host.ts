@@ -1,6 +1,11 @@
 // The host page: edit, cancel, delete, remove and restore people (spec 5 features 7–9,
 // 3.1 Editing and Retention edits, 3.5, decision D8). Only devices linked as host may act.
-import { publicAllowedFor, publicRefused } from "./public-plans.ts";
+import {
+  federatedAtFor,
+  type VisibilityChoices,
+  visibilityChoices,
+  visibilityRefused,
+} from "./public-plans.ts";
 import type { Units } from "../domain/pace.ts";
 import type { NotificationKind } from "../domain/notification.ts";
 import type { Plan } from "../domain/plan.ts";
@@ -70,8 +75,8 @@ export type HostPageResult =
       title: string;
       /** Edit form values. */
       input: PlanInput;
-      /** Whether the edit form may offer public (decision D35). */
-      publicAllowed: boolean;
+      /** What the edit form may offer for who can find the plan (decisions D35, D37). */
+      visibility: VisibilityChoices;
       scope: "all" | "retention";
       canCancel: boolean;
       /** Whether pending requests can still be decided: before the start of an active plan (spec 3.1). */
@@ -107,7 +112,7 @@ export async function viewHostPage(
     planId: plan.id,
     title: plan.title,
     input: planToInput(plan, request.units),
-    publicAllowed: await publicAllowedFor(deps, { plan }),
+    visibility: await visibilityChoices(deps, { plan }),
     scope: editScope(plan, now),
     canCancel: canCancel(plan, now).ok,
     requestsOpen: canRespond(plan, now).ok,
@@ -193,7 +198,8 @@ export async function editPlan(
 
   const draft = validatePlanEdit(request.input, plan, { now, ...deps.limits }, request.units);
   if (!draft.ok) return { kind: "invalid", errors: draft.errors };
-  const refused = await publicRefused(deps, draft.value.visibility, { plan });
+  const choices = await visibilityChoices(deps, { plan });
+  const refused = visibilityRefused(draft.value.visibility, choices);
   if (refused !== undefined) return { kind: "invalid", errors: refused };
   const responses = await deps.responses.listByPlan(plan.id);
   if (responses.some((response) => isPosterName(response.displayName, draft.value.posterName))) {
@@ -204,7 +210,12 @@ export async function editPlan(
   if (pending.length > 0 && request.confirmAcceptPending !== pending.length) {
     return { kind: "confirm_accept_pending", count: pending.length };
   }
-  const updated: Plan = { ...plan, ...draft.value, updatedAt: now };
+  const updated: Plan = {
+    ...plan,
+    ...draft.value,
+    federatedAt: federatedAtFor(draft.value.visibility, choices, plan.federatedAt, now),
+    updatedAt: now,
+  };
   await deps.plans.update(updated);
   for (const response of pending) {
     const accepted = requests.acceptRequest(response, plan, now);

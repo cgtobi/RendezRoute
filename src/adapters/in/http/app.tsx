@@ -31,6 +31,7 @@ import { registerHostRoutes } from "./routes/host.tsx";
 import { registerNotificationRoutes } from "./routes/notifications.ts";
 import { registerPreferenceRoutes } from "./routes/preferences.ts";
 import { registerPlaceRoutes } from "./routes/places.ts";
+import { registerProfileRoutes } from "./routes/fediverse-profile.tsx";
 import { registerNearbyRoutes } from "./routes/nearby.tsx";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerRecapRoutes } from "./routes/recap.tsx";
@@ -345,6 +346,10 @@ export function createApp({
     reporting: adminAuth !== undefined,
   };
   registerPlanRoutes(app, deps);
+  // Profiles exist only for accounts, while federation is on (decisions D36, D37).
+  if (federation !== undefined && accounts !== undefined) {
+    registerProfileRoutes(app, { config, planDeps, identities: accounts.identities });
+  }
   // Off: no page, no link, no query (spec 7 Visibility and Nearby plans).
   if (config.nearbyEnabled) registerNearbyRoutes(app, deps);
   registerResponseRoutes(app, deps);

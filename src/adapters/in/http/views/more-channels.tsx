@@ -173,16 +173,9 @@ function NtfySwitch({
   }
   const url = setting.server === undefined ? undefined : topicUrl(setting.server, setting.topic);
   const topic = url !== undefined && (
-    <>
-      <p class="link-box">
-        <code>{url}</code>
-      </p>
-      <p>
-        <a class="button secondary" href={url} rel="noopener noreferrer">
-          {t("ntfy.open")}
-        </a>
-      </p>
-    </>
+    <p class="link-box">
+      <code>{url}</code>
+    </p>
   );
   // Without NTFY_URL, or for rejected and removed people, only turning off is left.
   if (offOnly || setting.server === undefined) {
@@ -205,7 +198,11 @@ function NtfySwitch({
       )}
       {topic}
       {shared && <p class="hint">{t("ntfy.hostShared")}</p>}
+      {/* One row, as for email and Telegram (design check, 0.8 wrap-up). */}
       <div class="button-row">
+        <a class="button secondary" href={url} rel="noopener noreferrer">
+          {t("ntfy.open")}
+        </a>
         {setting.state === "pending" && (
           <form method="post" action={`${base}/ntfy`}>
             {csrf}

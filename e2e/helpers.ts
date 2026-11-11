@@ -1,5 +1,12 @@
 // Shared by the end-to-end specs.
-import { type Browser, type BrowserContext, expect, type Page } from "@playwright/test";
+import {
+  type Browser,
+  type BrowserContext,
+  type BrowserContextOptions,
+  expect,
+  type Page,
+  test,
+} from "@playwright/test";
 
 /** A date five days from now, as the date field expects it: within the weather horizon. */
 export const inFiveDays = () =>
@@ -7,14 +14,26 @@ export const inFiveDays = () =>
 
 const ALLOWED_HOSTS = new Set(["localhost:3101", "localhost:3102", "localhost:3103", "fakes:8080"]);
 
+/** Counts people in this worker, for their addresses. */
+let people = 0;
+
 /** A browser profile of its own (own cookies), failing the test on console errors or foreign requests. */
 export async function person(
   browser: Browser,
   baseURL: string,
   problems: string[],
-  options: { initScript?: () => void } = {},
+  options: { initScript?: () => void; context?: BrowserContextOptions } = {},
 ) {
-  const context: BrowserContext = await browser.newContext({ baseURL });
+  const context: BrowserContext = await browser.newContext({
+    ...options.context,
+    baseURL,
+    // A network of their own (TRUST_PROXY for the accounts container in compose.yaml): the
+    // per-client limits apply per person. Each worker has its own range, so none share one.
+    extraHTTPHeaders: {
+      ...options.context?.extraHTTPHeaders,
+      "x-forwarded-for": `10.${test.info().parallelIndex}.${Math.floor(++people / 250)}.${(people % 250) + 1}`,
+    },
+  });
   if (options.initScript !== undefined) await context.addInitScript(options.initScript);
   const page = await context.newPage();
   page.on("console", (message) => {
@@ -58,6 +77,13 @@ export async function useInvite(page: Page, link: string) {
   ).toBeVisible();
   await page.getByRole("button", { name: "Use on this device" }).click();
   await expect(page).toHaveURL(/\/new$/);
+}
+
+/** Logs the page in through the fake OIDC provider, which approves at once. */
+export async function oidcLogIn(page: Page) {
+  await page.goto("/account");
+  await page.getByRole("link", { name: "Log in with E2E login" }).click();
+  await expect(page.getByText("You are logged in.")).toBeVisible();
 }
 
 /** Creates a plan from the create form the page is on; returns the plan's address. */

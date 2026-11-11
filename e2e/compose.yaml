@@ -75,6 +75,10 @@ services:
     environment:
       <<: *env
       BASE_URL: http://localhost:3103
+      # Each test person sends an address of their own (helpers.ts), as people behind a proxy do,
+      # so the per-client limits (admin login, plan creation) see separate people, not one
+      # machine running every journey. The other two containers keep the default (no proxy).
+      TRUST_PROXY: "true"
       ADMIN_TOKEN: e2e-admin-token-0123456789abcdefghij
       POSTING_MODE: invite
       OIDC_ISSUER: http://fakes:8080/oidc

@@ -1,8 +1,18 @@
-// The 0.8 channels in a real browser against the built image (plan v1.0 step 6, decision D31):
+// The 0.8 features in a real browser against the built image (plan v1.0 steps 6–8; decisions
+// D31, D33, D34, D35):
 // email notifications confirmed by their link and turned off from every email, "Email me my
-// links", and report alerts, against the fake mail server. Runs only in the "0.7 and 0.8 features" project (SMTP_*).
+// links", and report alerts, against the fake mail server; ntfy and Telegram against their fakes;
+// Nearby with a public plan (step 8). Runs only in the "0.7 and 0.8 features" project.
 import { expect, test } from "@playwright/test";
-import { adminLogIn, createPlan, newInvite, person, useInvite } from "./helpers.ts";
+import {
+  adminLogIn,
+  createPlan,
+  inFiveDays,
+  newInvite,
+  oidcLogIn,
+  person,
+  useInvite,
+} from "./helpers.ts";
 
 const RUN = Date.now().toString(36);
 const MAIL = "http://localhost:8080/mail";
@@ -184,8 +194,8 @@ test("Telegram: Start in the bot confirms, then notifications with a button to t
   const code = new URL(deepLink).searchParams.get("start") ?? "";
   expect(deepLink).toMatch(/^https:\/\/t\.me\/rendezroute_e2e_bot\?start=/);
 
-  // Pressing Start in the bot, from a chat of this run.
-  const chat = String(4000 + Math.floor(Math.random() * 1000));
+  // Pressing Start in the bot, from a chat of this run: the fakes keep messages across runs.
+  const chat = String(Date.now());
   await fetch("http://localhost:8080/telegram-test/start", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -218,5 +228,65 @@ test("Telegram: Start in the bot confirms, then notifications with a button to t
     .toBe(2);
   expect(messages[0]?.text).toContain("are on");
   expect(messages[1]?.text).toContain("The plan was cancelled.");
+  expect(problems).toEqual([]);
+});
+
+test("Nearby: a public plan found from the device's location and from a typed place", async ({
+  browser,
+  baseURL,
+}) => {
+  const problems: string[] = [];
+  const base = baseURL ?? "";
+  const title = `Public long run ${RUN}`;
+  const { page: admin } = await person(browser, base, problems);
+  const { page: host } = await person(browser, base, problems);
+  await adminLogIn(admin);
+  await useInvite(host, await newInvite(admin));
+  // Public plans need an account here (PUBLIC_REQUIRES_LOGIN, decision D35).
+  await oidcLogIn(host);
+  await host.goto("/new");
+  await host.getByLabel("Your name").fill("Anna");
+  await host.getByLabel("Title").fill(title);
+  await host.getByLabel("Date").fill(inFiveDays());
+  await host.getByLabel("Start time").fill("08:30");
+  await host.locator("#field-areaLabel").fill("Flaucher");
+  // The area point from place search (the fake geocoder knows Flaucher at 48.1107, 11.5582).
+  await host.getByLabel("Find a place").fill("Flaucher");
+  await host.locator(".place-search").getByRole("button", { name: "Search" }).click();
+  await host.getByRole("button", { name: "Flaucher, Isar, Munich" }).click();
+  await host.getByLabel("Anyone: listed in Nearby on this site").check();
+  await host.getByRole("button", { name: "Create plan" }).click();
+  await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
+
+  // "Use my location" only fills the form; the search sends the point on the 0.02° grid.
+  const { page: viewer } = await person(browser, base, problems, {
+    context: {
+      geolocation: { latitude: 48.1371, longitude: 11.5754 },
+      permissions: ["geolocation"],
+    },
+  });
+  // Every request the page makes: nothing may carry the place before "Search".
+  const sent: string[] = [];
+  viewer.on("request", (request) => sent.push(request.url()));
+  await viewer.goto("/nearby");
+  const search = viewer.locator("form[data-nearby] > button[type=submit]");
+  await viewer.getByRole("button", { name: "Use my location" }).click();
+  await expect(viewer.getByText("Around the spot you chose")).toBeVisible();
+  expect(sent.filter((url) => /lat=|48\.13|48\.14/.test(url))).toEqual([]);
+  await search.click();
+  await expect(viewer).toHaveURL(/\/nearby\?(?:[^#]*&)?lat=48\.14&lng=11\.58(?:&|$)/);
+  // Never the device's own coordinates, only the grid point.
+  expect(sent.filter((url) => url.includes("48.137"))).toEqual([]);
+  await viewer.getByRole("link", { name: title }).click();
+  await expect(viewer.locator(".plan-visibility")).toHaveText("Public");
+
+  // A typed place is looked up first: only its rounded point is in the address.
+  const { page: typer } = await person(browser, base, problems);
+  await typer.goto("/nearby");
+  await typer.getByLabel("Place").fill("Flaucher");
+  await typer.locator("form[data-nearby] > button[type=submit]").click();
+  await expect(typer).toHaveURL(/\/nearby\?(?:[^#]*&)?lat=48\.12&lng=11\.56(?:&|$)/);
+  expect(typer.url()).not.toContain("Flaucher");
+  await expect(typer.getByRole("link", { name: title })).toBeVisible();
   expect(problems).toEqual([]);
 });

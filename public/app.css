@@ -1440,6 +1440,11 @@ details > summary {
   margin-top: var(--s3);
 }
 
+/* Each channel its own part: room above the next one's heading. */
+.ntfy-switch + .telegram-switch {
+  margin-top: var(--s6);
+}
+
 /* As in the email block: the row's forms keep no margin of their own, also on .manage pages. */
 .more-channels .button-row form {
   margin: 0;

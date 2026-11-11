@@ -1,18 +1,11 @@
 // The 0.7 features in a real browser against the built image (plan v1.0 0.7 wrap-up, spec 2b):
 // the instance admin, invite links, reporting, and accounts with OIDC and fediverse login, against
 // fake providers. Runs only in the "0.7 and 0.8 features" project (ADMIN_TOKEN, POSTING_MODE=invite).
-import { expect, type Page, test } from "@playwright/test";
-import { adminLogIn, createPlan, newInvite, person, useInvite } from "./helpers.ts";
+import { expect, test } from "@playwright/test";
+import { adminLogIn, createPlan, newInvite, oidcLogIn, person, useInvite } from "./helpers.ts";
 
 /** Plan titles of this run, so a kept volume (E2E_KEEP=true) cannot mix runs up. */
 const RUN = Date.now().toString(36);
-
-/** Logs in on the account page through the fake OIDC provider, which approves at once. */
-async function oidcLogIn(page: Page) {
-  await page.goto("/account");
-  await page.getByRole("link", { name: "Log in with E2E login" }).click();
-  await expect(page.getByText("You are logged in.")).toBeVisible();
-}
 
 test("Invite links, reporting and the instance admin", async ({ browser, baseURL }) => {
   const problems: string[] = [];

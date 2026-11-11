@@ -2,7 +2,7 @@
 
 **RendezRoute** (from French _rendez-vous_ and _route_: "meet on the route") is a self-hosted web app where runners and cyclists post a planned run or ride, optionally with a route, so others can show interest or join. You share it with a link. Accounts are optional, and every plan is deleted automatically a few days after it happens.
 
-> **Status:** v0.7 in development. Plans without accounts (create, share, join or request, cancel, delete), maps, place search and weather, Web Push and calendar feeds, recaps and ratings, templates, and "My data" export and deletion all work. New in 0.7: an instance admin page, reports, posting rules with invite links, and optional accounts through OIDC or a fediverse server, with claiming, account export and deletion, and accounts deleted after 12 months unused. English, German and French.
+> **Status:** v0.8 in development. Plans without accounts (create, share, join or request, cancel, delete), maps, place search and weather, Web Push and calendar feeds, recaps and ratings, templates, and "My data" export and deletion all work, as do an instance admin page, reports, posting rules with invite links, and optional accounts through OIDC or a fediverse server (0.7). New in 0.8: notifications by email, ntfy and Telegram, each confirmed before first use and turned off from every message; the account's own address with a warning before an unused account is deleted; "Email me a new link"; report alerts to the instance's contact address by email; public plans and the Nearby page. English, German and French.
 
 ## Running it
 

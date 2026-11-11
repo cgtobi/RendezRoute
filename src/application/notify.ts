@@ -157,7 +157,8 @@ export async function deletionNotices(deps: PlanDeps, plan: Plan): Promise<() =>
   const notices: { to: NotificationTarget; language: string }[] = [];
   for (const response of await responsesStillIn(deps, plan)) {
     for (const channel of await deliverableChannels(deps, { responseId: response.id })) {
-      notices.push({ to: carriedTarget(channel), language: response.language });
+      const to = carriedTarget(channel);
+      if (to !== undefined) notices.push({ to, language: response.language });
     }
   }
   return async () => {
@@ -175,15 +176,21 @@ export async function deletionNotices(deps: PlanDeps, plan: Plan): Promise<() =>
   };
 }
 
-/** A channel as a job carries it once the channel itself is gone. */
-const carriedTarget = (channel: NotificationChannel): NotificationTarget =>
-  channel.kind === "webpush"
-    ? { subscription: channel.subscription }
-    : channel.kind === "email"
-      ? { email: { address: channel.address } }
-      : { ntfy: { topic: channel.topic, server: channel.server } };
+/** A channel as a job carries it once the channel itself is gone; a chat not linked has none. */
+function carriedTarget(channel: NotificationChannel): NotificationTarget | undefined {
+  switch (channel.kind) {
+    case "webpush":
+      return { subscription: channel.subscription };
+    case "email":
+      return { email: { address: channel.address } };
+    case "ntfy":
+      return { ntfy: { topic: channel.topic, server: channel.server } };
+    case "telegram":
+      return channel.chatId === undefined ? undefined : { telegram: { chatId: channel.chatId } };
+  }
+}
 
-/** The plan's public time and place (spec 3.6), for emails and ntfy. */
+/** The plan's public time and place (spec 3.6), for emails, ntfy and Telegram. */
 const factsOf = (plan: Plan): NotificationFacts => ({
   startsAt: plan.startsAt.toISOString(),
   timeZone: plan.timeZone,

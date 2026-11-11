@@ -1,21 +1,24 @@
 // One Notifier for the job runner (spec 2a: one adapter per channel kind): a stored channel is read
-// once and handed to browser push, email or ntfy by its kind (decisions D31, D33); subscriptions,
-// addresses and topics carried by a job go straight to theirs.
+// once and handed to browser push, email, ntfy or Telegram by its kind (decisions D31, D33, D34);
+// subscriptions, addresses, topics and chats carried by a job go straight to theirs.
 import type { ChannelRepository, Notifier } from "../../application/ports.ts";
 import type { EmailDelivery } from "./email/notifier.ts";
 import type { NtfyDelivery } from "./ntfy/notifier.ts";
+import type { TelegramDelivery } from "./telegram/notifier.ts";
 
 export function createChannelNotifier({
   channels,
   push,
   email,
   ntfy,
+  telegram,
 }: {
   channels: ChannelRepository;
   push: Notifier;
-  /** Undefined without SMTP or NTFY_URL: their channels then get nothing and stay. */
+  /** Undefined while their service is not configured: their channels then get nothing and stay. */
   email: EmailDelivery | undefined;
   ntfy: NtfyDelivery | undefined;
+  telegram: TelegramDelivery | undefined;
 }): Notifier {
   const off = () => Promise.resolve("failed" as const);
   return {
@@ -29,9 +32,12 @@ export function createChannelNotifier({
       if ("ntfy" in to) {
         return ntfy?.send({ ...to.ntfy, channelId: undefined }, notification) ?? off();
       }
+      if ("telegram" in to) {
+        return telegram?.send({ ...to.telegram, channelId: undefined }, notification) ?? off();
+      }
       const channel = await channels.findById(to.channelId);
       if (channel === undefined) return "gone";
-      // Nothing but the confirmation link before the owner confirmed the channel (spec 3.11).
+      // Nothing but the confirmation before the owner confirmed the channel (spec 3.11).
       if (!channel.verified) return "failed";
       switch (channel.kind) {
         case "webpush":
@@ -47,6 +53,11 @@ export function createChannelNotifier({
               notification,
             ) ?? off()
           );
+        case "telegram":
+          return channel.chatId === undefined
+            ? off()
+            : (telegram?.send({ chatId: channel.chatId, channelId: channel.id }, notification) ??
+                off());
       }
     },
   };

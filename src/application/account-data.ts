@@ -19,6 +19,7 @@ import {
 } from "./my-data.ts";
 import { queueExpiryWarnings } from "./channel-links.ts";
 import { exportedEmail } from "./email.ts";
+import { exportedTelegramChat } from "./telegram.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { Device, IdentityRepository } from "./ports.ts";
 
@@ -117,6 +118,7 @@ export async function exportAccountData(
         createdAt: identity.createdAt,
         lastActiveAt: identity.lastActiveAt,
         email: await exportedEmail(deps, { identityId: identity.id }),
+        telegramChat: await exportedTelegramChat(deps, { identityId: identity.id }),
       },
     },
   };

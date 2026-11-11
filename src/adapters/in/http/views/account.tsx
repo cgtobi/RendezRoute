@@ -9,7 +9,7 @@ import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { BackLink } from "./back-link.tsx";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
-import { MoreChannels, type NtfySwitchProps } from "./more-channels.tsx";
+import { MoreChannels, type NtfySwitchProps, type TelegramSwitchProps } from "./more-channels.tsx";
 import { fieldErrorMessage, formatDate, itemWhen } from "./format.ts";
 import { Item, ItemList } from "./item.tsx";
 import { Titles } from "./my-data.tsx";
@@ -53,6 +53,8 @@ export function AccountPage(props: {
   email?: EmailSwitchProps | undefined;
   /** The account's own ntfy topic (decision D33); undefined without NTFY_URL. */
   ntfy?: NtfySwitchProps | undefined;
+  /** The account's own Telegram chat (decision D34); undefined without a bot. */
+  telegram?: TelegramSwitchProps | undefined;
 }) {
   const { t, account } = props;
   // Just after logging in, the status says so; no separate notice (decision D27).
@@ -129,12 +131,19 @@ export function AccountPage(props: {
               </button>
             </form>
           </section>
-          {(props.email !== undefined || props.ntfy !== undefined) && (
+          {(props.email !== undefined ||
+            props.ntfy !== undefined ||
+            props.telegram !== undefined) && (
             <section>
               {props.email !== undefined && (
                 <EmailSwitch t={t} csrfToken={props.csrfToken} {...props.email} />
               )}
-              <MoreChannels t={t} csrfToken={props.csrfToken} ntfy={props.ntfy} />
+              <MoreChannels
+                t={t}
+                csrfToken={props.csrfToken}
+                ntfy={props.ntfy}
+                telegram={props.telegram}
+              />
             </section>
           )}
           <ClaimSection t={t} csrfToken={props.csrfToken} claimable={account.claimable} />

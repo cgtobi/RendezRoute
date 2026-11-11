@@ -49,6 +49,8 @@ export interface Config {
   smtp: SmtpConfig | undefined;
   /** The instance's ntfy server (decision D33); off unless NTFY_URL. Trusted configuration. */
   ntfy: { url: URL; token: string | undefined } | undefined;
+  /** The instance's Telegram bot (decision D34); off unless TELEGRAM_BOT_TOKEN. */
+  telegram: { token: string; apiUrl: URL } | undefined;
 }
 
 export interface SmtpConfig {
@@ -92,6 +94,7 @@ const DEFAULTS = {
   MAP_ATTRIBUTION: "© OpenStreetMap contributors",
   GEOCODER_URL: "https://nominatim.openstreetmap.org",
   WEATHER_URL: "https://api.open-meteo.com",
+  TELEGRAM_API_URL: "https://api.telegram.org",
 } as const;
 
 const MAX_INSTANCE_NAME_LENGTH = 60;
@@ -430,6 +433,26 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     return { url, token };
   })();
 
+  // TELEGRAM_BOT_TOKEN: the bot from @BotFather; TELEGRAM_API_URL for a local Bot API server.
+  const telegram = ((): Config["telegram"] => {
+    const token = read("TELEGRAM_BOT_TOKEN") || undefined;
+    const apiSetting = read("TELEGRAM_API_URL") || undefined;
+    if (token === undefined) {
+      if (apiSetting !== undefined) errors.push("TELEGRAM_API_URL needs TELEGRAM_BOT_TOKEN.");
+      return undefined;
+    }
+    if (!/^\d{1,20}:[A-Za-z0-9_-]{30,}$/.test(token)) {
+      errors.push(
+        "TELEGRAM_BOT_TOKEN must be a bot token from @BotFather, such as 123456:ABC-DEF….",
+      );
+      return undefined;
+    }
+    const apiUrl = httpUrl("TELEGRAM_API_URL", apiSetting ?? DEFAULTS.TELEGRAM_API_URL);
+    if (apiUrl === undefined || !rejectCredentials("TELEGRAM_API_URL", apiUrl)) return undefined;
+    if (!requireHttps("TELEGRAM_API_URL", apiUrl)) return undefined;
+    return { token, apiUrl };
+  })();
+
   if (errors.length > 0 || postingMode === undefined) return { ok: false, errors };
 
   return {
@@ -464,6 +487,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       fediverseLogin,
       smtp,
       ntfy,
+      telegram,
     },
   };
 }

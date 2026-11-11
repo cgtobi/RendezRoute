@@ -367,7 +367,7 @@ describe("the account's data on the account page (spec 3.7, 3.10)", () => {
     const files = unzipSync(new Uint8Array(await exported.arrayBuffer()));
     const data = JSON.parse(strFromU8(files["data.json"] ?? new Uint8Array()));
     expect(data).toMatchObject({
-      version: 5,
+      version: 6,
       account: { provider: "oidc", displayName: "Anna Example", handle: null },
       plans: [{ role: "host", plan: { title: "Account run" } }],
     });

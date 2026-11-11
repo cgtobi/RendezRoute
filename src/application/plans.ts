@@ -42,6 +42,7 @@ import type {
   ChannelLinks,
   EmailOutbox,
   NtfyOutbox,
+  TelegramOutbox,
   ChannelRepository,
   FormNonceRepository,
   InviteRepository,
@@ -94,6 +95,11 @@ export interface PlanDeps extends DeviceDeps {
         email?: { outbox: EmailOutbox | undefined; reportAlerts: boolean } | undefined;
         /** Present while NTFY_URL is configured (decision D33). */
         ntfy?: { outbox: NtfyOutbox; server: URL } | undefined;
+        /**
+         * Present while TELEGRAM_BOT_TOKEN is configured (decision D34); the bot's name comes from
+         * Telegram and is undefined until the bot could be reached.
+         */
+        telegram?: { outbox: TelegramOutbox; botName: () => string | undefined } | undefined;
       }
     | undefined;
 }

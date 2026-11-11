@@ -13,7 +13,7 @@ import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { RatingResultSection } from "./rating.tsx";
 import type { RatingResultView } from "../../../../application/plan-views.ts";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
-import { MoreChannels, type NtfySwitchProps } from "./more-channels.tsx";
+import { MoreChannels, type NtfySwitchProps, type TelegramSwitchProps } from "./more-channels.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
 import type { Units } from "../../../../domain/units.ts";
@@ -73,6 +73,8 @@ export interface HostPageProps {
   email: EmailSwitchProps | undefined;
   /** ntfy; undefined without NTFY_URL (decision D33). */
   ntfy: NtfySwitchProps | undefined;
+  /** Telegram; undefined without a bot (decision D34). */
+  telegram: TelegramSwitchProps | undefined;
 }
 
 export function HostPage(props: HostPageProps) {
@@ -124,7 +126,7 @@ export function HostPage(props: HostPageProps) {
         <h2>{t("host.people")}</h2>
         <PushSwitch t={t} push={props.push} hint={t("push.hostHint")} />
         {props.email !== undefined && <EmailSwitch t={t} csrfToken={csrfToken} {...props.email} />}
-        <MoreChannels t={t} csrfToken={csrfToken} ntfy={props.ntfy} />
+        <MoreChannels t={t} csrfToken={csrfToken} ntfy={props.ntfy} telegram={props.telegram} />
         {Object.values(props.people).every((list) => list.length === 0) ? (
           <p>{t("host.noPeople")}</p>
         ) : (

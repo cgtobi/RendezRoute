@@ -455,6 +455,32 @@ export const en = {
     "This link no longer works. The notifications may already be off, or the plan is gone.",
   "ntfy.hostShared":
     "Everyone who manages this plan sees this topic and can read its notifications.",
+  "telegram.label": "Telegram",
+  "telegram.hint":
+    "Notifications from our bot in Telegram. Telegram receives the plan’s title, what happened, and its time and place.",
+  "telegram.accountHint":
+    "Notices about your account, such as a warning before an unused account is deleted, from our bot in Telegram.",
+  "telegram.connect": "Connect Telegram",
+  "telegram.pending": "Open the bot in Telegram and press Start. Nothing is sent before that.",
+  "telegram.unreachable":
+    "Waiting for Start, but Telegram can’t be reached right now. Try again later.",
+  "telegram.hostShared":
+    "Everyone who manages this plan sees this link; whoever presses Start first gets the plan’s notifications.",
+  "telegram.open": "Open Telegram",
+  "telegram.onPage": "Telegram notifications are on.",
+  "telegram.off": "Turn off Telegram",
+  "telegram.turnOff": "Turn off Telegram",
+  "telegram.on":
+    "Notifications about “{title}” are on. You can turn them off with the button below.",
+  "telegram.accountOn":
+    "Notices about your account on {instance} are on. You can turn them off with the button below.",
+  "telegramLink.offHeading": "Turn off Telegram notifications",
+  "telegramLink.offBody": "Stop the Telegram notifications about “{title}”?",
+  "telegramLink.accountOffBody": "Stop the Telegram notices about your account on {instance}?",
+  "telegramLink.off": "Turn off Telegram",
+  "telegramLink.turnedOff": "Telegram notifications are turned off.",
+  "privacy.telegram":
+    "If you connect Telegram, the bot’s messages (a plan’s title, what happened, its time and place) go through Telegram’s servers to your chat. The chat’s number is stored encrypted and deleted with your response, the plan or the account.",
   "email.label": "Email for news about this plan",
   "email.hint":
     "First we send a link to confirm the address. Every email has a link to turn them off.",

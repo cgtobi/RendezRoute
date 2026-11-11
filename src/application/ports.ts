@@ -533,7 +533,9 @@ export type NotificationTarget =
   /** An email address, carried the same way; nothing is left to turn off once it is gone. */
   | { email: { address: string } }
   /** An ntfy topic, carried the same way, with the server it lives on. */
-  | { ntfy: { topic: string; server: string } };
+  | { ntfy: { topic: string; server: string } }
+  /** A Telegram chat, carried the same way. */
+  | { telegram: { chatId: string } };
 
 /** Delivers a notification (spec 2a); one adapter per channel kind. */
 export interface Notifier {
@@ -594,8 +596,24 @@ export interface NtfyChannel extends ChannelBase {
   language: string | undefined;
 }
 
-/** Channels confirmed through a link the app sends to them (decisions D31, D33). */
-export type ConfirmableChannel = EmailChannel | NtfyChannel;
+/**
+ * A Telegram chat with the instance's bot (decision D34): waiting until the person presses Start
+ * through the page's deep link, which links their chat and confirms it.
+ */
+export interface TelegramChannel extends ChannelBase {
+  kind: "telegram";
+  /** Set by pressing Start; undefined while waiting for it. */
+  chatId: string | undefined;
+  /** As for email: an account's chat keeps the language it was set up in. */
+  language: string | undefined;
+}
+
+/**
+ * Channels the app confirms with their owner before using them: by a link it sends (email, ntfy)
+ * or by the owner starting the bot (Telegram) (decisions D31, D33, D34). Each has a link that
+ * turns it off.
+ */
+export type ConfirmableChannel = EmailChannel | NtfyChannel | TelegramChannel;
 
 export type NotificationChannel = PushChannel | ConfirmableChannel;
 
@@ -629,6 +647,11 @@ export interface ChannelRepository {
     language?: string,
   ): Promise<string>;
   ntfyFor(owner: ChannelOwner): Promise<NtfyChannel | undefined>;
+  /** Sets the owner's one Telegram channel, waiting for Start, replacing any earlier one (D34). */
+  setTelegram(owner: ChannelOwner, language?: string): Promise<string>;
+  telegramFor(owner: ChannelOwner): Promise<TelegramChannel | undefined>;
+  /** Links the chat that pressed Start and confirms the channel; false when it is gone. */
+  attachTelegramChat(id: string, chatId: string): Promise<boolean>;
 }
 
 /**
@@ -640,6 +663,12 @@ export interface ChannelLinks {
   tokenFor(channelId: string): string;
   /** The channel a token was made for, or undefined for a made-up one. */
   channelOf(token: string): string | undefined;
+  /**
+   * The same for Telegram's Start parameter, which allows only 64 characters (decision D34):
+   * shorter, but just as unguessable.
+   */
+  startTokenFor(channelId: string): string;
+  channelOfStart(token: string): string | undefined;
 }
 
 /** What a channel is for: a plan (as host or responder), or the account itself. */
@@ -658,7 +687,11 @@ export interface NtfyRecipient extends RecipientBase {
   kind: "ntfy";
   topic: string;
 }
-export type ChannelRecipient = EmailRecipient | NtfyRecipient;
+export interface TelegramRecipient extends RecipientBase {
+  kind: "telegram";
+  chatId: string;
+}
+export type ChannelRecipient = EmailRecipient | NtfyRecipient | TelegramRecipient;
 
 /** The messages every confirmable channel gets besides notifications (decisions D31, D33). */
 export interface ChannelOutbox<R extends ChannelRecipient> {
@@ -677,6 +710,9 @@ export interface EmailOutbox extends ChannelOutbox<EmailRecipient> {
 }
 
 export type NtfyOutbox = ChannelOutbox<NtfyRecipient>;
+
+/** Telegram's confirmation is the bot's answer to Start: notifications are on (decision D34). */
+export type TelegramOutbox = ChannelOutbox<TelegramRecipient>;
 
 /** A personal calendar feed (spec 6 feature 2); only the hash of its token is stored. */
 export interface CalendarFeed {

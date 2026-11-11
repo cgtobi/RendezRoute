@@ -165,6 +165,7 @@ describe("channel notifier with ntfy", () => {
       push: new FakeNotifier(),
       email: undefined,
       ntfy,
+      telegram: undefined,
     });
     const id = await channels.setNtfy(
       { responseId: "r1" },
@@ -184,6 +185,7 @@ describe("channel notifier with ntfy", () => {
       push: new FakeNotifier(),
       email: undefined,
       ntfy: undefined,
+      telegram: undefined,
     });
     expect(await without.send({ channelId: id }, notification)).toBe("failed");
   });

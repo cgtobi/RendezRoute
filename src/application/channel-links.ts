@@ -27,9 +27,21 @@ type ChannelDeps = Pick<PlanDeps, "notify" | "plans" | "responses">;
 
 /**
  * Sends one of the messages every confirmable channel gets through the outbox of its kind, when
- * the channel can be reached (channel-kinds.ts); "failed" otherwise.
+ * the channel can be reached (channel-kinds.ts); "failed" otherwise. A recipient gone for good
+ * (an address refused, the bot blocked) deletes the channel, as notifications do.
  */
-function sendVia(
+export async function sendVia(
+  notify: NonNullable<PlanDeps["notify"]>,
+  channel: ConfirmableChannel,
+  to: ChannelRecipient,
+  message: <R extends ChannelRecipient>(outbox: ChannelOutbox<R>, to: R) => Promise<SendResult>,
+): Promise<SendResult> {
+  const result = await sendThrough(notify, channel, to, message);
+  if (result === "gone") await notify.channels.delete(channel.id);
+  return result;
+}
+
+function sendThrough(
   notify: NonNullable<PlanDeps["notify"]>,
   channel: ConfirmableChannel,
   to: ChannelRecipient,
@@ -40,6 +52,9 @@ function sendVia(
       return message(notify.email.outbox, to);
     }
     if (to.kind === "ntfy" && notify.ntfy !== undefined) return message(notify.ntfy.outbox, to);
+    if (to.kind === "telegram" && notify.telegram !== undefined) {
+      return message(notify.telegram.outbox, to);
+    }
   }
   return Promise.resolve("failed");
 }
@@ -61,7 +76,7 @@ interface ChannelAbout {
   blocked: boolean;
 }
 
-async function aboutChannel(
+export async function aboutChannel(
   deps: Pick<PlanDeps, "plans" | "responses">,
   channel: ConfirmableChannel,
 ): Promise<ChannelAbout | undefined> {
@@ -86,10 +101,19 @@ async function aboutChannel(
   };
 }
 
-const recipientOf = (channel: ConfirmableChannel, language: string): ChannelRecipient =>
-  channel.kind === "email"
-    ? { kind: "email", channelId: channel.id, address: channel.address, language }
-    : { kind: "ntfy", channelId: channel.id, topic: channel.topic, language };
+/** Where the channel's outbox writes; a Telegram channel has nowhere until Start linked a chat. */
+function recipientOf(channel: ConfirmableChannel, language: string): ChannelRecipient | undefined {
+  switch (channel.kind) {
+    case "email":
+      return { kind: "email", channelId: channel.id, address: channel.address, language };
+    case "ntfy":
+      return { kind: "ntfy", channelId: channel.id, topic: channel.topic, language };
+    case "telegram":
+      return channel.chatId === undefined
+        ? undefined
+        : { kind: "telegram", channelId: channel.id, chatId: channel.chatId, language };
+  }
+}
 
 /**
  * A confirmed channel as its outbox writes to it, in its owner's language; none for rejected and
@@ -103,7 +127,9 @@ export async function confirmedRecipient<C extends ConfirmableChannel>(
   const about = await aboutChannel(deps, channel);
   return about === undefined || about.blocked
     ? undefined
-    : (recipientOf(channel, about.language) as Extract<ChannelRecipient, { kind: C["kind"] }>);
+    : (recipientOf(channel, about.language) as
+        | Extract<ChannelRecipient, { kind: C["kind"] }>
+        | undefined);
 }
 
 /** The channel behind a link, what it is about, and whether it may still be confirmed. */
@@ -118,7 +144,9 @@ async function linkTarget(
   if (channel === undefined || channel.kind === "webpush") return undefined;
   const about = await aboutChannel(deps, channel);
   if (about === undefined) return undefined;
-  const mayConfirm = !channel.verified && !about.blocked && canReach(notify, channel);
+  // Telegram is confirmed by pressing Start in the bot, never through its link (decision D34).
+  const mayConfirm =
+    channel.kind !== "telegram" && !channel.verified && !about.blocked && canReach(notify, channel);
   return { channel, about, mayConfirm };
 }
 
@@ -209,9 +237,11 @@ export function channelConfirmationHandler(
     if (channel === undefined || channel.kind === "webpush" || channel.verified) return "drop";
     const about = await aboutChannel(deps, channel);
     if (about === undefined || about.blocked) return "drop";
+    const to = recipientOf(channel, about.language);
+    if (to === undefined) return "drop";
     return jobOutcomeOf(
-      await sendVia(deps.notify, channel, recipientOf(channel, about.language), (outbox, to) =>
-        outbox.confirmation(to, about.subject),
+      await sendVia(deps.notify, channel, to, (outbox, recipient) =>
+        outbox.confirmation(recipient, about.subject),
       ),
     );
   };

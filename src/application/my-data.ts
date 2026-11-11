@@ -20,6 +20,7 @@ import { type PlanDeps, viewPlan } from "./plans.ts";
 import type { AccessScope, LinkedPlan } from "./ports.ts";
 import { withdrawResponse } from "./responses.ts";
 import { exportedEmail } from "./email.ts";
+import { exportedTelegramChat } from "./telegram.ts";
 
 export interface MyDataItem {
   planId: string;
@@ -96,6 +97,8 @@ export interface ExportedPlan {
   requestNote: string | undefined;
   /** The address for this plan's or response's emails (decision D31). */
   email: { address: string; confirmed: boolean } | undefined;
+  /** The Telegram chat this plan's or response's notifications go to, once linked (D34). */
+  telegramChat: string | undefined;
   ownContributions: ExportedContribution[];
   /** Only where the page offers it: the host and accepted participants. */
   route: Route | undefined;
@@ -133,6 +136,8 @@ export interface ExportedAccount {
   lastActiveAt: Date;
   /** The account's own address (decision D31). */
   email: { address: string; confirmed: boolean } | undefined;
+  /** The account's linked Telegram chat (decision D34). */
+  telegramChat: string | undefined;
 }
 
 /** Everything linked to the device, one plan it hosts, one's own response, or one template. */
@@ -165,18 +170,21 @@ export async function exportedPlan(
     ? undefined
     : await deps.responses.findForDevice(planId, device.id, scope);
   const requestNote = response?.requestNote;
-  const emailOwner = hosting
+  const channelOwner = hosting
     ? { planId }
     : response === undefined
       ? undefined
       : { responseId: response.id };
-  const email = emailOwner === undefined ? undefined : await exportedEmail(deps, emailOwner);
+  const email = channelOwner === undefined ? undefined : await exportedEmail(deps, channelOwner);
+  const telegramChat =
+    channelOwner === undefined ? undefined : await exportedTelegramChat(deps, channelOwner);
   if (result.kind === "responder") {
     return {
       role: "response",
       view: result.view,
       requestNote,
       email,
+      telegramChat,
       ownContributions: [],
       route: undefined,
       calendar,
@@ -193,6 +201,7 @@ export async function exportedPlan(
     view,
     requestNote,
     email,
+    telegramChat,
     ownContributions: (recap?.contributions ?? [])
       .filter((c) => c.own)
       .map(({ body, linkUrl, hidden }) => ({ body, linkUrl, hidden })),

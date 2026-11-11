@@ -1,9 +1,11 @@
-// The background jobs and what runs them (spec 6 feature 12): notifications by browser push, email
-// or ntfy, and the messages that are not notifications (decisions D31, D33): confirmation links,
-// report alerts and account notices. Wiring shared by the server (main.ts) and the tests.
+// The background jobs and what runs them (spec 6 feature 12): notifications by browser push,
+// email, ntfy or Telegram, and the messages that are not notifications (decisions D31, D33,
+// D34): confirmations, report alerts and account notices. Wiring shared by the server (main.ts)
+// and the tests.
 import { createChannelNotifier } from "./adapters/out/channel-notifier.ts";
 import type { EmailDelivery } from "./adapters/out/email/notifier.ts";
 import type { NtfyDelivery } from "./adapters/out/ntfy/notifier.ts";
+import type { TelegramDelivery } from "./adapters/out/telegram/notifier.ts";
 import { accountNoticeHandler, channelConfirmationHandler } from "./application/channel-links.ts";
 import { reportAlertHandler } from "./application/email.ts";
 import type { JobHandlers, JobOutcome } from "./application/jobs.ts";
@@ -18,15 +20,17 @@ export function createJobHandlers({
   push,
   email,
   ntfy,
+  telegram,
   identities,
 }: {
   planDeps: PlanDeps;
   /** Account notices check that the account was not used since they were queued. */
   identities: Pick<IdentityRepository, "findById">;
   push: Notifier;
-  /** Undefined without SMTP or NTFY_URL; their outboxes are in the plan dependencies. */
+  /** Undefined while their service is not configured; their outboxes are in the plan dependencies. */
   email: EmailDelivery | undefined;
   ntfy: NtfyDelivery | undefined;
+  telegram: TelegramDelivery | undefined;
 }): Record<JobType, JobHandlers[string]> {
   const notify = planDeps.notify;
   if (notify === undefined) throw new Error("notification dependencies missing");
@@ -34,7 +38,7 @@ export function createJobHandlers({
   const dropped = () => Promise.resolve<JobOutcome>("drop");
   return {
     notification: notificationHandler({
-      notifier: createChannelNotifier({ channels: notify.channels, push, email, ntfy }),
+      notifier: createChannelNotifier({ channels: notify.channels, push, email, ntfy, telegram }),
       onGone: (channelId) => notify.channels.delete(channelId),
       stillDue: (reminder) => reminderStillDue(planDeps, reminder),
     }),

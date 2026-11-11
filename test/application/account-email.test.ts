@@ -1,7 +1,7 @@
 // The account's own address, lending it to plans and responses, the expiry warning, and "Email me
 // my links" (spec 7 Optional notification channels, 3.10; decisions D31, I52; plan v1.0 step 6b).
 import { beforeEach, describe, expect, it } from "vite-plus/test";
-import { warnExpiringAccounts } from "../../src/application/account-data.ts";
+import { exportAccountData, warnExpiringAccounts } from "../../src/application/account-data.ts";
 import { type AccountDeps, finishLogin, startLogin } from "../../src/application/accounts.ts";
 import {
   accountEmailSetting,
@@ -18,6 +18,7 @@ import {
 } from "../../src/application/channel-links.ts";
 import { emailNewLink, newLinkAddress } from "../../src/application/links.ts";
 import { requestAccountNtfy } from "../../src/application/ntfy.ts";
+import { requestAccountTelegram, startTelegramChat } from "../../src/application/telegram.ts";
 import { removePerson } from "../../src/application/host.ts";
 import { createPlan } from "../../src/application/plans.ts";
 import type { ProviderAccount } from "../../src/application/ports.ts";
@@ -251,6 +252,16 @@ describe("the expiry warning (spec 3.10, decision I52)", () => {
     expect(await warnExpiringAccounts(deps)).toBe(1);
   });
 
+  it("deletes an address refused for good, like a notification does (decision I54)", async () => {
+    const device = await logIn();
+    const id = await accountAddress(device);
+    clock.set(new Date(fixtureNow.getTime() + 352 * DAY_MS).toISOString());
+    expect(await warnExpiringAccounts(deps)).toBe(1);
+    outbox.result = "gone";
+    await run("accountNotice");
+    expect(channels.channels.has(id)).toBe(false);
+  });
+
   it("is not sent for an account already due for deletion", async () => {
     const device = await logIn();
     await accountAddress(device);
@@ -308,6 +319,67 @@ describe("the expiry warning by ntfy (decision D33)", () => {
     expect(await warnExpiringAccounts(deps)).toBe(1);
     await run("accountNotice");
     expect(sent).toEqual([`expiry ${channel?.kind === "ntfy" ? channel.topic : ""} fr`]);
+  });
+});
+
+describe("the expiry warning by Telegram (decision D34)", () => {
+  it("reaches the account's linked chat, in the language it was connected in", async () => {
+    const sent: string[] = [];
+    const telegramOutbox = {
+      confirmation: () => Promise.resolve("sent" as const),
+      accountExpiry: (to: { chatId: string; language: string }) => (
+        sent.push(`expiry ${to.chatId} ${to.language}`),
+        Promise.resolve("sent" as const)
+      ),
+    };
+    deps = {
+      ...deps,
+      notify: deps.notify && {
+        ...deps.notify,
+        telegram: { outbox: telegramOutbox, botName: () => "isar_runs_bot" },
+      },
+    };
+    const device = await logIn();
+    await requestAccountTelegram(deps, { deviceToken: device, language: "de" });
+    const channel = [...channels.channels.values()].find((c) => c.kind === "telegram");
+    await startTelegramChat(deps, {
+      startToken: links.startTokenFor(channel?.id ?? ""),
+      chatId: "77",
+    });
+    clock.set(new Date(fixtureNow.getTime() + 352 * DAY_MS).toISOString());
+    expect(await warnExpiringAccounts(deps)).toBe(1);
+    await run("accountNotice");
+    expect(sent).toEqual(["expiry 77 de"]);
+    // In the account export (spec 3.7), like the account's address.
+    const exported = await exportAccountData(deps, { deviceToken: device });
+    expect(exported.kind === "found" && exported.data.account?.telegramChat).toBe("77");
+  });
+
+  it("deletes the chat when the bot was blocked (decision D34)", async () => {
+    deps = {
+      ...deps,
+      notify: deps.notify && {
+        ...deps.notify,
+        telegram: {
+          outbox: {
+            confirmation: () => Promise.resolve("sent" as const),
+            accountExpiry: () => Promise.resolve("gone" as const),
+          },
+          botName: () => "isar_runs_bot",
+        },
+      },
+    };
+    const device = await logIn();
+    await requestAccountTelegram(deps, { deviceToken: device, language: "de" });
+    const channel = [...channels.channels.values()].find((c) => c.kind === "telegram");
+    await startTelegramChat(deps, {
+      startToken: links.startTokenFor(channel?.id ?? ""),
+      chatId: "77",
+    });
+    clock.set(new Date(fixtureNow.getTime() + 352 * DAY_MS).toISOString());
+    expect(await warnExpiringAccounts(deps)).toBe(1);
+    await run("accountNotice");
+    expect(channels.channels.has(channel?.id ?? "")).toBe(false);
   });
 });
 

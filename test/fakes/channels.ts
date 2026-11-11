@@ -4,6 +4,7 @@ import type {
   EmailChannel,
   NotificationChannel,
   NtfyChannel,
+  TelegramChannel,
   PushChannel,
 } from "../../src/application/ports.ts";
 import type { PushSubscription } from "../../src/domain/push.ts";
@@ -89,6 +90,33 @@ export class FakeChannelRepository implements ChannelRepository {
     const id = `channel-${++this.#next}`;
     this.channels.set(id, { id, owner, kind: "ntfy", topic, server, language, verified: false });
     return Promise.resolve(id);
+  }
+
+  setTelegram(owner: ChannelOwner, language?: string) {
+    for (const c of this.#owned(owner)) if (c.kind === "telegram") this.channels.delete(c.id);
+    const id = `channel-${++this.#next}`;
+    this.channels.set(id, {
+      id,
+      owner,
+      kind: "telegram",
+      chatId: undefined,
+      language,
+      verified: false,
+    });
+    return Promise.resolve(id);
+  }
+
+  telegramFor(owner: ChannelOwner) {
+    return Promise.resolve(
+      this.#owned(owner).find((c): c is TelegramChannel => c.kind === "telegram"),
+    );
+  }
+
+  attachTelegramChat(id: string, chatId: string) {
+    const channel = this.channels.get(id);
+    if (channel?.kind !== "telegram") return Promise.resolve(false);
+    this.channels.set(id, { ...channel, chatId, verified: true });
+    return Promise.resolve(true);
   }
 
   ntfyFor(owner: ChannelOwner) {

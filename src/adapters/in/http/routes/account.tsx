@@ -48,6 +48,7 @@ import {
 } from "./shared.tsx";
 import { accountEmailProps, registerAccountEmailForms } from "./email.tsx";
 import { accountNtfyProps, registerAccountNtfyForms } from "./ntfy.tsx";
+import { accountTelegramProps, registerAccountTelegramForms } from "./telegram.tsx";
 
 const NOTICES = ["loggedIn", "loggedOut", "renamed", "claimed", "accountDeleted"] as const;
 
@@ -103,6 +104,7 @@ export function registerAccountRoutes(
         fediverse={forms.fediverse}
         email={await accountEmailProps(deps, deviceToken(c), forms.email)}
         ntfy={await accountNtfyProps(deps, deviceToken(c))}
+        telegram={await accountTelegramProps(deps, deviceToken(c))}
       />,
       { title: t("account.heading") },
     );
@@ -117,6 +119,7 @@ export function registerAccountRoutes(
   app.get("/account", (c) => renderAccount(c));
   registerAccountEmailForms(app, routeDeps, (c, email) => renderAccount(c, { email }));
   registerAccountNtfyForms(app, routeDeps);
+  registerAccountTelegramForms(app, routeDeps);
 
   if (logins.some((login) => login.provider === "oidc")) {
     app.get("/login/oidc", async (c) => {

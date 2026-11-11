@@ -14,7 +14,7 @@
      .item-actions) for plans, templates and the like.
    - Pages in parts: .sectioned on the page, each part a <section> divided by a hairline.
    - Notifications: .push (the browser switch), .email-switch, and .more-channels, a <details>
-     fold "More ways to be notified" holding .ntfy-switch (decisions D31, D33).
+     fold "More ways to be notified" holding .ntfy-switch and .telegram-switch (D31, D33, D34).
    - States: section.status (with .status-joined, .status-loggedIn, …) for one's own state;
      section.message-page for a page that only says what happened.
    - Plan facts: dl.when-where (boxes, or .lines on the plan page), dl.metrics (inline, or .tiles
@@ -1398,7 +1398,8 @@ details > summary {
    and buttons close together; the row's forms keep no margin of their own, also where a page gives
    its forms one (.manage). */
 .email-switch .notice,
-.ntfy-switch .notice {
+.ntfy-switch .notice,
+.telegram-switch .notice {
   margin-bottom: var(--s3);
 }
 

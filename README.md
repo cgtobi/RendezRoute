@@ -26,6 +26,7 @@ Things to know before going live:
 - **`FEDIVERSE_LOGIN=true`** lets people log in with a Mastodon, GoToSocial, Akkoma or Pleroma account; `FEDIVERSE_LOGIN_SERVERS` (comma-separated domains) limits which servers may be used.
 - **`SMTP_HOST`** and **`SMTP_FROM`** (the sender address) turn on email: people can get a plan's notifications by email after confirming their address, and with `CONTACT_EMAIL` and `ADMIN_TOKEN` you get an email for each new report. `SMTP_PORT` defaults to 587 with STARTTLS required; `SMTP_TLS=tls` uses TLS from the start (port 465 by default). Set `SMTP_USER` and `SMTP_PASSWORD` if your server needs a login.
 - **`NTFY_URL`** (an [ntfy](https://ntfy.sh) server, your own or a public one) lets people get notifications in the ntfy app: the app makes a secret topic for each of them on that server. Set `NTFY_TOKEN` if the server needs a token to publish.
+- **`TELEGRAM_BOT_TOKEN`** (a bot you create with [@BotFather](https://t.me/BotFather)) lets people get notifications from that bot in Telegram. The app reads the bot's messages itself, so no webhook or public URL is needed; set `TELEGRAM_API_URL` only for a local Bot API server.
 - The generated privacy notice is at `/privacy`; set `PRIVACY_URL` and `IMPRINT_URL` to link your own pages.
 
 ## Development

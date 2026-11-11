@@ -46,6 +46,11 @@ import { createSmtpMailer } from "./adapters/out/email/smtp-mailer.ts";
 import { createEmail, type EmailDelivery } from "./adapters/out/email/notifier.ts";
 import { createNtfyClient } from "./adapters/out/ntfy/client.ts";
 import { createNtfy, type NtfyDelivery } from "./adapters/out/ntfy/notifier.ts";
+import { createTelegramClient, type TelegramClient } from "./adapters/out/telegram/client.ts";
+import { createTelegram, type TelegramDelivery } from "./adapters/out/telegram/notifier.ts";
+import { startTelegramPoller, TELEGRAM_WAIT_SECONDS } from "./adapters/in/telegram-poller.ts";
+import { readMeta, writeMeta } from "./adapters/out/sqlite/meta.ts";
+import { startTelegramChat } from "./application/telegram.ts";
 import { createJobHandlers } from "./job-handlers.ts";
 import { isPushServiceHost } from "./domain/push.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
@@ -161,7 +166,13 @@ export type StartResult =
 
 interface Instance {
   /** Notifications by email and ntfy; each undefined while its service is not configured. */
-  deliveries: { email: EmailDelivery | undefined; ntfy: NtfyDelivery | undefined };
+  deliveries: {
+    email: EmailDelivery | undefined;
+    ntfy: NtfyDelivery | undefined;
+    telegram: TelegramDelivery | undefined;
+  };
+  /** The bot and where its name comes from once the poller runs; undefined without a bot. */
+  telegram: { client: TelegramClient; name: { current: () => string | undefined } } | undefined;
   config: Config;
   database: Database;
   keys: InstanceKeys;
@@ -209,6 +220,31 @@ async function openInstance(
           baseUrl: config.baseUrl,
           instanceName: config.instanceName,
           contactEmail: config.contactEmail,
+          timeZone: config.defaultTimezone,
+        });
+  // Telegram (decision D34): the Bot API is trusted configuration; a long poll may take its wait
+  // and some more before the request gives up.
+  const telegramClient =
+    config.telegram === undefined
+      ? undefined
+      : createTelegramClient({
+          apiUrl: config.telegram.apiUrl,
+          token: config.telegram.token,
+          fetch: createTrustedFetch({
+            userAgent: `RendezRoute (+${config.baseUrl.origin})`,
+            allowHttp: config.allowInsecureDev,
+            timeoutMs: (TELEGRAM_WAIT_SECONDS + 15) * 1000,
+          }),
+        });
+  const botName = { current: (): string | undefined => undefined };
+  const telegram =
+    telegramClient === undefined
+      ? undefined
+      : createTelegram({
+          client: telegramClient,
+          links: keys.channelLinks,
+          baseUrl: config.baseUrl,
+          instanceName: config.instanceName,
           timeZone: config.defaultTimezone,
         });
   // ntfy (decision D33): the instance's server is trusted configuration and may be on the local
@@ -262,6 +298,10 @@ async function openInstance(
         reportAlerts: email !== undefined && config.contactEmail !== undefined,
       },
       ntfy: ntfy === undefined ? undefined : { outbox: ntfy.outbox, server: ntfy.server },
+      telegram:
+        telegram === undefined
+          ? undefined
+          : { outbox: telegram.outbox, botName: () => botName.current() },
     },
   };
   return {
@@ -272,7 +312,9 @@ async function openInstance(
       keys,
       planDeps,
       warnings,
-      deliveries: { email: email?.delivery, ntfy: ntfy?.delivery },
+      deliveries: { email: email?.delivery, ntfy: ntfy?.delivery, telegram: telegram?.delivery },
+      telegram:
+        telegramClient === undefined ? undefined : { client: telegramClient, name: botName },
     },
   };
 }
@@ -383,6 +425,22 @@ export async function startServer(
     { logger },
   );
 
+  // The bot's messages (decision D34): "/start <code>" links a chat; the name feeds the deep link.
+  const bot = opened.instance.telegram;
+  const poller =
+    bot === undefined
+      ? undefined
+      : startTelegramPoller({
+          client: bot.client,
+          offset: {
+            read: async () => Number((await readMeta(database, "telegram_offset")) ?? "0"),
+            write: (value) => writeMeta(database, "telegram_offset", String(value)),
+          },
+          onStart: (start) => startTelegramChat(planDeps, start),
+          logger,
+        });
+  if (bot !== undefined && poller !== undefined) bot.name.current = () => poller.botName();
+
   const app = createApp({
     config,
     csrfKey: keys.csrfKey,
@@ -408,6 +466,7 @@ export async function startServer(
     server: {
       url: new URL(`http://127.0.0.1:${address.port}`),
       close: async () => {
+        await poller?.stop();
         await scheduler.stop();
         await new Promise<void>((resolve, reject) =>
           server.close((error) => (error ? reject(error) : resolve())),

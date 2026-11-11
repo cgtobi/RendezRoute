@@ -39,6 +39,9 @@ import { createChannelLinks } from "../../src/adapters/out/crypto/channel-links.
 import { createEmail } from "../../src/adapters/out/email/notifier.ts";
 import { createNtfy } from "../../src/adapters/out/ntfy/notifier.ts";
 import { FakeNtfyClient } from "../fakes/ntfy.ts";
+import { FakeTelegramClient } from "../fakes/telegram.ts";
+import { createTelegram } from "../../src/adapters/out/telegram/notifier.ts";
+import { startTelegramChat } from "../../src/application/telegram.ts";
 import { createJobHandlers } from "../../src/job-handlers.ts";
 import { runDueJobs } from "../../src/application/jobs.ts";
 import { FakeClock } from "../fakes/clock.ts";
@@ -109,6 +112,18 @@ export async function createTestApp({
           contactEmail: config.contactEmail,
           timeZone: config.defaultTimezone,
         });
+  // Telegram messages go to the fake bot (decision D34); tests press Start with pressStart().
+  const telegramClient = new FakeTelegramClient();
+  const telegram =
+    config.telegram === undefined
+      ? undefined
+      : createTelegram({
+          client: telegramClient,
+          links: channelLinks,
+          baseUrl: config.baseUrl,
+          instanceName: config.instanceName,
+          timeZone: config.defaultTimezone,
+        });
   // ntfy posts go to the fake client (decision D33).
   const ntfyClient = new FakeNtfyClient();
   const ntfy =
@@ -153,8 +168,14 @@ export async function createTestApp({
         reportAlerts: config.smtp !== undefined && config.contactEmail !== undefined,
       },
       ntfy: ntfy === undefined ? undefined : { outbox: ntfy.outbox, server: ntfy.server },
+      telegram:
+        telegram === undefined
+          ? undefined
+          : { outbox: telegram.outbox, botName: () => telegramClient.name },
     },
   };
+  const pressStart = (startToken: string, chatId = "424242") =>
+    startTelegramChat(planDeps, { startToken, chatId });
   const identities = createIdentityRepository(database, cipher);
   // Jobs run on demand with the real handlers; email goes to the fake mailer (decision D31).
   const pushed = new FakeNotifier();
@@ -163,6 +184,7 @@ export async function createTestApp({
     push: pushed,
     email: email?.delivery,
     ntfy: ntfy?.delivery,
+    telegram: telegram?.delivery,
     identities,
   });
   const runJobs = () => runDueJobs({ jobs, clock }, jobHandlers);
@@ -227,6 +249,8 @@ export async function createTestApp({
     identities,
     mailer,
     ntfyClient,
+    telegramClient,
+    pressStart,
     pushed,
     runJobs,
     channelLinks,

@@ -112,6 +112,15 @@ function isNotificationTarget(value: unknown): value is NotificationTarget {
       parseEmailAddress(email.address).ok
     );
   }
+  if ("telegram" in target) {
+    const telegram = target.telegram as Record<string, unknown> | null;
+    return (
+      typeof telegram === "object" &&
+      telegram !== null &&
+      typeof telegram.chatId === "string" &&
+      /^-?\d{1,20}$/.test(telegram.chatId)
+    );
+  }
   if ("ntfy" in target) {
     const ntfy = target.ntfy as Record<string, unknown> | null;
     return (

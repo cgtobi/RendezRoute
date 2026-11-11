@@ -1,7 +1,7 @@
-// The link every email and ntfy message carries, `/e/<token>` (spec 7 Optional notification
-// channels, decisions D31, D33): it confirms the channel, refuses it, or later turns it off. Like
-// other secret links it changes nothing on GET (decision D1), since mail scanners open links; the
-// mail app's one-click unsubscribe posts to the link itself (RFC 8058).
+// The link every email, ntfy and Telegram message carries, `/e/<token>` (spec 7 Optional
+// notification channels, decisions D31, D33, D34): it confirms the channel, refuses it, or later
+// turns it off. Like other secret links it changes nothing on GET (decision D1), since mail
+// scanners open links; the mail app's one-click unsubscribe posts to the link itself (RFC 8058).
 import type { Context, Hono } from "hono";
 import { openChannelLink, useChannelLink } from "../../../../application/channel-links.ts";
 import type { ConfirmableChannel } from "../../../../application/ports.ts";
@@ -62,6 +62,20 @@ const TEXTS: Readonly<Record<ConfirmableChannel["kind"], LinkTexts>> = {
     off: "ntfyLink.off",
     confirmed: "ntfyLink.confirmed",
     turnedOff: "ntfyLink.turnedOff",
+  },
+  // Telegram is confirmed by Start in the bot, so its link only ever turns off (decision D34).
+  telegram: {
+    confirmHeading: "telegramLink.offHeading",
+    offHeading: "telegramLink.offHeading",
+    confirmBody: "telegramLink.offBody",
+    accountConfirmBody: "telegramLink.accountOffBody",
+    offBody: "telegramLink.offBody",
+    accountOffBody: "telegramLink.accountOffBody",
+    confirm: "telegramLink.off",
+    refuse: "telegramLink.off",
+    off: "telegramLink.off",
+    confirmed: "telegramLink.turnedOff",
+    turnedOff: "telegramLink.turnedOff",
   },
 };
 

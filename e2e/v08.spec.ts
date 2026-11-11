@@ -159,3 +159,64 @@ test("ntfy: a secret topic, confirmed by tapping the posted link, then notificat
   expect(all[1]?.actions?.[0]?.url).toBe(confirmation?.click);
   expect(problems).toEqual([]);
 });
+
+test("Telegram: Start in the bot confirms, then notifications with a button to turn them off", async ({
+  browser,
+  baseURL,
+}) => {
+  const problems: string[] = [];
+  const base = baseURL ?? "";
+  const { page: admin } = await person(browser, base, problems);
+  const { page: host } = await person(browser, base, problems);
+  const { page: joiner } = await person(browser, base, problems);
+  await adminLogIn(admin);
+  await useInvite(host, await newInvite(admin));
+  const planUrl = await createPlan(host, `Telegram run ${RUN}`);
+
+  await joiner.goto(planUrl);
+  await joiner.getByLabel("Your name").fill("Ben");
+  await joiner.getByRole("button", { name: "I'm in" }).click();
+  await joiner.goto(`${planUrl}/me`);
+  await joiner.getByText("More ways to be notified").click();
+  await joiner.getByRole("button", { name: "Connect Telegram" }).click();
+  const deepLink =
+    (await joiner.getByRole("link", { name: "Open Telegram" }).getAttribute("href")) ?? "";
+  const code = new URL(deepLink).searchParams.get("start") ?? "";
+  expect(deepLink).toMatch(/^https:\/\/t\.me\/rendezroute_e2e_bot\?start=/);
+
+  // Pressing Start in the bot, from a chat of this run.
+  const chat = String(4000 + Math.floor(Math.random() * 1000));
+  await fetch("http://localhost:8080/telegram-test/start", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ chatId: chat, text: `/start ${code}` }),
+  });
+  await expect
+    .poll(
+      async () => {
+        await joiner.reload();
+        return joiner.getByText("Telegram notifications are on.").isVisible();
+      },
+      { timeout: 30_000, intervals: [1_000] },
+    )
+    .toBe(true);
+
+  await host.goto(`${planUrl}/host`);
+  await host.getByText("Cancel plan…").click();
+  await host.getByRole("button", { name: "Cancel this plan" }).click();
+  let messages: { text: string }[] = [];
+  await expect
+    .poll(
+      async () => {
+        messages = (await (
+          await fetch(`http://localhost:8080/telegram-test/messages?chat=${chat}`)
+        ).json()) as { text: string }[];
+        return messages.length;
+      },
+      { timeout: 40_000, intervals: [1_000] },
+    )
+    .toBe(2);
+  expect(messages[0]?.text).toContain("are on");
+  expect(messages[1]?.text).toContain("The plan was cancelled.");
+  expect(problems).toEqual([]);
+});

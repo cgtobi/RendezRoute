@@ -45,6 +45,7 @@ export function PrivacyPage({
         <p>{t("privacy.templates")}</p>
         {config.smtp !== undefined && <p>{t("privacy.email")}</p>}
         {config.ntfy !== undefined && <p>{t("privacy.ntfy", { server: config.ntfy.url.host })}</p>}
+        {config.telegram !== undefined && <p>{t("privacy.telegram")}</p>}
         {config.smtp !== undefined && loginConfigured(config) && <p>{t("privacy.accountEmail")}</p>}
         {adminLogin && <p>{t("privacy.reports")}</p>}
         {config.postingMode === "invite" && <p>{t("privacy.invites")}</p>}

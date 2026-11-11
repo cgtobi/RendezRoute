@@ -11,6 +11,7 @@ import type {
   NotificationChannel,
   NtfyChannel,
   PushChannel,
+  TelegramChannel,
 } from "../../../application/ports.ts";
 import type { PushSubscription } from "../../../domain/push.ts";
 import type { Database } from "./database.ts";
@@ -61,6 +62,10 @@ export function createChannelRepository(
         language?: string;
       };
       return { ...base, kind: "ntfy", topic, server: server ?? "", language };
+    }
+    if (row.kind === "telegram") {
+      const { chatId, language } = config as { chatId?: string; language?: string };
+      return { ...base, kind: "telegram", chatId, language };
     }
     if (row.kind !== "email") throw new Error(`Unknown channel kind ${row.kind}.`);
     const { address, language } = config as { address: string; language?: string };
@@ -180,6 +185,34 @@ export function createChannelRepository(
 
     setNtfy: (owner, { topic, server }, language) =>
       replace(owner, "ntfy", { topic, server, language }),
+
+    setTelegram: (owner, language) => replace(owner, "telegram", { language }),
+
+    async telegramFor(owner) {
+      return (await listFor(owner)).find(
+        (channel): channel is TelegramChannel => channel.kind === "telegram",
+      );
+    },
+
+    async attachTelegramChat(id, chatId) {
+      const row = await db
+        .selectFrom("notification_channels")
+        .selectAll()
+        .where("id", "=", id)
+        .where("kind", "=", "telegram")
+        .executeTakeFirst();
+      if (row === undefined) return false;
+      const config = JSON.parse(cipher.decrypt(row.config_enc, CONFIG)) as Record<string, string>;
+      await db
+        .updateTable("notification_channels")
+        .set({
+          config_enc: cipher.encrypt(JSON.stringify({ ...config, chatId }), CONFIG),
+          verified: 1,
+        })
+        .where("id", "=", id)
+        .execute();
+      return true;
+    },
 
     async ntfyFor(owner) {
       return (await listFor(owner)).find(

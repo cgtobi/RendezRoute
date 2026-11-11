@@ -108,7 +108,13 @@ describe("channel notifier", () => {
   it("reads a stored channel once and hands it on by kind; carried targets go straight on", async () => {
     const push = new FakeNotifier();
     const email = new FakeDelivery();
-    const notifier = createChannelNotifier({ channels, push, email, ntfy: undefined });
+    const notifier = createChannelNotifier({
+      channels,
+      push,
+      email,
+      ntfy: undefined,
+      telegram: undefined,
+    });
     const subscription = { endpoint: "https://fcm.googleapis.com/fcm/send/a", keys: KEYS };
     const pushId = await channels.add({ responseId: "r1" }, subscription);
     const emailId = await channels.setEmail({ responseId: "r1" }, "ben@example.org");
@@ -134,6 +140,7 @@ describe("channel notifier", () => {
       push: new FakeNotifier(),
       email,
       ntfy: undefined,
+      telegram: undefined,
     });
     expect(await withSmtp.send({ channelId: id }, notification)).toBe("failed");
     expect(email.sent).toEqual([]);
@@ -143,6 +150,7 @@ describe("channel notifier", () => {
       push: new FakeNotifier(),
       email: undefined,
       ntfy: undefined,
+      telegram: undefined,
     });
     expect(await without.send({ channelId: id }, notification)).toBe("failed");
     expect(await without.send({ email: { address: "c@example.org" } }, notification)).toBe(

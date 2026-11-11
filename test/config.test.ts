@@ -599,3 +599,40 @@ describe("NTFY_URL and NTFY_TOKEN (spec 7 Optional notification channels, decisi
     expect(errors({ ...minimal, NTFY_TOKEN: "tk_secret" })).toEqual(["NTFY_TOKEN needs NTFY_URL."]);
   });
 });
+
+const BOT = "123456789:AAH-abcdefghijklmnopqrstuvwxyz012345";
+
+describe("TELEGRAM_BOT_TOKEN and TELEGRAM_API_URL (spec 7 Optional notification channels, D34)", () => {
+  it("is off unless the bot's token is set, and uses Telegram's API by default", () => {
+    expect(ok(minimal).config.telegram).toBeUndefined();
+    expect(ok({ ...minimal, TELEGRAM_BOT_TOKEN: BOT }).config.telegram).toEqual({
+      token: BOT,
+      apiUrl: new URL("https://api.telegram.org/"),
+    });
+  });
+
+  it("takes another API server, e.g. a local Bot API server", () => {
+    expect(
+      ok({ ...minimal, TELEGRAM_BOT_TOKEN: BOT, TELEGRAM_API_URL: "https://bot-api.example.org" })
+        .config.telegram?.apiUrl,
+    ).toEqual(new URL("https://bot-api.example.org/"));
+  });
+
+  it("refuses a token that is not one, an API URL alone, and plain http outside development", () => {
+    expect(errors({ ...minimal, TELEGRAM_BOT_TOKEN: "secret" })).toEqual([
+      "TELEGRAM_BOT_TOKEN must be a bot token from @BotFather, such as 123456:ABC-DEF….",
+    ]);
+    expect(errors({ ...minimal, TELEGRAM_API_URL: "https://bot-api.example.org" })).toEqual([
+      "TELEGRAM_API_URL needs TELEGRAM_BOT_TOKEN.",
+    ]);
+    expect(
+      errors({
+        ...minimal,
+        TELEGRAM_BOT_TOKEN: BOT,
+        TELEGRAM_API_URL: "http://bot-api.example.org",
+      }),
+    ).toEqual([
+      "TELEGRAM_API_URL must use HTTPS unless ALLOW_INSECURE_DEV=true (development only).",
+    ]);
+  });
+});

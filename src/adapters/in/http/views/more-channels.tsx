@@ -1,7 +1,8 @@
 // "More ways to be notified" (decision D33): the channels besides push and email in one fold on the
 // manage, host and account pages, open while one of them is on or waiting. ntfy shows the secret
-// topic to subscribe to; Telegram follows in step 7b.
+// topic to subscribe to; Telegram the deep link into the bot, where Start confirms (D34).
 import type { NtfySetting } from "../../../../application/ntfy.ts";
+import type { TelegramSetting } from "../../../../application/telegram.ts";
 import { topicUrl } from "../../../../domain/ntfy.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
@@ -18,23 +19,121 @@ export interface NtfySwitchProps {
   shared?: boolean;
 }
 
+export interface TelegramSwitchProps {
+  setting: TelegramSetting;
+  /** The page's path; the forms post to `<base>/telegram` and `<base>/telegram/off`. */
+  base: string;
+  /** Rejected and removed people may only turn Telegram off (spec 3.5). */
+  offOnly?: boolean;
+  /** The account's own chat, on the account page: its own hint. */
+  forAccount?: boolean;
+  /** On the host page: everyone who manages the plan sees the deep link, like ntfy's topic. */
+  shared?: boolean;
+}
+
 export function MoreChannels({
   t,
   csrfToken,
   ntfy,
+  telegram,
 }: {
   t: Translate;
   csrfToken: string;
   ntfy: NtfySwitchProps | undefined;
+  telegram: TelegramSwitchProps | undefined;
 }) {
-  if (ntfy === undefined) return null;
-  const inUse = ntfy.setting.state !== "off";
-  if (ntfy.offOnly === true && !inUse) return null;
+  // Rejected and removed people see a channel only to turn it off.
+  const shown = <P extends { setting: { state: string }; offOnly?: boolean }>(props?: P) =>
+    props !== undefined && !(props.offOnly === true && props.setting.state === "off")
+      ? props
+      : undefined;
+  const ntfyShown = shown(ntfy);
+  const telegramShown = shown(telegram);
+  if (ntfyShown === undefined && telegramShown === undefined) return null;
+  const inUse = [ntfyShown, telegramShown].some(
+    (props) => props !== undefined && props.setting.state !== "off",
+  );
   return (
     <details class="more-channels" open={inUse}>
       <summary>{t("channels.more")}</summary>
-      <NtfySwitch t={t} csrfToken={csrfToken} {...ntfy} />
+      {ntfyShown !== undefined && <NtfySwitch t={t} csrfToken={csrfToken} {...ntfyShown} />}
+      {telegramShown !== undefined && (
+        <TelegramSwitch t={t} csrfToken={csrfToken} {...telegramShown} />
+      )}
     </details>
+  );
+}
+
+function TelegramSwitch({
+  t,
+  csrfToken,
+  setting,
+  base,
+  offOnly = false,
+  forAccount = false,
+  shared = false,
+}: TelegramSwitchProps & { t: Translate; csrfToken: string }) {
+  const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
+  const turnOff = (
+    <form method="post" action={`${base}/telegram/off`}>
+      {csrf}
+      <button type="submit" class="secondary">
+        {t("telegram.off")}
+      </button>
+    </form>
+  );
+  if (setting.state === "off") {
+    return (
+      <div class="telegram-switch" id="telegram">
+        <h3>{t("telegram.label")}</h3>
+        <p class="hint">{t(forAccount ? "telegram.accountHint" : "telegram.hint")}</p>
+        <form method="post" action={`${base}/telegram`}>
+          {csrf}
+          <button type="submit" class="secondary">
+            {t("telegram.connect")}
+          </button>
+        </form>
+      </div>
+    );
+  }
+  if (setting.state === "on" || offOnly) {
+    return (
+      <div class="telegram-switch" id="telegram">
+        <h3>{t("telegram.label")}</h3>
+        {setting.state === "on" && setting.sending && <p class="hint">{t("telegram.onPage")}</p>}
+        {turnOff}
+      </div>
+    );
+  }
+  if (setting.start === undefined) {
+    // Telegram has not told the bot's name: no deep link to offer, only turning off.
+    return (
+      <div class="telegram-switch" id="telegram">
+        <h3>{t("telegram.label")}</h3>
+        <p class="notice" role="status">
+          {t("telegram.unreachable")}
+        </p>
+        {turnOff}
+      </div>
+    );
+  }
+  // The deep link carries the one-time code; pressing Start in the bot confirms (decision D34).
+  const { botName, startToken } = setting.start;
+  const deepLink = `https://t.me/${encodeURIComponent(botName)}?start=${startToken}`;
+  return (
+    <div class="telegram-switch" id="telegram">
+      <h3>{t("telegram.label")}</h3>
+      <p class="notice" role="status">
+        {t("telegram.pending")}
+      </p>
+      {shared && <p class="hint">{t("telegram.hostShared")}</p>}
+      <div class="button-row">
+        <a class="button secondary" href={deepLink} rel="noopener noreferrer">
+          {t("telegram.open")}
+        </a>
+        {turnOff}
+      </div>
+    </div>
   );
 }
 

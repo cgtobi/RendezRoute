@@ -9,7 +9,7 @@ import { BackLink } from "./back-link.tsx";
 import { fieldErrorMessage } from "./format.ts";
 import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
-import { MoreChannels, type NtfySwitchProps } from "./more-channels.tsx";
+import { MoreChannels, type NtfySwitchProps, type TelegramSwitchProps } from "./more-channels.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { ResponseStatus } from "./response-status.tsx";
 
@@ -37,6 +37,8 @@ export function ManagePage(props: {
   email: EmailSwitchProps | undefined;
   /** ntfy; undefined without NTFY_URL (decision D33). */
   ntfy: NtfySwitchProps | undefined;
+  /** Telegram; undefined without a bot (decision D34). */
+  telegram: TelegramSwitchProps | undefined;
 }) {
   const { t, planId, response } = props;
   const blocked = isBlocked(response.kind);
@@ -109,6 +111,9 @@ export function ManagePage(props: {
         t={t}
         csrfToken={props.csrfToken}
         ntfy={props.ntfy === undefined ? undefined : { ...props.ntfy, offOnly: blocked }}
+        telegram={
+          props.telegram === undefined ? undefined : { ...props.telegram, offOnly: blocked }
+        }
       />
 
       <p>

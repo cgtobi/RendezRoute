@@ -477,6 +477,32 @@ export const fr: Messages = {
     "Ce lien ne fonctionne plus. Les notifications sont peut-être déjà désactivées, ou la sortie n’existe plus.",
   "ntfy.hostShared":
     "Toutes les personnes qui gèrent cette sortie voient ce sujet et peuvent lire ses notifications.",
+  "telegram.label": "Telegram",
+  "telegram.hint":
+    "Des notifications de notre bot dans Telegram. Telegram reçoit le titre de la sortie, ce qui s’est passé, ainsi que l’heure et le lieu.",
+  "telegram.accountHint":
+    "Les avis sur votre compte, comme un avertissement avant la suppression d’un compte inutilisé, de notre bot dans Telegram.",
+  "telegram.connect": "Connecter Telegram",
+  "telegram.pending": "Ouvrez le bot dans Telegram et touchez Démarrer. Rien n’est envoyé avant.",
+  "telegram.unreachable":
+    "En attente de Démarrer, mais Telegram est injoignable pour le moment. Réessayez plus tard.",
+  "telegram.hostShared":
+    "Toutes les personnes qui gèrent cette sortie voient ce lien ; la première qui touche Démarrer reçoit les notifications de la sortie.",
+  "telegram.open": "Ouvrir Telegram",
+  "telegram.onPage": "Les notifications Telegram sont activées.",
+  "telegram.off": "Désactiver Telegram",
+  "telegram.turnOff": "Désactiver Telegram",
+  "telegram.on":
+    "Les notifications sur « {title} » sont activées. Vous pouvez les désactiver avec le bouton ci-dessous.",
+  "telegram.accountOn":
+    "Les avis sur votre compte sur {instance} sont activés. Vous pouvez les désactiver avec le bouton ci-dessous.",
+  "telegramLink.offHeading": "Désactiver les notifications Telegram",
+  "telegramLink.offBody": "Arrêter les notifications Telegram sur « {title} » ?",
+  "telegramLink.accountOffBody": "Arrêter les avis Telegram sur votre compte sur {instance} ?",
+  "telegramLink.off": "Désactiver Telegram",
+  "telegramLink.turnedOff": "Les notifications Telegram sont désactivées.",
+  "privacy.telegram":
+    "Si vous connectez Telegram, les messages du bot (le titre d’une sortie, ce qui s’est passé, l’heure et le lieu) passent par les serveurs de Telegram jusqu’à votre conversation. Le numéro de la conversation est stocké chiffré et supprimé avec votre réponse, la sortie ou le compte.",
   "email.label": "E-mail pour les nouvelles de cette sortie",
   "email.hint":
     "Nous envoyons d’abord un lien pour confirmer l’adresse. Chaque e-mail contient un lien pour les désactiver.",

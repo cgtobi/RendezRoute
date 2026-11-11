@@ -88,6 +88,8 @@ services:
       SMTP_TLS: none
       SMTP_FROM: runs@example.org
       NTFY_URL: http://fakes:8080/ntfy
+      TELEGRAM_BOT_TOKEN: "123456789:AAH-e2e-fake-bot-token-0123456789ab"
+      TELEGRAM_API_URL: http://fakes:8080/telegram
     volumes:
       - accounts-data:/data
     ports:

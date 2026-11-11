@@ -13,6 +13,7 @@ import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { ManagePage } from "../views/manage-page.tsx";
 import { emailProps, registerEmailForms } from "./email.tsx";
 import { ntfyProps, registerNtfyForms } from "./ntfy.tsx";
+import { registerTelegramForms, telegramProps } from "./telegram.tsx";
 import { formatDate } from "../views/format.ts";
 import { RespondedPage } from "../views/responded-page.tsx";
 import {
@@ -157,6 +158,11 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
           { planId, deviceToken, role: "responder" },
           `/p/${planId}/me`,
         )}
+        telegram={await telegramProps(
+          planDeps,
+          { planId, deviceToken, role: "responder" },
+          `/p/${planId}/me`,
+        )}
       />,
       { title: result.planTitle },
     );
@@ -165,6 +171,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
   app.get("/p/:id/me", (c) => renderManagePage(c, c.req.param("id")));
 
   registerNtfyForms(app, deps, { role: "responder", base: "/p/:id/me" });
+  registerTelegramForms(app, deps, { role: "responder", base: "/p/:id/me" });
   registerEmailForms(app, deps, {
     role: "responder",
     base: "/p/:id/me",

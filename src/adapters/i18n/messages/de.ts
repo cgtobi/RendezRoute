@@ -476,6 +476,32 @@ export const de: Messages = {
     "Dieser Link funktioniert nicht mehr. Die Benachrichtigungen sind vielleicht schon abgeschaltet, oder das Treffen gibt es nicht mehr.",
   "ntfy.hostShared":
     "Alle, die dieses Treffen verwalten, sehen dieses Thema und können seine Benachrichtigungen lesen.",
+  "telegram.label": "Telegram",
+  "telegram.hint":
+    "Benachrichtigungen von unserem Bot in Telegram. Telegram erfährt den Titel des Treffens, was passiert ist, sowie Zeit und Ort.",
+  "telegram.accountHint":
+    "Hinweise zu deinem Konto, etwa eine Warnung, bevor ein ungenutztes Konto gelöscht wird, von unserem Bot in Telegram.",
+  "telegram.connect": "Telegram verbinden",
+  "telegram.pending": "Öffne den Bot in Telegram und tippe auf Start. Vorher wird nichts gesendet.",
+  "telegram.unreachable":
+    "Wartet auf Start, aber Telegram ist gerade nicht erreichbar. Versuch es später noch einmal.",
+  "telegram.hostShared":
+    "Alle, die dieses Treffen verwalten, sehen diesen Link; wer zuerst auf Start tippt, bekommt die Benachrichtigungen des Treffens.",
+  "telegram.open": "Telegram öffnen",
+  "telegram.onPage": "Telegram-Benachrichtigungen sind eingeschaltet.",
+  "telegram.off": "Telegram abschalten",
+  "telegram.turnOff": "Telegram abschalten",
+  "telegram.on":
+    "Benachrichtigungen zu „{title}“ sind eingeschaltet. Mit dem Knopf unten kannst du sie abschalten.",
+  "telegram.accountOn":
+    "Hinweise zu deinem Konto auf {instance} sind eingeschaltet. Mit dem Knopf unten kannst du sie abschalten.",
+  "telegramLink.offHeading": "Telegram-Benachrichtigungen abschalten",
+  "telegramLink.offBody": "Keine Telegram-Benachrichtigungen mehr zu „{title}“?",
+  "telegramLink.accountOffBody": "Keine Telegram-Hinweise mehr zu deinem Konto auf {instance}?",
+  "telegramLink.off": "Telegram abschalten",
+  "telegramLink.turnedOff": "Telegram-Benachrichtigungen sind abgeschaltet.",
+  "privacy.telegram":
+    "Wenn du Telegram verbindest, gehen die Nachrichten des Bots (der Titel eines Treffens, was passiert ist, Zeit und Ort) über die Server von Telegram an deinen Chat. Die Nummer des Chats wird verschlüsselt gespeichert und mit deiner Antwort, dem Treffen oder dem Konto gelöscht.",
   "email.label": "E-Mail für Neuigkeiten zu diesem Treffen",
   "email.hint":
     "Zuerst schicken wir einen Link, um die Adresse zu bestätigen. Jede E-Mail enthält einen Link zum Abschalten.",

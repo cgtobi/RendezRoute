@@ -272,7 +272,7 @@ describe("exports (spec 3.7: everything attached)", () => {
       };
     };
     const response = await exported(ben, `/p/${planId}/me/export.zip`);
-    expect(response.version).toBe(5);
+    expect(response.version).toBe(6);
     expect(response.plans[0]?.notificationEmail).toEqual({
       address: "ben@example.org",
       confirmed: false,

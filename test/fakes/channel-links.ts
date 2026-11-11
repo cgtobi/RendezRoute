@@ -9,4 +9,12 @@ export class FakeChannelLinks implements ChannelLinks {
   channelOf(token: string) {
     return token.startsWith("link-") ? token.slice("link-".length) : undefined;
   }
+
+  startTokenFor(channelId: string) {
+    return `start-${channelId}`;
+  }
+
+  channelOfStart(token: string) {
+    return token.startsWith("start-") ? token.slice("start-".length) : undefined;
+  }
 }

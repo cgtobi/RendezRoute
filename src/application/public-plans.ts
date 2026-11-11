@@ -34,6 +34,11 @@ export interface VisibilityChoices {
   followers: { allowed: boolean } | undefined;
   /** The owner's handle while it has an active profile: it shares public and followers plans. */
   sharedBy: string | undefined;
+  /**
+   * A stored plan in the fediverse now, or withdrawn from it for good (D39): narrowing a shared
+   * plan withdraws it, and a withdrawn one is not shared again.
+   */
+  fediverse?: "shared" | "withdrawn" | undefined;
 }
 
 /** What the forms offer for the plan in question, and who would share it in the fediverse. */
@@ -51,8 +56,13 @@ export async function visibilityChoices(
     actors === undefined || owner === undefined
       ? undefined
       : await actors.profiles.findActive(owner);
+  const state =
+    "plan" in about && actors !== undefined
+      ? (await actors.publications.find(about.plan.id)).kind
+      : undefined;
+  const withdrawn = state === "withdrawn";
   // Listed in Nearby, or shared by the owner's profile: otherwise nothing would find it.
-  const found = deps.publicPlansOffered !== false || profile !== undefined;
+  const found = deps.publicPlansOffered !== false || (profile !== undefined && !withdrawn);
   return {
     publicAllowed:
       stored?.visibility === "public" ||
@@ -65,7 +75,9 @@ export async function visibilityChoices(
       actors === undefined && stored?.visibility !== "followers"
         ? undefined
         : { allowed: profile !== undefined || stored?.visibility === "followers" },
-    sharedBy: profile?.handle,
+    // A withdrawn plan is not shared again (D39), so the options do not say it would be.
+    sharedBy: withdrawn ? undefined : profile?.handle,
+    fediverse: state === "published" ? "shared" : withdrawn ? "withdrawn" : undefined,
   };
 }
 

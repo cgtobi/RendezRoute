@@ -1,5 +1,6 @@
 // Table types for Kysely (spec section 4). Must match the migrations in ./migrations;
 // repository integration tests and the schema conformance test catch drift.
+import type { Audience } from "../../../application/ports.ts";
 import type { IdentityProviderKind } from "../../../domain/identity.ts";
 import type { ReportReason } from "../../../domain/report.ts";
 import type { RatingValue } from "../../../domain/rating.ts";
@@ -223,6 +224,15 @@ export interface FediverseFollowersTable {
   created_at: string;
 }
 
+export interface PlanPublicationsTable {
+  plan_id: string;
+  /** Who sent it, while it is in the fediverse; null once withdrawn. */
+  local_actor: string | null;
+  audience: Audience | null;
+  published_at: string;
+  withdrawn_at: string | null;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -231,6 +241,7 @@ export interface DatabaseSchema {
   /** Poster actors (decisions D36, D37). */
   fediverse_profiles: FediverseProfilesTable;
   fediverse_followers: FediverseFollowersTable;
+  plan_publications: PlanPublicationsTable;
   plans: PlansTable;
   devices: DevicesTable;
   device_links: DeviceLinksTable;

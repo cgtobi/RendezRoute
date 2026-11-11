@@ -11,6 +11,7 @@ import {
 } from "./adapters/out/federation/outbound.ts";
 import { createFediverseProfileRepository } from "./adapters/out/sqlite/fediverse-profiles.ts";
 import { createFollowerRepository } from "./adapters/out/sqlite/followers.ts";
+import { createPublicationRepository } from "./adapters/out/sqlite/publications.ts";
 import { createFedifyKvStore } from "./adapters/out/sqlite/fedify-kv.ts";
 import { existsSync, mkdirSync } from "node:fs";
 import { createGpxRouteParser } from "./adapters/out/gpx/route-parser.ts";
@@ -331,6 +332,7 @@ async function openInstance(
       profiles,
       actorKeys: actorKeyFactory,
       followers: createFollowerRepository(database, keys.cipher, keys.identityLookup, ids),
+      publications: createPublicationRepository(database),
       // Deliveries go through the job queue (decision D38).
       publisher: federation?.outbound.publisher,
       enabled: config.federationEnabled,

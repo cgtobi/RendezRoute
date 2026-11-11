@@ -1,6 +1,7 @@
 // The instance admin (spec 7 Moderation, 3.6 Instance admin column): logging in, open reports,
 // public plan fields with the plan's reports, resolving reports and deleting any plan. Every use
 // case checks the admin session through `AdminAuth`.
+import { withdrawDeletedPlans } from "./publishing.ts";
 import {
   type AttachedContribution,
   copyOfPost,
@@ -132,6 +133,7 @@ export async function deletePlanAsAdmin(
   const plan = await deps.plans.findById(request.planId);
   if (plan === undefined) return { kind: "not_found" };
   const sendNotices = await deletionNotices(deps, plan);
+  await withdrawDeletedPlans(deps, [plan]);
   await deps.plans.delete(plan.id);
   await sendNotices();
   return { kind: "deleted" };

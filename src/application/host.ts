@@ -6,6 +6,7 @@ import {
   visibilityChoices,
   visibilityRefused,
 } from "./public-plans.ts";
+import { syncPublication } from "./publishing.ts";
 import type { Units } from "../domain/pace.ts";
 import type { NotificationKind } from "../domain/notification.ts";
 import type { Plan } from "../domain/plan.ts";
@@ -225,6 +226,8 @@ export async function editPlan(
     }
   }
   if (isMaterialChange(plan, updated)) await notifyResponders(deps, updated, "changed");
+  // Last, so people here are told even if the fediverse cannot be (D38).
+  await syncPublication(deps, plan, updated);
   return {
     kind: "updated",
     recapWindowShortened: shortenedRecapWindow(request.input.recapWindow, updated.recapWindow),
@@ -247,6 +250,8 @@ export async function cancelPlan(
   const cancelled: Plan = { ...plan, status: "cancelled", updatedAt: now };
   await deps.plans.update(cancelled);
   await notifyResponders(deps, cancelled, "cancelled");
+  // Said in the fediverse too, as an `Update` (spec 7), once people here were told.
+  await syncPublication(deps, plan, cancelled);
   return { kind: "cancelled" };
 }
 

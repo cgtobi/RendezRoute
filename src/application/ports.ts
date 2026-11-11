@@ -9,7 +9,7 @@ import type { Notification } from "../domain/notification.ts";
 import type { PushSubscription } from "../domain/push.ts";
 import type { PlanRating } from "../domain/rating.ts";
 import type { RecapContribution } from "../domain/recap.ts";
-import type { Plan } from "../domain/plan.ts";
+import type { Plan, PlanStatus } from "../domain/plan.ts";
 import type { ReminderKind } from "../domain/reminders.ts";
 import type { PlanResponse, ResponseKind } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
@@ -321,6 +321,45 @@ export interface FollowerRepository {
   clear(): Promise<number>;
 }
 
+/** Who a plan goes to in the fediverse (spec 7 Addressing): its actor's followers, or everyone. */
+export type Audience = "followers" | "public";
+
+/** Who a plan was sent to in the fediverse, and by which local actor (decisions D38, D39). */
+export interface PlanPublication {
+  planId: string;
+  localActor: string;
+  audience: Audience;
+}
+
+export type PublicationState =
+  | { kind: "none" }
+  | ({ kind: "published" } & PlanPublication)
+  /** Sent `Delete` once: never sent again (D39). */
+  | { kind: "withdrawn" };
+
+/** Plans in the fediverse (decisions D38, D39); a plan's row goes with it. */
+export interface PublicationRepository {
+  find(planId: string): Promise<PublicationState>;
+  /** Only a plan that was sent can be withdrawn. */
+  /** Those of the given plans that are in the fediverse now. */
+  findPublished(planIds: readonly string[]): Promise<PlanPublication[]>;
+  /** Records that the plan was sent (`Create`), or to whom it now goes (`Update`). */
+  publish(publication: PlanPublication, now: Date): Promise<void>;
+  withdraw(planId: string, now: Date): Promise<void>;
+  /** Every plan an actor sent, when it is retired: its `Delete` covers them (D37). */
+  withdrawAllBy(localActor: string, now: Date): Promise<void>;
+}
+
+/** What a plan shows in the fediverse: the public fields its `Event` is made of (spec 3.6, 7). */
+export interface PlanEventView {
+  id: string;
+  title: string;
+  note: string | undefined;
+  startsAt: Date;
+  area: { label: string; point: GeoPoint | undefined };
+  status: PlanStatus;
+}
+
 /**
  * Activities to other servers (spec 7 ActivityPub, decision D38): queued, signed by the local
  * actor and delivered in the background. Undefined while federation is off.
@@ -330,6 +369,14 @@ export interface FederationPublisher {
   acceptFollow(localActor: string, follow: { id: string; follower: RemoteActor }): Promise<void>;
   /** Tells an actor's followers that it is gone for good (decision D37). */
   deleteActor(localActor: string, followers: readonly RemoteActor[]): Promise<void>;
+  /** A plan as an `Event`, sent to its audience (`Create`) or sent again changed (`Update`). */
+  sendPlan(
+    activity: "create" | "update",
+    publication: PlanPublication & { event: PlanEventView; language: string },
+    followers: readonly RemoteActor[],
+  ): Promise<void>;
+  /** `Delete` for a plan, to the audience that got it. */
+  withdrawPlan(publication: PlanPublication, followers: readonly RemoteActor[]): Promise<void>;
 }
 
 /** New signing keys for a poster actor, serialized for storage (decision D36). */

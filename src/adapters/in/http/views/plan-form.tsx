@@ -74,6 +74,8 @@ export interface VisibilityChoice {
   sharedBy: string | undefined;
   /** Whether public plans are listed in Nearby, which the public option then says. */
   nearby: boolean;
+  /** A stored plan in the fediverse, or withdrawn from it for good (decision D39). */
+  fediverse?: "shared" | "withdrawn" | undefined;
 }
 
 type Choosable = (typeof CHOOSABLE_VISIBILITIES)[number];
@@ -454,6 +456,8 @@ function VisibilityFieldset({
           {options[visibility].label}
         </label>
       ))}
+      {choice.fediverse === "shared" && <p class="hint">{t("form.fediverseShared")}</p>}
+      {choice.fediverse === "withdrawn" && <p class="hint">{t("form.fediverseWithdrawn")}</p>}
       {followers !== undefined && !followers.allowed && (
         <p class="hint">
           {t("form.followersNeedsProfile")}{" "}

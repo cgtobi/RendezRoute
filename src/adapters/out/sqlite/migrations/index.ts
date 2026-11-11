@@ -25,6 +25,7 @@ import * as m0023 from "./0023-channel-kinds.ts";
 import * as m0024 from "./0024-fedify-kv.ts";
 import * as m0025 from "./0025-poster-actors.ts";
 import * as m0026 from "./0026-followers.ts";
+import * as m0027 from "./0027-plan-publications.ts";
 
 /** Statically imported so migrations work identically from src/ and dist/. Keys sort in order. */
 export const migrations: Readonly<Record<string, Migration>> = {
@@ -54,4 +55,5 @@ export const migrations: Readonly<Record<string, Migration>> = {
   "0024-fedify-kv": m0024,
   "0025-poster-actors": m0025,
   "0026-followers": m0026,
+  "0027-plan-publications": m0027,
 };

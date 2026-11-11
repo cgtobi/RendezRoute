@@ -8,7 +8,10 @@ import { outboundContextLoader } from "../../../src/adapters/out/federation/docu
 import { FakeOidcServer } from "../../fakes/oidc-server.ts";
 import { FakeOutboundHttp } from "../../fakes/outbound-http.ts";
 import { createTestApp } from "../../support/app.ts";
-import { TestClient } from "../../support/client.ts";
+import { hiddenFields, TestClient } from "../../support/client.ts";
+import { escaped } from "../../support/html.ts";
+import { createPlanViaUi, editForm } from "../../support/plans.ts";
+import { translator } from "../../../src/adapters/i18n/i18n.ts";
 
 const AP = { accept: "application/activity+json" };
 const HOST = "runs.example.org";
@@ -263,5 +266,142 @@ describe("following a poster's actor (decisions D37, D38)", () => {
       headers: AP,
     });
     expect(collection.status).toBe(404);
+  });
+});
+
+describe("publishing plans (decisions D38, D39)", () => {
+  it("sends a shared plan to the followers as an Event with public fields, and a Delete when it goes", async () => {
+    const oidc = new FakeOidcServer();
+    const test = await createTestApp({ env: oidc.env(), oidc });
+    const anna = new TestClient(test.app);
+    const started = await anna.get("/login/oidc");
+    const callback = oidc.approve(new URL(started.headers.get("location") ?? ""), {
+      sub: "anna",
+      name: "Anna Müller",
+    });
+    await anna.get(`${callback.pathname}${callback.search}`);
+    const csrf = (await anna.hiddenFields("/account"))._csrf ?? "";
+    await anna.postForm("/account/profile", { _csrf: csrf, handle: "anna" });
+    const finger = (await (
+      await test.app.request(`/.well-known/webfinger?resource=acct:anna@${HOST}`)
+    ).json()) as { links: { rel: string; href: string }[] };
+    const actor = finger.links.find((link) => link.rel === "self")?.href ?? "";
+    const ben = await remotePerson(test, "ben");
+    await post(test, ben, followOf(ben, actor));
+
+    const { planId } = await createPlanViaUi(anna, { visibility: "public", title: "Hill repeats" });
+    await test.runJobs();
+    const create = delivered(test).find((sent) => sent.activity.type === "Create");
+    const event = `https://${HOST}/p/${planId}`;
+    expect(create?.url).toBe("https://social.example/inbox");
+    expect(create?.activity).toMatchObject({
+      actor,
+      to: "as:Public",
+      cc: `${actor}/followers`,
+      object: {
+        id: event,
+        type: "Event",
+        name: "Hill repeats",
+        attributedTo: actor,
+        to: "as:Public",
+        cc: `${actor}/followers`,
+      },
+    });
+    for (const secret of ["North gate", "48.16321", "11.60147"]) {
+      expect(JSON.stringify(create?.activity)).not.toContain(secret);
+    }
+    // Fetched by its address, it is addressed as it was sent.
+    const fetched = (await (await test.app.request(`/p/${planId}`, { headers: AP })).json()) as {
+      to?: unknown;
+    };
+    expect(fetched.to).toBe("as:Public");
+    // The host is told what narrowing would do.
+    const hostPage = await (await anna.get(`/p/${planId}/host`)).text();
+    expect(hostPage).toContain(escaped(translator("en")("form.fediverseShared")));
+
+    await anna.postForm(`/p/${planId}/host/delete`, hiddenFields(hostPage));
+    await test.runJobs();
+    const gone = delivered(test).at(-1);
+    expect(gone?.activity).toMatchObject({
+      type: "Delete",
+      actor,
+      to: "as:Public",
+      object: { type: "Tombstone", id: event },
+    });
+  });
+
+  it("addresses followers plans to the followers, updates on cancel, and withdraws a public plan narrowed to followers", async () => {
+    const oidc = new FakeOidcServer();
+    const test = await createTestApp({ env: oidc.env(), oidc });
+    const anna = new TestClient(test.app);
+    const started = await anna.get("/login/oidc");
+    const callback = oidc.approve(new URL(started.headers.get("location") ?? ""), {
+      sub: "anna",
+      name: "Anna Müller",
+    });
+    await anna.get(`${callback.pathname}${callback.search}`);
+    const csrf = (await anna.hiddenFields("/account"))._csrf ?? "";
+    await anna.postForm("/account/profile", { _csrf: csrf, handle: "anna" });
+    const finger = (await (
+      await test.app.request(`/.well-known/webfinger?resource=acct:anna@${HOST}`)
+    ).json()) as { links: { rel: string; href: string }[] };
+    const actor = finger.links.find((link) => link.rel === "self")?.href ?? "";
+    const ben = await remotePerson(test, "ben");
+    await post(test, ben, followOf(ben, actor));
+    const followers = `${actor}/followers`;
+
+    const cancelled = (await createPlanViaUi(anna, { visibility: "followers", title: "Intervals" }))
+      .planId;
+    const hostPage = await (await anna.get(`/p/${cancelled}/host`)).text();
+    await anna.postForm(`/p/${cancelled}/host/cancel`, hiddenFields(hostPage));
+    await test.runJobs();
+    const [create, update] = delivered(test).filter((sent) => sent.activity.type !== "Accept");
+    expect(create?.activity).toMatchObject({
+      type: "Create",
+      to: followers,
+      object: { type: "Event", to: followers },
+    });
+    expect(create?.activity).not.toHaveProperty("cc");
+    expect(update?.activity).toMatchObject({
+      type: "Update",
+      actor,
+      to: followers,
+      object: {
+        id: `https://${HOST}/p/${cancelled}`,
+        name: translator("en")("preview.cancelled", { title: "Intervals" }),
+      },
+    });
+
+    // Repeating a template of a public plan says where the new plan goes, before it does.
+    const { planId } = await createPlanViaUi(anna, { visibility: "public" });
+    const page = await (await anna.get(`/p/${planId}/host`)).text();
+    const saveForm = page.slice(page.indexOf(`action="/p/${planId}/host/template"`));
+    const saved = await (
+      await anna.postForm(`/p/${planId}/host/template`, hiddenFields(saveForm))
+    ).text();
+    const templatePath = /href="(\/templates\/[^"]+)"/.exec(saved)?.[1] ?? "";
+    expect(await (await anna.get(templatePath)).text()).toContain(
+      escaped(translator("en")("template.repeatSharedPublic", { handle: `@anna@${HOST}` })),
+    );
+
+    // Narrowed to followers: withdrawn for good, and from then on not the actor's in the
+    // fediverse, though it is still the followers' plan here.
+    await anna.postForm(`/p/${planId}/host`, {
+      ...(await editForm(anna, planId)),
+      visibility: "followers",
+    });
+    await test.runJobs();
+    expect(delivered(test).at(-1)?.activity).toMatchObject({
+      type: "Delete",
+      to: "as:Public",
+      object: { type: "Tombstone", id: `https://${HOST}/p/${planId}` },
+    });
+    const event = (await (await test.app.request(`/p/${planId}`, { headers: AP })).json()) as {
+      attributedTo?: unknown;
+    };
+    expect(event.attributedTo).toBe(INSTANCE);
+    expect(await (await anna.get(`/p/${planId}/host`)).text()).toContain(
+      escaped(translator("en")("form.fediverseWithdrawn")),
+    );
   });
 });

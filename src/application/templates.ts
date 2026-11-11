@@ -2,6 +2,7 @@
 // deleted by retention or its host, or saved from a live plan; viewed, edited, repeated and
 // deleted by the devices linked to them.
 import { type VisibilityChoices, visibilityChoices, visibilityRefused } from "./public-plans.ts";
+import { withdrawDeletedPlans } from "./publishing.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { FieldError, PlanInput } from "../domain/plan-input.ts";
 import {
@@ -79,6 +80,7 @@ export async function deletePlansKeepingTemplates(
       kept.push(await newTemplate(deps, plan, plan.template.includePrivate, undefined));
     }
   }
+  await withdrawDeletedPlans(deps, plans);
   // Stored in the same transaction as the deletion.
   await deps.plans.deleteMany(
     plans.map((plan) => plan.id),

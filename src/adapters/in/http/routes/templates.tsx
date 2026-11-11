@@ -1,5 +1,6 @@
 // Repeatable templates (spec 3.10 Templates, decision I43): "Save as template" on the host page,
 // and the template page with Repeat, Edit and Delete for the devices linked to a template.
+import { fediverseAddress } from "../../../../domain/actor.ts";
 import type { Context, Hono } from "hono";
 import {
   deleteTemplate,
@@ -81,6 +82,14 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
           deviceToken: readDeviceToken(c, config),
         })}
         linkNonce={newNonce()}
+        repeatShared={
+          result.template.visibility === "link" || result.visibility.sharedBy === undefined
+            ? undefined
+            : {
+                handle: fediverseAddress(result.visibility.sharedBy, config.baseUrl.hostname),
+                audience: result.template.visibility,
+              }
+        }
       />,
       { title: result.template.title },
     );

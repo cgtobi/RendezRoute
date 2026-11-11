@@ -10,6 +10,7 @@ import {
   FakeActorKeys,
   FakeFediverseProfiles,
   FakeFollowers,
+  FakePublications,
 } from "../fakes/fediverse-profiles.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
@@ -134,6 +135,7 @@ describe("runHousekeeping and fediverse followers (decision D38)", () => {
           profiles: new FakeFediverseProfiles(followers),
           actorKeys: new FakeActorKeys(),
           followers,
+          publications: new FakePublications(),
           publisher: undefined,
           enabled,
         },

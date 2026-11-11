@@ -13,7 +13,6 @@ import {
   Follow,
   isActor,
   Person,
-  Place,
   Tombstone,
   Undo,
 } from "@fedify/fedify/vocab";
@@ -33,12 +32,12 @@ import {
   isFollowable,
   unfollowActor,
 } from "../../../application/following.ts";
-import { resolveLanguage, translator } from "../../i18n/i18n.ts";
+import { resolveLanguage } from "../../i18n/i18n.ts";
+import { planEvent } from "../../out/federation/event.ts";
 import {
   outboundContextLoader,
   outboundDocumentLoader,
 } from "../../out/federation/document-loader.ts";
-import type { PlanViewForViewer } from "../../../application/plan-views.ts";
 import { parseKeyPairs, type SigningKeyPair } from "../../out/crypto/federation-keys.ts";
 
 export interface FederationSettings {
@@ -134,24 +133,23 @@ export function createInstanceFederation({
     const result = await viewPlan(planDeps, { planId: id, deviceToken: undefined });
     if (result.kind !== "viewer") return null;
     // In the requester's language, as the page would be (decision D15).
-    const t = translator(
-      resolveLanguage({
-        cookie: undefined,
-        acceptLanguage: ctx.request.headers.get("accept-language") ?? undefined,
-      }),
-    );
-    // Cancelled, said in the name as link previews do; step 10 adds the cancelling Update.
-    const name =
-      result.view.status === "cancelled"
-        ? t("preview.cancelled", { title: result.view.title })
-        : result.view.title;
-    // The owner's actor once the plan is shared in the fediverse (D35, D37); else the instance's.
+    const language = resolveLanguage({
+      cookie: undefined,
+      acceptLanguage: ctx.request.headers.get("accept-language") ?? undefined,
+    });
+    // The owner's actor while its profile shares the plan (D35, D37); else, also once withdrawn
+    // from the fediverse (D39), the instance's.
+    const sent = await planDeps.posterActors?.publications.find(id);
     const plan = await planDeps.plans.findById(id);
-    const author = plan === undefined ? undefined : await planActor(actorDeps, plan);
-    return planEvent(result.view, name, {
-      id: ctx.getObjectUri(Event, { id }),
-      page: new URL(`/p/${id}`, baseUrl),
-      attributedTo: ctx.getActorUri(author ?? INSTANCE_ACTOR),
+    const author =
+      plan === undefined || sent?.kind === "withdrawn"
+        ? undefined
+        : await planActor(planDeps, plan);
+    // Addressed as it was sent, so a server fetching it shows it to the same people (D38).
+    return planEvent(result.view, language, {
+      baseUrl,
+      localActor: author ?? INSTANCE_ACTOR,
+      audience: sent?.kind === "published" ? sent.audience : undefined,
     });
   });
 
@@ -229,37 +227,4 @@ async function actorGone(http: OutboundHttp, actor: URL): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/** What every viewer sees of a plan, as an ActivityStreams Event (spec 3.6, 7). */
-function planEvent(
-  view: PlanViewForViewer,
-  name: string,
-  uris: { id: URL; page: URL; attributedTo: URL },
-): Event {
-  const point = view.area.point;
-  return new Event({
-    id: uris.id,
-    // The page has the plan's time zone; ActivityStreams has no property for it.
-    name,
-    content: view.note === undefined ? null : noteHtml(view.note),
-    startTime: Temporal.Instant.from(view.startsAt.toISOString()),
-    location: new Place({
-      name: view.area.label,
-      latitude: point?.lat ?? null,
-      longitude: point?.lng ?? null,
-    }),
-    url: uris.page,
-    attribution: uris.attributedTo,
-  });
-}
-
-/** The note as one paragraph of escaped text, its line breaks kept. */
-function noteHtml(note: string): string {
-  const escaped = note
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-  return `<p>${escaped.split("\n").join("<br>")}</p>`;
 }

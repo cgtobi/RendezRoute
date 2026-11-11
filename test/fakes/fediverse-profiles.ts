@@ -4,6 +4,10 @@ import type {
   FediverseProfile,
   FediverseProfileRepository,
   FollowerRepository,
+  PlanEventView,
+  PlanPublication,
+  PublicationRepository,
+  PublicationState,
   RemoteActor,
 } from "../../src/application/ports.ts";
 
@@ -124,12 +128,81 @@ export class FakeFollowers implements FollowerRepository {
   }
 }
 
+/** Which plans were sent, in memory (D38, D39). */
+export class FakePublications implements PublicationRepository {
+  readonly #states = new Map<string, PublicationState>();
+
+  find(planId: string) {
+    return Promise.resolve(this.#states.get(planId) ?? { kind: "none" as const });
+  }
+
+  findPublished(planIds: readonly string[]) {
+    return Promise.resolve(
+      planIds.flatMap((planId) => {
+        const state = this.#states.get(planId);
+        if (state?.kind !== "published") return [];
+        const { kind: _, ...publication } = state;
+        return [publication];
+      }),
+    );
+  }
+
+  publish(publication: PlanPublication) {
+    this.#states.set(publication.planId, { kind: "published", ...publication });
+    return Promise.resolve();
+  }
+
+  /** As in the database: only a plan that was sent can be withdrawn. */
+  withdraw(planId: string) {
+    if (this.#states.get(planId)?.kind === "published") {
+      this.#states.set(planId, { kind: "withdrawn" });
+    }
+    return Promise.resolve();
+  }
+
+  withdrawAllBy(localActor: string) {
+    for (const [planId, state] of this.#states) {
+      if (state.kind === "published" && state.localActor === localActor) {
+        this.#states.set(planId, { kind: "withdrawn" });
+      }
+    }
+    return Promise.resolve();
+  }
+}
+
+type SentPlan = PlanPublication & { to: string[] };
+
 /** What would have been sent, in order. */
 export class FakePublisher implements FederationPublisher {
   readonly sent: (
     | { kind: "accept"; localActor: string; followId: string; to: string }
     | { kind: "deleteActor"; localActor: string; to: string[] }
+    | ({ kind: "create" | "update"; event: PlanEventView; language: string } & SentPlan)
+    | ({ kind: "withdraw" } & SentPlan)
   )[] = [];
+
+  /** What was sent about plans, as kind and audience, e.g. "create public". */
+  get planActivities(): string[] {
+    return this.sent.flatMap((sent) =>
+      sent.kind === "create" || sent.kind === "update" || sent.kind === "withdraw"
+        ? [`${sent.kind} ${sent.audience}`]
+        : [],
+    );
+  }
+
+  sendPlan(
+    activity: "create" | "update",
+    publication: PlanPublication & { event: PlanEventView; language: string },
+    followers: readonly RemoteActor[],
+  ) {
+    this.sent.push({ kind: activity, ...publication, to: followers.map((f) => f.id) });
+    return Promise.resolve();
+  }
+
+  withdrawPlan(publication: PlanPublication, followers: readonly RemoteActor[]) {
+    this.sent.push({ kind: "withdraw", ...publication, to: followers.map((f) => f.id) });
+    return Promise.resolve();
+  }
 
   acceptFollow(localActor: string, follow: { id: string; follower: RemoteActor }) {
     this.sent.push({ kind: "accept", localActor, followId: follow.id, to: follow.follower.id });

@@ -177,6 +177,10 @@ export const de: Messages = {
   "form.followersNeedsProfile":
     "Für Follower:innen brauchst du ein Fediverse-Profil, einmal eingerichtet auf der Kontoseite.",
   "form.followersSetUp": "Einrichten",
+  "form.fediverseShared":
+    "Dieses Treffen ist im Fediverse geteilt. Machst du es für weniger Leute auffindbar, wird es dort dauerhaft entfernt und nicht wieder geteilt; deine Follower:innen erreichen es dann nur noch über seinen Link.",
+  "form.fediverseWithdrawn":
+    "Dieses Treffen wurde aus dem Fediverse entfernt und wird dort nicht wieder geteilt.",
   "field.followers_needs_profile":
     "Für Follower:innen brauchst du dein Fediverse-Profil: Richte es auf der Kontoseite ein oder wähle eine andere Möglichkeit.",
   "field.handle_invalid": "Bitte nimm 1 bis 30 Kleinbuchstaben, Ziffern oder _.",
@@ -213,7 +217,7 @@ export const de: Messages = {
   "actorProfile.none": "Gerade keine kommenden öffentlichen Treffen.",
   "actorProfile.gone": "Dieses Fediverse-Profil wurde ausgeschaltet.",
   "privacy.profiles":
-    "Wenn du ein Fediverse-Profil einschaltest, können alle im Fediverse den gewählten Namen, deinen Anzeigenamen und deine kommenden öffentlichen Treffen sehen, und andere Server können Kopien behalten. Seine Signaturschlüssel werden verschlüsselt gespeichert. Alle im Fediverse können ihm folgen: Adresse und Posteingänge einer Follower:in werden verschlüsselt gespeichert, bis sie nicht mehr folgt, ihr Konto gelöscht wird, das Profil ausgeschaltet wird oder diese Seite nicht mehr am Fediverse teilnimmt, und gezeigt wird nur, wie viele es sind. Nachrichten an Follower:innen warten mit den Adressen ihrer Posteingänge höchstens 12 Stunden in einer Warteschlange; die letzte, die sagt, dass das Profil weg ist, behält bis dahin den Signaturschlüssel, den sie braucht. Schaltest du es aus oder löschst du dein Konto, wird der Name stillgelegt: Nur ein verschlüsselter Prüfwert bleibt, damit er nie wieder verwendet wird.",
+    "Wenn du ein Fediverse-Profil einschaltest, können alle im Fediverse den gewählten Namen, deinen Anzeigenamen und deine kommenden öffentlichen Treffen sehen, und andere Server können Kopien behalten. Seine Signaturschlüssel werden verschlüsselt gespeichert. Treffen für deine Follower:innen und öffentliche Treffen, gespeichert nach dem Einschalten, werden mit ihren öffentlichen Angaben an die Server deiner Follower:innen geschickt, die Kopien behalten können; Änderungen werden auch geschickt, und löschst du ein Treffen oder machst es für weniger Leute auffindbar, werden sie gebeten, es zu entfernen. Alle im Fediverse können ihm folgen: Adresse und Posteingänge einer Follower:in werden verschlüsselt gespeichert, bis sie nicht mehr folgt, ihr Konto gelöscht wird, das Profil ausgeschaltet wird oder diese Seite nicht mehr am Fediverse teilnimmt, und gezeigt wird nur, wie viele es sind. Nachrichten an Follower:innen warten mit den Adressen ihrer Posteingänge höchstens 12 Stunden in einer Warteschlange; die letzte, die sagt, dass das Profil weg ist, behält bis dahin den Signaturschlüssel, den sie braucht. Schaltest du es aus oder löschst du dein Konto, wird der Name stillgelegt: Nur ein verschlüsselter Prüfwert bleibt, damit er nie wieder verwendet wird.",
   "form.joinMode": "Wer mitkommen kann",
   "form.joinOpen": "Alle mit dem Link",
   "form.joinApproval": "Nur, wen ich annehme",
@@ -712,6 +716,10 @@ export const de: Messages = {
   "template.repeatHeading": "Wiederholen",
   "template.repeatHint":
     "Erstellt aus dieser Vorlage ein neues Treffen mit neuen Links und ohne Antworten.",
+  "template.repeatSharedFollowers":
+    "Das neue Treffen geht an die Follower:innen von {handle} im Fediverse und an alle mit dem Link.",
+  "template.repeatSharedPublic":
+    "Das neue Treffen wird im Fediverse von {handle} geteilt, mit allen.",
   "template.repeatSubmit": "Treffen erstellen",
   "template.edit": "Vorlage bearbeiten",
   "template.editHeading": "Vorlage bearbeiten",
@@ -810,7 +818,7 @@ export const de: Messages = {
   "home.nearby": "Öffentliche Treffen in der Nähe finden",
   "layout.nearby": "In der Nähe",
   "privacy.federation":
-    "Diese Seite ist im Fediverse als @{host}@{host} dabei. Andere Server können die öffentlichen Angaben eines Treffens über seine Adresse abrufen, so wie alle mit dem Link sie sehen. Schickt ein Server dieser Seite eine Nachricht, ruft sie den öffentlichen Schlüssel dieses Servers ab, um die Signatur der Nachricht zu prüfen, und behält ihn bis zu {days} Tage. Alle im Fediverse können dieser Seite folgen: Adresse und Posteingänge einer Follower:in werden verschlüsselt gespeichert, bis sie nicht mehr folgt, ihr Konto gelöscht wird oder diese Seite nicht mehr am Fediverse teilnimmt, und gezeigt wird nur, wie viele es sind. Mehr wird bisher nicht geteilt.",
+    "Diese Seite ist im Fediverse als @{host}@{host} dabei. Andere Server können die öffentlichen Angaben eines Treffens über seine Adresse abrufen, so wie alle mit dem Link sie sehen. Schickt ein Server dieser Seite eine Nachricht, ruft sie den öffentlichen Schlüssel dieses Servers ab, um die Signatur der Nachricht zu prüfen, und behält ihn bis zu {days} Tage. Alle im Fediverse können dieser Seite folgen: Adresse und Posteingänge einer Follower:in werden verschlüsselt gespeichert, bis sie nicht mehr folgt, ihr Konto gelöscht wird oder diese Seite nicht mehr am Fediverse teilnimmt, und gezeigt wird nur, wie viele es sind. Die Seite selbst teilt keine Treffen, nur Fediverse-Profile tun das.",
   "privacy.nearby":
     "„In der Nähe“ nutzt den Ort, von dem aus du suchst, nur für diese Suche. Eine Stelle von der Karte oder dein Standort wird von deinem Browser vor dem Senden auf etwa 2 km gerundet und vom Server noch einmal. Ein eingetippter Ort wird wie bei der Ortssuche oben nachgeschlagen, und die Suche geht von seiner gerundeten Stelle aus weiter; ohne JavaScript steht der eingetippte Ort in der Adresse dieser ersten Anfrage. Nichts davon wird gespeichert oder in die Protokolle dieser Seite geschrieben. Die gerundete Stelle steht in der Adresse der Ergebnisseite und kann so in deinem Browserverlauf und im Zugriffsprotokoll des Webservers vor dieser Seite bleiben.",
   "field.range_invalid": "Der letzte Tag liegt vor dem ersten.",

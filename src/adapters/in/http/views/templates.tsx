@@ -1,5 +1,6 @@
 // Repeatable templates (spec 3.10 Templates, decision I43): the options on the plan forms, the
 // list on the home page, the template page with "Repeat", and the page showing a new template link.
+import type { Audience } from "../../../../application/ports.ts";
 import type { PostingNeed } from "../../../../application/posting-rules.ts";
 import type { TemplateSummary } from "../../../../application/templates.ts";
 import { PostingClosed } from "./posting.tsx";
@@ -137,6 +138,11 @@ export interface TemplatePageProps {
   linkEmail: LinkEmail | undefined;
   /** Set when the posting rules keep this device from repeating it: how to become allowed. */
   postingClosed: { requirement: PostingNeed; contactEmail: string | undefined } | undefined;
+  /**
+   * Where repeating shares the new plan in the fediverse, said before it happens (D35): the
+   * owner's full handle and the audience; undefined when it is not shared.
+   */
+  repeatShared?: { handle: string; audience: Audience } | undefined;
 }
 
 export function TemplatePage(props: TemplatePageProps) {
@@ -194,6 +200,16 @@ export function TemplatePage(props: TemplatePageProps) {
           <h2>{t("template.repeatHeading")}</h2>
           <form method="post" action={`${base}/repeat`} class="plan-form">
             <p class="hint">{t("template.repeatHint")}</p>
+            {props.repeatShared !== undefined && (
+              <p class="hint">
+                {t(
+                  props.repeatShared.audience === "public"
+                    ? "template.repeatSharedPublic"
+                    : "template.repeatSharedFollowers",
+                  { handle: props.repeatShared.handle },
+                )}
+              </p>
+            )}
             {csrf}
             <input type="hidden" name="nonce" value={props.nonce} />
             <div class="field-row">

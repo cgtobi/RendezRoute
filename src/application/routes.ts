@@ -1,4 +1,5 @@
 // Routes on the host page and GPX downloads (spec 5 feature 2, 3.6, decision D10).
+import { syncPublication } from "./publishing.ts";
 import { editScope, planToInput, validatePlanEdit } from "../domain/plan-edit.ts";
 import { applyRouteDefaults, type Route, routeStats } from "../domain/route.ts";
 import { asHost, type Denied, isDenied } from "./host.ts";
@@ -42,6 +43,8 @@ export async function setRoute(
   await deps.plans.update(updated);
   // A new route is a change participants and interested people hear about (spec 3.1).
   await notifyResponders(deps, updated, "changed");
+  // A route may set the meeting point, and so move the public one the `Event` shows (D38).
+  await syncPublication(deps, plan, updated);
   return { kind: "saved" };
 }
 

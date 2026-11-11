@@ -172,6 +172,10 @@ export const en = {
   "form.followersNeedsProfile":
     "Followers need a fediverse profile, set up once on the account page.",
   "form.followersSetUp": "Set it up",
+  "form.fediverseShared":
+    "This plan is shared in the fediverse. If you let fewer people find it, it is removed there for good and not shared again; your followers then reach it only through its link.",
+  "form.fediverseWithdrawn":
+    "This plan was removed from the fediverse and is not shared there again.",
   "field.followers_needs_profile":
     "Followers need your fediverse profile: set it up on the account page, or choose another option.",
   "field.handle_invalid": "Please use 1 to 30 lowercase letters, digits or _.",
@@ -206,7 +210,7 @@ export const en = {
   "actorProfile.none": "No upcoming public plans right now.",
   "actorProfile.gone": "This fediverse profile was turned off.",
   "privacy.profiles":
-    "If you turn on a fediverse profile, the name you choose, your display name and your upcoming public plans can be seen by anyone in the fediverse, and other servers may keep copies. Its signing keys are stored encrypted. Anyone in the fediverse can follow it: a follower’s address and inboxes are stored encrypted until they unfollow, their account is deleted, the profile is turned off or this site stops taking part in the fediverse, and only how many there are is shown. Messages to followers wait in a queue with their inbox addresses for at most 12 hours; the last one, saying the profile is gone, keeps the signing key it needs until then. Turning it off, or deleting your account, retires the name: only a keyed hash of it is kept, so it is never used again.",
+    "If you turn on a fediverse profile, the name you choose, your display name and your upcoming public plans can be seen by anyone in the fediverse, and other servers may keep copies. Its signing keys are stored encrypted. Plans for your followers, and public ones, saved after you turned it on are sent with their public details to your followers’ servers, which may keep copies; changes are sent too, and deleting a plan or letting fewer people find it asks them to remove it. Anyone in the fediverse can follow it: a follower’s address and inboxes are stored encrypted until they unfollow, their account is deleted, the profile is turned off or this site stops taking part in the fediverse, and only how many there are is shown. Messages to followers wait in a queue with their inbox addresses for at most 12 hours; the last one, saying the profile is gone, keeps the signing key it needs until then. Turning it off, or deleting your account, retires the name: only a keyed hash of it is kept, so it is never used again.",
   "form.joinMode": "Who can join",
   "form.joinOpen": "Anyone with the link",
   "form.joinApproval": "Only people I accept",
@@ -685,6 +689,10 @@ export const en = {
   "template.expires": "Deleted on {date} unless you repeat or edit it before then.",
   "template.repeatHeading": "Repeat",
   "template.repeatHint": "Creates a new plan from this template, with new links and no responses.",
+  "template.repeatSharedFollowers":
+    "The new plan goes to the followers of {handle} in the fediverse, and people with the link.",
+  "template.repeatSharedPublic":
+    "The new plan is shared in the fediverse by {handle}, with everyone.",
   "template.repeatSubmit": "Create plan",
   "template.edit": "Edit template",
   "template.editHeading": "Edit template",
@@ -777,7 +785,7 @@ export const en = {
   "home.nearby": "Find public plans nearby",
   "layout.nearby": "Nearby",
   "privacy.federation":
-    "This site takes part in the fediverse as @{host}@{host}. Other servers can fetch a plan’s public details by its address, as anyone with the link can see them. When a server sends this site a message, this site fetches that server’s public key to check the message’s signature, and keeps the key for up to {days} days. Anyone in the fediverse can follow this site: a follower’s address and inboxes are stored encrypted until they unfollow, their account is deleted or this site stops taking part in the fediverse, and only how many there are is shown. Nothing else is shared yet.",
+    "This site takes part in the fediverse as @{host}@{host}. Other servers can fetch a plan’s public details by its address, as anyone with the link can see them. When a server sends this site a message, this site fetches that server’s public key to check the message’s signature, and keeps the key for up to {days} days. Anyone in the fediverse can follow this site: a follower’s address and inboxes are stored encrypted until they unfollow, their account is deleted or this site stops taking part in the fediverse, and only how many there are is shown. The site itself shares no plans: only fediverse profiles do.",
   "privacy.nearby":
     "Nearby uses the place you search from only for that search. A spot from the map or your location is rounded to about 2 km by your browser before it is sent, and again by the server. A typed place is looked up like place search above, and the search continues from its rounded spot; without JavaScript the typed place is in the address of that first request. Nothing of it is stored or written to this site’s logs. The rounded spot is in the address of the results page, so it can stay in your browser history and in the access log of a web server in front of this site.",
   "field.range_invalid": "The last day comes before the first.",

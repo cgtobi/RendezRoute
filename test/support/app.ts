@@ -1,6 +1,7 @@
 import { actorKeyFactory } from "../../src/adapters/out/crypto/federation-keys.ts";
 import { createFederationOutbound } from "../../src/adapters/out/federation/outbound.ts";
 import { createFollowerRepository } from "../../src/adapters/out/sqlite/followers.ts";
+import { createPublicationRepository } from "../../src/adapters/out/sqlite/publications.ts";
 import { createFediverseProfileRepository } from "../../src/adapters/out/sqlite/fediverse-profiles.ts";
 import { FakeOutboundHttp } from "../fakes/outbound-http.ts";
 import { generateCryptoKeyPair } from "@fedify/fedify";
@@ -204,6 +205,7 @@ export async function createTestApp({
         createLookupHasher(randomBytes(32)),
         ids,
       ),
+      publications: createPublicationRepository(database),
       publisher: federationOutbound?.publisher,
       enabled: config.federationEnabled,
     },

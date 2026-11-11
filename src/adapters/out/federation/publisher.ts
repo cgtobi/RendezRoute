@@ -6,7 +6,16 @@
 // database once the job runs; it goes with the job, delivered or given up (D36).
 import { exportJwk } from "@fedify/fedify";
 import type { DocumentLoader } from "@fedify/fedify/runtime";
-import { Accept, type Activity, Delete, Follow, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
+import {
+  Accept,
+  type Activity,
+  Create,
+  Delete,
+  Follow,
+  PUBLIC_COLLECTION,
+  Tombstone,
+  Update,
+} from "@fedify/fedify/vocab";
 import type {
   Clock,
   FederationPublisher,
@@ -14,6 +23,7 @@ import type {
   JobQueue,
   RemoteActor,
 } from "../../../application/ports.ts";
+import { actorUriOf, addressing, planEvent, planUriOf } from "./event.ts";
 import type { SigningKeyPair } from "../crypto/federation-keys.ts";
 
 /**
@@ -40,7 +50,7 @@ export type ActorSigningKeys = (
 
 /** The key id Fedify publishes for an actor's first (RSA) key. */
 export const mainKeyId = (baseUrl: URL, localActor: string): string =>
-  new URL("#main-key", new URL(`/actors/${localActor}`, baseUrl)).href;
+  new URL("#main-key", actorUriOf(baseUrl, localActor)).href;
 
 export function createFederationPublisher({
   jobs,
@@ -57,13 +67,13 @@ export function createFederationPublisher({
   keysFor: ActorSigningKeys;
   contextLoader: DocumentLoader;
 }): FederationPublisher {
-  const actorUri = (localActor: string) => new URL(`/actors/${localActor}`, baseUrl);
+  const actorUri = (localActor: string) => actorUriOf(baseUrl, localActor);
 
   async function enqueue(
     localActor: string,
     activity: Activity,
     recipients: readonly RemoteActor[],
-    { carryKey = false }: { carryKey?: boolean } = {},
+    { carryKey = false, planId }: { carryKey?: boolean; planId?: string } = {},
   ): Promise<void> {
     const rsa = (await keysFor(localActor))?.[0];
     // Nothing can be signed for an actor without keys.
@@ -80,6 +90,8 @@ export function createFederationPublisher({
       await jobs.enqueue({
         type: "federationDelivery",
         payload,
+        // A `Create` or `Update` not yet delivered goes with its plan; its `Delete` does not.
+        planId,
         runAt: now,
         expiresAt: new Date(now.getTime() + DELIVERY_HOURS * 60 * 60 * 1000),
       });
@@ -118,6 +130,42 @@ export function createFederationPublisher({
         followers,
         // The actor is retired before this is delivered, its keys with it.
         { carryKey: true },
+      );
+    },
+
+    async sendPlan(activity, publication, followers) {
+      const actor = actorUri(publication.localActor);
+      const object = planEvent(publication.event, publication.language, {
+        baseUrl,
+        localActor: publication.localActor,
+        audience: publication.audience,
+      });
+      const Sent = activity === "create" ? Create : Update;
+      await enqueue(
+        publication.localActor,
+        new Sent({
+          id: new URL(`#${activity}-${ids.rowId()}`, planUriOf(baseUrl, publication.planId)),
+          actor,
+          object,
+          ...addressing(actor, publication.audience),
+        }),
+        followers,
+        { planId: publication.planId },
+      );
+    },
+
+    async withdrawPlan(publication, followers) {
+      const actor = actorUri(publication.localActor);
+      const plan = planUriOf(baseUrl, publication.planId);
+      await enqueue(
+        publication.localActor,
+        new Delete({
+          id: new URL(`#delete-${ids.rowId()}`, plan),
+          actor,
+          object: new Tombstone({ id: plan }),
+          ...addressing(actor, publication.audience),
+        }),
+        followers,
       );
     },
   };

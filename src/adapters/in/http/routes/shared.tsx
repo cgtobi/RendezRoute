@@ -282,4 +282,5 @@ export const visibilityChoice = (config: Config, choices: VisibilityChoices): Vi
       ? undefined
       : fediverseAddress(choices.sharedBy, config.baseUrl.hostname),
   nearby: config.nearbyEnabled,
+  fediverse: choices.fediverse,
 });

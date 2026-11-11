@@ -3,6 +3,8 @@
 // saved under the fediverse wording, and turning off (or deleting the account) retiring the handle.
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { deleteAccount, expireAccounts } from "../../src/application/account-data.ts";
+import { deletePlanAsAdmin } from "../../src/application/admin.ts";
+import { FakeAdminAuth } from "../fakes/admin-auth.ts";
 import { type AccountDeps, finishLogin, startLogin } from "../../src/application/accounts.ts";
 import {
   createProfile,
@@ -20,7 +22,10 @@ import {
   INSTANCE_ACTOR,
   unfollowActor,
 } from "../../src/application/following.ts";
-import { editPlan, viewHostPage } from "../../src/application/host.ts";
+import { cancelPlan, deletePlan, editPlan, viewHostPage } from "../../src/application/host.ts";
+import { applyRetentionMax, runRetentionSweep } from "../../src/application/maintenance.ts";
+import { setRoute } from "../../src/application/routes.ts";
+import { fakeGpx } from "../fakes/route-parser.ts";
 import { createPlan } from "../../src/application/plans.ts";
 import { visibilityChoices } from "../../src/application/public-plans.ts";
 import { repeatTemplate, saveAsTemplate } from "../../src/application/templates.ts";
@@ -32,6 +37,7 @@ import {
   FakeActorKeys,
   FakeFediverseProfiles,
   FakeFollowers,
+  FakePublications,
   FakePublisher,
 } from "../fakes/fediverse-profiles.ts";
 import { FakeIdentityProvider } from "../fakes/identity-provider.ts";
@@ -41,12 +47,16 @@ import { FakeRouteParser } from "../fakes/route-parser.ts";
 import { FakeTokenService } from "../fakes/tokens.ts";
 import { fixtureNow, sampleInput } from "../fixtures/plans.ts";
 
+/** When the sample plan starts: 2026-06-07 07:30 in Berlin. */
+const sampleStart = new Date("2026-06-07T05:30:00Z");
+
 let deps: AccountDeps;
 let provider: FakeIdentityProvider;
 let profiles: FakeFediverseProfiles;
 let actorKeys: FakeActorKeys;
 let followers: FakeFollowers;
 let publisher: FakePublisher;
+let publications: FakePublications;
 let clock: FakeClock;
 let n = 0;
 const nonce = () => `nonce-${String(++n).padStart(16, "0")}`;
@@ -57,6 +67,7 @@ beforeEach(() => {
   profiles = new FakeFediverseProfiles(followers);
   actorKeys = new FakeActorKeys();
   publisher = new FakePublisher();
+  publications = new FakePublications();
   clock = new FakeClock(fixtureNow);
   deps = {
     ...createFakeRepositories(),
@@ -67,7 +78,7 @@ beforeEach(() => {
     limits: { horizonDays: 180, maxRetentionDays: 30 },
     postingMode: "anyone",
     publicRequiresLogin: true,
-    posterActors: { profiles, actorKeys, followers, publisher, enabled: true },
+    posterActors: { profiles, actorKeys, followers, publications, publisher, enabled: true },
     identityLookup: { hash: (value) => `hmac(${value})` },
     identityProviders: { oidc: provider },
     fediverse: { servers: undefined, allowInsecure: false },
@@ -508,5 +519,202 @@ describe("following (decision D38)", () => {
     withFederation(false);
     expect(await forgetFollowersWhileOff(deps)).toBe(2);
     expect(await followers.count(actor)).toBe(0);
+  });
+});
+
+describe("publishing plans (decisions D38, D39)", () => {
+  /** Anna with a profile and one follower, ready to share. */
+  async function sharing() {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    const actor = (await profiles.findByHandle("anna"))?.id ?? "";
+    await followActor(deps, {
+      localActor: actor,
+      followId: `${remote("ben").id}#follow`,
+      follower: remote("ben"),
+    });
+    return { device, actor };
+  }
+
+  it("sends followers and public plans to the followers, and never link-only ones", async () => {
+    const { device, actor } = await sharing();
+    const followersPlan = await plan(device, { visibility: "followers" });
+    await plan(device, { visibility: "public" });
+    await plan(device, { visibility: "link" });
+    expect(publisher.planActivities).toEqual(["create followers", "create public"]);
+    expect(publisher.sent.find((sent) => sent.kind === "create")).toMatchObject({
+      planId: followersPlan,
+      localActor: actor,
+      to: [remote("ben").id],
+      language: "en",
+      // Only what every viewer sees: never the exact start.
+      event: {
+        id: followersPlan,
+        title: sampleInput.title,
+        note: sampleInput.note,
+        area: { label: sampleInput.areaLabel },
+      },
+    });
+    expect(JSON.stringify(publisher.sent)).not.toContain(sampleInput.exactDescription);
+    expect(JSON.stringify(publisher.sent)).not.toContain(sampleInput.exactLat);
+  });
+
+  it("shares nothing without a profile, while federation is off, or before the wording was seen", async () => {
+    const device = await logIn();
+    const before = await plan(device, { visibility: "public" });
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    withFederation(false);
+    await plan(device, { visibility: "public" });
+    withFederation(true);
+    expect(publisher.planActivities).toEqual([]);
+    // Saved again under the fediverse wording: now it is sent (D35).
+    later(1);
+    await edit(device, before, { title: "Saved again" });
+    expect(publisher.planActivities).toEqual(["create public"]);
+  });
+
+  it("sends an Update when what the Event shows changes, or the plan is cancelled", async () => {
+    const { device } = await sharing();
+    const planId = await plan(device, { visibility: "public" });
+    later(1);
+    // The exact start is not in the Event: nothing to tell.
+    await edit(device, planId, { exactDescription: "South gate" });
+    expect(publisher.planActivities).toEqual(["create public"]);
+    await edit(device, planId, { title: "Hill repeats" });
+    expect(await cancelPlan(deps, { planId, deviceToken: device })).toEqual({ kind: "cancelled" });
+    expect(publisher.planActivities).toEqual(["create public", "update public", "update public"]);
+    expect(publisher.sent.at(-1)).toMatchObject({
+      event: { title: "Hill repeats", status: "cancelled" },
+    });
+  });
+
+  it("widens with an Update, and narrows with a Delete, after which it is never sent again", async () => {
+    const { device } = await sharing();
+    const planId = await plan(device, { visibility: "followers" });
+    later(1);
+    await edit(device, planId, { visibility: "public" });
+    expect(publisher.planActivities).toEqual(["create followers", "update public"]);
+    expect(
+      (await visibilityChoices(deps, { plan: { id: planId, visibility: "public" } })).fediverse,
+    ).toBe("shared");
+    await edit(device, planId, { visibility: "followers" });
+    expect(publisher.planActivities.at(-1)).toBe("withdraw public");
+    await edit(device, planId, { visibility: "public", title: "Back again" });
+    expect(publisher.planActivities).toHaveLength(3);
+    const choices = await visibilityChoices(deps, { plan: { id: planId, visibility: "public" } });
+    expect(choices).toMatchObject({ fediverse: "withdrawn", sharedBy: undefined });
+
+    const linkOnly = await plan(device, { visibility: "followers" });
+    await edit(device, linkOnly, { visibility: "link" });
+    expect(publisher.planActivities.at(-1)).toBe("withdraw followers");
+  });
+
+  it("sends a Delete when the plan is deleted by its host, the instance admin or retention", async () => {
+    const { device } = await sharing();
+    const deleted = await plan(device, { visibility: "public" });
+    const expiring = await plan(device, { visibility: "followers" });
+    expect(await deletePlan(deps, { planId: deleted, deviceToken: device })).toEqual({
+      kind: "deleted",
+    });
+    const reported = await plan(device, { visibility: "public" });
+    const adminAuth = new FakeAdminAuth();
+    const session = adminAuth.startSession(clock.now()).value;
+    expect(await deletePlanAsAdmin({ ...deps, adminAuth }, { planId: reported, session })).toEqual({
+      kind: "deleted",
+    });
+    clock.set((await stored(expiring)).deleteAt.toISOString());
+    await runRetentionSweep(deps);
+    expect(publisher.planActivities).toEqual([
+      "create public",
+      "create followers",
+      "withdraw public",
+      "create public",
+      "withdraw public",
+      "withdraw followers",
+    ]);
+  });
+
+  it("sends a Delete when the plan is deleted right away by a retention edit, or by a lower maximum", async () => {
+    const { device } = await sharing();
+    const deletedNow = await plan(device, { visibility: "public" });
+    const capped = await plan(device, { visibility: "followers", retentionDays: "30" });
+    // Two days after the start, a one-day retention means now.
+    clock.set(new Date(sampleStart.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString());
+    expect(
+      await editPlan(deps, {
+        planId: deletedNow,
+        deviceToken: device,
+        input: { ...planToInput(await stored(deletedNow), "metric"), retentionDays: "1" },
+        units: "metric",
+        confirmDeleteNow: true,
+      }),
+    ).toEqual({ kind: "deleted" });
+    await applyRetentionMax(deps, { maxRetentionDays: 1 });
+    expect(await deps.plans.findById(capped)).toBeUndefined();
+    expect(publisher.planActivities).toEqual([
+      "create public",
+      "create followers",
+      "withdraw public",
+      "withdraw followers",
+    ]);
+  });
+
+  it("sends an Update when a route moves the public point, and nothing for a cancelled plan never sent", async () => {
+    const { device } = await sharing();
+    const planId = await plan(device, { visibility: "public", exactLat: "", exactLng: "" });
+    const before = publisher.sent.at(-1);
+    expect(
+      await setRoute(deps, {
+        planId,
+        deviceToken: device,
+        gpx: fakeGpx({
+          segments: [
+            [
+              { lat: 47.1, lng: 10.9, ele: 800 },
+              { lat: 47.11, lng: 10.9, ele: 850 },
+            ],
+          ],
+        }),
+      }),
+    ).toEqual({ kind: "saved" });
+    const update = publisher.sent.at(-1);
+    expect(update).toMatchObject({ kind: "update", audience: "public" });
+    expect(update).not.toEqual(before);
+
+    // Shared under the profile while nothing could be sent: a cancelled plan is not announced.
+    const actors = deps.posterActors!;
+    deps = { ...deps, posterActors: { ...actors, publisher: undefined } };
+    const unsent = await plan(device, { visibility: "public" });
+    deps = { ...deps, posterActors: actors };
+    const sent = publisher.sent.length;
+    expect(await cancelPlan(deps, { planId: unsent, deviceToken: device })).toEqual({
+      kind: "cancelled",
+    });
+    expect(publisher.sent).toHaveLength(sent);
+  });
+
+  it("leaves a retired profile's plans to the actor's Delete, and never sends them again", async () => {
+    const { device } = await sharing();
+    const planId = await plan(device, { visibility: "public" });
+    await retireProfile(deps, { deviceToken: device });
+    expect(publisher.sent.map((sent) => sent.kind)).toEqual(["accept", "create", "deleteActor"]);
+    await createProfile(deps, { deviceToken: device, handle: "anna_new" });
+    const newActor = (await profiles.findByHandle("anna_new"))?.id ?? "";
+    await followActor(deps, {
+      localActor: newActor,
+      followId: `${remote("ben").id}#follow-2`,
+      follower: remote("ben"),
+    });
+    later(1);
+    await edit(device, planId, { title: "Under the new profile" });
+    expect(publisher.planActivities).toEqual(["create public"]);
+    // Account deletion, too, relies on the actor's Delete.
+    const other = await plan(device, { visibility: "public" });
+    expect(publisher.planActivities).toEqual(["create public", "create public"]);
+    await deleteAccount(deps, { deviceToken: device });
+    expect(publisher.sent.at(-1)).toMatchObject({ kind: "deleteActor", localActor: newActor });
+    expect(publisher.sent.some((sent) => sent.kind === "withdraw" && sent.planId === other)).toBe(
+      false,
+    );
   });
 });

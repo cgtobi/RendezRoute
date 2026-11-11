@@ -5,6 +5,7 @@ import type { HexColor } from "../domain/color.ts";
 import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { PaceBand } from "../domain/pace.ts";
 import type { DropPolicy, JoinMode, Plan, PlanStatus, Visibility } from "../domain/plan.ts";
+import type { PlanEventView } from "./ports.ts";
 import {
   canRate,
   type PlanRating,
@@ -269,6 +270,18 @@ export function viewForViewer(plan: Plan, counts: Counts): PlanViewForViewer {
     deleteAt: plan.deleteAt,
     counts: { interested: counts.interested, participants: counts.participants },
   };
+}
+
+/**
+ * What a plan shows in the fediverse (spec 7): its `Event`'s fields, taken from what every viewer
+ * sees, so nothing a viewer may not see can get there.
+ */
+export function eventViewOf(plan: Plan): PlanEventView {
+  const { id, title, note, startsAt, area, status } = viewForViewer(plan, {
+    interested: 0,
+    participants: 0,
+  });
+  return { id, title, note, startsAt, area, status };
 }
 
 export const ownResponse = (response: PlanResponse, plan: Plan, now: Date): OwnResponseView => ({

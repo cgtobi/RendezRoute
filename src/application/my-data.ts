@@ -1,5 +1,6 @@
 // "My data on this device" (spec 3.2, 3.7, decision I45): what a device is linked to, export as
 // data the adapter packs into a ZIP, and deleting all of it with the device itself.
+import { withdrawDeletedPlans } from "./publishing.ts";
 import type { IdentityProviderKind } from "../domain/identity.ts";
 import type { Plan, PlanStatus } from "../domain/plan.ts";
 import type { ResponseKind } from "../domain/response.ts";
@@ -296,6 +297,7 @@ export async function removeOwnData(
   }
   // Notices are collected while the channels still exist, and queued once the plans are gone.
   const notices = await Promise.all(hosted.map((plan) => deletionNotices(deps, plan)));
+  await withdrawDeletedPlans(deps, hosted);
   await deps.plans.deleteMany(hosted.map((plan) => plan.id));
   for (const send of notices) await send();
   for (const template of templates) await deps.templates.delete(template.id);

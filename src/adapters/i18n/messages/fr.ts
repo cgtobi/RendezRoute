@@ -180,6 +180,9 @@ export const fr: Messages = {
   "form.followersNeedsProfile":
     "Les abonné·e·s demandent un profil fédivers, à configurer une fois sur la page du compte.",
   "form.followersSetUp": "Le configurer",
+  "form.fediverseShared":
+    "Cette sortie est partagée dans le fédivers. Si vous la rendez trouvable par moins de personnes, elle y est retirée pour de bon et n’est plus partagée ; vos abonné·e·s n’y accèdent alors que par son lien.",
+  "form.fediverseWithdrawn": "Cette sortie a été retirée du fédivers et n’y est plus partagée.",
   "field.followers_needs_profile":
     "Les abonné·e·s demandent votre profil fédivers : configurez-le sur la page du compte, ou choisissez une autre option.",
   "field.handle_invalid": "Veuillez utiliser de 1 à 30 lettres minuscules, chiffres ou _.",
@@ -214,7 +217,7 @@ export const fr: Messages = {
   "actorProfile.none": "Pas de sortie publique à venir pour le moment.",
   "actorProfile.gone": "Ce profil fédivers a été désactivé.",
   "privacy.profiles":
-    "Si vous activez un profil fédivers, le nom choisi, votre nom d’affichage et vos prochaines sorties publiques peuvent être vus par tout le monde dans le fédivers, et d’autres serveurs peuvent en garder des copies. Ses clés de signature sont stockées chiffrées. Tout le monde dans le fédivers peut s’y abonner : l’adresse et les boîtes de réception d’une personne abonnée sont stockées chiffrées jusqu’à ce qu’elle se désabonne, que son compte soit supprimé, que le profil soit désactivé ou que ce site cesse de participer au fédivers, et seul leur nombre est affiché. Les messages aux abonné·e·s attendent dans une file avec l’adresse de leur boîte de réception pendant 12 heures au plus ; le dernier, qui annonce la disparition du profil, garde jusque-là la clé de signature dont il a besoin. Le désactiver, ou supprimer votre compte, retire le nom : seule une empreinte chiffrée en est gardée, pour qu’il ne soit jamais réutilisé.",
+    "Si vous activez un profil fédivers, le nom choisi, votre nom d’affichage et vos prochaines sorties publiques peuvent être vus par tout le monde dans le fédivers, et d’autres serveurs peuvent en garder des copies. Ses clés de signature sont stockées chiffrées. Les sorties pour vos abonné·e·s et les sorties publiques, enregistrées après l’activation, sont envoyées avec leurs informations publiques aux serveurs de vos abonné·e·s, qui peuvent en garder des copies ; les modifications aussi, et supprimer une sortie ou la rendre trouvable par moins de personnes leur demande de la retirer. Tout le monde dans le fédivers peut s’y abonner : l’adresse et les boîtes de réception d’une personne abonnée sont stockées chiffrées jusqu’à ce qu’elle se désabonne, que son compte soit supprimé, que le profil soit désactivé ou que ce site cesse de participer au fédivers, et seul leur nombre est affiché. Les messages aux abonné·e·s attendent dans une file avec l’adresse de leur boîte de réception pendant 12 heures au plus ; le dernier, qui annonce la disparition du profil, garde jusque-là la clé de signature dont il a besoin. Le désactiver, ou supprimer votre compte, retire le nom : seule une empreinte chiffrée en est gardée, pour qu’il ne soit jamais réutilisé.",
   "form.joinMode": "Qui peut participer",
   "form.joinOpen": "Toute personne ayant le lien",
   "form.joinApproval": "Seulement les personnes que j’accepte",
@@ -711,6 +714,10 @@ export const fr: Messages = {
   "template.repeatHeading": "Répéter",
   "template.repeatHint":
     "Crée une nouvelle sortie à partir de ce modèle, avec de nouveaux liens et sans réponses.",
+  "template.repeatSharedFollowers":
+    "La nouvelle sortie est envoyée aux abonné·e·s de {handle} dans le fédivers, et aux personnes ayant le lien.",
+  "template.repeatSharedPublic":
+    "La nouvelle sortie est partagée dans le fédivers par {handle}, avec tout le monde.",
   "template.repeatSubmit": "Créer la sortie",
   "template.edit": "Modifier le modèle",
   "template.editHeading": "Modifier le modèle",
@@ -809,7 +816,7 @@ export const fr: Messages = {
   "home.nearby": "Trouver des sorties publiques à proximité",
   "layout.nearby": "À proximité",
   "privacy.federation":
-    "Ce site participe au fédivers en tant que @{host}@{host}. D’autres serveurs peuvent récupérer les informations publiques d’une sortie par son adresse, comme toute personne ayant le lien peut les voir. Quand un serveur envoie un message à ce site, celui-ci récupère la clé publique de ce serveur pour vérifier la signature du message, et la conserve jusqu’à {days} jours. Tout le monde dans le fédivers peut s’abonner à ce site : l’adresse et les boîtes de réception d’une personne abonnée sont stockées chiffrées jusqu’à ce qu’elle se désabonne, que son compte soit supprimé ou que ce site cesse de participer au fédivers, et seul leur nombre est affiché. Rien d’autre n’est partagé pour l’instant.",
+    "Ce site participe au fédivers en tant que @{host}@{host}. D’autres serveurs peuvent récupérer les informations publiques d’une sortie par son adresse, comme toute personne ayant le lien peut les voir. Quand un serveur envoie un message à ce site, celui-ci récupère la clé publique de ce serveur pour vérifier la signature du message, et la conserve jusqu’à {days} jours. Tout le monde dans le fédivers peut s’abonner à ce site : l’adresse et les boîtes de réception d’une personne abonnée sont stockées chiffrées jusqu’à ce qu’elle se désabonne, que son compte soit supprimé ou que ce site cesse de participer au fédivers, et seul leur nombre est affiché. Le site lui-même ne partage aucune sortie : seuls les profils fédivers le font.",
   "privacy.nearby":
     "« À proximité » n’utilise le lieu d’où vous cherchez que pour cette recherche. Un endroit choisi sur la carte ou votre position est arrondi à environ 2 km par votre navigateur avant d’être envoyé, puis à nouveau par le serveur. Un lieu saisi est recherché comme pour la recherche de lieux ci-dessus, et la recherche continue depuis son endroit arrondi ; sans JavaScript, le lieu saisi figure dans l’adresse de cette première requête. Rien n’en est enregistré ni écrit dans les journaux de ce site. L’endroit arrondi figure dans l’adresse de la page de résultats et peut donc rester dans l’historique de votre navigateur et dans le journal d’accès du serveur web placé devant ce site.",
   "field.range_invalid": "Le dernier jour précède le premier.",

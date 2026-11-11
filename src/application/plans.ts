@@ -18,6 +18,7 @@ import {
   visibilityChoices,
   visibilityRefused,
 } from "./public-plans.ts";
+import { syncPublication } from "./publishing.ts";
 import {
   applyRouteDefaults,
   parseRouteTrim,
@@ -67,6 +68,7 @@ import type {
   FederationPublisher,
   FediverseProfileRepository,
   FollowerRepository,
+  PublicationRepository,
 } from "./ports.ts";
 
 export interface PlanDeps extends DeviceDeps {
@@ -108,6 +110,8 @@ export interface PlanDeps extends DeviceDeps {
         actorKeys: ActorKeyFactory;
         /** Who follows the instance's actors (decision D38). */
         followers: FollowerRepository;
+        /** Which plans were sent to the fediverse, by whom and to whom (D38, D39). */
+        publications: PublicationRepository;
         /** Undefined while federation is off: nothing is sent. */
         publisher: FederationPublisher | undefined;
         enabled: boolean;
@@ -299,6 +303,8 @@ export async function storeNewPlan(
     if (winner !== undefined) return { kind: "duplicate", planId: winner };
     throw error;
   }
+  // To the owner's followers, if its profile shares it (D38).
+  await syncPublication(deps, undefined, plan);
   return {
     kind: "created",
     planId: plan.id,

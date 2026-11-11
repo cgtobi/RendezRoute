@@ -115,6 +115,8 @@ export async function retireAccountProfile(deps: PlanDeps, identityId: string): 
   if (profile !== undefined && followers.length > 0) {
     await actors.publisher?.deleteActor(profile.id, followers);
   }
+  // The actor's `Delete` takes its plans with it; none is sent again (D39).
+  if (profile !== undefined) await actors.publications.withdrawAllBy(profile.id, now);
   await actors.profiles.retire(identityId, now);
   return changed;
 }
@@ -187,7 +189,7 @@ export async function posterActorFor(deps: ActorDeps, handle: string): Promise<s
  * federation adapter names the instance actor.
  */
 export async function planActor(
-  deps: ActorDeps,
+  deps: Pick<PlanDeps, "posterActors" | "plans">,
   plan: { id: string; federatedAt: Date | undefined },
 ): Promise<string | undefined> {
   const actors = deps.posterActors;

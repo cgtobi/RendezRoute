@@ -30,6 +30,9 @@ export interface NotificationFacts {
   area: string;
 }
 
+/** For account notices: an account has no language of its own, its address usually has one. */
+export const DEFAULT_NOTICE_LANGUAGE = "en";
+
 export interface Notification {
   kind: NotificationKind;
   planTitle: string;

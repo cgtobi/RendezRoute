@@ -16,7 +16,7 @@ import { calendarEvents } from "./views/calendar-events.ts";
 /**
  * Changes whenever data.json changes shape, so importers can tell versions apart (2: ratings;
  * 3: mayPostSince, set in device exports when an invite link lets the device create plans;
- * 4: account, set in account exports; 5: notificationEmail per plan, decision D31).
+ * 4: account, set in account exports; 5: notificationEmail per plan and for the account, D31).
  */
 export const EXPORT_VERSION = 5;
 
@@ -203,6 +203,13 @@ export function exportZip(
                 displayName: orNull(data.account.displayName),
                 createdAt: data.account.createdAt,
                 lastActiveAt: data.account.lastActiveAt,
+                notificationEmail:
+                  data.account.email === undefined
+                    ? null
+                    : {
+                        address: data.account.email.address,
+                        confirmed: data.account.email.confirmed,
+                      },
               },
       },
       null,

@@ -8,7 +8,11 @@ import type {
 import type { PushSubscription } from "../../src/domain/push.ts";
 
 const ownerKey = (owner: ChannelOwner) =>
-  "responseId" in owner ? `response:${owner.responseId}` : `plan:${owner.planId}`;
+  "responseId" in owner
+    ? `response:${owner.responseId}`
+    : "planId" in owner
+      ? `plan:${owner.planId}`
+      : `identity:${owner.identityId}`;
 
 /** In-memory channels; tests delete them per owner to mimic the cascades. */
 export class FakeChannelRepository implements ChannelRepository {
@@ -68,10 +72,10 @@ export class FakeChannelRepository implements ChannelRepository {
     return Promise.resolve();
   }
 
-  setEmail(owner: ChannelOwner, address: string) {
+  setEmail(owner: ChannelOwner, address: string, language?: string) {
     for (const c of this.#owned(owner)) if (c.kind === "email") this.channels.delete(c.id);
     const id = `channel-${++this.#next}`;
-    this.channels.set(id, { id, owner, kind: "email", address, verified: false });
+    this.channels.set(id, { id, owner, kind: "email", address, language, verified: false });
     return Promise.resolve(id);
   }
 

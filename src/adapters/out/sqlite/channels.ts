@@ -16,12 +16,27 @@ import type { NotificationChannelsTable } from "./schema.ts";
 
 const CONFIG = "notification_channels.config";
 
-/** Account channels (identity_id) come with step 6b; until then no row may have another owner. */
+/** Exactly one owner column is set (the table's check). */
 function ownerOf(row: Selectable<NotificationChannelsTable>): ChannelOwner {
   if (row.response_id !== null) return { responseId: row.response_id };
   if (row.plan_id !== null) return { planId: row.plan_id };
-  throw new Error("Notification channel without a response or plan.");
+  if (row.identity_id !== null) return { identityId: row.identity_id };
+  throw new Error("Notification channel without an owner.");
 }
+
+/** The one column that names this owner, and its value. */
+const ownerColumn = (owner: ChannelOwner) =>
+  "responseId" in owner
+    ? (["response_id", owner.responseId] as const)
+    : "planId" in owner
+      ? (["plan_id", owner.planId] as const)
+      : (["identity_id", owner.identityId] as const);
+
+/** The owner as the row's three owner columns: its own set, the others null. */
+const ownerColumns = (owner: ChannelOwner) => {
+  const [column, value] = ownerColumn(owner);
+  return { response_id: null, plan_id: null, identity_id: null, [column]: value };
+};
 
 export function createChannelRepository(
   database: Database,
@@ -34,24 +49,19 @@ export function createChannelRepository(
   const fromRow = (row: Selectable<NotificationChannelsTable>): NotificationChannel => {
     const base = { id: row.id, owner: ownerOf(row), verified: row.verified === 1 };
     const config = JSON.parse(cipher.decrypt(row.config_enc, CONFIG)) as unknown;
-    return row.kind === "email"
-      ? { ...base, kind: "email", address: (config as { address: string }).address }
-      : { ...base, kind: "webpush", subscription: config as PushSubscription };
+    if (row.kind === "webpush") {
+      return { ...base, kind: "webpush", subscription: config as PushSubscription };
+    }
+    const { address, language } = config as { address: string; language?: string };
+    return { ...base, kind: "email", address, language };
   };
-
-  const ownerColumns = (owner: ChannelOwner) => ({
-    response_id: "responseId" in owner ? owner.responseId : null,
-    plan_id: "planId" in owner ? owner.planId : null,
-  });
 
   const pushChannels = async (owner: ChannelOwner) =>
     (await listFor(owner)).filter((channel): channel is PushChannel => channel.kind === "webpush");
 
   const ownedBy = (owner: ChannelOwner) => {
-    const query = db.selectFrom("notification_channels").selectAll();
-    return "responseId" in owner
-      ? query.where("response_id", "=", owner.responseId)
-      : query.where("plan_id", "=", owner.planId);
+    const [column, value] = ownerColumn(owner);
+    return db.selectFrom("notification_channels").selectAll().where(column, "=", value);
   };
 
   const listFor = async (owner: ChannelOwner) =>
@@ -126,26 +136,22 @@ export function createChannelRepository(
       await db.deleteFrom("notification_channels").where("id", "=", id).execute();
     },
 
-    async setEmail(owner, address) {
+    async setEmail(owner, address, language) {
       const id = ids.rowId();
+      const [column, value] = ownerColumn(owner);
       await db.transaction().execute(async (trx) => {
-        const columns = ownerColumns(owner);
         await trx
           .deleteFrom("notification_channels")
           .where("kind", "=", "email")
-          .where((eb) =>
-            columns.response_id !== null
-              ? eb("response_id", "=", columns.response_id)
-              : eb("plan_id", "=", columns.plan_id),
-          )
+          .where(column, "=", value)
           .execute();
         await trx
           .insertInto("notification_channels")
           .values({
             id,
-            ...columns,
+            ...ownerColumns(owner),
             kind: "email",
-            config_enc: cipher.encrypt(JSON.stringify({ address }), CONFIG),
+            config_enc: cipher.encrypt(JSON.stringify({ address, language }), CONFIG),
             verified: 0,
             created_at: now().toISOString(),
           })

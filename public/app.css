@@ -1402,6 +1402,16 @@ details > summary {
   margin: 0;
 }
 
+/* "Email me my links" under "Get a new link" (decision D31): its hint over its own button, with
+   room above it and before the fold below. */
+.link-tools form + form {
+  margin: var(--s4) 0;
+}
+
+.link-tools form + form .hint {
+  margin: 0 0 var(--s2);
+}
+
 /* Ratings (spec 6a): the own note keeps its line breaks. */
 .rating-note {
   white-space: pre-line;

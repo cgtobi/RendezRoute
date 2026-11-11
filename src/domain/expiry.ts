@@ -26,6 +26,14 @@ export function accountDeleteAt(lastActiveAt: Date): Date {
   return new Date(lastActiveAt.getTime() + ACCOUNT_UNUSED_DAYS * DAY_MS);
 }
 
+/** The warning before an unused account is deleted comes this many days ahead (decision I52). */
+export const ACCOUNT_WARNING_DAYS = 14;
+
+/** Accounts last active before this are due for their warning. */
+export function accountWarningCutoff(now: Date): Date {
+  return new Date(now.getTime() - (ACCOUNT_UNUSED_DAYS - ACCOUNT_WARNING_DAYS) * DAY_MS);
+}
+
 /** Accounts last active before this are due for deletion. */
 export function accountExpiryCutoff(now: Date): Date {
   return new Date(now.getTime() - ACCOUNT_UNUSED_DAYS * DAY_MS);

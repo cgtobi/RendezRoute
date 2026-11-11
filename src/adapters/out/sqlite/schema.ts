@@ -261,6 +261,8 @@ export interface IdentitiesTable {
   handle_enc: string | null;
   created_at: string;
   last_active_at: string;
+  /** The last expiry warning (decision I52); one per stretch of non-use. */
+  expiry_warned_at: Generated<string | null>;
 }
 
 export interface PendingLoginsTable {

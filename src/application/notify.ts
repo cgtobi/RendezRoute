@@ -46,7 +46,7 @@ export async function deliverableChannels(
 ): Promise<NotificationChannel[]> {
   const notify = deps.notify;
   if (notify === undefined) return [];
-  const sending = notify.email?.sending === true;
+  const sending = notify.email?.outbox !== undefined;
   return (await notify.channels.listFor(owner)).filter(
     (channel) => channel.verified && (channel.kind !== "email" || sending),
   );
@@ -58,7 +58,10 @@ export const ownerIds = (
 ): { planId: string | undefined; responseId: string | undefined } =>
   "responseId" in owner
     ? { planId: undefined, responseId: owner.responseId }
-    : { planId: owner.planId, responseId: undefined };
+    : "planId" in owner
+      ? { planId: owner.planId, responseId: undefined }
+      : // An account's own: nothing of a plan; the account's deletion removes its channels.
+        { planId: undefined, responseId: undefined };
 
 /** Queues the notification for every confirmed channel of the recipient; returns how many. */
 export async function notify(

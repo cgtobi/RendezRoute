@@ -404,6 +404,39 @@ export const de: Messages = {
   "emailLink.refuse": "Keine E-Mails senden",
   "privacy.emailRateLimit":
     "Anfragen nach einem Bestätigungslink werden auch je E-Mail-Adresse gezählt, als Hash, der nur im Arbeitsspeicher liegt, damit niemand fremde Postfächer überfluten kann.",
+  "email.accountOn": "E-Mails zu deinem Konto gehen an {address}.",
+  "email.accountLabel": "E-Mail für dein Konto",
+  "email.accountHint":
+    "Für Hinweise zu deinem Konto, etwa eine Warnung, bevor ein ungenutztes Konto gelöscht wird. Zuerst schicken wir einen Link, um die Adresse zu bestätigen.",
+  "email.useAccount": "{address} aus deinem Konto verwenden",
+  "email.accountConfirmSubject": "E-Mails zu deinem Konto auf {instance} bestätigen",
+  "email.accountHeading": "Dein Konto auf {instance}",
+  "email.accountConfirmBody":
+    "Jemand möchte an diese Adresse E-Mails zu einem Konto auf {instance} bekommen, etwa eine Warnung, bevor ein ungenutztes Konto gelöscht wird. Wenn du das warst, bestätige es mit dem Link unten. Wenn nicht, ignoriere diese E-Mail: Es wird nichts weiter gesendet.",
+  "email.expirySubject": "Dein Konto auf {instance} wird am {date} gelöscht",
+  "email.expiryBody":
+    "Es wurde fast ein Jahr nicht genutzt. Um es zu behalten, nutze es vor dem {date}: Melde dich an oder öffne die Seite auf einem angemeldeten Gerät. Sonst wird es mit allem gelöscht, was ihm gehört.",
+  "email.openAccount": "Konto öffnen",
+  "email.accountWhy":
+    "Du bekommst diese E-Mail, weil du diese Adresse deinem Konto auf {instance} hinzugefügt hast.",
+  "email.newLinkSubject": "Dein neuer Link für „{title}“",
+  "email.newLinkBody":
+    "Hier ist dein neuer privater Link. Ältere Links funktionieren nicht mehr; Geräte, die sie schon nutzen, bleiben angemeldet.",
+  "email.newLinkAction": "Mit dem neuen Link öffnen",
+  "email.newLinkWhy":
+    "Du bekommst diese E-Mail, weil du auf {instance} einen neuen Link angefordert hast.",
+  "emailLink.accountConfirmBody": "E-Mails zu deinem Konto auf {instance} an {address} bekommen?",
+  "emailLink.accountOffBody": "Keine E-Mails mehr zu deinem Konto auf {instance} an {address}?",
+  "linkTools.emailLink": "Neuen Link per E-Mail senden",
+  "linkTools.emailLinkHint":
+    "Schickt einen neuen Link an {address}. Ältere Links funktionieren dann nicht mehr; Geräte, die sie schon nutzen, bleiben angemeldet.",
+  "linkTools.emailed":
+    "Wir haben einen neuen Link an {address} geschickt. Ältere Links funktionieren nicht mehr.",
+  "linkTools.emailFailed":
+    "Die E-Mail konnte nicht gesendet werden. Es hat sich nichts geändert; bitte versuche es später noch einmal.",
+  "privacy.accountEmail":
+    "Wenn du deinem Konto eine E-Mail-Adresse hinzufügst, wird sie verschlüsselt gespeichert, nur für E-Mails zum Konto (etwa die Warnung, bevor ein ungenutztes Konto gelöscht wird) und für Treffen genutzt, für die du sie auswählst, und mit dem Konto gelöscht.",
+  "email.hostShared": "Alle, die dieses Treffen verwalten, sehen diese Adresse.",
   "email.label": "E-Mail für Neuigkeiten zu diesem Treffen",
   "email.hint":
     "Zuerst schicken wir einen Link, um die Adresse zu bestätigen. Jede E-Mail enthält einen Link zum Abschalten.",

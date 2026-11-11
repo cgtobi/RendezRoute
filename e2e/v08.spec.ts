@@ -1,6 +1,6 @@
 // The 0.8 channels in a real browser against the built image (plan v1.0 step 6, decision D31):
-// email notifications confirmed by their link and turned off from every email, and report alerts,
-// against the fake mail server. Runs only in the "0.7 and 0.8 features" project (SMTP_*).
+// email notifications confirmed by their link and turned off from every email, "Email me my
+// links", and report alerts, against the fake mail server. Runs only in the "0.7 and 0.8 features" project (SMTP_*).
 import { expect, test } from "@playwright/test";
 import { adminLogIn, createPlan, newInvite, person, useInvite } from "./helpers.ts";
 
@@ -30,7 +30,7 @@ async function nextMail(to: string, after: number): Promise<Mail> {
 /** The email's link back to this instance. */
 const linkIn = (mail: Mail) => /http:\/\/localhost:3103\/e\/[^\s"<>]+/.exec(mail.text)?.[0] ?? "";
 
-test("Email: confirm by link, notifications, one-click off, report alerts", async ({
+test("Email: confirm by link, a new link, notifications, one-click off, report alerts", async ({
   browser,
   baseURL,
   request,
@@ -67,11 +67,17 @@ test("Email: confirm by link, notifications, one-click off, report alerts", asyn
   await joiner.reload();
   await expect(joiner.getByText(`Emails about this plan go to ${ben}.`)).toBeVisible();
 
+  // "Email me my links": a new manage link by email; the page says older ones stopped working.
+  await joiner.getByRole("button", { name: "Email me a new link" }).click();
+  await expect(joiner.getByText(`We sent a new link to ${ben}.`)).toBeVisible();
+  const newLink = await nextMail(ben, 1);
+  expect(newLink.text).toMatch(/http:\/\/localhost:3103\/m\/[A-Za-z0-9_-]{43}/);
+
   // The host cancels: Ben gets an email with the link to turn them off.
   await host.goto(`${planUrl}/host`);
   await host.getByText("Cancel plan…").click();
   await host.getByRole("button", { name: "Cancel this plan" }).click();
-  const cancelled = await nextMail(ben, 1);
+  const cancelled = await nextMail(ben, 2);
   expect(cancelled.text).toContain("The plan was cancelled.");
   expect(cancelled.text).toContain("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
   expect(linkIn(cancelled)).toBe(link);

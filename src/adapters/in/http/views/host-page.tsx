@@ -9,7 +9,7 @@ import type { MapSettings } from "./maps.tsx";
 import { PlanForm } from "./plan-form.tsx";
 import { RecapShortenedNotice, RecapWindowSelect } from "./recap.tsx";
 import { TemplateOptions } from "./templates.tsx";
-import { LinkTools } from "./link-tools.tsx";
+import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { RatingResultSection } from "./rating.tsx";
 import type { RatingResultView } from "../../../../application/plan-views.ts";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
@@ -66,6 +66,8 @@ export interface HostPageProps {
   signedOut: number | undefined;
   /** One-time value for "Get a new link" (decision I44). */
   linkNonce: string;
+  /** "Email me my links" (decision D31). */
+  linkEmail: LinkEmail | undefined;
   /** Email notifications; undefined without SMTP (decision D31). */
   email: EmailSwitchProps | undefined;
 }
@@ -186,6 +188,7 @@ export function HostPage(props: HostPageProps) {
         signedOut={props.signedOut}
         notifications
         nonce={props.linkNonce}
+        email={props.linkEmail}
       />
 
       <details>

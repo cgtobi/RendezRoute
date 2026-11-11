@@ -1,22 +1,47 @@
-// "Get a new link" and "Sign out all other devices" for host, manage and template links (spec 3.2,
-// decision I44): POST <page>/link shows the new link once, POST <page>/sign-out returns to the page.
+// "Get a new link", "Email me my links" and "Sign out all other devices" for host, manage and
+// template links (spec 3.2, decisions I44, D31): POST <page>/link shows the new link once,
+// POST <page>/link/email sends it and returns to the page, POST <page>/sign-out returns too.
 import type { Context, Hono } from "hono";
-import { getNewLink, signOutOtherDevices } from "../../../../application/links.ts";
+import {
+  emailNewLink,
+  getNewLink,
+  type LinkKind,
+  newLinkAddress,
+  signOutOtherDevices,
+} from "../../../../application/links.ts";
+import type { PlanDeps } from "../../../../application/plans.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
-import { AlreadyIssuedPage, FROM_MY_DATA, NewLinkPage } from "../views/link-tools.tsx";
+import {
+  AlreadyIssuedPage,
+  FROM_MY_DATA,
+  type LinkEmail,
+  NewLinkPage,
+} from "../views/link-tools.tsx";
+import { takeEmailLimits } from "./email.tsx";
 import { linkKinds } from "./link-kinds.ts";
 import {
   badRequest,
   formField,
+  linkEmailOutcome,
   planGone,
   readForm,
   type RouteDeps,
   secretLinkHeaders,
   templateGone,
+  tooManyRequests,
 } from "./shared.tsx";
 
-export function registerLinkToolRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {
+/** "Email me my links" on an item's page: the address the button names, and the last outcome. */
+export async function linkEmailProps(
+  c: Context<AppEnv>,
+  planDeps: PlanDeps,
+  request: { kind: LinkKind; id: string; deviceToken: string | undefined },
+): Promise<LinkEmail> {
+  return { address: await newLinkAddress(planDeps, request), outcome: linkEmailOutcome(c) };
+}
+
+export function registerLinkToolRoutes(app: Hono<AppEnv>, { config, planDeps, limits }: RouteDeps) {
   for (const [kind, settings] of linkKinds()) {
     const request = (c: Context<AppEnv>) => ({
       kind,
@@ -66,6 +91,38 @@ export function registerLinkToolRoutes(app: Hono<AppEnv>, { config, planDeps }: 
             />,
             { title: t("linkTools.newHeading") },
           );
+      }
+    });
+
+    // "Email me my links" (decision D31): back to the item's page, which says how it went.
+    app.post(`${settings.toolsPage}/link/email`, async (c) => {
+      const body = await readForm(c);
+      if (body === undefined) return badRequest(c);
+      // Counted per client and per address, like confirmation links: whoever holds the item's
+      // link cannot flood its owner's mailbox (spec 3.11).
+      const address = await newLinkAddress(planDeps, request(c));
+      if (address === undefined) return c.redirect(page(c), 303);
+      const taken = takeEmailLimits(c, limits, address);
+      if (!taken.ok) return tooManyRequests(c, taken.retryAfterSeconds);
+      const result = await emailNewLink(planDeps, {
+        ...request(c),
+        formNonce: formField(body, "nonce"),
+        linkUrl: (token) => new URL(`${settings.secretPath}/${token}`, config.baseUrl).href,
+      });
+      if (result.kind !== "sent") taken.refund();
+      switch (result.kind) {
+        case "not_found":
+        case "forbidden":
+          return denied(c, result.kind);
+        case "bad_request":
+          return badRequest(c);
+        case "sent":
+          return c.redirect(`${page(c)}?linkEmailed=sent`, 303);
+        case "not_sent":
+          return c.redirect(`${page(c)}?linkEmailed=failed`, 303);
+        case "already_issued":
+        case "no_address":
+          return c.redirect(page(c), 303);
       }
     });
 

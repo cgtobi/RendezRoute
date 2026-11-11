@@ -1,7 +1,15 @@
 // Background jobs (spec 6 feature 12, decision I36): retried with backoff, then given up.
 
-/** Notifications, and the emails that are not (decision D31): confirmation links, report alerts. */
-export const JOB_TYPES = ["notification", "emailConfirmation", "reportAlert"] as const;
+/**
+ * Notifications, and the emails that are not (decision D31): confirmation links, report alerts and
+ * an account's own notices such as the expiry warning.
+ */
+export const JOB_TYPES = [
+  "notification",
+  "emailConfirmation",
+  "reportAlert",
+  "accountNotice",
+] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
 const MINUTE_MS = 60 * 1000;

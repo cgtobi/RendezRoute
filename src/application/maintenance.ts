@@ -7,7 +7,7 @@ import {
 } from "../domain/expiry.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { BackupStore, IdentityRepository, PendingLoginRepository } from "./ports.ts";
-import { expireAccounts } from "./account-data.ts";
+import { expireAccounts, warnExpiringAccounts } from "./account-data.ts";
 import { loginCutoff } from "../domain/identity.ts";
 import { deletePlansKeepingTemplates } from "./templates.ts";
 import type { Plan } from "../domain/plan.ts";
@@ -38,11 +38,13 @@ export async function runHousekeeping(
   deletedFormNonces: number;
   deletedPendingLogins: number;
   deletedAccounts: number;
+  warnedAccounts: number;
 }> {
   const now = deps.clock.now();
   // Templates first, so devices linked only to them count as unlinked right away; accounts next,
   // so their devices are logged out before device expiry looks at them.
   const deletedTemplates = await deps.templates.deleteExpired(now);
+  const warnedAccounts = await warnExpiringAccounts(deps);
   const deletedAccounts = await expireAccounts(deps);
   const deletedDevices = await deps.devices.deleteInactive(deviceExpiryCutoffs(now));
   // Feeds that no longer reference anything (spec 3.10); those of deleted devices went with them.
@@ -58,6 +60,7 @@ export async function runHousekeeping(
     deletedFormNonces,
     deletedPendingLogins,
     deletedAccounts,
+    warnedAccounts,
   };
 }
 

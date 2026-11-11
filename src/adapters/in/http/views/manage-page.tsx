@@ -7,7 +7,7 @@ import { MAX_DISPLAY_NAME_LENGTH } from "../../../../domain/responding.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { BackLink } from "./back-link.tsx";
 import { fieldErrorMessage } from "./format.ts";
-import { LinkTools } from "./link-tools.tsx";
+import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { ResponseStatus } from "./response-status.tsx";
@@ -30,6 +30,8 @@ export function ManagePage(props: {
   signedOut: number | undefined;
   /** One-time value for "Get a new link" (decision I44). */
   linkNonce: string;
+  /** "Email me my links" (decision D31). */
+  linkEmail: LinkEmail | undefined;
   /** Email notifications; undefined without SMTP (decision D31). */
   email: EmailSwitchProps | undefined;
 }) {
@@ -114,6 +116,7 @@ export function ManagePage(props: {
         signedOut={props.signedOut}
         notifications={!blocked}
         nonce={props.linkNonce}
+        email={props.linkEmail}
       />
 
       <details class="withdraw">

@@ -66,7 +66,10 @@ export function createFakeRepositories(): {
   const invites = new Map<string, { invite: Invite; tokenHash: string }>();
   /** When each device ("device:<id>") or account ("identity:<id>") became allowed to post. */
   const mayPost = new Map<string, Date>();
-  const identities = new Map<string, { identity: Identity; subjectHash: string }>();
+  const identities = new Map<
+    string,
+    { identity: Identity; subjectHash: string; warnedAt?: Date | undefined }
+  >();
   const pendingLogins = new Map<string, PendingLogin>();
   /** The device's own permission, or its account's. */
   const mayPostOf = (deviceId: string) => {
@@ -480,6 +483,21 @@ export function createFakeRepositories(): {
           if (entry.device.identityId === id)
             entry.device = { ...entry.device, identityId: undefined };
         }
+      },
+      async listUnwarnedBefore(cutoff) {
+        return [...identities.values()]
+          .filter(
+            (e) =>
+              e.identity.lastActiveAt.getTime() < cutoff.getTime() &&
+              (e.warnedAt === undefined ||
+                e.warnedAt.getTime() < e.identity.lastActiveAt.getTime()),
+          )
+          .sort((a, b) => a.identity.lastActiveAt.getTime() - b.identity.lastActiveAt.getTime())
+          .map((e) => structuredClone(e.identity));
+      },
+      async markExpiryWarned(id, now) {
+        const entry = identities.get(id);
+        if (entry !== undefined) entry.warnedAt = now;
       },
       async listUnusedBefore(cutoff) {
         return [...identities.values()]

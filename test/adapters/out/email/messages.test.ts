@@ -2,7 +2,9 @@
 // simple HTML part, one main link, every link written out, nothing loaded from elsewhere.
 import { describe, expect, it } from "vite-plus/test";
 import {
+  accountExpiryEmail,
   confirmationEmail,
+  newLinkEmail,
   notificationEmail,
   reportAlertEmail,
 } from "../../../../src/adapters/out/email/messages.ts";
@@ -101,7 +103,7 @@ describe("notification emails", () => {
 
 describe("the confirmation email", () => {
   const email = confirmationEmail(
-    { planTitle: "Hill repeats", language: "fr" },
+    { kind: "plan", planTitle: "Hill repeats", language: "fr" },
     { ...instance, confirmUrl: OFF },
   );
 
@@ -133,5 +135,45 @@ describe("the report alert (spec 7 Moderation)", () => {
     expect(email.subject).toBe("New report on Isar Runs");
     expect(email.text).toContain("https://runs.example.org/admin/");
     expect(email.html).toContain('href="https://runs.example.org/admin/"');
+  });
+});
+
+describe("account emails (decision D31, I52)", () => {
+  it("confirm the account's address, about the account and no plan", () => {
+    const email = confirmationEmail(
+      { kind: "account", language: "en" },
+      { ...instance, confirmUrl: OFF },
+    );
+    expect(email.subject).toBe("Confirm emails about your account on Isar Runs");
+    expect(email.text).toContain("Your account on Isar Runs");
+    expect(email.text).toContain(OFF);
+  });
+
+  it("warn before an unused account is deleted, with its date and the way to keep it", () => {
+    const email = accountExpiryEmail({ language: "de" }, new Date("2027-06-07T08:00:00Z"), {
+      ...instance,
+      offUrl: OFF,
+      timeZone: "Europe/Berlin",
+    });
+    expect(email.subject).toBe("Dein Konto auf Isar Runs wird am 7. Juni 2027 gelöscht");
+    expect(email.text).toContain("https://runs.example.org/account");
+    expect(email.text).toContain(OFF);
+    expect(email.headers["List-Unsubscribe"]).toBe(`<${OFF}>`);
+  });
+});
+
+describe("the new-link email (decision D31)", () => {
+  it("carries the new link as its action, says the old one stopped working, and can be turned off", () => {
+    const url = "https://runs.example.org/m/SECRET";
+    const email = newLinkEmail(
+      { language: "en" },
+      { title: "Hill <repeats>", url },
+      { ...instance, offUrl: OFF },
+    );
+    expect(email.subject).toBe("Your new link for “Hill <repeats>”");
+    expect(email.text).toContain(`Open with the new link: ${url}`);
+    expect(email.text).toContain("Older links no longer work");
+    expect(email.html).toContain("Hill &lt;repeats&gt;");
+    expect(email.headers["List-Unsubscribe"]).toBe(`<${OFF}>`);
   });
 });

@@ -113,6 +113,30 @@ export function createIdentityRepository(
       return rows.map(identityOf);
     },
 
+    async listUnwarnedBefore(cutoff) {
+      const rows = await db
+        .selectFrom("identities")
+        .select(COLUMNS)
+        .where("last_active_at", "<", cutoff.toISOString())
+        .where((eb) =>
+          eb.or([
+            eb("expiry_warned_at", "is", null),
+            eb("expiry_warned_at", "<", eb.ref("last_active_at")),
+          ]),
+        )
+        .orderBy("last_active_at")
+        .execute();
+      return rows.map(identityOf);
+    },
+
+    async markExpiryWarned(id, now) {
+      await db
+        .updateTable("identities")
+        .set({ expiry_warned_at: now.toISOString() })
+        .where("id", "=", id)
+        .execute();
+    },
+
     async touch(id, now) {
       await db
         .updateTable("identities")

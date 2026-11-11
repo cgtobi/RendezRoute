@@ -67,12 +67,13 @@ describe("email outbox (decision D31, spec 7 Moderation)", () => {
       mailer,
       links: new FakeChannelLinks(),
       contactEmail: "owner@example.org",
+      timeZone: "Europe/Berlin",
       ...instance,
     });
     expect(
       await outbox.confirmation(
-        { channelId: "c1", address: "ben@example.org" },
-        { planTitle: "Hill repeats", language: "de" },
+        { channelId: "c1", address: "ben@example.org", language: "de" },
+        { kind: "plan", planTitle: "Hill repeats" },
       ),
     ).toBe("sent");
     expect(mailer.sent[0]?.to).toBe("ben@example.org");
@@ -81,7 +82,13 @@ describe("email outbox (decision D31, spec 7 Moderation)", () => {
 
   it("sends report alerts to CONTACT_EMAIL, and none without it", async () => {
     const outbox = (contactEmail: string | undefined) =>
-      createEmailOutbox({ mailer, links: new FakeChannelLinks(), contactEmail, ...instance });
+      createEmailOutbox({
+        mailer,
+        links: new FakeChannelLinks(),
+        contactEmail,
+        timeZone: "Europe/Berlin",
+        ...instance,
+      });
     expect(await outbox("owner@example.org").reportAlert()).toBe("sent");
     expect(mailer.sent.map((mail) => mail.to)).toEqual(["owner@example.org"]);
     expect(await outbox(undefined).reportAlert()).toBe("failed");

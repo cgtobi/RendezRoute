@@ -80,6 +80,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
       deletedFormNonces: 0,
       deletedPendingLogins: 0,
       deletedAccounts: 0,
+      warnedAccounts: 0,
     });
     expect(backups.cutoffs).toEqual([new Date(fixtureNow.getTime() - 7 * 24 * 60 * 60 * 1000)]);
   });
@@ -103,6 +104,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
       deletedFormNonces: 0,
       deletedPendingLogins: 0,
       deletedAccounts: 0,
+      warnedAccounts: 0,
     });
     expect(await repos.devices.findByTokenHash("lonely-hash")).toBeUndefined();
     expect(await repos.devices.findByTokenHash("hash-p")).toBeDefined();

@@ -1,10 +1,12 @@
 // What the emails say and how they look (design note "Emails (step 6)", decision D31): a
 // plain-text part and a simple HTML part in the page's light colours, written inline since mail
-// apps drop style sheets. The instance name at the top, the plan title as the heading, one main
-// link styled as the primary button, every link also written out, and a muted footer saying why
-// the email came and how to turn it off. No images and nothing loaded from other servers.
+// apps drop style sheets. The instance name at the top, the plan title (or "Your account") as the
+// heading, one main link styled as the primary button, every link also written out, and a muted
+// footer saying why the email came and how to turn it off. No images and nothing loaded from
+// other servers.
+import type { EmailSubject } from "../../../application/ports.ts";
 import type { Notification, NotificationFacts } from "../../../domain/notification.ts";
-import { formatDay, formatTime } from "../../i18n/dates.ts";
+import { formatDate, formatDay, formatTime } from "../../i18n/dates.ts";
 import { negotiateLanguage, type Translate, translator } from "../../i18n/i18n.ts";
 
 /** The light tokens of public/app.css (decision D27). */
@@ -89,25 +91,92 @@ export function notificationEmail(
 
 /** The only email sent to an address before it is confirmed (decision D31). */
 export function confirmationEmail(
-  about: { planTitle: string; language: string },
+  about: EmailSubject & { language: string },
   instance: EmailInstance & { confirmUrl: string },
 ): ComposedEmail {
   const language = negotiateLanguage(about.language);
   const t = translator(language);
+  const name = { instance: instance.instanceName };
+  // What differs between a plan's address and the account's own.
+  const texts =
+    about.kind === "plan"
+      ? {
+          subject: t("email.confirmSubject", { title: about.planTitle }),
+          heading: about.planTitle,
+          body: t("email.confirmBody"),
+        }
+      : {
+          subject: t("email.accountConfirmSubject", name),
+          heading: t("email.accountHeading", name),
+          body: t("email.accountConfirmBody", name),
+        };
   return {
-    subject: t("email.confirmSubject", { title: about.planTitle }),
+    subject: texts.subject,
     ...compose({
       language,
       instanceName: instance.instanceName,
-      heading: about.planTitle,
-      body: [t("email.confirmBody")],
+      heading: texts.heading,
+      body: [texts.body],
       facts: [],
       action: { label: t("email.confirmAction"), url: instance.confirmUrl },
-      footer: t("email.confirmWhy", { instance: instance.instanceName }),
+      footer: t("email.confirmWhy", name),
       // Whoever got it without asking can refuse it too: the link's page offers both.
       footerLink: { label: t("email.refuse"), url: instance.confirmUrl },
     }),
     headers: offHeaders(instance.confirmUrl),
+  };
+}
+
+/** 14 days before an unused account is deleted (spec 3.10, decision I52). */
+export function accountExpiryEmail(
+  to: { language: string },
+  deleteAt: Date,
+  instance: EmailInstance & { offUrl: string; timeZone: string },
+): ComposedEmail {
+  const language = negotiateLanguage(to.language);
+  const t = translator(language);
+  const name = { instance: instance.instanceName };
+  const date = formatDate(deleteAt, instance.timeZone, language);
+  return {
+    subject: t("email.expirySubject", { ...name, date }),
+    ...compose({
+      language,
+      instanceName: instance.instanceName,
+      heading: t("email.accountHeading", name),
+      body: [t("email.expiryBody", { date })],
+      facts: [],
+      action: { label: t("email.openAccount"), url: new URL("/account", instance.baseUrl).href },
+      footer: t("email.accountWhy", name),
+      footerLink: { label: t("email.turnOff"), url: instance.offUrl },
+    }),
+    headers: offHeaders(instance.offUrl),
+  };
+}
+
+/**
+ * "Email me my links" (decision D31): the item's new secret link, which replaced the old one. Its
+ * page asks before the link is used on a device (decision D1).
+ */
+export function newLinkEmail(
+  to: { language: string },
+  link: { title: string; url: string },
+  instance: EmailInstance & { offUrl: string },
+): ComposedEmail {
+  const language = negotiateLanguage(to.language);
+  const t = translator(language);
+  return {
+    subject: t("email.newLinkSubject", { title: link.title }),
+    ...compose({
+      language,
+      instanceName: instance.instanceName,
+      heading: link.title,
+      body: [t("email.newLinkBody")],
+      facts: [],
+      action: { label: t("email.newLinkAction"), url: link.url },
+      footer: t("email.newLinkWhy", { instance: instance.instanceName }),
+      footerLink: { label: t("email.turnOff"), url: instance.offUrl },
+    }),
+    headers: offHeaders(instance.offUrl),
   };
 }
 

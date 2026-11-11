@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { createFieldCipher } from "../../../../src/adapters/out/crypto/field-cipher.ts";
 import { createKeyring } from "../../../../src/adapters/out/crypto/keyring.ts";
 import { type Database, openDatabase } from "../../../../src/adapters/out/sqlite/database.ts";
+import { createChannelRepository } from "../../../../src/adapters/out/sqlite/channels.ts";
 import { createDeviceRepository } from "../../../../src/adapters/out/sqlite/devices.ts";
 import {
   createIdentityRepository,
@@ -14,6 +15,7 @@ import {
   createPermissionRepository,
 } from "../../../../src/adapters/out/sqlite/invites.ts";
 import type { Identity } from "../../../../src/domain/identity.ts";
+import { SequentialIdGenerator } from "../../../fakes/ids.ts";
 import { fixtureNow } from "../../../fixtures/plans.ts";
 
 let database: Database;
@@ -100,6 +102,37 @@ describe("SQLite identities (spec 4, 7 Identity)", () => {
     });
     expect(deleted).toBe(1);
     expect(await devices().findByTokenHash("hash-1")).toBeDefined();
+  });
+
+  it("are listed for the expiry warning until warned, and again once used since (I52)", async () => {
+    const repo = identities();
+    await repo.create(identity(), "subject-hash");
+    const ids = async (cutoff: Date) => (await repo.listUnwarnedBefore(cutoff)).map((i) => i.id);
+    expect(await ids(fixtureNow)).toEqual([]);
+    expect(await ids(later(1))).toEqual(["identity-1"]);
+    await repo.markExpiryWarned("identity-1", later(2));
+    expect(await ids(later(3))).toEqual([]);
+    await repo.touch("identity-1", later(4));
+    expect(await ids(later(5))).toEqual(["identity-1"]);
+  });
+
+  it("take their own email address with them when deleted (decision D31)", async () => {
+    await identities().create(identity(), "subject-hash");
+    const channels = createChannelRepository(
+      database,
+      cipher,
+      new SequentialIdGenerator(),
+      () => fixtureNow,
+    );
+    await channels.setEmail({ identityId: "identity-1" }, "anna@example.org", "de");
+    expect(await channels.emailFor({ identityId: "identity-1" })).toMatchObject({
+      address: "anna@example.org",
+      language: "de",
+    });
+    await identities().delete("identity-1");
+    expect(
+      database.sqlite.prepare("select count(*) as n from notification_channels").get(),
+    ).toEqual({ n: 0 });
   });
 
   it("log their devices out when deleted", async () => {

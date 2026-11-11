@@ -14,7 +14,6 @@ import { subscribe } from "../../src/application/channels.ts";
 import { removePerson } from "../../src/application/host.ts";
 import { notifyHost, notifyResponders, deletionNotices } from "../../src/application/notify.ts";
 import { createPlan, type PlanDeps } from "../../src/application/plans.ts";
-import type { EmailOutbox, SendResult } from "../../src/application/ports.ts";
 import { reportPlan } from "../../src/application/reports.ts";
 import { respond } from "../../src/application/responses.ts";
 import { FakeChannelLinks } from "../fakes/channel-links.ts";
@@ -22,6 +21,7 @@ import { FakeChannelRepository } from "../fakes/channels.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { FakeJobQueue } from "../fakes/job-queue.ts";
+import { FakeOutbox } from "../fakes/outbox.ts";
 import { FakeSentReminders } from "../fakes/reminders.ts";
 import { createFakeRepositories } from "../fakes/repositories.ts";
 import { FakeRouteParser } from "../fakes/route-parser.ts";
@@ -38,10 +38,13 @@ let n = 0;
 const nonce = () => `nonce-${String(++n).padStart(16, "0")}`;
 const links = new FakeChannelLinks();
 
-/** `sending: false`: SMTP not configured (or switched off later). */
+let outbox: FakeOutbox;
+
+/** `sending: false`: SMTP not configured (or switched off later), so there is no outbox. */
 function setup(
   email: { sending: boolean; reportAlerts: boolean } = { sending: true, reportAlerts: true },
 ) {
+  outbox = new FakeOutbox();
   repos = createFakeRepositories();
   channels = new FakeChannelRepository();
   jobs = new FakeJobQueue();
@@ -57,7 +60,11 @@ function setup(
       channels,
       jobs,
       reminders: new FakeSentReminders(),
-      email: { links, ...email },
+      email: {
+        links,
+        outbox: email.sending ? outbox : undefined,
+        reportAlerts: email.reportAlerts,
+      },
     },
   };
 }
@@ -115,7 +122,11 @@ describe("setting an address (decision D31)", () => {
   it("keeps it unconfirmed and sends only the confirmation link", async () => {
     const { device, responseId } = await responder("Ben");
     const asBen = { planId, deviceToken: device, role: "responder" as const };
-    expect(await emailSetting(deps, asBen)).toEqual({ kind: "setting", state: "off" });
+    expect(await emailSetting(deps, asBen)).toEqual({
+      kind: "setting",
+      state: "off",
+      accountAddress: undefined,
+    });
     takeQueued();
 
     expect(await requestEmail(deps, { ...asBen, address: " Ben@Example.ORG " })).toEqual({
@@ -206,7 +217,7 @@ describe("the email's link (decision D31, spec 3.2: no change on GET)", () => {
     const token = links.tokenFor(channel?.id ?? "");
     expect(await openEmailLink(deps, token)).toEqual({
       kind: "confirm",
-      planTitle: sampleInput.title,
+      subject: { kind: "plan", planTitle: sampleInput.title },
       address: "a…@example.org",
     });
     expect((await channels.emailFor({ planId }))?.verified).toBe(false);
@@ -224,7 +235,7 @@ describe("the email's link (decision D31, spec 3.2: no change on GET)", () => {
 
     expect(await openEmailLink(deps, token)).toEqual({
       kind: "turnOff",
-      planTitle: sampleInput.title,
+      subject: { kind: "plan", planTitle: sampleInput.title },
       address: "a…@example.org",
     });
     expect(await useEmailLink(deps, { token, action: "off" })).toEqual({ kind: "off" });
@@ -258,7 +269,11 @@ describe("the email's link (decision D31, spec 3.2: no change on GET)", () => {
   it("can also be turned off from the page", async () => {
     await requestEmail(deps, { ...asHost(), address: "anna@example.org" });
     expect(await turnOffEmail(deps, asHost())).toEqual({ kind: "off" });
-    expect(await emailSetting(deps, asHost())).toEqual({ kind: "setting", state: "off" });
+    expect(await emailSetting(deps, asHost())).toEqual({
+      kind: "setting",
+      state: "off",
+      accountAddress: undefined,
+    });
   });
 });
 
@@ -374,15 +389,10 @@ describe("rejected and removed people (spec 3.5)", () => {
     expect((await openEmailLink(deps, token)).kind).toBe("turnOff");
     expect(await useEmailLink(deps, { token, action: "confirm" })).toEqual({ kind: "not_found" });
     expect((await channels.emailFor({ responseId }))?.verified).toBe(false);
-    const sent: string[] = [];
-    const outbox = {
-      confirmation: () => (sent.push("confirm"), Promise.resolve("sent" as const)),
-      reportAlert: () => Promise.resolve("sent" as const),
-    };
     expect(await emailConfirmationHandler({ ...deps, outbox })({ channelId: channel?.id })).toBe(
       "drop",
     );
-    expect(sent).toEqual([]);
+    expect(outbox.sent).toEqual([]);
     expect(await useEmailLink(deps, { token, action: "off" })).toEqual({ kind: "off" });
   });
 });
@@ -399,7 +409,7 @@ describe("SMTP switched off later (decision D31)", () => {
         channels,
         jobs,
         reminders: new FakeSentReminders(),
-        email: { links, sending: false, reportAlerts: false },
+        email: { links, outbox: undefined, reportAlerts: false },
       },
     };
 
@@ -424,22 +434,6 @@ describe("SMTP switched off later (decision D31)", () => {
 });
 
 describe("email jobs", () => {
-  class FakeOutbox implements EmailOutbox {
-    readonly sent: string[] = [];
-    result: SendResult = "sent";
-    confirmation(
-      to: { channelId: string; address: string },
-      about: { planTitle: string; language: string },
-    ) {
-      this.sent.push(`confirm ${to.address} ${about.planTitle} ${about.language}`);
-      return Promise.resolve(this.result);
-    }
-    reportAlert() {
-      this.sent.push("reportAlert");
-      return Promise.resolve(this.result);
-    }
-  }
-
   it("send the confirmation in the owner's language, only while it is unconfirmed", async () => {
     const { device } = await responder("Ben", "fr");
     await requestEmail(deps, {
@@ -449,7 +443,6 @@ describe("email jobs", () => {
       address: "ben@example.org",
     });
     const [job] = [...jobs.jobs.values()].filter((queued) => queued.type === "emailConfirmation");
-    const outbox = new FakeOutbox();
     const handle = emailConfirmationHandler({ ...deps, outbox });
     expect(await handle(job?.payload)).toBe("done");
     expect(outbox.sent).toEqual([`confirm ben@example.org ${sampleInput.title} fr`]);
@@ -482,7 +475,6 @@ describe("email jobs", () => {
     expect(JSON.stringify(queued)).not.toContain("SENTINEL");
     expect(queued[0]?.planId).toBe(planId);
 
-    const outbox = new FakeOutbox();
     expect(await reportAlertHandler({ outbox })(queued[0]?.payload)).toBe("done");
     expect(outbox.sent).toEqual(["reportAlert"]);
   });

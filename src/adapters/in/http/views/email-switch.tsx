@@ -1,6 +1,6 @@
-// Email notifications on the manage and host pages (spec 7 Optional notification channels,
-// decision D31): an address field, then "waiting for confirmation", then the address in use. Works
-// without JavaScript, unlike the push switch beside it.
+// Email on the manage, host and account pages (spec 7 Optional notification channels, decision
+// D31): an address field (or the account's confirmed address, in one click), then "waiting for
+// confirmation", then the address in use. Works without JavaScript, unlike the push switch.
 import type { EmailSetting } from "../../../../application/email.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
@@ -14,12 +14,22 @@ export interface EmailSwitchProps {
   form?: { value: string; error: string } | undefined;
   /** Rejected and removed people may only turn emails off (spec 3.5). */
   offOnly?: boolean;
+  /** The account's own address, on the account page: its own texts. */
+  forAccount?: boolean;
+  /** On the host page: everyone who manages the plan sees the address (decision I55). */
+  shared?: boolean;
 }
 
 /**
  * The email block. Only "Turn off" for rejected and removed people (spec 3.5), and for a stored
  * address once SMTP is switched off (decision D31).
  */
+/** The texts that differ between a plan's or response's address and the account's own. */
+const TEXTS = {
+  item: { label: "email.label", hint: "email.hint", on: "email.on" },
+  account: { label: "email.accountLabel", hint: "email.accountHint", on: "email.accountOn" },
+} as const;
+
 export function EmailSwitch({
   t,
   csrfToken,
@@ -27,8 +37,12 @@ export function EmailSwitch({
   base,
   form,
   offOnly = false,
+  forAccount = false,
+  shared = false,
 }: EmailSwitchProps & { t: Translate; csrfToken: string }) {
   const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
+  const sharedHint = shared && <p class="hint">{t("email.hostShared")}</p>;
+  const texts = TEXTS[forAccount ? "account" : "item"];
   const turnOff = (
     <form method="post" action={`${base}/email/off`}>
       {csrf}
@@ -41,7 +55,8 @@ export function EmailSwitch({
   if (setting.state === "on" && form === undefined) {
     return (
       <div class="email-switch" id="email">
-        <p class="hint">{t("email.on", { address: setting.address })}</p>
+        <p class="hint">{t(texts.on, { address: setting.address })}</p>
+        {sharedHint}
         {turnOff}
       </div>
     );
@@ -61,6 +76,7 @@ export function EmailSwitch({
           <p class="notice" role="status">
             {t("email.pending", { address: setting.address })}
           </p>
+          {sharedHint}
           <div class="button-row">
             <form method="post" action={`${base}/email`}>
               {csrf}
@@ -73,11 +89,19 @@ export function EmailSwitch({
           </div>
         </>
       )}
+      {setting.state === "off" && !invalid && setting.accountAddress !== undefined && (
+        <form method="post" action={`${base}/email/account`}>
+          {csrf}
+          <button type="submit" class="secondary">
+            {t("email.useAccount", { address: setting.accountAddress })}
+          </button>
+        </form>
+      )}
       {(setting.state === "off" || invalid) && (
         <form method="post" action={`${base}/email`}>
           {csrf}
           <div class={invalid ? "field field-invalid" : "field"}>
-            <label for="field-email">{t("email.label")}</label>
+            <label for="field-email">{t(texts.label)}</label>
             <input
               id="field-email"
               name="address"
@@ -90,7 +114,8 @@ export function EmailSwitch({
               aria-describedby={invalid ? "field-email-error" : "field-email-hint"}
             />
             <p class="hint" id="field-email-hint">
-              {t("email.hint")}
+              {t(texts.hint)}
+              {shared && ` ${t("email.hostShared")}`}
             </p>
             {form !== undefined && (
               <p class="error" id="field-email-error">

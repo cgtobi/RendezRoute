@@ -19,6 +19,7 @@ import type {
 import { type PlanDeps, viewPlan } from "./plans.ts";
 import type { AccessScope, LinkedPlan } from "./ports.ts";
 import { withdrawResponse } from "./responses.ts";
+import { exportedEmail } from "./email.ts";
 
 export interface MyDataItem {
   planId: string;
@@ -130,6 +131,8 @@ export interface ExportedAccount {
   displayName: string | undefined;
   createdAt: Date;
   lastActiveAt: Date;
+  /** The account's own address (decision D31). */
+  email: { address: string; confirmed: boolean } | undefined;
 }
 
 /** Everything linked to the device, one plan it hosts, one's own response, or one template. */
@@ -167,12 +170,7 @@ export async function exportedPlan(
     : response === undefined
       ? undefined
       : { responseId: response.id };
-  const emailChannel =
-    emailOwner === undefined ? undefined : await deps.notify?.channels.emailFor(emailOwner);
-  const email =
-    emailChannel === undefined
-      ? undefined
-      : { address: emailChannel.address, confirmed: emailChannel.verified };
+  const email = emailOwner === undefined ? undefined : await exportedEmail(deps, emailOwner);
   if (result.kind === "responder") {
     return {
       role: "response",

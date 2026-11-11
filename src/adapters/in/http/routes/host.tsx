@@ -36,6 +36,7 @@ import {
   tooManyRequests,
   signedOutCount,
 } from "./shared.tsx";
+import { linkEmailProps } from "./link-tools.tsx";
 
 export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
   const { config, planDeps, geocoder, limits, vapidPublicKey } = deps;
@@ -92,6 +93,11 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         rating={page.rating}
         templateNonce={newNonce()}
         signedOut={signedOutCount(c)}
+        linkEmail={await linkEmailProps(c, planDeps, {
+          kind: "host",
+          id: page.planId,
+          deviceToken: readDeviceToken(c, config),
+        })}
         linkNonce={newNonce()}
         routeError={form.routeError}
         routeTrim={form.routeTrim ?? ""}

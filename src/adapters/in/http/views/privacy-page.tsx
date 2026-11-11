@@ -44,6 +44,7 @@ export function PrivacyPage({
         <p>{t("privacy.ratings")}</p>
         <p>{t("privacy.templates")}</p>
         {config.smtp !== undefined && <p>{t("privacy.email")}</p>}
+        {config.smtp !== undefined && loginConfigured(config) && <p>{t("privacy.accountEmail")}</p>}
         {adminLogin && <p>{t("privacy.reports")}</p>}
         {config.postingMode === "invite" && <p>{t("privacy.invites")}</p>}
         <p>{t("privacy.noTracking")}</p>

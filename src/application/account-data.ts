@@ -2,7 +2,7 @@
 // plan v1.0 step 5b; decisions D25, I52): what it owns, its export, its deletion, and deletion after
 // 12 months unused. Deleting removes everything the account owns, as "Delete my data" does for a
 // browser, then the account; its devices are logged out and keep only their own data.
-import { accountDeleteAt, accountExpiryCutoff } from "../domain/expiry.ts";
+import { accountDeleteAt, accountExpiryCutoff, accountWarningCutoff } from "../domain/expiry.ts";
 import type { Identity } from "../domain/identity.ts";
 import type { ResponseKind } from "../domain/response.ts";
 import type { PlanTemplate } from "../domain/template.ts";
@@ -17,6 +17,7 @@ import {
   type MyDataItem,
   removeOwnData,
 } from "./my-data.ts";
+import { exportedEmail, queueExpiryWarnings } from "./email.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { Device, IdentityRepository } from "./ports.ts";
 
@@ -114,6 +115,7 @@ export async function exportAccountData(
         displayName: identity.displayName,
         createdAt: identity.createdAt,
         lastActiveAt: identity.lastActiveAt,
+        email: await exportedEmail(deps, { identityId: identity.id }),
       },
     },
   };
@@ -146,9 +148,28 @@ export async function deleteAccount(
 }
 
 /**
+ * The warning 14 days before an unused account is deleted (spec 3.10, decision I52), to every
+ * confirmed channel of the account's own; an account without one gets none. An account counts as
+ * warned only once a warning was queued, so one that confirms an address (or an instance that
+ * turns on SMTP) within the 14 days is still warned; each stretch of non-use gets one warning.
+ * Accounts already due for deletion are left to expireAccounts. Returns how many were warned.
+ */
+export async function warnExpiringAccounts(deps: AccountDataDeps): Promise<number> {
+  const now = deps.clock.now();
+  const expiring = accountExpiryCutoff(now).getTime();
+  let warned = 0;
+  for (const identity of await deps.identities.listUnwarnedBefore(accountWarningCutoff(now))) {
+    if (identity.lastActiveAt.getTime() < expiring) continue;
+    if ((await queueExpiryWarnings(deps, identity)) === 0) continue;
+    await deps.identities.markExpiryWarned(identity.id, now);
+    warned++;
+  }
+  return warned;
+}
+
+/**
  * Accounts unused for 12 months are deleted with everything they own (spec 3.10). Each is read
- * again first, so one used since the list was made stays. The warning 14 days before needs a
- * channel of the account's own; those come with email, ntfy and Telegram (0.8, decision I52).
+ * again first, so one used since the list was made stays.
  */
 export async function expireAccounts(deps: AccountDataDeps): Promise<number> {
   const cutoff = accountExpiryCutoff(deps.clock.now());

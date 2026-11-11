@@ -37,6 +37,7 @@ import {
   tooManyRequests,
   signedOutCount,
 } from "./shared.tsx";
+import { linkEmailProps } from "./link-tools.tsx";
 
 export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
   const { config, planDeps, geocoder, limits } = deps;
@@ -73,6 +74,11 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         }
         saved={c.req.query("saved") !== undefined}
         signedOut={signedOutCount(c)}
+        linkEmail={await linkEmailProps(c, planDeps, {
+          kind: "template",
+          id: request(c).templateId,
+          deviceToken: readDeviceToken(c, config),
+        })}
         linkNonce={newNonce()}
       />,
       { title: result.template.title },

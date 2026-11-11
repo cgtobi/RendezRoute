@@ -40,6 +40,7 @@ import type {
   AccessScope,
   CalendarFeedRepository,
   ChannelLinks,
+  EmailOutbox,
   ChannelRepository,
   FormNonceRepository,
   InviteRepository,
@@ -85,9 +86,11 @@ export interface PlanDeps extends DeviceDeps {
         reminders: SentReminderRepository;
         /**
          * Email channels (decision D31): links always work, so stored addresses can be turned off
-         * also after SMTP is switched off; `sending` says whether SMTP is configured.
+         * also after SMTP is switched off; the outbox exists only while SMTP is configured.
          */
-        email?: { links: ChannelLinks; sending: boolean; reportAlerts: boolean } | undefined;
+        email?:
+          | { links: ChannelLinks; outbox: EmailOutbox | undefined; reportAlerts: boolean }
+          | undefined;
       }
     | undefined;
 }

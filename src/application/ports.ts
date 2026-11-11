@@ -232,6 +232,12 @@ export interface IdentityRepository {
   delete(id: string): Promise<void>;
   /** Accounts last active before the cutoff (spec 3.10 expiry). */
   listUnusedBefore(cutoff: Date): Promise<Identity[]>;
+  /**
+   * Accounts last active before the cutoff that have not been warned since (decision I52): a
+   * warning counts until the account is used again.
+   */
+  listUnwarnedBefore(cutoff: Date): Promise<Identity[]>;
+  markExpiryWarned(id: string, now: Date): Promise<void>;
   /** A fediverse account's handle as shown, after a rename (D23). */
   setHandle(id: string, handle: string | undefined): Promise<void>;
   touch(id: string, now: Date): Promise<void>;
@@ -548,8 +554,11 @@ export interface SentReminderRepository {
   record(reminder: SentReminder): Promise<void>;
 }
 
-/** Who a notification channel belongs to: a response, or the host of a plan (spec 4). */
-export type ChannelOwner = { responseId: string } | { planId: string };
+/**
+ * Who a notification channel belongs to: a response, the host of a plan, or an account for its
+ * own notices such as the expiry warning (spec 4, decision D31).
+ */
+export type ChannelOwner = { responseId: string } | { planId: string } | { identityId: string };
 
 interface ChannelBase {
   id: string;
@@ -568,6 +577,8 @@ export interface PushChannel extends ChannelBase {
 export interface EmailChannel extends ChannelBase {
   kind: "email";
   address: string;
+  /** An account's address keeps the language it was set in: accounts have none of their own. */
+  language: string | undefined;
 }
 
 export type NotificationChannel = PushChannel | EmailChannel;
@@ -591,7 +602,7 @@ export interface ChannelRepository {
   findById(id: string): Promise<NotificationChannel | undefined>;
   delete(id: string): Promise<void>;
   /** Sets the owner's one email address, unconfirmed, replacing any earlier one. */
-  setEmail(owner: ChannelOwner, address: string): Promise<string>;
+  setEmail(owner: ChannelOwner, address: string, language?: string): Promise<string>;
   /** Marks a channel confirmed; false when it no longer exists. */
   confirm(id: string): Promise<boolean>;
   emailFor(owner: ChannelOwner): Promise<EmailChannel | undefined>;
@@ -608,15 +619,26 @@ export interface ChannelLinks {
   channelOf(token: string): string | undefined;
 }
 
+/** What an email channel is for: a plan (as host or responder), or the account itself. */
+export type EmailSubject = { kind: "plan"; planTitle: string } | { kind: "account" };
+
+/** An email channel as the outbox writes to it: the address, and its id for the channel's link. */
+export interface EmailRecipient {
+  channelId: string;
+  address: string;
+  language: string;
+}
+
 /** Emails that are not notifications (decision D31). */
 export interface EmailOutbox {
   /** The link that confirms a new address, before anything else is sent to it. */
-  confirmation(
-    to: { channelId: string; address: string },
-    about: { planTitle: string; language: string },
-  ): Promise<SendResult>;
+  confirmation(to: EmailRecipient, about: EmailSubject): Promise<SendResult>;
   /** Tells CONTACT_EMAIL that a report came in, without its content (spec 7 Moderation). */
   reportAlert(): Promise<SendResult>;
+  /** An unused account is deleted on this date unless used before (spec 3.10, decision I52). */
+  accountExpiry(to: EmailRecipient, deleteAt: Date): Promise<SendResult>;
+  /** "Email me my links": the item's new link, which replaces the old one (decision D31). */
+  newLink(to: EmailRecipient, link: { title: string; url: string }): Promise<SendResult>;
 }
 
 /** A personal calendar feed (spec 6 feature 2); only the hash of its token is stored. */

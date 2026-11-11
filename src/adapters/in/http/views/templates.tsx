@@ -10,7 +10,7 @@ import type { Units } from "../../../../domain/units.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, formatDate } from "./format.ts";
 import { Item } from "./item.tsx";
-import { LinkTools } from "./link-tools.tsx";
+import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { PlanMetrics } from "./plan-metrics.tsx";
 import { WINDOW_LABELS } from "./recap.tsx";
 import { WhenWhere } from "./when-where.tsx";
@@ -126,6 +126,8 @@ export interface TemplatePageProps {
   signedOut: number | undefined;
   /** One-time value for "Get a new link" (decision I44). */
   linkNonce: string;
+  /** "Email me my links" (decision D31). */
+  linkEmail: LinkEmail | undefined;
   /** Set when the posting rules keep this device from repeating it: how to become allowed. */
   postingClosed: { requirement: PostingNeed; contactEmail: string | undefined } | undefined;
 }
@@ -236,6 +238,7 @@ export function TemplatePage(props: TemplatePageProps) {
         signedOut={props.signedOut}
         notifications={false}
         nonce={props.linkNonce}
+        email={props.linkEmail}
       />
       <section>
         <details class="danger-zone">

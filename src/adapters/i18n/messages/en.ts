@@ -387,6 +387,36 @@ export const en = {
   "emailLink.refuse": "Don’t send emails",
   "privacy.emailRateLimit":
     "Requests for a confirmation link are also counted per email address, as a hash kept only in memory, so nobody can flood someone’s mailbox.",
+  "email.accountOn": "Account emails go to {address}.",
+  "email.accountLabel": "Email for your account",
+  "email.accountHint":
+    "For notices about your account, such as a warning before an unused account is deleted. First we send a link to confirm the address.",
+  "email.useAccount": "Use {address} from your account",
+  "email.accountConfirmSubject": "Confirm emails about your account on {instance}",
+  "email.accountHeading": "Your account on {instance}",
+  "email.accountConfirmBody":
+    "Someone asked for emails about an account on {instance} at this address, such as a warning before an unused account is deleted. If it was you, confirm it with the link below. If not, ignore this email: nothing else will be sent.",
+  "email.expirySubject": "Your account on {instance} will be deleted on {date}",
+  "email.expiryBody":
+    "It has not been used for almost a year. To keep it, use it before {date}: log in, or open the site on a device that is logged in. Otherwise it is deleted with everything it owns.",
+  "email.openAccount": "Open your account",
+  "email.accountWhy":
+    "You get this email because you added this address to your account on {instance}.",
+  "email.newLinkSubject": "Your new link for “{title}”",
+  "email.newLinkBody":
+    "Here is your new private link. Older links no longer work; devices already using them stay signed in.",
+  "email.newLinkAction": "Open with the new link",
+  "email.newLinkWhy": "You get this email because you asked for a new link on {instance}.",
+  "emailLink.accountConfirmBody": "Get emails about your account on {instance} at {address}?",
+  "emailLink.accountOffBody": "Stop the emails about your account on {instance} to {address}?",
+  "linkTools.emailLink": "Email me a new link",
+  "linkTools.emailLinkHint":
+    "Sends a new link to {address}. Older links stop working; devices already using them stay signed in.",
+  "linkTools.emailed": "We sent a new link to {address}. Older links no longer work.",
+  "linkTools.emailFailed": "The email could not be sent. Nothing changed; please try again later.",
+  "privacy.accountEmail":
+    "If you add an email address to your account, it is stored encrypted, used only for emails about the account (such as the warning before an unused account is deleted) and for plans you choose it for, and deleted with the account.",
+  "email.hostShared": "Everyone who manages this plan sees this address.",
   "email.label": "Email for news about this plan",
   "email.hint":
     "First we send a link to confirm the address. Every email has a link to turn them off.",

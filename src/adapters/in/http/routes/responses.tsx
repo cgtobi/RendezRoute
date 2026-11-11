@@ -27,6 +27,7 @@ import {
   newNonce,
   signedOutCount,
 } from "./shared.tsx";
+import { linkEmailProps } from "./link-tools.tsx";
 
 export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
   const { config, planDeps, limits, vapidPublicKey } = deps;
@@ -143,6 +144,11 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         errorCode={form.errorCode}
         notice={form.notice}
         signedOut={signedOutCount(c)}
+        linkEmail={await linkEmailProps(c, planDeps, {
+          kind: "manage",
+          id: planId,
+          deviceToken: readDeviceToken(c, config),
+        })}
         linkNonce={newNonce()}
         email={email}
       />,

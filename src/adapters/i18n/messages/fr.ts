@@ -404,6 +404,40 @@ export const fr: Messages = {
   "emailLink.refuse": "Ne pas envoyer d’e-mails",
   "privacy.emailRateLimit":
     "Les demandes de lien de confirmation sont aussi comptées par adresse e-mail, sous forme d’empreinte gardée uniquement en mémoire, pour que personne ne puisse inonder la boîte d’autrui.",
+  "email.accountOn": "Les e-mails sur votre compte vont à {address}.",
+  "email.accountLabel": "E-mail pour votre compte",
+  "email.accountHint":
+    "Pour les avis sur votre compte, comme un avertissement avant la suppression d’un compte inutilisé. Nous envoyons d’abord un lien pour confirmer l’adresse.",
+  "email.useAccount": "Utiliser {address} de votre compte",
+  "email.accountConfirmSubject": "Confirmer les e-mails sur votre compte sur {instance}",
+  "email.accountHeading": "Votre compte sur {instance}",
+  "email.accountConfirmBody":
+    "Quelqu’un a demandé des e-mails sur un compte sur {instance} à cette adresse, comme un avertissement avant la suppression d’un compte inutilisé. Si c’était vous, confirmez avec le lien ci-dessous. Sinon, ignorez cet e-mail : rien d’autre ne sera envoyé.",
+  "email.expirySubject": "Votre compte sur {instance} sera supprimé le {date}",
+  "email.expiryBody":
+    "Il n’a pas été utilisé depuis presque un an. Pour le garder, utilisez-le avant le {date} : connectez-vous, ou ouvrez le site sur un appareil connecté. Sinon, il sera supprimé avec tout ce qui lui appartient.",
+  "email.openAccount": "Ouvrir votre compte",
+  "email.accountWhy":
+    "Vous recevez cet e-mail parce que vous avez ajouté cette adresse à votre compte sur {instance}.",
+  "email.newLinkSubject": "Votre nouveau lien pour « {title} »",
+  "email.newLinkBody":
+    "Voici votre nouveau lien privé. Les anciens liens ne fonctionnent plus ; les appareils qui les utilisent déjà restent connectés.",
+  "email.newLinkAction": "Ouvrir avec le nouveau lien",
+  "email.newLinkWhy":
+    "Vous recevez cet e-mail parce que vous avez demandé un nouveau lien sur {instance}.",
+  "emailLink.accountConfirmBody":
+    "Recevoir les e-mails sur votre compte sur {instance} à {address} ?",
+  "emailLink.accountOffBody": "Arrêter les e-mails sur votre compte sur {instance} à {address} ?",
+  "linkTools.emailLink": "M’envoyer un nouveau lien par e-mail",
+  "linkTools.emailLinkHint":
+    "Envoie un nouveau lien à {address}. Les anciens liens ne fonctionneront plus ; les appareils qui les utilisent déjà restent connectés.",
+  "linkTools.emailed":
+    "Nous avons envoyé un nouveau lien à {address}. Les anciens liens ne fonctionnent plus.",
+  "linkTools.emailFailed":
+    "L’e-mail n’a pas pu être envoyé. Rien n’a changé ; veuillez réessayer plus tard.",
+  "privacy.accountEmail":
+    "Si vous ajoutez une adresse e-mail à votre compte, elle est stockée chiffrée, utilisée uniquement pour les e-mails sur le compte (comme l’avertissement avant la suppression d’un compte inutilisé) et pour les sorties pour lesquelles vous la choisissez, et supprimée avec le compte.",
+  "email.hostShared": "Toutes les personnes qui gèrent cette sortie voient cette adresse.",
   "email.label": "E-mail pour les nouvelles de cette sortie",
   "email.hint":
     "Nous envoyons d’abord un lien pour confirmer l’adresse. Chaque e-mail contient un lien pour les désactiver.",

@@ -36,6 +36,7 @@ import {
   createPendingLoginRepository,
 } from "../../src/adapters/out/sqlite/identities.ts";
 import { createChannelLinks } from "../../src/adapters/out/crypto/channel-links.ts";
+import { createEmail } from "../../src/adapters/out/email/notifier.ts";
 import { createJobHandlers } from "../../src/job-handlers.ts";
 import { runDueJobs } from "../../src/application/jobs.ts";
 import { FakeClock } from "../fakes/clock.ts";
@@ -94,6 +95,18 @@ export async function createTestApp({
   const jobs = createJobQueue(database, cipher, ids);
   const vapidPublicKey = generateVapidKeys().publicKey;
   const channelLinks = createChannelLinks(randomBytes(32));
+  const mailer = new FakeMailer();
+  const email =
+    config.smtp === undefined
+      ? undefined
+      : createEmail({
+          mailer,
+          links: channelLinks,
+          baseUrl: config.baseUrl,
+          instanceName: config.instanceName,
+          contactEmail: config.contactEmail,
+          timeZone: config.defaultTimezone,
+        });
   const planDeps: PlanDeps = {
     plans: createPlanRepository(database, cipher),
     devices: createDeviceRepository(database),
@@ -118,31 +131,22 @@ export async function createTestApp({
       reminders: createSentReminderRepository(database),
       email: {
         links: channelLinks,
-        sending: config.smtp !== undefined,
+        outbox: email?.outbox,
         reportAlerts: config.smtp !== undefined && config.contactEmail !== undefined,
       },
     },
   };
+  const identities = createIdentityRepository(database, cipher);
   // Jobs run on demand with the real handlers; email goes to the fake mailer (decision D31).
-  const mailer = new FakeMailer();
   const pushed = new FakeNotifier();
   const jobHandlers = createJobHandlers({
     planDeps,
     push: pushed,
-    email:
-      config.smtp === undefined
-        ? undefined
-        : {
-            mailer,
-            links: channelLinks,
-            baseUrl: config.baseUrl,
-            instanceName: config.instanceName,
-            contactEmail: config.contactEmail,
-          },
+    delivery: email?.delivery,
+    identities,
   });
   const runJobs = () => runDueJobs({ jobs, clock }, jobHandlers);
   const pendingLogins = createPendingLoginRepository(database, cipher);
-  const identities = createIdentityRepository(database, cipher);
   const identityLookup = createLookupHasher(randomBytes(32));
   const app = createApp({
     config,

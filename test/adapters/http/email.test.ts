@@ -45,6 +45,8 @@ describe("the email setting on the manage and host pages (decision D31)", () => 
     const page = await (await withSmtp.ben.get(`/p/${withSmtp.planId}/me`)).text();
     expect(page).toContain('name="address"');
     expect(page).toContain(escaped(en("email.hint")));
+    // A response's address is its owner's alone; only the host page says others see it.
+    expect(page).not.toContain(escaped(en("email.hostShared")));
     expect(await (await withSmtp.host.get(`/p/${withSmtp.planId}/host`)).text()).toContain(
       `action="/p/${withSmtp.planId}/host/email"`,
     );

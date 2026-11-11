@@ -46,6 +46,7 @@ import {
   secretLinkHeaders,
   tooManyRequests,
 } from "./shared.tsx";
+import { accountEmailProps, registerAccountEmailForms } from "./email.tsx";
 
 const NOTICES = ["loggedIn", "loggedOut", "renamed", "claimed", "accountDeleted"] as const;
 
@@ -64,9 +65,10 @@ export const fediverseCallbackUri =
 
 export function registerAccountRoutes(
   app: Hono<AppEnv>,
-  { config, limits }: RouteDeps,
+  routeDeps: RouteDeps,
   accounts: { deps: AccountDeps; logins: readonly LoginOption[] },
 ) {
+  const { config, limits } = routeDeps;
   const { deps, logins } = accounts;
   const deviceToken = (c: Context<AppEnv>) => readDeviceToken(c, config);
 
@@ -75,10 +77,12 @@ export function registerAccountRoutes(
     forms: {
       rename?: { value: string; error: DisplayNameError };
       fediverse?: FediverseLoginForm;
+      email?: { value: string; error: string };
     } = {},
   ) => {
     const t = c.get("t");
-    const failed = forms.rename !== undefined || forms.fediverse !== undefined;
+    const failed =
+      forms.rename !== undefined || forms.fediverse !== undefined || forms.email !== undefined;
     const notice: AccountNotice = failed
       ? undefined
       : NOTICES.find((name) => c.req.query(name) !== undefined);
@@ -96,6 +100,7 @@ export function registerAccountRoutes(
         notice={notice}
         rename={forms.rename}
         fediverse={forms.fediverse}
+        email={await accountEmailProps(deps, deviceToken(c), forms.email)}
       />,
       { title: t("account.heading") },
     );
@@ -108,6 +113,7 @@ export function registerAccountRoutes(
   };
 
   app.get("/account", (c) => renderAccount(c));
+  registerAccountEmailForms(app, routeDeps, (c, email) => renderAccount(c, { email }));
 
   if (logins.some((login) => login.provider === "oidc")) {
     app.get("/login/oidc", async (c) => {

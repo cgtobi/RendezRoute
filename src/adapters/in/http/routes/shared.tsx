@@ -227,6 +227,12 @@ export function localizedInput(input: PlanInput, language: string): PlanInput {
   return { ...input, distanceKm: localizeDecimal(input.distanceKm, language) };
 }
 
+/** How the last "Email me my links" went, right after it (decision D31). */
+export function linkEmailOutcome(c: Context<AppEnv>): "sent" | "failed" | undefined {
+  const value = c.req.query("linkEmailed");
+  return value === "sent" || value === "failed" ? value : undefined;
+}
+
 /** "?signedOut=N" after "Sign out all other devices", for the notice on the page (decision I44). */
 export function signedOutCount(c: Context<AppEnv>): number | undefined {
   const value = c.req.query("signedOut");

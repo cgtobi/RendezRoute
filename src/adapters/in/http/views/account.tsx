@@ -8,6 +8,7 @@ import { type DisplayNameError, IDENTITY_LIMITS } from "../../../../domain/ident
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { BackLink } from "./back-link.tsx";
+import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
 import { fieldErrorMessage, formatDate, itemWhen } from "./format.ts";
 import { Item, ItemList } from "./item.tsx";
 import { Titles } from "./my-data.tsx";
@@ -47,6 +48,8 @@ export function AccountPage(props: {
   language: string;
   /** The instance's time zone, for dates that belong to no plan. */
   timeZone: string;
+  /** The account's own address (decision D31); undefined without SMTP. */
+  email?: EmailSwitchProps | undefined;
 }) {
   const { t, account } = props;
   // Just after logging in, the status says so; no separate notice (decision D27).
@@ -123,6 +126,11 @@ export function AccountPage(props: {
               </button>
             </form>
           </section>
+          {props.email !== undefined && (
+            <section>
+              <EmailSwitch t={t} csrfToken={props.csrfToken} {...props.email} />
+            </section>
+          )}
           <ClaimSection t={t} csrfToken={props.csrfToken} claimable={account.claimable} />
           {props.data !== undefined && (
             <AccountDataSection

@@ -1,10 +1,17 @@
-// "Get a new link" and "Sign out all other devices" (spec 3.2, decision I44), on the host, manage
-// and template pages, and the page that shows a new link once.
+// "Get a new link", "Email me my links" and "Sign out all other devices" (spec 3.2, decisions I44,
+// D31), on the host, manage and template pages, and the page that shows a new link once.
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 
 /** The field that sends both actions back to "My data" instead of the item's page (I45). */
 export const FROM_MY_DATA = { name: "from", value: "my-data" } as const;
+
+/** "Email me my links" (decision D31): where the new link would go, and how the last try went. */
+export interface LinkEmail {
+  /** The item's confirmed address; without one there is no button. */
+  address: string | undefined;
+  outcome: "sent" | "failed" | undefined;
+}
 
 export function LinkTools({
   t,
@@ -15,6 +22,7 @@ export function LinkTools({
   nonce,
   compact = false,
   returnToMyData = false,
+  email,
 }: {
   t: Translate;
   /** The page's path; the actions are `<base>/link` and `<base>/sign-out`. */
@@ -30,6 +38,8 @@ export function LinkTools({
   compact?: boolean;
   /** Both actions come back to "My data" instead of the item's page (decision I45). */
   returnToMyData?: boolean;
+  /** "Email me my links", on the item's own page. */
+  email?: LinkEmail | undefined;
 }) {
   const hidden = (
     <>
@@ -48,6 +58,16 @@ export function LinkTools({
           {t("linkTools.newLink")}
         </button>
       </form>
+      {email?.address !== undefined && (
+        <form method="post" action={`${base}/link/email`}>
+          {hidden}
+          <input type="hidden" name="nonce" value={nonce} />
+          <p class="hint">{t("linkTools.emailLinkHint", { address: email.address })}</p>
+          <button type="submit" class="secondary">
+            {t("linkTools.emailLink")}
+          </button>
+        </form>
+      )}
       <details>
         <summary>{t("linkTools.signOut")}</summary>
         <p>{t("linkTools.signOutExplain")}</p>
@@ -75,6 +95,16 @@ export function LinkTools({
       {signedOut !== undefined && (
         <p class="notice" role="status">
           {t("linkTools.signedOut", { count: signedOut })}
+        </p>
+      )}
+      {email?.outcome === "sent" && email.address !== undefined && (
+        <p class="notice" role="status">
+          {t("linkTools.emailed", { address: email.address })}
+        </p>
+      )}
+      {email?.outcome === "failed" && (
+        <p class="warning" role="alert">
+          {t("linkTools.emailFailed")}
         </p>
       )}
       <p>{t("linkTools.explain")}</p>

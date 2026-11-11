@@ -158,6 +158,15 @@ export const de: Messages = {
     "Läufe: Pace pro Meile, zum Beispiel 9:00 bis 9:30. Radfahrten: Tempo in mph, zum Beispiel 15 bis 18.",
   "form.paceFrom": "Von",
   "form.paceTo": "Bis",
+  "form.visibility": "Wer das Treffen finden kann",
+  "form.visibilityLink": "Nur, wer den Link hat",
+  "form.visibilityPublic": "Alle: gelistet unter „In der Nähe“ auf dieser Seite",
+  "form.visibilityPublicHint":
+    "Ein öffentliches Treffen können alle finden und sehen dann, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Treffgebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
+  "form.publicNeedsLogin": "Öffentliche Treffen brauchen ein Konto auf dieser Seite.",
+  "form.publicLogIn": "Anmelden",
+  "field.public_needs_login":
+    "Öffentliche Treffen brauchen ein Konto auf dieser Seite: Melde dich an oder lass das Treffen bei denen mit dem Link.",
   "form.joinMode": "Wer mitkommen kann",
   "form.joinOpen": "Alle mit dem Link",
   "form.joinApproval": "Nur, wen ich annehme",
@@ -242,6 +251,7 @@ export const de: Messages = {
   "links.deletion": "Das Treffen und alles dazu wird am {date} gelöscht.",
 
   "plan.gone": "Dieses Treffen gibt es nicht mehr.",
+  "plan.public": "Öffentlich",
   "plan.host": "Organisator:in",
   "plan.postedBy": "Eingestellt von {name}",
   "plan.youAreHost": "Du organisierst dieses Treffen.",
@@ -470,6 +480,8 @@ export const de: Messages = {
   "ntfyLink.off": "ntfy abschalten",
   "ntfyLink.confirmed": "ntfy-Benachrichtigungen sind eingeschaltet.",
   "ntfyLink.turnedOff": "ntfy-Benachrichtigungen sind abgeschaltet.",
+  "privacy.publicPlans":
+    "Wer ein Treffen organisiert, kann es öffentlich machen. Dann finden es alle unter „In der Nähe“ und sehen, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Treffgebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
   "privacy.ntfy":
     "Wenn du ntfy einschaltest, werden Benachrichtigungen an den ntfy-Server {server} unter einem zufälligen Thema gesendet, das die App erzeugt; wer das Thema kennt, kann sie lesen. Das Thema wird verschlüsselt gespeichert und mit deiner Antwort, dem Treffen oder dem Konto gelöscht.",
   "channelLink.invalid":
@@ -672,6 +684,8 @@ export const de: Messages = {
     other: "Wird {count} Tage nach dem Treffen gelöscht statt nach {from} Tagen.",
   },
   "template.adjustedRecapWindow": "Rückblick: „{to}“ statt „{from}“.",
+  "template.adjustedVisibility":
+    "Nur, wer den Link hat, kann es finden: Öffentliche Treffen brauchen ein Konto auf dieser Seite.",
   "template.savedHeading": "Vorlage gespeichert",
   "template.savedBody":
     "„{title}“ ist als Vorlage gespeichert. Du kannst es an einem neuen Datum wiederholen.",

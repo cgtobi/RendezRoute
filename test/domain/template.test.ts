@@ -86,7 +86,7 @@ describe("repeatInput (spec 3.10: re-validated, adjusted, the host is told)", ()
       template(true),
       { date: "2026-07-05", time: "08:00" },
       "metric",
-      30,
+      { maxRetentionDays: 30, publicAllowed: true },
     );
     expect(adjustments).toEqual([]);
     expect(input).toMatchObject({ date: "2026-07-05", time: "08:00", keepAsTemplate: "" });
@@ -106,13 +106,30 @@ describe("repeatInput (spec 3.10: re-validated, adjusted, the host is told)", ()
       template(),
       { date: "2026-07-05", time: "08:00" },
       "metric",
-      3,
+      { maxRetentionDays: 3, publicAllowed: true },
     );
     expect(adjustments).toEqual([
       { field: "retentionDays", from: 14, to: 3 },
       { field: "recapWindow", from: "1w", to: "1d" },
     ]);
     expect(input).toMatchObject({ retentionDays: "3", recapWindow: "1d" });
+  });
+
+  it("sets a public template back to link-only where the new plan may not be public (D35)", () => {
+    const publicOne = { ...template(), visibility: "public" as const };
+    const when = { date: "2026-07-05", time: "08:00" };
+    const kept = repeatInput(publicOne, when, "metric", {
+      maxRetentionDays: 30,
+      publicAllowed: true,
+    });
+    expect(kept.adjustments).toEqual([]);
+    expect(kept.input.visibility).toBe("public");
+    const back = repeatInput(publicOne, when, "metric", {
+      maxRetentionDays: 30,
+      publicAllowed: false,
+    });
+    expect(back.adjustments).toEqual([{ field: "visibility", from: "public", to: "link" }]);
+    expect(back.input.visibility).toBe("link");
   });
 });
 

@@ -1,4 +1,5 @@
 // Plan routes (spec 5 features 1 and 3).
+import { publicAllowedFor } from "../../../../application/public-plans.ts";
 import type { Context, Hono } from "hono";
 import { createPlan, viewPlan, viewPlanTheme } from "../../../../application/plans.ts";
 import { viewAccount } from "../../../../application/accounts.ts";
@@ -34,6 +35,7 @@ import {
   tooManyRequests,
   secretLinkHeaders,
   TIME_ZONES,
+  visibilityChoice,
 } from "./shared.tsx";
 
 export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
@@ -47,14 +49,18 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     secondaryColor: DEFAULT_COLORS.secondary,
   });
 
-  const renderForm = (
+  const renderForm = async (
     c: Context<AppEnv>,
     values: PlanInput,
     errors: readonly FieldError[],
     nonce: string,
     routeTrim = "",
-  ) =>
-    c.render(
+  ) => {
+    // Public is chosen for the plan this device will own (decision D35).
+    const publicAllowed = await publicAllowedFor(planDeps, {
+      deviceToken: readDeviceToken(c, config),
+    });
+    return c.render(
       <PlanForm
         t={c.get("t")}
         values={values}
@@ -72,9 +78,11 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         units={c.get("units")}
         detectZoneFrom={errors.length === 0 ? config.defaultTimezone : undefined}
         routeTrim={routeTrim}
+        visibility={visibilityChoice(config, publicAllowed)}
       />,
       { title: c.get("t")("form.heading"), head: <MapAssets /> },
     );
+  };
 
   app.get("/new", async (c) => {
     // With POSTING_MODE=invite, how to get an invite instead of a form the device cannot send.

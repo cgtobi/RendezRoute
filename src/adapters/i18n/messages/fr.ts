@@ -161,6 +161,15 @@ export const fr: Messages = {
     "Course à pied : allure par mile, par exemple 9:00 à 9:30. Vélo : vitesse en mph, par exemple 15 à 18.",
   "form.paceFrom": "De",
   "form.paceTo": "À",
+  "form.visibility": "Qui peut trouver cette sortie",
+  "form.visibilityLink": "Seulement les personnes ayant le lien",
+  "form.visibilityPublic": "Tout le monde : listée dans « À proximité » sur ce site",
+  "form.visibilityPublicHint":
+    "Une sortie publique peut être trouvée par tout le monde, qui voit alors ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone de rendez-vous, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
+  "form.publicNeedsLogin": "Les sorties publiques demandent un compte sur ce site.",
+  "form.publicLogIn": "Se connecter",
+  "field.public_needs_login":
+    "Les sorties publiques demandent un compte sur ce site : connectez-vous, ou réservez la sortie aux personnes ayant le lien.",
   "form.joinMode": "Qui peut participer",
   "form.joinOpen": "Toute personne ayant le lien",
   "form.joinApproval": "Seulement les personnes que j’accepte",
@@ -244,6 +253,7 @@ export const fr: Messages = {
   "links.deletion": "La sortie et tout ce qui la concerne seront supprimés le {date}.",
 
   "plan.gone": "Cette sortie n’existe plus.",
+  "plan.public": "Publique",
   "plan.host": "organisateur·rice",
   "plan.postedBy": "Proposée par {name}",
   "plan.youAreHost": "Vous organisez cette sortie.",
@@ -471,6 +481,8 @@ export const fr: Messages = {
   "ntfyLink.off": "Désactiver ntfy",
   "ntfyLink.confirmed": "Les notifications ntfy sont activées.",
   "ntfyLink.turnedOff": "Les notifications ntfy sont désactivées.",
+  "privacy.publicPlans":
+    "Les organisateur·rice·s peuvent rendre une sortie publique. Tout le monde peut alors la trouver dans « À proximité » et voir ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone de rendez-vous, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
   "privacy.ntfy":
     "Si vous activez ntfy, les notifications sont envoyées au serveur ntfy {server} sous un sujet aléatoire créé par l’application ; quiconque connaît le sujet peut les lire. Le sujet est stocké chiffré et supprimé avec votre réponse, la sortie ou le compte.",
   "channelLink.invalid":
@@ -672,6 +684,8 @@ export const fr: Messages = {
     other: "Supprimée {count} jours après la sortie au lieu de {from} jours.",
   },
   "template.adjustedRecapWindow": "Récapitulatif : « {to} » au lieu de « {from} ».",
+  "template.adjustedVisibility":
+    "Seules les personnes ayant le lien peuvent la trouver : les sorties publiques demandent un compte sur ce site.",
   "template.savedHeading": "Modèle enregistré",
   "template.savedBody":
     "« {title} » est enregistré comme modèle. Vous pouvez le répéter à une nouvelle date.",

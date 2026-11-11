@@ -346,5 +346,14 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
         .executeTakeFirst();
       return row?.plan_id;
     },
+
+    async ownerOf(planId) {
+      const row = await database.db
+        .selectFrom("plans")
+        .select("owner_identity_id")
+        .where("id", "=", planId)
+        .executeTakeFirst();
+      return row?.owner_identity_id ?? undefined;
+    },
   };
 }

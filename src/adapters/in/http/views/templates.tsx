@@ -98,18 +98,25 @@ export function TemplateAdjustments({
       <p>{t("template.adjusted")}</p>
       <ul>
         {adjustments.map((adjustment) => (
-          <li>
-            {adjustment.field === "retentionDays"
-              ? t("template.adjustedRetention", { count: adjustment.to, from: adjustment.from })
-              : t("template.adjustedRecapWindow", {
-                  from: t(WINDOW_LABELS[adjustment.from]),
-                  to: t(WINDOW_LABELS[adjustment.to]),
-                })}
-          </li>
+          <li>{adjustmentText(t, adjustment)}</li>
         ))}
       </ul>
     </div>
   );
+}
+
+function adjustmentText(t: Translate, adjustment: TemplateAdjustment): string {
+  switch (adjustment.field) {
+    case "retentionDays":
+      return t("template.adjustedRetention", { count: adjustment.to, from: adjustment.from });
+    case "recapWindow":
+      return t("template.adjustedRecapWindow", {
+        from: t(WINDOW_LABELS[adjustment.from]),
+        to: t(WINDOW_LABELS[adjustment.to]),
+      });
+    case "visibility":
+      return t("template.adjustedVisibility");
+  }
 }
 
 export interface TemplatePageProps {

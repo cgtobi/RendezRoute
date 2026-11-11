@@ -4,6 +4,20 @@ import type { RatingResult } from "./rating.ts";
 // Plan-level enumerations (spec section 4). Changing a list requires a migration.
 export const VISIBILITIES = ["link", "followers", "public"] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
+/** What the forms offer in 0.8: `followers` comes with federation (decision D35). */
+export const CHOOSABLE_VISIBILITIES = ["link", "public"] as const satisfies readonly Visibility[];
+
+/**
+ * Whether a plan may be public (spec 7 Visibility and Nearby plans): with PUBLIC_REQUIRES_LOGIN
+ * only when it belongs to an account. A plan already public stays so, like a retention above a
+ * lowered maximum (spec 3.10).
+ */
+export function mayBePublic(
+  rule: { requiresLogin: boolean },
+  plan: { ownerIdentityId: string | undefined; visibility?: Visibility | undefined },
+): boolean {
+  return !rule.requiresLogin || plan.ownerIdentityId !== undefined || plan.visibility === "public";
+}
 
 export const JOIN_MODES = ["open", "approval"] as const;
 export type JoinMode = (typeof JOIN_MODES)[number];
@@ -19,7 +33,6 @@ export interface Plan extends PlanDraft {
   id: string;
   /** BCP 47 tag for the poster's notifications (spec 4). */
   posterLanguage: string;
-  visibility: Visibility;
   joinMode: JoinMode;
   status: PlanStatus;
   /** The route itself is loaded separately, only where it may be shown (spec 3.6). */

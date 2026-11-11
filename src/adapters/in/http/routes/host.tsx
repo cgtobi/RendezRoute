@@ -37,6 +37,7 @@ import {
   TIME_ZONES,
   tooManyRequests,
   signedOutCount,
+  visibilityChoice,
 } from "./shared.tsx";
 import { linkEmailProps } from "./link-tools.tsx";
 
@@ -72,6 +73,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     return c.render(
       <HostPage
         t={c.get("t")}
+        visibility={visibilityChoice(config, page.publicAllowed)}
         language={c.get("language")}
         planId={page.planId}
         title={page.title}

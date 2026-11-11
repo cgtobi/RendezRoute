@@ -3,47 +3,13 @@ import { en } from "../../../src/adapters/i18n/messages/en.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
 import { escaped } from "../../support/html.ts";
-import { createPlanViaUi, respondViaUi } from "../../support/plans.ts";
+import { createPlanViaUi, editForm, respondViaUi } from "../../support/plans.ts";
 
 async function setup() {
   const test = await createTestApp();
   const host = new TestClient(test.app);
   const { planId } = await createPlanViaUi(host);
   return { ...test, host, planId, newClient: () => new TestClient(test.app) };
-}
-
-/** All form fields of the host page's edit form (hidden and visible inputs, selects, textareas). */
-async function editForm(client: TestClient, planId: string): Promise<Record<string, string>> {
-  const html = await (await client.get(`/p/${planId}/host`)).text();
-  const form = /<form[^>]*action="\/p\/[^"]+\/host"[^>]*>([\s\S]*?)<\/form>/.exec(html)?.[1] ?? "";
-  const fields: Record<string, string> = {};
-  for (const input of form.matchAll(/<input[^>]*>/g)) {
-    const name = /name="([^"]+)"/.exec(input[0])?.[1];
-    const value = /value="([^"]*)"/.exec(input[0])?.[1] ?? "";
-    const type = /type="([^"]+)"/.exec(input[0])?.[1];
-    if (
-      name === undefined ||
-      ((type === "radio" || type === "checkbox") && !/checked/.test(input[0]))
-    )
-      continue;
-    fields[name] = value
-      .replaceAll("&amp;", "&")
-      .replaceAll("&quot;", '"')
-      .replaceAll("&#39;", "'")
-      .replaceAll("&lt;", "<")
-      .replaceAll("&gt;", ">");
-  }
-  for (const select of form.matchAll(/<select[^>]*name="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)) {
-    fields[select[1] ?? ""] =
-      /<option value="([^"]*)" selected=""/.exec(select[2] ?? "")?.[1] ?? "";
-  }
-  for (const area of form.matchAll(/<textarea[^>]*name="([^"]+)"[^>]*>([\s\S]*?)<\/textarea>/g)) {
-    fields[area[1] ?? ""] = (area[2] ?? "")
-      .replaceAll("&amp;", "&")
-      .replaceAll("&lt;", "<")
-      .replaceAll("&gt;", ">");
-  }
-  return fields;
 }
 
 describe("host page access (spec 5 feature 7)", () => {

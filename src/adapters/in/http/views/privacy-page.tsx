@@ -43,6 +43,9 @@ export function PrivacyPage({
         <p>{t("privacy.storedRecap")}</p>
         <p>{t("privacy.ratings")}</p>
         <p>{t("privacy.templates")}</p>
+        {(!config.publicRequiresLogin || loginConfigured(config)) && (
+          <p>{t("privacy.publicPlans")}</p>
+        )}
         {config.smtp !== undefined && <p>{t("privacy.email")}</p>}
         {config.ntfy !== undefined && <p>{t("privacy.ntfy", { server: config.ntfy.url.host })}</p>}
         {config.telegram !== undefined && <p>{t("privacy.telegram")}</p>}

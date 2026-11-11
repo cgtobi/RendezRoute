@@ -111,6 +111,8 @@ export interface PlanRepository {
   findById(id: string): Promise<Plan | undefined>;
   findByHostTokenHash(hash: string): Promise<Plan | undefined>;
   findIdByCreationNonce(nonce: string): Promise<string | undefined>;
+  /** The account the plan belongs to, if any (step 5a); decides whether it may be public (D35). */
+  ownerOf(planId: string): Promise<string | undefined>;
   /** "Get a new link": the old host link stops working (spec 3.2). */
   setHostTokenHash(planId: string, hash: string): Promise<void>;
   /** Stores every field of an existing plan. */

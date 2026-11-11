@@ -23,6 +23,7 @@ export const sampleInput: PlanInput = {
   paceTo: "6:00",
   dropPolicy: "no_drop",
   joinMode: "open",
+  visibility: "",
   primaryColor: "#2E5BFF",
   secondaryColor: "#FF7A45",
   retentionDays: "",

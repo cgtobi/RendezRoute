@@ -10,10 +10,11 @@ import type { AccountDeps } from "../../../../application/accounts.ts";
 import type { PlanDeps } from "../../../../application/plans.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "../../../../application/ports.ts";
 import { planWeather } from "../../../../application/weather.ts";
+import type { VisibilityChoice } from "../views/plan-form.tsx";
 import type { ViewPlanResult } from "../../../../application/plans.ts";
 import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input.ts";
 import { clientKey, type RateLimits } from "../rate-limit.ts";
-import type { Config } from "../../../../config.ts";
+import { type Config, loginConfigured } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
 import { MapAssets, type MapSettings } from "../views/maps.tsx";
@@ -261,3 +262,13 @@ export function switchRoute(
     plan: `/p/${planId}`,
   };
 }
+
+/**
+ * "Who can find this plan" on the plan, host and template forms (decision D35): whether public
+ * may be chosen, as the use case decided, and the account page to log in on, if the instance
+ * offers a login.
+ */
+export const visibilityChoice = (config: Config, publicAllowed: boolean): VisibilityChoice => ({
+  publicAllowed,
+  loginHref: loginConfigured(config) ? "/account" : undefined,
+});

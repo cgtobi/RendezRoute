@@ -22,7 +22,6 @@ export const TEMPLATE_UNUSED_DAYS = 90;
 export interface PlanTemplate extends PlanDetails {
   id: string;
   posterLanguage: string;
-  visibility: Visibility;
   /** Local start time ("07:30") in the template's zone; repeats suggest it (decision I43). */
   startTime: string;
   /** Exact start and route are kept only when the poster opted in (spec 3.10). */
@@ -120,18 +119,21 @@ export function validateTemplateEdit(
 /** What a repeat changed to meet the current rules; the host is told (spec 3.10). */
 export type TemplateAdjustment =
   | { field: "retentionDays"; from: number; to: number }
-  | { field: "recapWindow"; from: RecapWindow; to: RecapWindow };
+  | { field: "recapWindow"; from: RecapWindow; to: RecapWindow }
+  /** Public is no longer allowed for the new plan (decision D35). */
+  | { field: "visibility"; from: Visibility; to: Visibility };
 
 /**
  * The plan form values for repeating a template on a new date: a retention above the current
- * maximum is lowered to it, and the recap window shortened to fit. The result still goes through
- * the full plan validation. The new plan does not keep a template of its own: this one stays.
+ * maximum is lowered to it, the recap window shortened to fit, and a public template made
+ * link-only where the new plan may not be public. The result still goes through the full plan
+ * validation. The new plan does not keep a template of its own: this one stays.
  */
 export function repeatInput(
   template: PlanTemplate,
   when: { date: string; time: string },
   units: Units,
-  maxRetentionDays: number,
+  { maxRetentionDays, publicAllowed }: { maxRetentionDays: number; publicAllowed: boolean },
 ): { input: PlanInput; adjustments: TemplateAdjustment[] } {
   const adjustments: TemplateAdjustment[] = [];
   const retentionDays = Math.min(template.retentionDays, maxRetentionDays);
@@ -142,6 +144,11 @@ export function repeatInput(
   if (recapWindow !== template.recapWindow) {
     adjustments.push({ field: "recapWindow", from: template.recapWindow, to: recapWindow });
   }
+  const visibility =
+    template.visibility === "public" && !publicAllowed ? "link" : template.visibility;
+  if (visibility !== template.visibility) {
+    adjustments.push({ field: "visibility", from: template.visibility, to: visibility });
+  }
   return {
     input: {
       ...detailsToInput(template, units),
@@ -149,6 +156,7 @@ export function repeatInput(
       time: when.time,
       retentionDays: String(retentionDays),
       recapWindow,
+      visibility,
       keepAsTemplate: "",
       templateIncludePrivate: "",
     },

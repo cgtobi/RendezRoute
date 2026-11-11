@@ -92,3 +92,42 @@ export async function hostActsOn(
   if (form?.[1] === undefined) throw new Error(`no ${action} button for ${name}`);
   return host.postForm(form[1], hiddenFields(form[0]));
 }
+
+/** All form fields of the host page's edit form (hidden and visible inputs, selects, textareas). */
+export async function editForm(
+  client: TestClient,
+  planId: string,
+): Promise<Record<string, string>> {
+  const html = await (await client.get(`/p/${planId}/host`)).text();
+  const form = /<form[^>]*action="\/p\/[^"]+\/host"[^>]*>([\s\S]*?)<\/form>/.exec(html)?.[1] ?? "";
+  const fields: Record<string, string> = {};
+  for (const input of form.matchAll(/<input[^>]*>/g)) {
+    const name = /name="([^"]+)"/.exec(input[0])?.[1];
+    const value = /value="([^"]*)"/.exec(input[0])?.[1] ?? "";
+    const type = /type="([^"]+)"/.exec(input[0])?.[1];
+    // As a browser sends it: no disabled field, no unchecked choice.
+    if (
+      name === undefined ||
+      /\sdisabled/.test(input[0]) ||
+      ((type === "radio" || type === "checkbox") && !/checked/.test(input[0]))
+    )
+      continue;
+    fields[name] = value
+      .replaceAll("&amp;", "&")
+      .replaceAll("&quot;", '"')
+      .replaceAll("&#39;", "'")
+      .replaceAll("&lt;", "<")
+      .replaceAll("&gt;", ">");
+  }
+  for (const select of form.matchAll(/<select[^>]*name="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)) {
+    fields[select[1] ?? ""] =
+      /<option value="([^"]*)" selected=""/.exec(select[2] ?? "")?.[1] ?? "";
+  }
+  for (const area of form.matchAll(/<textarea[^>]*name="([^"]+)"[^>]*>([\s\S]*?)<\/textarea>/g)) {
+    fields[area[1] ?? ""] = (area[2] ?? "")
+      .replaceAll("&amp;", "&")
+      .replaceAll("&lt;", "<")
+      .replaceAll("&gt;", ">");
+  }
+  return fields;
+}

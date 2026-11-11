@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+import { mayBePublic } from "../../src/domain/plan.ts";
 import { type PlanInput, validatePlanInput } from "../../src/domain/plan-input.ts";
 
 const rules = { now: new Date("2026-06-01T08:00:00Z"), horizonDays: 180, maxRetentionDays: 30 };
@@ -23,6 +24,7 @@ const valid: PlanInput = {
   paceTo: "6:00",
   dropPolicy: "no_drop",
   joinMode: "open",
+  visibility: "",
   primaryColor: "#2e5bff",
   secondaryColor: "#FF7A45",
   retentionDays: "",
@@ -59,6 +61,7 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
       pace: { fastest: 330, slowest: 360 },
       dropPolicy: "no_drop",
       joinMode: "open",
+      visibility: "link",
       colors: { primary: "#2E5BFF", secondary: "#FF7A45" },
       retentionDays: 14,
       recapWindow: "1w",
@@ -291,5 +294,31 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
         { field: "retentionDays", code: "retention_out_of_range" },
       ]);
     });
+  });
+});
+
+describe("who can find the plan (spec 3.3, decision D35)", () => {
+  const visibilityOf = (visibility: string) => {
+    const draft = validatePlanInput({ ...valid, visibility }, rules, "metric");
+    return draft.ok ? draft.value.visibility : draft.errors;
+  };
+
+  it("is link-only unless public is chosen; followers waits for federation", () => {
+    expect(visibilityOf("")).toBe("link");
+    expect(visibilityOf("link")).toBe("link");
+    expect(visibilityOf("public")).toBe("public");
+    expect(visibilityOf("followers")).toEqual([{ field: "visibility", code: "choice_invalid" }]);
+    expect(visibilityOf("everyone")).toEqual([{ field: "visibility", code: "choice_invalid" }]);
+  });
+});
+
+describe("mayBePublic (spec 7 Visibility and Nearby plans)", () => {
+  it("needs an account owner while login is required, and keeps what is already public", () => {
+    const strict = { requiresLogin: true };
+    expect(mayBePublic(strict, { ownerIdentityId: undefined })).toBe(false);
+    expect(mayBePublic(strict, { ownerIdentityId: "id-1" })).toBe(true);
+    expect(mayBePublic(strict, { ownerIdentityId: undefined, visibility: "public" })).toBe(true);
+    expect(mayBePublic(strict, { ownerIdentityId: undefined, visibility: "link" })).toBe(false);
+    expect(mayBePublic({ requiresLogin: false }, { ownerIdentityId: undefined })).toBe(true);
   });
 });

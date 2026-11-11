@@ -12,6 +12,7 @@ import type { PostingMode } from "../domain/invite.ts";
 import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
 import type { RecapWindow } from "../domain/schedule.ts";
 import { audienceFor, canSee } from "../domain/visibility.ts";
+import { publicRefused } from "./public-plans.ts";
 import {
   applyRouteDefaults,
   parseRouteTrim,
@@ -78,6 +79,11 @@ export interface PlanDeps extends DeviceDeps {
   reports: ReportRepository;
   /** Who may create plans, and the invite links and permissions behind it (spec 7 Moderation). */
   postingMode: PostingMode;
+  /**
+   * PUBLIC_REQUIRES_LOGIN (spec 7 Visibility and Nearby plans): public plans only for accounts.
+   * Absent means true, the stricter rule.
+   */
+  publicRequiresLogin?: boolean | undefined;
   invites: InviteRepository;
   permissions: PermissionRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
@@ -178,6 +184,11 @@ export async function createPlan(
     return { kind: "invalid", errors };
   }
 
+  const refused = await publicRefused(deps, draft.value.visibility, {
+    deviceToken: request.deviceToken,
+  });
+  if (refused !== undefined) return { kind: "invalid", errors: refused };
+
   const stored = await storeNewPlan(deps, draft.value, { ...request, route });
   return stored.kind === "created"
     ? {
@@ -231,7 +242,6 @@ export async function storeNewPlan(
     ...draft,
     id: deps.ids.planId(),
     posterLanguage: request.language,
-    visibility: "link",
     status: "active",
     hasRoute: request.route !== undefined,
     recapWindowSetAt: undefined,

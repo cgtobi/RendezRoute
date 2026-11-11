@@ -153,6 +153,15 @@ export const en = {
     "Runs: pace per mile, for example 9:00 to 9:30. Rides: speed in mph, for example 15 to 18.",
   "form.paceFrom": "From",
   "form.paceTo": "To",
+  "form.visibility": "Who can find this plan",
+  "form.visibilityLink": "Only people with the link",
+  "form.visibilityPublic": "Anyone: listed in Nearby on this site",
+  "form.visibilityPublicHint":
+    "A public plan can be found by anyone, who then sees what the plan page shows to everyone: the title, the host’s name, date and time, meeting area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
+  "form.publicNeedsLogin": "Public plans need an account on this site.",
+  "form.publicLogIn": "Log in",
+  "field.public_needs_login":
+    "Public plans need an account on this site: log in, or keep the plan to people with the link.",
   "form.joinMode": "Who can join",
   "form.joinOpen": "Anyone with the link",
   "form.joinApproval": "Only people I accept",
@@ -233,6 +242,7 @@ export const en = {
   "links.deletion": "The plan and everything about it will be deleted on {date}.",
 
   "plan.gone": "This plan no longer exists.",
+  "plan.public": "Public",
   "plan.host": "host",
   "plan.postedBy": "Posted by {name}",
   "plan.youAreHost": "You are the host of this plan.",
@@ -449,6 +459,8 @@ export const en = {
   "ntfyLink.off": "Turn off ntfy",
   "ntfyLink.confirmed": "ntfy notifications are on.",
   "ntfyLink.turnedOff": "ntfy notifications are turned off.",
+  "privacy.publicPlans":
+    "A host can make a plan public. Anyone can then find it in Nearby and see what the plan page shows to everyone: the title, the host’s name, date and time, meeting area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
   "privacy.ntfy":
     "If you turn on ntfy, notifications are posted to the ntfy server {server} under a random topic the app makes; anyone who knows the topic can read them. The topic is stored encrypted and deleted with your response, the plan or the account.",
   "channelLink.invalid":
@@ -646,6 +658,8 @@ export const en = {
     other: "Deleted {count} days after the run instead of {from} days.",
   },
   "template.adjustedRecapWindow": "Recap: “{to}” instead of “{from}”.",
+  "template.adjustedVisibility":
+    "Only people with the link can find it: public plans need an account on this site.",
   "template.savedHeading": "Template saved",
   "template.savedBody": "“{title}” is saved as a template. You can repeat it on a new date.",
   "template.link": "Your template link: keep this private",

@@ -236,6 +236,9 @@ export function createFakeRepositories(): {
       async findIdByCreationNonce(nonce) {
         return planNonces.get(nonce);
       },
+      async ownerOf(planId) {
+        return owners.get(`host|${planId}`);
+      },
       async setHostTokenHash(planId, hash) {
         const entry = plans.get(planId);
         if (entry !== undefined) entry.hostTokenHash = hash;

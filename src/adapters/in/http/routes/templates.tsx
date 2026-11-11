@@ -36,6 +36,7 @@ import {
   TIME_ZONES,
   tooManyRequests,
   signedOutCount,
+  visibilityChoice,
 } from "./shared.tsx";
 import { linkEmailProps } from "./link-tools.tsx";
 
@@ -117,6 +118,7 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
           units={c.get("units")}
           forTemplate
           notice={form.notice}
+          visibility={visibilityChoice(config, result.publicAllowed)}
         />
       </section>,
       { title: t("template.editHeading"), head: <MapAssets /> },

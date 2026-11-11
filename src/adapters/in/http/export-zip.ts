@@ -17,7 +17,7 @@ import { calendarEvents } from "./views/calendar-events.ts";
  * Changes whenever data.json changes shape, so importers can tell versions apart (2: ratings;
  * 3: mayPostSince, set in device exports when an invite link lets the device create plans;
  * 4: account, set in account exports; 5: notificationEmail per plan and for the account, D31;
- * 6: telegramChat per plan and for the account, D34).
+ * 6: telegramChat per plan and for the account, D34; visibility per plan and template, D35).
  */
 export const EXPORT_VERSION = 6;
 
@@ -55,6 +55,7 @@ function planJson(plan: ExportedPlan) {
     pace: paceJson(view.pace),
     dropPolicy: view.dropPolicy,
     joinMode: view.joinMode,
+    visibility: view.visibility,
     note: orNull(view.note),
     status: view.status,
     deleteAt: view.deleteAt,
@@ -90,6 +91,7 @@ function templateJson(template: PlanTemplate) {
     pace: paceJson(template.pace),
     dropPolicy: template.dropPolicy,
     joinMode: template.joinMode,
+    visibility: template.visibility,
     note: orNull(template.note),
     retentionDays: template.retentionDays,
     recapWindow: template.recapWindow,

@@ -1,5 +1,6 @@
 // The host page: edit, cancel, delete, remove and restore people (spec 5 features 7–9,
 // 3.1 Editing and Retention edits, 3.5, decision D8). Only devices linked as host may act.
+import { publicAllowedFor, publicRefused } from "./public-plans.ts";
 import type { Units } from "../domain/pace.ts";
 import type { NotificationKind } from "../domain/notification.ts";
 import type { Plan } from "../domain/plan.ts";
@@ -69,6 +70,8 @@ export type HostPageResult =
       title: string;
       /** Edit form values. */
       input: PlanInput;
+      /** Whether the edit form may offer public (decision D35). */
+      publicAllowed: boolean;
       scope: "all" | "retention";
       canCancel: boolean;
       /** Whether pending requests can still be decided: before the start of an active plan (spec 3.1). */
@@ -104,6 +107,7 @@ export async function viewHostPage(
     planId: plan.id,
     title: plan.title,
     input: planToInput(plan, request.units),
+    publicAllowed: await publicAllowedFor(deps, { plan }),
     scope: editScope(plan, now),
     canCancel: canCancel(plan, now).ok,
     requestsOpen: canRespond(plan, now).ok,
@@ -189,6 +193,8 @@ export async function editPlan(
 
   const draft = validatePlanEdit(request.input, plan, { now, ...deps.limits }, request.units);
   if (!draft.ok) return { kind: "invalid", errors: draft.errors };
+  const refused = await publicRefused(deps, draft.value.visibility, { plan });
+  if (refused !== undefined) return { kind: "invalid", errors: refused };
   const responses = await deps.responses.listByPlan(plan.id);
   if (responses.some((response) => isPosterName(response.displayName, draft.value.posterName))) {
     return { kind: "invalid", errors: [{ field: "posterName", code: "name_taken_by_response" }] };

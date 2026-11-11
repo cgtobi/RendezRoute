@@ -47,6 +47,7 @@ export type PlanDetails = Pick<
   | "pace"
   | "dropPolicy"
   | "joinMode"
+  | "visibility"
   | "colors"
   | "retentionDays"
   | "recapWindow"
@@ -103,6 +104,7 @@ export function detailsToInput(
     paceTo: pace === undefined ? "" : paceValue(style === "pace" ? pace.slowest : pace.fastest),
     dropPolicy: plan.dropPolicy,
     joinMode: plan.joinMode,
+    visibility: plan.visibility,
     primaryColor: plan.colors.primary,
     secondaryColor: plan.colors.secondary,
     retentionDays: String(plan.retentionDays),

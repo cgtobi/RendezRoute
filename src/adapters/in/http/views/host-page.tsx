@@ -6,7 +6,7 @@ import type { RecapWindow } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import type { MapSettings } from "./maps.tsx";
-import { PlanForm } from "./plan-form.tsx";
+import { PlanForm, type VisibilityChoice } from "./plan-form.tsx";
 import { RecapShortenedNotice, RecapWindowSelect } from "./recap.tsx";
 import { TemplateOptions } from "./templates.tsx";
 import { type LinkEmail, LinkTools } from "./link-tools.tsx";
@@ -22,6 +22,8 @@ import { BackLink } from "./back-link.tsx";
 
 export interface HostPageProps {
   t: Translate;
+  /** Who can find the plan: whether its owner may make it public (decision D35). */
+  visibility: VisibilityChoice;
   language: string;
   planId: string;
   title: string;
@@ -113,6 +115,7 @@ export function HostPage(props: HostPageProps) {
           routeTrim=""
           units={props.units}
           confirmAcceptPending={props.confirmAcceptPending}
+          visibility={props.visibility}
         />
       ) : (
         <RetentionForm {...props} />

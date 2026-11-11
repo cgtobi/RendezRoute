@@ -11,7 +11,14 @@ import {
 } from "./geo.ts";
 import { type PaceBand, paceFromSpeed, parsePace, validatePaceBand } from "./pace.ts";
 import { distanceToMeters, elevationToMeters, type Units } from "./units.ts";
-import { DROP_POLICIES, type DropPolicy, JOIN_MODES, type JoinMode } from "./plan.ts";
+import {
+  CHOOSABLE_VISIBILITIES,
+  DROP_POLICIES,
+  type DropPolicy,
+  JOIN_MODES,
+  type JoinMode,
+  type Visibility,
+} from "./plan.ts";
 import { fitRecapWindow } from "./recap.ts";
 import {
   defaultRecapWindow,
@@ -49,6 +56,8 @@ export const PLAN_INPUT_FIELDS = [
   "dropPolicy",
   // "open" or "approval" (spec 3.4); empty means open.
   "joinMode",
+  // "link" or "public" (spec 3.3, decision D35); empty means link.
+  "visibility",
   "primaryColor",
   "secondaryColor",
   "retentionDays",
@@ -81,6 +90,8 @@ export interface PlanDraft {
   pace: PaceBand | undefined;
   dropPolicy: DropPolicy;
   joinMode: JoinMode;
+  /** Who can find the plan (spec 3.3); whether `public` is allowed is the use case's to check. */
+  visibility: Visibility;
   colors: { primary: HexColor; secondary: HexColor };
   retentionDays: number;
   recapWindow: RecapWindow;
@@ -265,6 +276,8 @@ export function validatePlanInput(
 
   const dropPolicy = choice("dropPolicy", DROP_POLICIES);
   const joinMode = input.joinMode === "" ? "open" : choice("joinMode", JOIN_MODES);
+  const visibility =
+    input.visibility === "" ? "link" : choice("visibility", CHOOSABLE_VISIBILITIES);
   const primary = parseHexColor(input.primaryColor.trim());
   if (!primary.ok) fail("primaryColor", primary.error);
   const secondary = parseHexColor(input.secondaryColor.trim());
@@ -309,6 +322,7 @@ export function validatePlanInput(
     areaLabel === undefined ||
     dropPolicy === undefined ||
     joinMode === undefined ||
+    visibility === undefined ||
     !primary.ok ||
     !secondary.ok ||
     retentionDays === undefined ||
@@ -333,6 +347,7 @@ export function validatePlanInput(
       pace,
       dropPolicy,
       joinMode,
+      visibility,
       colors: { primary: primary.value, secondary: secondary.value },
       retentionDays,
       recapWindow:

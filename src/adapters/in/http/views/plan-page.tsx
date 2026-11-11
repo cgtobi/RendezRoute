@@ -93,6 +93,15 @@ export function PlanPage(props: {
           <h1>{view.title}</h1>
           <p class="plan-byline">
             <span class="plan-activity">{t(`activity.${view.activity}`)}</span>{" "}
+            {/* Who can find the plan, when more than people with the link (design note). */}
+            {view.visibility === "public" && (
+              <>
+                <span class="plan-visibility">
+                  <span class="icon icon-globe" aria-hidden="true"></span>
+                  {t("plan.public")}
+                </span>{" "}
+              </>
+            )}
             <span>{t("plan.postedBy", { name: view.posterName })}</span>{" "}
             <span class="badge">{t("plan.host")}</span>
           </p>

@@ -4,7 +4,7 @@ import type { ActivityType } from "../domain/activity.ts";
 import type { HexColor } from "../domain/color.ts";
 import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { PaceBand } from "../domain/pace.ts";
-import type { DropPolicy, JoinMode, Plan, PlanStatus } from "../domain/plan.ts";
+import type { DropPolicy, JoinMode, Plan, PlanStatus, Visibility } from "../domain/plan.ts";
 import {
   canRate,
   type PlanRating,
@@ -57,6 +57,8 @@ export interface PlanViewForViewer {
   dropPolicy: DropPolicy;
   /** Decides whether people join directly or request to join (spec 3.4). */
   joinMode: JoinMode;
+  /** Who can find the plan (spec 3.3): the header names it when it is not link-only. */
+  visibility: Visibility;
   note: string | undefined;
   colors: { primary: HexColor; secondary: HexColor };
   status: PlanStatus;
@@ -260,6 +262,7 @@ export function viewForViewer(plan: Plan, counts: Counts): PlanViewForViewer {
     pace: plan.pace,
     dropPolicy: plan.dropPolicy,
     joinMode: plan.joinMode,
+    visibility: plan.visibility,
     note: plan.note,
     colors: plan.colors,
     status: plan.status,

@@ -286,6 +286,7 @@ async function openInstance(
     ratings: createRatingRepository(database, keys.cipher),
     reports: createReportRepository(database, keys.cipher),
     postingMode: config.postingMode,
+    publicRequiresLogin: config.publicRequiresLogin,
     invites: createInviteRepository(database),
     permissions: createPermissionRepository(database),
     notify: {

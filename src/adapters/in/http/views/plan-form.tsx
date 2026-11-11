@@ -2,8 +2,9 @@
 // PlanInput keys.
 import type { Child } from "hono/jsx";
 import type { Translate } from "../../../i18n/i18n.ts";
+import type { MessageKey } from "../../../i18n/messages/en.ts";
 import { ACTIVITY_TYPES } from "../../../../domain/activity.ts";
-import { DROP_POLICIES, JOIN_MODES } from "../../../../domain/plan.ts";
+import { CHOOSABLE_VISIBILITIES, DROP_POLICIES, JOIN_MODES } from "../../../../domain/plan.ts";
 import type { FieldError, PlanField, PlanInput } from "../../../../domain/plan-input.ts";
 import { PLAN_LIMITS } from "../../../../domain/plan-input.ts";
 import { defaultRecapWindow, defaultRetentionDays } from "../../../../domain/schedule.ts";
@@ -56,6 +57,18 @@ export interface PlanFormProps {
   forTemplate?: boolean;
   /** Shown above the form, e.g. why a template needs changes before repeating. */
   notice?: string | undefined;
+  /**
+   * Who can find the plan (spec 3.3, decision D35): whether public may be chosen, and where to
+   * log in when only accounts may. When public can never be chosen here, the choice is not shown
+   * and the plan stays link-only.
+   */
+  visibility: VisibilityChoice;
+}
+
+export interface VisibilityChoice {
+  publicAllowed: boolean;
+  /** Where to log in; undefined when the instance offers no login. */
+  loginHref: string | undefined;
 }
 
 export function PlanForm({
@@ -78,6 +91,7 @@ export function PlanForm({
   confirmAcceptPending,
   forTemplate = false,
   notice,
+  visibility,
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
   const id = (field: PlanField) => `field-${field}`;
@@ -292,6 +306,15 @@ export function PlanForm({
         )}
       </fieldset>
 
+      {visibility !== undefined && (
+        <VisibilityFieldset
+          t={t}
+          choice={visibility}
+          value={values.visibility}
+          error={errorFor("visibility")}
+        />
+      )}
+
       <Field field="note" label={t("form.note")} hint={t("form.publicHint")}>
         <textarea id={id("note")} name="note" rows={4} maxlength={PLAN_LIMITS.note}>
           {values.note}
@@ -361,5 +384,54 @@ export function PlanForm({
         {confirmAcceptPending === undefined ? submitLabel : t("host.acceptPendingConfirm")}
       </button>
     </form>
+  );
+}
+
+const VISIBILITY_LABELS = {
+  link: "form.visibilityLink",
+  public: "form.visibilityPublic",
+} as const satisfies Record<(typeof CHOOSABLE_VISIBILITIES)[number], MessageKey>;
+
+/**
+ * "Who can find this plan": link-only, or public where the plan may be (decision D35). Where it
+ * may not, link-only is the choice shown: a disabled radio is never sent, so showing public as
+ * chosen would save something else than the form says.
+ */
+function VisibilityFieldset({
+  t,
+  choice,
+  value,
+  error,
+}: {
+  t: Translate;
+  choice: VisibilityChoice;
+  value: string;
+  error: FieldError | undefined;
+}) {
+  if (!choice.publicAllowed && choice.loginHref === undefined) return null;
+  const chosen = value === "public" && choice.publicAllowed ? "public" : "link";
+  return (
+    <fieldset>
+      <legend>{t("form.visibility")}</legend>
+      <p class="hint">{t("form.visibilityPublicHint")}</p>
+      {CHOOSABLE_VISIBILITIES.map((visibility) => (
+        <label class="choice">
+          <input
+            type="radio"
+            name="visibility"
+            value={visibility}
+            checked={chosen === visibility}
+            disabled={visibility === "public" && !choice.publicAllowed}
+          />
+          {t(VISIBILITY_LABELS[visibility])}
+        </label>
+      ))}
+      {!choice.publicAllowed && (
+        <p class="hint">
+          {t("form.publicNeedsLogin")} <a href={choice.loginHref}>{t("form.publicLogIn")}</a>
+        </p>
+      )}
+      {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+    </fieldset>
   );
 }

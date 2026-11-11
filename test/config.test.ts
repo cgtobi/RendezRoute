@@ -67,6 +67,18 @@ describe("ADMIN_TOKEN (spec 7 Moderation)", () => {
   });
 });
 
+describe("PUBLIC_REQUIRES_LOGIN (spec 7 Visibility and Nearby plans)", () => {
+  it("requires an account for public plans unless turned off", () => {
+    expect(ok(minimal).config.publicRequiresLogin).toBe(true);
+    expect(ok({ ...minimal, PUBLIC_REQUIRES_LOGIN: "false" }).config.publicRequiresLogin).toBe(
+      false,
+    );
+    expect(errors({ ...minimal, PUBLIC_REQUIRES_LOGIN: "no" })).toEqual([
+      'PUBLIC_REQUIRES_LOGIN must be "true" or "false", got "no".',
+    ]);
+  });
+});
+
 describe("POSTING_MODE (spec 7 Moderation)", () => {
   it("lets anyone post by default", () => {
     expect(ok(minimal).config.postingMode).toBe("anyone");

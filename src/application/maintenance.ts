@@ -1,4 +1,5 @@
 // Automatic retention and housekeeping (spec 3.10), run by the scheduler and the CLI.
+import { forgetFollowersWhileOff } from "./following.ts";
 import {
   backupExpiryCutoff,
   capRetention,
@@ -22,7 +23,7 @@ export async function runRetentionSweep(deps: PlanDeps): Promise<{ deletedPlans:
 
 /**
  * Daily expiry of templates, devices, unfinished logins and pre-migration backups (spec 3.10,
- * 11).
+ * 11), and of fediverse followers while federation is off (decision D38).
  */
 export async function runHousekeeping(
   deps: PlanDeps & {
@@ -39,6 +40,7 @@ export async function runHousekeeping(
   deletedPendingLogins: number;
   deletedAccounts: number;
   warnedAccounts: number;
+  forgottenFollowers: number;
 }> {
   const now = deps.clock.now();
   // Templates first, so devices linked only to them count as unlinked right away; accounts next,
@@ -52,6 +54,7 @@ export async function runHousekeeping(
   const deletedBackups = await deps.backups.deleteOlderThan(backupExpiryCutoff(now));
   const deletedFormNonces = await deps.formNonces.deleteUsedBefore(usedFormNonceCutoff(now));
   const deletedPendingLogins = await deps.pendingLogins.deleteStartedBefore(loginCutoff(now));
+  const forgottenFollowers = await forgetFollowersWhileOff(deps);
   return {
     deletedTemplates,
     deletedDevices,
@@ -61,6 +64,7 @@ export async function runHousekeeping(
     deletedPendingLogins,
     deletedAccounts,
     warnedAccounts,
+    forgottenFollowers,
   };
 }
 

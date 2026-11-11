@@ -32,6 +32,8 @@ export function ProfileSection({
         <p>
           {t("profile.on", { handle })} <a href={`/@${setting.handle}`}>{t("profile.view")}</a>
         </p>
+        {/* How many, never who (decision D38). */}
+        <p>{t("profile.followers", { count: setting.followers })}</p>
         <details class="danger-zone">
           <summary>{t("profile.turnOff")}</summary>
           <p>{t("profile.turnOffExplain", { handle })}</p>

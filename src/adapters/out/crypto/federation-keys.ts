@@ -7,7 +7,8 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { exportJwk, generateCryptoKeyPair, importJwk } from "@fedify/fedify";
-import type { ActorKeyFactory } from "../../../application/ports.ts";
+import { INSTANCE_ACTOR } from "../../../application/following.ts";
+import type { ActorKeyFactory, FediverseProfileRepository } from "../../../application/ports.ts";
 
 const FILE = "federation-instance.json";
 const ALGORITHMS = ["RSASSA-PKCS1-v1_5", "Ed25519"] as const;
@@ -72,3 +73,15 @@ export async function loadOrCreateInstanceKeys(directory: string): Promise<Signi
 export const actorKeyFactory: ActorKeyFactory = {
   generate: async () => serializeKeyPairs(await generateKeyPairs()),
 };
+
+/** A local actor's signing keys: the instance actor's, or an active poster actor's (D36). */
+export function actorSigningKeys(
+  instanceKeys: readonly SigningKeyPair[],
+  profiles: Pick<FediverseProfileRepository, "findActor">,
+): (localActor: string) => Promise<readonly SigningKeyPair[] | undefined> {
+  return async (localActor) => {
+    if (localActor === INSTANCE_ACTOR) return instanceKeys;
+    const found = await profiles.findActor(localActor);
+    return found?.kind === "active" ? parseKeyPairs(found.keys) : undefined;
+  };
+}

@@ -1,10 +1,22 @@
-// The instance in the fediverse (spec 7 ActivityPub; decision D36; plan v1.0 step 9a), with Fedify:
-// the instance actor and its WebFinger entry, a plan as an `Event` for ActivityPub clients, and the
-// inboxes, which verify signatures but act on nothing yet (step 11). The Event is built from the
-// plan page's viewer read model (spec 3.6), so it can hold nothing a viewer may not see. Fedify's
-// types stay in the adapters (spec 2a).
+// The instance in the fediverse (spec 7 ActivityPub; decisions D36, D38; 0.9 steps 9a, 9b, 10a),
+// with Fedify: the instance and poster actors and their WebFinger entries, a plan as an `Event` for
+// ActivityPub clients, and the inboxes, which verify signatures and take follows: `Follow` and its
+// `Undo`, and an actor's `Delete` of itself; joining plans comes with step 11. Followers are
+// counted, never listed. The Event is built from the plan page's viewer read model (spec 3.6), so
+// it can hold nothing a viewer may not see. Fedify's types stay in the adapters (spec 2a).
 import { createFederation, type Federation, type KvStore } from "@fedify/fedify";
-import { Application, Endpoints, Event, Person, Place, Tombstone } from "@fedify/fedify/vocab";
+import {
+  Application,
+  Delete,
+  Endpoints,
+  Event,
+  Follow,
+  isActor,
+  Person,
+  Place,
+  Tombstone,
+  Undo,
+} from "@fedify/fedify/vocab";
 import { type PlanDeps, viewPlan } from "../../../application/plans.ts";
 import type { IdentityRepository, OutboundHttp } from "../../../application/ports.ts";
 import {
@@ -13,6 +25,14 @@ import {
   posterActorFor,
   posterActorKeys,
 } from "../../../application/fediverse-profile.ts";
+import {
+  followActor,
+  followerCount,
+  forgetRemoteActor,
+  INSTANCE_ACTOR,
+  isFollowable,
+  unfollowActor,
+} from "../../../application/following.ts";
 import { resolveLanguage, translator } from "../../i18n/i18n.ts";
 import {
   outboundContextLoader,
@@ -20,9 +40,6 @@ import {
 } from "../../out/federation/document-loader.ts";
 import type { PlanViewForViewer } from "../../../application/plan-views.ts";
 import { parseKeyPairs, type SigningKeyPair } from "../../out/crypto/federation-keys.ts";
-
-/** The instance actor's identifier in its URI (`/actors/instance`). */
-export const INSTANCE_ACTOR = "instance";
 
 export interface FederationSettings {
   baseUrl: URL;
@@ -81,6 +98,7 @@ export function createInstanceFederation({
           name: actor.displayName ?? actor.handle,
           url: new URL(`/@${actor.handle}`, baseUrl),
           inbox: ctx.getInboxUri(identifier),
+          followers: ctx.getFollowersUri(identifier),
           endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
           publicKey: keys[0]?.cryptographicKey ?? null,
           assertionMethods: keys.map((key) => key.multikey),
@@ -95,6 +113,7 @@ export function createInstanceFederation({
         name: settings.instanceName,
         url: new URL("/", baseUrl),
         inbox: ctx.getInboxUri(identifier),
+        followers: ctx.getFollowersUri(identifier),
         endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
         publicKey: keys[0]?.cryptographicKey ?? null,
         assertionMethods: keys.map((key) => key.multikey),
@@ -136,9 +155,80 @@ export function createInstanceFederation({
     });
   });
 
-  // Signatures are checked here; what remote actors may do comes with step 11.
-  federation.setInboxListeners("/actors/{identifier}/inbox", "/inbox");
+  // How many follow an actor, never who (decision D38).
+  federation
+    .setFollowersDispatcher("/actors/{identifier}/followers", async (_ctx, identifier) =>
+      (await isFollowable(planDeps, identifier)) ? { items: [] } : null,
+    )
+    .setCounter((_ctx, identifier) => followerCount(planDeps, identifier));
+
+  // Fedify checks every signature, and that the signer is the activity's actor, before these run.
+  federation
+    .setInboxListeners("/actors/{identifier}/inbox", "/inbox")
+    .on(Follow, async (ctx, follow) => {
+      const followed = follow.objectId === null ? null : ctx.parseUri(follow.objectId);
+      if (follow.id === null || followed?.type !== "actor") return;
+      const follower = await follow.getActor(ctx);
+      if (follower === null || !isActor(follower) || follower.inboxId === null) return;
+      // The actor document must be the signer's own, or Undo and Delete could never find it.
+      if (follower.id === null || follower.id.href !== follow.actorId?.href) return;
+      await followActor(planDeps, {
+        localActor: followed.identifier,
+        followId: follow.id.href,
+        follower: {
+          id: follower.id.href,
+          inbox: follower.inboxId.href,
+          sharedInbox: follower.endpoints?.sharedInbox?.href,
+        },
+      });
+    })
+    .on(Undo, async (ctx, undo) => {
+      const follow = await undo.getObject(ctx);
+      if (!(follow instanceof Follow) || undo.actorId === null) return;
+      // Only one's own follow can be undone.
+      if (follow.actorId?.href !== undo.actorId.href || follow.objectId === null) return;
+      const followed = ctx.parseUri(follow.objectId);
+      if (followed?.type !== "actor") return;
+      await unfollowActor(planDeps, {
+        localActor: followed.identifier,
+        remoteActorId: undo.actorId.href,
+      });
+    })
+    .on(Delete, async (_ctx, deleted) => {
+      // An actor deleting itself; what else may be deleted comes with step 11.
+      const self = deletedSelf(deleted);
+      if (self !== undefined) await forgetRemoteActor(planDeps, self.href);
+    })
+    .onUnverifiedActivity(async (_ctx, activity) => {
+      // An account deleted on its server can no longer sign: its key is gone too. Its Delete of
+      // itself is believed once its server, asked by us, says the account is gone (spec 3.7).
+      const self = activity instanceof Delete ? deletedSelf(activity) : undefined;
+      if (self === undefined || !(await actorGone(http, self))) return;
+      await forgetRemoteActor(planDeps, self.href);
+      return new Response(null, { status: 202 });
+    });
   return federation;
+}
+
+/** The actor of a `Delete` of itself; undefined for any other `Delete`. */
+function deletedSelf(deleted: Delete): URL | undefined {
+  return deleted.actorId !== null && deleted.objectId?.href === deleted.actorId.href
+    ? deleted.actorId
+    : undefined;
+}
+
+/** Whether the actor's own server answers that it is gone (404 or 410). */
+async function actorGone(http: OutboundHttp, actor: URL): Promise<boolean> {
+  try {
+    const response = await http.get(actor, {
+      headers: { accept: "application/activity+json" },
+      maxBytes: 64 * 1024,
+      timeoutMs: 10_000,
+    });
+    return response.status === 404 || response.status === 410;
+  } catch {
+    return false;
+  }
 }
 
 /** What every viewer sees of a plan, as an ActivityStreams Event (spec 3.6, 7). */

@@ -171,8 +171,9 @@ export const fr: Messages = {
   "field.public_needs_login":
     "Les sorties publiques demandent un compte sur ce site : connectez-vous, ou réservez la sortie aux personnes ayant le lien.",
   "form.visibilityFollowers":
-    "Les abonné·e·s de {handle} dans le fédivers, et les personnes ayant le lien",
-  "form.visibilityFollowersNone": "Les abonné·e·s dans le fédivers, et les personnes ayant le lien",
+    "Les abonné·e·s de {handle} dans le fédivers (tout le monde peut s’y abonner), et les personnes ayant le lien",
+  "form.visibilityFollowersNone":
+    "Les abonné·e·s dans le fédivers (tout le monde peut s’y abonner), et les personnes ayant le lien",
   "form.visibilityPublicShared":
     "Tout le monde : listée dans « À proximité » sur ce site et partagée dans le fédivers par {handle}",
   "form.visibilityPublicProfile": "Tout le monde : partagée dans le fédivers par {handle}",
@@ -188,7 +189,7 @@ export const fr: Messages = {
   "profile.intro":
     "Avec un profil, les personnes du fédivers (par exemple sur Mastodon) vous trouvent sous @nom@{host}, peuvent vous suivre et voient vos prochaines sorties publiques.",
   "profile.notice":
-    "En l’activant, vous devenez visible dans le fédivers : tout le monde peut y voir votre nom d’affichage et vos prochaines sorties publiques, et leurs serveurs peuvent en garder des copies. Le nom vous appartient pour de bon : il ne peut pas être changé, et une fois le profil désactivé, il est retiré et personne ne peut plus l’utiliser.",
+    "En l’activant, vous devenez visible dans le fédivers : tout le monde peut y voir votre nom d’affichage et vos prochaines sorties publiques, et leurs serveurs peuvent en garder des copies. Tout le monde peut s’abonner à vous sans demander, et les sorties pour vos abonné·e·s atteignent toutes les personnes abonnées. Le nom vous appartient pour de bon : il ne peut pas être changé, et une fois le profil désactivé, il est retiré et personne ne peut plus l’utiliser.",
   "profile.handle": "Votre nom dans le fédivers",
   "profile.handleHint": "Lettres minuscules, chiffres et _, jusqu’à 30.",
   "profile.turnOn": "Activer mon profil fédivers",
@@ -196,9 +197,13 @@ export const fr: Messages = {
   "profile.view": "Le voir",
   "profile.turnOff": "Désactiver mon profil fédivers…",
   "profile.turnOffExplain":
-    "Le désactiver retire {handle} pour de bon : personne ne peut plus l’utiliser, vous non plus. Les sorties pour vos abonné·e·s deviennent des sorties pour les personnes ayant le lien.",
+    "Le désactiver retire {handle} pour de bon : personne ne peut plus l’utiliser, vous non plus. Les sorties pour vos abonné·e·s deviennent des sorties pour les personnes ayant le lien, et vos abonné·e·s apprennent que le profil a disparu.",
   "profile.turnOffConfirm": "Désactiver et retirer {handle}",
   "profile.turnedOn": "Votre profil fédivers est activé.",
+  "profile.followers": {
+    one: "1 personne du fédivers est abonnée à vous.",
+    other: "{count} personnes du fédivers sont abonnées à vous.",
+  },
   "profile.turnedOff": {
     one: "Votre profil fédivers est désactivé. 1 sortie pour les abonné·e·s est maintenant pour les personnes ayant le lien.",
     other:
@@ -209,7 +214,7 @@ export const fr: Messages = {
   "actorProfile.none": "Pas de sortie publique à venir pour le moment.",
   "actorProfile.gone": "Ce profil fédivers a été désactivé.",
   "privacy.profiles":
-    "Si vous activez un profil fédivers, le nom choisi, votre nom d’affichage et vos prochaines sorties publiques peuvent être vus par tout le monde dans le fédivers, et d’autres serveurs peuvent en garder des copies. Ses clés de signature sont stockées chiffrées. Le désactiver, ou supprimer votre compte, retire le nom : seule une empreinte chiffrée en est gardée, pour qu’il ne soit jamais réutilisé.",
+    "Si vous activez un profil fédivers, le nom choisi, votre nom d’affichage et vos prochaines sorties publiques peuvent être vus par tout le monde dans le fédivers, et d’autres serveurs peuvent en garder des copies. Ses clés de signature sont stockées chiffrées. Tout le monde dans le fédivers peut s’y abonner : l’adresse et les boîtes de réception d’une personne abonnée sont stockées chiffrées jusqu’à ce qu’elle se désabonne, que son compte soit supprimé, que le profil soit désactivé ou que ce site cesse de participer au fédivers, et seul leur nombre est affiché. Les messages aux abonné·e·s attendent dans une file avec l’adresse de leur boîte de réception pendant 12 heures au plus ; le dernier, qui annonce la disparition du profil, garde jusque-là la clé de signature dont il a besoin. Le désactiver, ou supprimer votre compte, retire le nom : seule une empreinte chiffrée en est gardée, pour qu’il ne soit jamais réutilisé.",
   "form.joinMode": "Qui peut participer",
   "form.joinOpen": "Toute personne ayant le lien",
   "form.joinApproval": "Seulement les personnes que j’accepte",
@@ -804,7 +809,7 @@ export const fr: Messages = {
   "home.nearby": "Trouver des sorties publiques à proximité",
   "layout.nearby": "À proximité",
   "privacy.federation":
-    "Ce site participe au fédivers en tant que @{host}@{host}. D’autres serveurs peuvent récupérer les informations publiques d’une sortie par son adresse, comme toute personne ayant le lien peut les voir. Quand un serveur envoie un message à ce site, celui-ci récupère la clé publique de ce serveur pour vérifier la signature du message, et la conserve jusqu’à {days} jours. Rien d’autre n’est partagé pour l’instant.",
+    "Ce site participe au fédivers en tant que @{host}@{host}. D’autres serveurs peuvent récupérer les informations publiques d’une sortie par son adresse, comme toute personne ayant le lien peut les voir. Quand un serveur envoie un message à ce site, celui-ci récupère la clé publique de ce serveur pour vérifier la signature du message, et la conserve jusqu’à {days} jours. Tout le monde dans le fédivers peut s’abonner à ce site : l’adresse et les boîtes de réception d’une personne abonnée sont stockées chiffrées jusqu’à ce qu’elle se désabonne, que son compte soit supprimé ou que ce site cesse de participer au fédivers, et seul leur nombre est affiché. Rien d’autre n’est partagé pour l’instant.",
   "privacy.nearby":
     "« À proximité » n’utilise le lieu d’où vous cherchez que pour cette recherche. Un endroit choisi sur la carte ou votre position est arrondi à environ 2 km par votre navigateur avant d’être envoyé, puis à nouveau par le serveur. Un lieu saisi est recherché comme pour la recherche de lieux ci-dessus, et la recherche continue depuis son endroit arrondi ; sans JavaScript, le lieu saisi figure dans l’adresse de cette première requête. Rien n’en est enregistré ni écrit dans les journaux de ce site. L’endroit arrondi figure dans l’adresse de la page de résultats et peut donc rester dans l’historique de votre navigateur et dans le journal d’accès du serveur web placé devant ce site.",
   "field.range_invalid": "Le dernier jour précède le premier.",
@@ -947,7 +952,8 @@ export const fr: Messages = {
     "Un lien d’invitation permet à votre compte de créer des sorties ici (depuis le {date}).",
   "account.deleteMayPost":
     "son autorisation de créer des sorties, obtenue par un lien d’invitation",
-  "account.deleteProfile": "son profil fédivers {handle} : le nom est retiré pour de bon",
+  "account.deleteProfile":
+    "son profil fédivers {handle} : ses abonné·e·s apprennent qu’il a disparu puis sont oublié·e·s, et le nom est retiré pour de bon",
   "account.deleteLogsOut":
     "Les navigateurs connectés à ce compte sont déconnectés ; ce qu’ils contiennent eux-mêmes reste.",
   "account.deleteConfirm": "Supprimer le compte définitivement",

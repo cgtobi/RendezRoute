@@ -3,6 +3,7 @@
 // D34): confirmations, report alerts and account notices. Wiring shared by the server (main.ts)
 // and the tests.
 import { createChannelNotifier } from "./adapters/out/channel-notifier.ts";
+import type { FederationOutbound } from "./adapters/out/federation/outbound.ts";
 import type { EmailDelivery } from "./adapters/out/email/notifier.ts";
 import type { NtfyDelivery } from "./adapters/out/ntfy/notifier.ts";
 import type { TelegramDelivery } from "./adapters/out/telegram/notifier.ts";
@@ -22,6 +23,7 @@ export function createJobHandlers({
   ntfy,
   telegram,
   identities,
+  federation,
 }: {
   planDeps: PlanDeps;
   /** Account notices check that the account was not used since they were queued. */
@@ -31,6 +33,8 @@ export function createJobHandlers({
   email: EmailDelivery | undefined;
   ntfy: NtfyDelivery | undefined;
   telegram: TelegramDelivery | undefined;
+  /** Deliveries to fediverse inboxes (decision D38); undefined while federation is off. */
+  federation: Pick<FederationOutbound, "deliver"> | undefined;
 }): Record<JobType, JobHandlers[string]> {
   const notify = planDeps.notify;
   if (notify === undefined) throw new Error("notification dependencies missing");
@@ -45,5 +49,6 @@ export function createJobHandlers({
     channelConfirmation: channelConfirmationHandler(planDeps),
     reportAlert: emailOutbox === undefined ? dropped : reportAlertHandler({ outbox: emailOutbox }),
     accountNotice: accountNoticeHandler({ ...planDeps, identities }),
+    federationDelivery: federation?.deliver ?? dropped,
   };
 }

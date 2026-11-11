@@ -13,6 +13,13 @@ import {
   retireProfile,
   viewProfilePage,
 } from "../../src/application/fediverse-profile.ts";
+import {
+  followActor,
+  forgetFollowersWhileOff,
+  forgetRemoteActor,
+  INSTANCE_ACTOR,
+  unfollowActor,
+} from "../../src/application/following.ts";
 import { editPlan, viewHostPage } from "../../src/application/host.ts";
 import { createPlan } from "../../src/application/plans.ts";
 import { visibilityChoices } from "../../src/application/public-plans.ts";
@@ -21,7 +28,12 @@ import type { ProviderAccount } from "../../src/application/ports.ts";
 import { planToInput } from "../../src/domain/plan-edit.ts";
 import type { PlanInput } from "../../src/domain/plan-input.ts";
 import { FakeClock } from "../fakes/clock.ts";
-import { FakeActorKeys, FakeFediverseProfiles } from "../fakes/fediverse-profiles.ts";
+import {
+  FakeActorKeys,
+  FakeFediverseProfiles,
+  FakeFollowers,
+  FakePublisher,
+} from "../fakes/fediverse-profiles.ts";
 import { FakeIdentityProvider } from "../fakes/identity-provider.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { createFakeRepositories } from "../fakes/repositories.ts";
@@ -33,14 +45,18 @@ let deps: AccountDeps;
 let provider: FakeIdentityProvider;
 let profiles: FakeFediverseProfiles;
 let actorKeys: FakeActorKeys;
+let followers: FakeFollowers;
+let publisher: FakePublisher;
 let clock: FakeClock;
 let n = 0;
 const nonce = () => `nonce-${String(++n).padStart(16, "0")}`;
 
 beforeEach(() => {
   provider = new FakeIdentityProvider();
-  profiles = new FakeFediverseProfiles();
+  followers = new FakeFollowers();
+  profiles = new FakeFediverseProfiles(followers);
   actorKeys = new FakeActorKeys();
+  publisher = new FakePublisher();
   clock = new FakeClock(fixtureNow);
   deps = {
     ...createFakeRepositories(),
@@ -51,7 +67,7 @@ beforeEach(() => {
     limits: { horizonDays: 180, maxRetentionDays: 30 },
     postingMode: "anyone",
     publicRequiresLogin: true,
-    posterActors: { profiles, actorKeys, enabled: true },
+    posterActors: { profiles, actorKeys, followers, publisher, enabled: true },
     identityLookup: { hash: (value) => `hmac(${value})` },
     identityProviders: { oidc: provider },
     fediverse: { servers: undefined, allowInsecure: false },
@@ -121,6 +137,7 @@ describe("turning the profile on (decision D36)", () => {
     expect(await profileSetting(deps, { deviceToken: device })).toEqual({
       kind: "on",
       handle: "anna_m",
+      followers: 0,
     });
   });
 
@@ -344,6 +361,7 @@ describe("turning the profile off (decision D37)", () => {
     expect(await profileSetting(deps, { deviceToken: device })).toEqual({
       kind: "on",
       handle: "anna",
+      followers: 0,
     });
     expect(await retireProfile(deps, { deviceToken: device })).toEqual({
       kind: "retired",
@@ -369,5 +387,126 @@ describe("turning the profile off (decision D37)", () => {
     later(366 * 24 * 60);
     expect(await expireAccounts(deps)).toBe(1);
     expect(await posterActor(deps, actor)).toMatchObject({ kind: "retired" });
+  });
+});
+
+const remote = (name: string, server = "social.example") => ({
+  id: `https://${server}/users/${name}`,
+  inbox: `https://${server}/users/${name}/inbox`,
+  sharedInbox: `https://${server}/inbox`,
+});
+
+describe("following (decision D38)", () => {
+  async function annaActor() {
+    const device = await logIn();
+    await createProfile(deps, { deviceToken: device, handle: "anna" });
+    return { device, actor: (await profiles.findByHandle("anna"))?.id ?? "" };
+  }
+  const follow = (localActor: string, follower = remote("ben")) =>
+    followActor(deps, { localActor, followId: `${follower.id}#follow-1`, follower });
+
+  it("accepts a follow of an active actor at once, showing how many follow", async () => {
+    const { device, actor } = await annaActor();
+    expect(await follow(actor)).toBe("accepted");
+    expect(publisher.sent).toEqual([
+      {
+        kind: "accept",
+        localActor: actor,
+        followId: "https://social.example/users/ben#follow-1",
+        to: "https://social.example/users/ben",
+      },
+    ]);
+    // Following again changes nothing but the stored inboxes.
+    await follow(actor);
+    await follow(actor, remote("cleo", "other.example"));
+    expect(await profileSetting(deps, { deviceToken: device })).toEqual({
+      kind: "on",
+      handle: "anna",
+      followers: 2,
+    });
+  });
+
+  it("accepts follows of the instance actor, and of nobody else", async () => {
+    expect(await follow(INSTANCE_ACTOR)).toBe("accepted");
+    expect(await follow("no-such-actor")).toBe("unknown_actor");
+    const { actor } = await annaActor();
+    withFederation(false);
+    expect(await follow(actor)).toBe("unknown_actor");
+    expect(await follow(INSTANCE_ACTOR)).toBe("unknown_actor");
+    expect(publisher.sent.map((sent) => sent.localActor)).toEqual([INSTANCE_ACTOR]);
+  });
+
+  it("forgets a follower who unfollows, or whose account is deleted on its server", async () => {
+    const { actor } = await annaActor();
+    await follow(actor);
+    await follow(actor, remote("cleo"));
+    await follow(INSTANCE_ACTOR, remote("cleo"));
+    await unfollowActor(deps, { localActor: actor, remoteActorId: remote("ben").id });
+    expect(await followers.list(actor)).toEqual([remote("cleo")]);
+    expect(await forgetRemoteActor(deps, remote("cleo").id)).toBe(2);
+    expect(await followers.count(actor)).toBe(0);
+    expect(await followers.count(INSTANCE_ACTOR)).toBe(0);
+  });
+
+  it("tells the followers when the profile is retired, then forgets them", async () => {
+    const { device, actor } = await annaActor();
+    await follow(actor);
+    await follow(actor, remote("cleo", "other.example"));
+    await retireProfile(deps, { deviceToken: device });
+    expect(publisher.sent.at(-1)).toEqual({
+      kind: "deleteActor",
+      localActor: actor,
+      to: [remote("ben").id, remote("cleo", "other.example").id],
+    });
+    expect(await followers.count(actor)).toBe(0);
+    // A profile nobody follows has nobody to tell.
+    await createProfile(deps, { deviceToken: device, handle: "anna_new" });
+    const sent = publisher.sent.length;
+    await retireProfile(deps, { deviceToken: device });
+    expect(publisher.sent).toHaveLength(sent);
+  });
+
+  it("tells the followers when the account is deleted, or expires unused", async () => {
+    const { device, actor } = await annaActor();
+    await follow(actor);
+    expect(await deleteAccount(deps, { deviceToken: device })).toEqual({ kind: "deleted" });
+    expect(publisher.sent.at(-1)).toEqual({
+      kind: "deleteActor",
+      localActor: actor,
+      to: [remote("ben").id],
+    });
+
+    const idle = await logIn("Cleo", "cleo");
+    await createProfile(deps, { deviceToken: idle, handle: "cleo" });
+    const cleo = (await profiles.findByHandle("cleo"))?.id ?? "";
+    await follow(cleo);
+    later(366 * 24 * 60);
+    expect(await expireAccounts(deps)).toBe(1);
+    expect(publisher.sent.at(-1)).toMatchObject({ kind: "deleteActor", localActor: cleo });
+    expect(await followers.count(cleo)).toBe(0);
+  });
+
+  it("refuses a follower whose inboxes are on another server", async () => {
+    expect(
+      await follow(INSTANCE_ACTOR, { ...remote("ben"), inbox: "https://victim.example/inbox" }),
+    ).toBe("elsewhere");
+    expect(
+      await follow(INSTANCE_ACTOR, {
+        ...remote("ben"),
+        sharedInbox: "https://victim.example/inbox",
+      }),
+    ).toBe("elsewhere");
+    expect(await followers.count(INSTANCE_ACTOR)).toBe(0);
+    expect(publisher.sent).toEqual([]);
+  });
+
+  it("forgets every follower while federation is off, as nothing can reach them", async () => {
+    const { actor } = await annaActor();
+    await follow(actor);
+    await follow(INSTANCE_ACTOR, remote("cleo"));
+    expect(await forgetFollowersWhileOff(deps)).toBe(0);
+    withFederation(false);
+    expect(await forgetFollowersWhileOff(deps)).toBe(2);
+    expect(await followers.count(actor)).toBe(0);
   });
 });

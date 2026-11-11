@@ -3,8 +3,14 @@ import { createInstanceFederation } from "./adapters/in/activitypub/federation.t
 import {
   actorKeyFactory,
   loadOrCreateInstanceKeys,
+  type SigningKeyPair,
 } from "./adapters/out/crypto/federation-keys.ts";
+import {
+  createFederationOutbound,
+  type FederationOutbound,
+} from "./adapters/out/federation/outbound.ts";
 import { createFediverseProfileRepository } from "./adapters/out/sqlite/fediverse-profiles.ts";
+import { createFollowerRepository } from "./adapters/out/sqlite/followers.ts";
 import { createFedifyKvStore } from "./adapters/out/sqlite/fedify-kv.ts";
 import { existsSync, mkdirSync } from "node:fs";
 import { createGpxRouteParser } from "./adapters/out/gpx/route-parser.ts";
@@ -38,6 +44,7 @@ import {
   createThrottle,
 } from "./adapters/out/geocoder/nominatim.ts";
 import { createOutboundHttp } from "./adapters/out/http/outbound-http.ts";
+import type { OutboundHttp } from "./application/ports.ts";
 import { createPreviewRenderer } from "./adapters/out/preview/renderer.ts";
 import { createCachedWeather, createOpenMeteoWeather } from "./adapters/out/weather/open-meteo.ts";
 import { createMapTiles } from "./adapters/out/preview/tiles.ts";
@@ -184,6 +191,10 @@ interface Instance {
   database: Database;
   keys: InstanceKeys;
   planDeps: PlanDeps;
+  /** The instance actor's keys and the remote requests of federation; undefined while it is off. */
+  federation:
+    | { instanceKeys: SigningKeyPair[]; http: OutboundHttp; outbound: FederationOutbound }
+    | undefined;
   warnings: string[];
 }
 
@@ -277,6 +288,26 @@ async function openInstance(
             timeZone: config.defaultTimezone,
           }),
         };
+  // The instance in the fediverse (decision D36): its actor's keys in the key directory; fediverse
+  // servers are named by others, so their requests get full SSRF protection (spec 3.11).
+  const profiles = createFediverseProfileRepository(database, keys.cipher, keys.identityLookup);
+  const jobs = createJobQueue(database, keys.cipher, ids);
+  const federation = config.federationEnabled
+    ? await (async () => {
+        const instanceKeys = await loadOrCreateInstanceKeys(keys.directory);
+        const http = outboundHttp(config, config.contactEmail);
+        const outbound = createFederationOutbound({
+          jobs,
+          clock: systemClock,
+          ids,
+          baseUrl: config.baseUrl,
+          instanceKeys,
+          profiles,
+          http,
+        });
+        return { instanceKeys, http, outbound };
+      })()
+    : undefined;
   const planDeps: PlanDeps = {
     plans: createPlanRepository(database, keys.cipher),
     devices: createDeviceRepository(database),
@@ -297,15 +328,18 @@ async function openInstance(
     publicPlansOffered: config.nearbyEnabled,
     // Always there, so accounts can be deleted after federation was turned off (decision D37).
     posterActors: {
-      profiles: createFediverseProfileRepository(database, keys.cipher, keys.identityLookup),
+      profiles,
       actorKeys: actorKeyFactory,
+      followers: createFollowerRepository(database, keys.cipher, keys.identityLookup, ids),
+      // Deliveries go through the job queue (decision D38).
+      publisher: federation?.outbound.publisher,
       enabled: config.federationEnabled,
     },
     invites: createInviteRepository(database),
     permissions: createPermissionRepository(database),
     notify: {
       channels: createChannelRepository(database, keys.cipher, ids, () => systemClock.now()),
-      jobs: createJobQueue(database, keys.cipher, ids),
+      jobs,
       reminders: createSentReminderRepository(database),
       links: keys.channelLinks,
       email: {
@@ -326,6 +360,7 @@ async function openInstance(
       database,
       keys,
       planDeps,
+      federation,
       warnings,
       deliveries: { email: email?.delivery, ntfy: ntfy?.delivery, telegram: telegram?.delivery },
       telegram:
@@ -403,6 +438,7 @@ export async function startServer(
     push: notifier,
     ...opened.instance.deliveries,
     identities: accounts.identities,
+    federation: opened.instance.federation?.outbound,
   });
 
   const sweepLimits = () => {
@@ -410,23 +446,24 @@ export async function startServer(
     return Promise.resolve({});
   };
 
-  // The instance in the fediverse (plan v1.0 step 9a): its state in the database file, its actor's
+  // The instance in the fediverse (0.9 steps 9a, 10a): its state in the database file, its actor's
   // keys in the key directory (decision D36).
   const federationKv = createFedifyKvStore(database, () => planDeps.clock.now());
-  const federation = config.federationEnabled
-    ? createInstanceFederation({
-        settings: {
-          baseUrl: config.baseUrl,
-          instanceName: config.instanceName,
-        },
-        kv: federationKv,
-        // Fediverse servers are named by others: full SSRF protection (spec 3.11).
-        http: outboundHttp(config, config.contactEmail),
-        instanceKeys: await loadOrCreateInstanceKeys(keys.directory),
-        planDeps,
-        identities: accounts.identities,
-      })
-    : undefined;
+  const instanceFederation = opened.instance.federation;
+  const federation =
+    instanceFederation === undefined
+      ? undefined
+      : createInstanceFederation({
+          settings: {
+            baseUrl: config.baseUrl,
+            instanceName: config.instanceName,
+          },
+          kv: federationKv,
+          http: instanceFederation.http,
+          instanceKeys: instanceFederation.instanceKeys,
+          planDeps,
+          identities: accounts.identities,
+        });
 
   // The first sweep finishes before the server listens, so plans past their deletion
   // date are never served after downtime (spec 3.10: sweep at startup).

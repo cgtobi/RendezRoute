@@ -60,6 +60,8 @@ export const ENCRYPTED_FIELDS = [
   "identities.handle",
   // Poster actors' signing keys (decision D36).
   "fediverse_profiles.keys",
+  // Who follows the instance's actors (decision D38).
+  "fediverse_followers.remote",
 ] as const;
 export type EncryptedField = (typeof ENCRYPTED_FIELDS)[number];
 
@@ -289,8 +291,45 @@ export interface FediverseProfileRepository {
   isTaken(profile: { identityId: string; handle: string }): Promise<boolean>;
   /** "taken" as `isTaken` says, checked again as it is stored. */
   create(profile: FediverseProfile & { keys: string }): Promise<"created" | "taken">;
-  /** Retires the account's active profile, if any; returns its identifier. */
+  /**
+   * Retires the account's active profile, if any, forgetting its followers in the same step, so
+   * no follow accepted meanwhile is left behind (D38); returns its identifier.
+   */
   retire(identityId: string, now: Date): Promise<string | undefined>;
+}
+
+/** An actor on another server, as far as delivering to it needs (decision D38). */
+export interface RemoteActor {
+  id: string;
+  inbox: string;
+  sharedInbox: string | undefined;
+}
+
+/**
+ * Who follows the instance's actors (decision D38), by the followed actor's identifier
+ * ("instance" or a poster actor's). Only the count is ever shown.
+ */
+export interface FollowerRepository {
+  /** Adds the follower, or refreshes its inboxes when it already follows. */
+  add(localActor: string, follower: RemoteActor, now: Date): Promise<void>;
+  remove(localActor: string, remoteActorId: string): Promise<void>;
+  /** Removes a remote actor everywhere, when it is deleted on its server (spec 3.7). */
+  forget(remoteActorId: string): Promise<number>;
+  count(localActor: string): Promise<number>;
+  list(localActor: string): Promise<RemoteActor[]>;
+  /** Forgets every follower, while federation is off and nothing can reach them (D38). */
+  clear(): Promise<number>;
+}
+
+/**
+ * Activities to other servers (spec 7 ActivityPub, decision D38): queued, signed by the local
+ * actor and delivered in the background. Undefined while federation is off.
+ */
+export interface FederationPublisher {
+  /** Answers a `Follow` with `Accept`. */
+  acceptFollow(localActor: string, follow: { id: string; follower: RemoteActor }): Promise<void>;
+  /** Tells an actor's followers that it is gone for good (decision D37). */
+  deleteActor(localActor: string, followers: readonly RemoteActor[]): Promise<void>;
 }
 
 /** New signing keys for a poster actor, serialized for storage (decision D36). */

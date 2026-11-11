@@ -6,6 +6,11 @@ import {
 } from "../../src/application/maintenance.ts";
 import type { PlanDeps } from "../../src/application/plans.ts";
 import { FakeBackupStore } from "../fakes/backup-store.ts";
+import {
+  FakeActorKeys,
+  FakeFediverseProfiles,
+  FakeFollowers,
+} from "../fakes/fediverse-profiles.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { createFakeRepositories } from "../fakes/repositories.ts";
@@ -81,6 +86,7 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
       deletedPendingLogins: 0,
       deletedAccounts: 0,
       warnedAccounts: 0,
+      forgottenFollowers: 0,
     });
     expect(backups.cutoffs).toEqual([new Date(fixtureNow.getTime() - 7 * 24 * 60 * 60 * 1000)]);
   });
@@ -105,9 +111,39 @@ describe("runHousekeeping (spec 3.10 Other expiry, decision D9)", () => {
       deletedPendingLogins: 0,
       deletedAccounts: 0,
       warnedAccounts: 0,
+      forgottenFollowers: 0,
     });
     expect(await repos.devices.findByTokenHash("lonely-hash")).toBeUndefined();
     expect(await repos.devices.findByTokenHash("hash-p")).toBeDefined();
+  });
+});
+
+describe("runHousekeeping and fediverse followers (decision D38)", () => {
+  it("forgets them while federation is off, as nothing can reach them", async () => {
+    const followers = new FakeFollowers();
+    const follower = {
+      id: "https://social.example/users/ben",
+      inbox: "https://social.example/users/ben/inbox",
+      sharedInbox: undefined,
+    };
+    await followers.add("instance", follower);
+    const housekeeping = (enabled: boolean) =>
+      runHousekeeping({
+        ...deps,
+        posterActors: {
+          profiles: new FakeFediverseProfiles(followers),
+          actorKeys: new FakeActorKeys(),
+          followers,
+          publisher: undefined,
+          enabled,
+        },
+        backups: new FakeBackupStore(),
+        pendingLogins: repos.pendingLogins,
+        identities: repos.identities,
+      });
+    expect(await housekeeping(true)).toMatchObject({ forgottenFollowers: 0 });
+    expect(await housekeeping(false)).toMatchObject({ forgottenFollowers: 1 });
+    expect(await followers.count("instance")).toBe(0);
   });
 });
 

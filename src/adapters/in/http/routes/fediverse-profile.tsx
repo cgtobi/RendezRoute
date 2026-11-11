@@ -4,10 +4,10 @@
 import type { Hono } from "hono";
 import { HANDLE_PATTERN } from "../../../../domain/actor.ts";
 import { posterActor, viewProfilePage } from "../../../../application/fediverse-profile.ts";
+import { INSTANCE_ACTOR } from "../../../../application/following.ts";
 import type { PlanDeps } from "../../../../application/plans.ts";
 import type { IdentityRepository } from "../../../../application/ports.ts";
 import type { Config } from "../../../../config.ts";
-import { INSTANCE_ACTOR } from "../../activitypub/federation.ts";
 import type { AppEnv } from "../app.tsx";
 import { ProfilePage } from "../views/fediverse-profile.tsx";
 import { messagePage } from "./shared.tsx";

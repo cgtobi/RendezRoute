@@ -214,6 +214,15 @@ export interface FediverseProfilesTable {
   retired_at: string | null;
 }
 
+export interface FediverseFollowersTable {
+  id: string;
+  /** The followed actor's identifier: "instance" or a poster actor's. */
+  local_actor: string;
+  remote_hmac: string;
+  remote_enc: string;
+  created_at: string;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -221,6 +230,7 @@ export interface DatabaseSchema {
   fedify_kv: FedifyKvTable;
   /** Poster actors (decisions D36, D37). */
   fediverse_profiles: FediverseProfilesTable;
+  fediverse_followers: FediverseFollowersTable;
   plans: PlansTable;
   devices: DevicesTable;
   device_links: DeviceLinksTable;

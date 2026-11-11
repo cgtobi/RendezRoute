@@ -9,6 +9,8 @@ export const JOB_TYPES = [
   "channelConfirmation",
   "reportAlert",
   "accountNotice",
+  // An activity signed and posted to one fediverse inbox (decision D38).
+  "federationDelivery",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 

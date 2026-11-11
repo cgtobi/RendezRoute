@@ -155,7 +155,7 @@ describe("upgrading an existing database (migration 0003 rebuilds device_links)"
   });
 });
 
-describe("upgrading an existing database (migration 0025 rebuilds plans)", () => {
+describe("upgrading an existing database (migrations 0025 and 0026 rebuild plans and jobs)", () => {
   it("keeps every plan and every row referring to one, then allows followers only with an owner", async () => {
     const dir = mkdtempSync(join(tmpdir(), "rendezroute-upgrade-"));
     dirs.push(dir);
@@ -196,6 +196,8 @@ describe("upgrading an existing database (migration 0025 rebuilds plans)", () =>
       values ('response-1', 'plan-1', 'joined', 'enc', 'manage-hash', 'en', ${t}, ${t})`.execute(
       old,
     );
+    await sql`insert into job_queue (id, type, payload_enc, plan_id, run_at)
+      values ('job-1', 'notification', 'enc', 'plan-1', ${t})`.execute(old);
     await old.destroy();
 
     const upgraded = await openDatabase(path);
@@ -205,6 +207,10 @@ describe("upgrading an existing database (migration 0025 rebuilds plans)", () =>
       { id: "plan-1", visibility: "public", owner_identity_id: "identity-1", federated_at: null },
     ]);
     expect(one("select id from responses")).toEqual([{ id: "response-1" }]);
+    // The job table, rebuilt by 0026 for the delivery jobs, keeps its jobs.
+    expect(one("select id, type, plan_id from job_queue")).toEqual([
+      { id: "job-1", type: "notification", plan_id: "plan-1" },
+    ]);
     expect(one("select plan_id from device_links")).toEqual([{ plan_id: "plan-1" }]);
     // The view of what each device may reach survived the rebuild: by link and by account.
     expect(one("select device_id, plan_id from device_access where source = 'link'")).toEqual([

@@ -17,7 +17,8 @@ export type ProfileSetting =
   | Unavailable
   /** No profile yet: the handle the form suggests. */
   | { kind: "off"; suggestion: string }
-  | { kind: "on"; handle: string };
+  /** On, with how many follow it in the fediverse (decision D38). */
+  | { kind: "on"; handle: string; followers: number };
 
 /** What the account page shows; nothing while federation is off or nobody is logged in. */
 export async function profileSetting(
@@ -28,7 +29,13 @@ export async function profileSetting(
   const account = await accountOf(deps, request.deviceToken);
   if (actors?.enabled !== true || account === undefined) return UNAVAILABLE;
   const profile = await actors.profiles.findActive(account.identityId);
-  if (profile !== undefined) return { kind: "on", handle: profile.handle };
+  if (profile !== undefined) {
+    return {
+      kind: "on",
+      handle: profile.handle,
+      followers: await actors.followers.count(profile.id),
+    };
+  }
   const identity = await deps.identities.findById(account.identityId);
   return { kind: "off", suggestion: suggestHandle(identity?.displayName ?? "") };
 }
@@ -79,9 +86,9 @@ export async function retireProfile(
  * Retires the account's profile, if any: when turned off and before the account is deleted (the
  * database refuses deleting an account whose profile is active). Its followers plans become
  * link-only, and none of its plans counts as shared any more, so a later profile shares only what
- * is saved under its own handle (D35). The plans come first and the profile last, so a retry after
- * a failure finishes the job. Returns how many plans became link-only. Sending `Delete` to
- * followers comes with step 11.
+ * is saved under its own handle (D35); its followers are told the actor is gone (`Delete`, signed
+ * while its keys still exist) and forgotten (D38). The plans come first and the profile last, so
+ * a retry after a failure finishes the job. Returns how many plans became link-only.
  */
 export async function retireAccountProfile(deps: PlanDeps, identityId: string): Promise<number> {
   const actors = deps.posterActors;
@@ -100,6 +107,13 @@ export async function retireAccountProfile(deps: PlanDeps, identityId: string): 
       updatedAt: now,
     });
     if (linkOnly) changed++;
+  }
+  // Told while its keys still exist; retiring forgets them (D38), together with any follow
+  // accepted after this list was made, which then learns from the gone actor itself.
+  const profile = await actors.profiles.findActive(identityId);
+  const followers = profile === undefined ? [] : await actors.followers.list(profile.id);
+  if (profile !== undefined && followers.length > 0) {
+    await actors.publisher?.deleteActor(profile.id, followers);
   }
   await actors.profiles.retire(identityId, now);
   return changed;

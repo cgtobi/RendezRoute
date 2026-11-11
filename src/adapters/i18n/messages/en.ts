@@ -162,8 +162,10 @@ export const en = {
   "form.publicLogIn": "Log in",
   "field.public_needs_login":
     "Public plans need an account on this site: log in, or keep the plan to people with the link.",
-  "form.visibilityFollowers": "Followers of {handle} in the fediverse, and people with the link",
-  "form.visibilityFollowersNone": "Followers in the fediverse, and people with the link",
+  "form.visibilityFollowers":
+    "Followers of {handle} in the fediverse (anyone there can follow), and people with the link",
+  "form.visibilityFollowersNone":
+    "Followers in the fediverse (anyone there can follow), and people with the link",
   "form.visibilityPublicShared":
     "Anyone: listed in Nearby on this site and shared in the fediverse by {handle}",
   "form.visibilityPublicProfile": "Anyone: shared in the fediverse by {handle}",
@@ -179,7 +181,7 @@ export const en = {
   "profile.intro":
     "With a profile, people in the fediverse (for example on Mastodon) can find you as @name@{host}, follow you, and see your upcoming public plans.",
   "profile.notice":
-    "Turning it on makes you discoverable in the fediverse: anyone there can see your display name and your upcoming public plans, and their servers may keep copies. The name is yours for good: it cannot be changed, and once you turn the profile off it is retired and nobody can use it again.",
+    "Turning it on makes you discoverable in the fediverse: anyone there can see your display name and your upcoming public plans, and their servers may keep copies. Anyone there can follow you without asking, and plans for your followers reach everyone who does. The name is yours for good: it cannot be changed, and once you turn the profile off it is retired and nobody can use it again.",
   "profile.handle": "Your name in the fediverse",
   "profile.handleHint": "Lowercase letters, digits and _, up to 30.",
   "profile.turnOn": "Turn on my fediverse profile",
@@ -187,9 +189,13 @@ export const en = {
   "profile.view": "View it",
   "profile.turnOff": "Turn off my fediverse profile…",
   "profile.turnOffExplain":
-    "Turning it off retires {handle} for good: it cannot be used again, by you or anyone. Plans for your followers become plans for people with the link.",
+    "Turning it off retires {handle} for good: it cannot be used again, by you or anyone. Plans for your followers become plans for people with the link, and your followers are told the profile is gone.",
   "profile.turnOffConfirm": "Turn off and retire {handle}",
   "profile.turnedOn": "Your fediverse profile is on.",
+  "profile.followers": {
+    one: "1 person in the fediverse follows you.",
+    other: "{count} people in the fediverse follow you.",
+  },
   "profile.turnedOff": {
     one: "Your fediverse profile is off. 1 plan for followers is now for people with the link.",
     other:
@@ -200,7 +206,7 @@ export const en = {
   "actorProfile.none": "No upcoming public plans right now.",
   "actorProfile.gone": "This fediverse profile was turned off.",
   "privacy.profiles":
-    "If you turn on a fediverse profile, the name you choose, your display name and your upcoming public plans can be seen by anyone in the fediverse, and other servers may keep copies. Its signing keys are stored encrypted. Turning it off, or deleting your account, retires the name: only a keyed hash of it is kept, so it is never used again.",
+    "If you turn on a fediverse profile, the name you choose, your display name and your upcoming public plans can be seen by anyone in the fediverse, and other servers may keep copies. Its signing keys are stored encrypted. Anyone in the fediverse can follow it: a follower’s address and inboxes are stored encrypted until they unfollow, their account is deleted, the profile is turned off or this site stops taking part in the fediverse, and only how many there are is shown. Messages to followers wait in a queue with their inbox addresses for at most 12 hours; the last one, saying the profile is gone, keeps the signing key it needs until then. Turning it off, or deleting your account, retires the name: only a keyed hash of it is kept, so it is never used again.",
   "form.joinMode": "Who can join",
   "form.joinOpen": "Anyone with the link",
   "form.joinApproval": "Only people I accept",
@@ -771,7 +777,7 @@ export const en = {
   "home.nearby": "Find public plans nearby",
   "layout.nearby": "Nearby",
   "privacy.federation":
-    "This site takes part in the fediverse as @{host}@{host}. Other servers can fetch a plan’s public details by its address, as anyone with the link can see them. When a server sends this site a message, this site fetches that server’s public key to check the message’s signature, and keeps the key for up to {days} days. Nothing else is shared yet.",
+    "This site takes part in the fediverse as @{host}@{host}. Other servers can fetch a plan’s public details by its address, as anyone with the link can see them. When a server sends this site a message, this site fetches that server’s public key to check the message’s signature, and keeps the key for up to {days} days. Anyone in the fediverse can follow this site: a follower’s address and inboxes are stored encrypted until they unfollow, their account is deleted or this site stops taking part in the fediverse, and only how many there are is shown. Nothing else is shared yet.",
   "privacy.nearby":
     "Nearby uses the place you search from only for that search. A spot from the map or your location is rounded to about 2 km by your browser before it is sent, and again by the server. A typed place is looked up like place search above, and the search continues from its rounded spot; without JavaScript the typed place is in the address of that first request. Nothing of it is stored or written to this site’s logs. The rounded spot is in the address of the results page, so it can stay in your browser history and in the access log of a web server in front of this site.",
   "field.range_invalid": "The last day comes before the first.",
@@ -910,7 +916,8 @@ export const en = {
   "account.deleteItself": "the account itself and its display name",
   "account.mayPost": "An invite link lets your account create plans here (since {date}).",
   "account.deleteMayPost": "its permission to create plans, from an invite link",
-  "account.deleteProfile": "its fediverse profile {handle}: the name is retired for good",
+  "account.deleteProfile":
+    "its fediverse profile {handle}: its followers are told it is gone and forgotten, and the name is retired for good",
   "account.deleteLogsOut":
     "Browsers logged in to it are logged out; what they hold themselves stays.",
   "account.deleteConfirm": "Delete account for good",

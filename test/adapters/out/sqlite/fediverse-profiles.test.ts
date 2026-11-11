@@ -8,6 +8,8 @@ import { createLookupHasher } from "../../../../src/adapters/out/crypto/lookup-h
 import { type Database, openDatabase } from "../../../../src/adapters/out/sqlite/database.ts";
 import { createFediverseProfileRepository } from "../../../../src/adapters/out/sqlite/fediverse-profiles.ts";
 import { createIdentityRepository } from "../../../../src/adapters/out/sqlite/identities.ts";
+import { createFollowerRepository } from "../../../../src/adapters/out/sqlite/followers.ts";
+import { createIdGenerator } from "../../../../src/adapters/out/ids.ts";
 import { fixtureNow } from "../../../fixtures/plans.ts";
 
 let database: Database;
@@ -89,6 +91,21 @@ describe("fediverse profiles (decisions D36, D37)", () => {
     const rows = JSON.stringify(database.sqlite.prepare("select * from fediverse_profiles").all());
     expect(rows).not.toContain('"anna"');
     expect(await profiles().retire("identity-2", later)).toBeUndefined();
+  });
+
+  it("forget a retired actor's followers in the same step, and only its own (decision D38)", async () => {
+    await profiles().create(profile());
+    const followers = createFollowerRepository(database, cipher, hasher, createIdGenerator());
+    const ben = {
+      id: "https://social.example/users/ben",
+      inbox: "https://social.example/inbox",
+      sharedInbox: undefined,
+    };
+    await followers.add("actor-1", ben, fixtureNow);
+    await followers.add("instance", ben, fixtureNow);
+    await profiles().retire("identity-1", fixtureNow);
+    expect(await followers.count("actor-1")).toBe(0);
+    expect(await followers.count("instance")).toBe(1);
   });
 
   it("let the account be deleted once retired, and refuse it while active", async () => {

@@ -1,13 +1,24 @@
 import type {
   ActorKeyFactory,
+  FederationPublisher,
   FediverseProfile,
   FediverseProfileRepository,
+  FollowerRepository,
+  RemoteActor,
 } from "../../src/application/ports.ts";
 
-/** Profiles in memory; a retired one keeps its identifier and its handle as taken (D37). */
+/**
+ * Profiles in memory; a retired one keeps its identifier and its handle as taken (D37), and its
+ * followers go with it, as in the database (D38).
+ */
 export class FakeFediverseProfiles implements FediverseProfileRepository {
   readonly profiles = new Map<string, FediverseProfile & { keys: string; retiredAt?: Date }>();
   readonly #taken = new Set<string>();
+  readonly #followers: FakeFollowers | undefined;
+
+  constructor(followers?: FakeFollowers) {
+    this.#followers = followers;
+  }
 
   findActive(identityId: string) {
     return Promise.resolve(this.#active().find((p) => p.identityId === identityId));
@@ -45,6 +56,7 @@ export class FakeFediverseProfiles implements FediverseProfileRepository {
     const profile = this.#active().find((p) => p.identityId === identityId);
     if (profile === undefined) return Promise.resolve(undefined);
     this.profiles.set(profile.id, { ...this.profiles.get(profile.id)!, retiredAt: now });
+    this.#followers?.removeAllOf(profile.id);
     return Promise.resolve(profile.id);
   }
 
@@ -65,5 +77,67 @@ export class FakeActorKeys implements ActorKeyFactory {
   /** How many key sets were made. */
   get made(): number {
     return this.#n;
+  }
+}
+
+/** Followers in memory, by local actor and remote actor address (D38). */
+export class FakeFollowers implements FollowerRepository {
+  readonly #byActor = new Map<string, Map<string, RemoteActor>>();
+
+  add(localActor: string, follower: RemoteActor) {
+    const followers = this.#byActor.get(localActor) ?? new Map<string, RemoteActor>();
+    followers.set(follower.id, follower);
+    this.#byActor.set(localActor, followers);
+    return Promise.resolve();
+  }
+
+  remove(localActor: string, remoteActorId: string) {
+    this.#byActor.get(localActor)?.delete(remoteActorId);
+    return Promise.resolve();
+  }
+
+  forget(remoteActorId: string) {
+    let removed = 0;
+    for (const followers of this.#byActor.values()) {
+      if (followers.delete(remoteActorId)) removed++;
+    }
+    return Promise.resolve(removed);
+  }
+
+  count(localActor: string) {
+    return Promise.resolve(this.#byActor.get(localActor)?.size ?? 0);
+  }
+
+  list(localActor: string) {
+    return Promise.resolve([...(this.#byActor.get(localActor)?.values() ?? [])]);
+  }
+
+  clear() {
+    const removed = [...this.#byActor.values()].reduce((n, followers) => n + followers.size, 0);
+    this.#byActor.clear();
+    return Promise.resolve(removed);
+  }
+
+  /** What retiring a profile does to its followers. */
+  removeAllOf(localActor: string) {
+    this.#byActor.delete(localActor);
+  }
+}
+
+/** What would have been sent, in order. */
+export class FakePublisher implements FederationPublisher {
+  readonly sent: (
+    | { kind: "accept"; localActor: string; followId: string; to: string }
+    | { kind: "deleteActor"; localActor: string; to: string[] }
+  )[] = [];
+
+  acceptFollow(localActor: string, follow: { id: string; follower: RemoteActor }) {
+    this.sent.push({ kind: "accept", localActor, followId: follow.id, to: follow.follower.id });
+    return Promise.resolve();
+  }
+
+  deleteActor(localActor: string, followers: readonly RemoteActor[]) {
+    this.sent.push({ kind: "deleteActor", localActor, to: followers.map((f) => f.id) });
+    return Promise.resolve();
   }
 }

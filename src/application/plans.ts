@@ -64,7 +64,9 @@ import type {
   SentReminderRepository,
   TemplateRepository,
   ActorKeyFactory,
+  FederationPublisher,
   FediverseProfileRepository,
+  FollowerRepository,
 } from "./ports.ts";
 
 export interface PlanDeps extends DeviceDeps {
@@ -101,7 +103,15 @@ export interface PlanDeps extends DeviceDeps {
    * account can be deleted after federation was turned off; `enabled` while FEDERATION_ENABLED.
    */
   posterActors?:
-    | { profiles: FediverseProfileRepository; actorKeys: ActorKeyFactory; enabled: boolean }
+    | {
+        profiles: FediverseProfileRepository;
+        actorKeys: ActorKeyFactory;
+        /** Who follows the instance's actors (decision D38). */
+        followers: FollowerRepository;
+        /** Undefined while federation is off: nothing is sent. */
+        publisher: FederationPublisher | undefined;
+        enabled: boolean;
+      }
     | undefined;
   invites: InviteRepository;
   permissions: PermissionRepository;

@@ -94,18 +94,24 @@ export function createFediverseProfileRepository(
     },
 
     async retire(identityId, now) {
-      const row = await select()
-        .where("identity_id", "=", identityId)
-        .where("retired_at", "is", null)
-        .executeTakeFirst();
-      if (row === undefined) return undefined;
-      // Only the identifier and the handle's hash stay (decision D37).
-      await db
-        .updateTable("fediverse_profiles")
-        .set({ identity_id: null, handle: null, keys_enc: null, retired_at: now.toISOString() })
-        .where("id", "=", row.id)
-        .execute();
-      return row.id;
+      return db.transaction().execute(async (trx) => {
+        const row = await trx
+          .selectFrom("fediverse_profiles")
+          .select("id")
+          .where("identity_id", "=", identityId)
+          .where("retired_at", "is", null)
+          .executeTakeFirst();
+        if (row === undefined) return undefined;
+        // Only the identifier and the handle's hash stay (decision D37); its followers go with
+        // it (D38), here, so a follow accepted until now is not left behind.
+        await trx
+          .updateTable("fediverse_profiles")
+          .set({ identity_id: null, handle: null, keys_enc: null, retired_at: now.toISOString() })
+          .where("id", "=", row.id)
+          .execute();
+        await trx.deleteFrom("fediverse_followers").where("local_actor", "=", row.id).execute();
+        return row.id;
+      });
     },
   };
 }

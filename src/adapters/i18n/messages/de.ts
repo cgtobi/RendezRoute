@@ -167,8 +167,10 @@ export const de: Messages = {
   "form.publicLogIn": "Anmelden",
   "field.public_needs_login":
     "Öffentliche Treffen brauchen ein Konto auf dieser Seite: Melde dich an oder lass das Treffen bei denen mit dem Link.",
-  "form.visibilityFollowers": "Follower:innen von {handle} im Fediverse und alle mit dem Link",
-  "form.visibilityFollowersNone": "Follower:innen im Fediverse und alle mit dem Link",
+  "form.visibilityFollowers":
+    "Follower:innen von {handle} im Fediverse (folgen kann dort jede:r) und alle mit dem Link",
+  "form.visibilityFollowersNone":
+    "Follower:innen im Fediverse (folgen kann dort jede:r) und alle mit dem Link",
   "form.visibilityPublicShared":
     "Alle: gelistet unter „In der Nähe“ auf dieser Seite und im Fediverse geteilt von {handle}",
   "form.visibilityPublicProfile": "Alle: im Fediverse geteilt von {handle}",
@@ -186,7 +188,7 @@ export const de: Messages = {
   "profile.intro":
     "Mit einem Profil finden dich Leute im Fediverse (zum Beispiel auf Mastodon) als @name@{host}, können dir folgen und sehen deine kommenden öffentlichen Treffen.",
   "profile.notice":
-    "Wenn du es einschaltest, bist du im Fediverse auffindbar: Alle dort sehen deinen Anzeigenamen und deine kommenden öffentlichen Treffen, und ihre Server können Kopien behalten. Der Name gehört dir dauerhaft: Er lässt sich nicht ändern, und sobald du das Profil ausschaltest, wird er stillgelegt und kann von niemandem mehr verwendet werden.",
+    "Wenn du es einschaltest, bist du im Fediverse auffindbar: Alle dort sehen deinen Anzeigenamen und deine kommenden öffentlichen Treffen, und ihre Server können Kopien behalten. Alle dort können dir ohne Nachfrage folgen, und Treffen für deine Follower:innen erreichen alle, die es tun. Der Name gehört dir dauerhaft: Er lässt sich nicht ändern, und sobald du das Profil ausschaltest, wird er stillgelegt und kann von niemandem mehr verwendet werden.",
   "profile.handle": "Dein Name im Fediverse",
   "profile.handleHint": "Kleinbuchstaben, Ziffern und _, bis zu 30.",
   "profile.turnOn": "Mein Fediverse-Profil einschalten",
@@ -194,9 +196,13 @@ export const de: Messages = {
   "profile.view": "Ansehen",
   "profile.turnOff": "Mein Fediverse-Profil ausschalten…",
   "profile.turnOffExplain":
-    "Beim Ausschalten wird {handle} dauerhaft stillgelegt: Niemand kann den Namen wieder verwenden, auch du nicht. Treffen für deine Follower:innen werden zu Treffen für alle mit dem Link.",
+    "Beim Ausschalten wird {handle} dauerhaft stillgelegt: Niemand kann den Namen wieder verwenden, auch du nicht. Treffen für deine Follower:innen werden zu Treffen für alle mit dem Link, und deine Follower:innen erfahren, dass das Profil weg ist.",
   "profile.turnOffConfirm": "{handle} ausschalten und stilllegen",
   "profile.turnedOn": "Dein Fediverse-Profil ist eingeschaltet.",
+  "profile.followers": {
+    one: "1 Person im Fediverse folgt dir.",
+    other: "{count} Personen im Fediverse folgen dir.",
+  },
   "profile.turnedOff": {
     one: "Dein Fediverse-Profil ist ausgeschaltet. 1 Treffen für Follower:innen ist jetzt für alle mit dem Link.",
     other:
@@ -207,7 +213,7 @@ export const de: Messages = {
   "actorProfile.none": "Gerade keine kommenden öffentlichen Treffen.",
   "actorProfile.gone": "Dieses Fediverse-Profil wurde ausgeschaltet.",
   "privacy.profiles":
-    "Wenn du ein Fediverse-Profil einschaltest, können alle im Fediverse den gewählten Namen, deinen Anzeigenamen und deine kommenden öffentlichen Treffen sehen, und andere Server können Kopien behalten. Seine Signaturschlüssel werden verschlüsselt gespeichert. Schaltest du es aus oder löschst du dein Konto, wird der Name stillgelegt: Nur ein verschlüsselter Prüfwert bleibt, damit er nie wieder verwendet wird.",
+    "Wenn du ein Fediverse-Profil einschaltest, können alle im Fediverse den gewählten Namen, deinen Anzeigenamen und deine kommenden öffentlichen Treffen sehen, und andere Server können Kopien behalten. Seine Signaturschlüssel werden verschlüsselt gespeichert. Alle im Fediverse können ihm folgen: Adresse und Posteingänge einer Follower:in werden verschlüsselt gespeichert, bis sie nicht mehr folgt, ihr Konto gelöscht wird, das Profil ausgeschaltet wird oder diese Seite nicht mehr am Fediverse teilnimmt, und gezeigt wird nur, wie viele es sind. Nachrichten an Follower:innen warten mit den Adressen ihrer Posteingänge höchstens 12 Stunden in einer Warteschlange; die letzte, die sagt, dass das Profil weg ist, behält bis dahin den Signaturschlüssel, den sie braucht. Schaltest du es aus oder löschst du dein Konto, wird der Name stillgelegt: Nur ein verschlüsselter Prüfwert bleibt, damit er nie wieder verwendet wird.",
   "form.joinMode": "Wer mitkommen kann",
   "form.joinOpen": "Alle mit dem Link",
   "form.joinApproval": "Nur, wen ich annehme",
@@ -804,7 +810,7 @@ export const de: Messages = {
   "home.nearby": "Öffentliche Treffen in der Nähe finden",
   "layout.nearby": "In der Nähe",
   "privacy.federation":
-    "Diese Seite ist im Fediverse als @{host}@{host} dabei. Andere Server können die öffentlichen Angaben eines Treffens über seine Adresse abrufen, so wie alle mit dem Link sie sehen. Schickt ein Server dieser Seite eine Nachricht, ruft sie den öffentlichen Schlüssel dieses Servers ab, um die Signatur der Nachricht zu prüfen, und behält ihn bis zu {days} Tage. Mehr wird bisher nicht geteilt.",
+    "Diese Seite ist im Fediverse als @{host}@{host} dabei. Andere Server können die öffentlichen Angaben eines Treffens über seine Adresse abrufen, so wie alle mit dem Link sie sehen. Schickt ein Server dieser Seite eine Nachricht, ruft sie den öffentlichen Schlüssel dieses Servers ab, um die Signatur der Nachricht zu prüfen, und behält ihn bis zu {days} Tage. Alle im Fediverse können dieser Seite folgen: Adresse und Posteingänge einer Follower:in werden verschlüsselt gespeichert, bis sie nicht mehr folgt, ihr Konto gelöscht wird oder diese Seite nicht mehr am Fediverse teilnimmt, und gezeigt wird nur, wie viele es sind. Mehr wird bisher nicht geteilt.",
   "privacy.nearby":
     "„In der Nähe“ nutzt den Ort, von dem aus du suchst, nur für diese Suche. Eine Stelle von der Karte oder dein Standort wird von deinem Browser vor dem Senden auf etwa 2 km gerundet und vom Server noch einmal. Ein eingetippter Ort wird wie bei der Ortssuche oben nachgeschlagen, und die Suche geht von seiner gerundeten Stelle aus weiter; ohne JavaScript steht der eingetippte Ort in der Adresse dieser ersten Anfrage. Nichts davon wird gespeichert oder in die Protokolle dieser Seite geschrieben. Die gerundete Stelle steht in der Adresse der Ergebnisseite und kann so in deinem Browserverlauf und im Zugriffsprotokoll des Webservers vor dieser Seite bleiben.",
   "field.range_invalid": "Der letzte Tag liegt vor dem ersten.",
@@ -947,7 +953,8 @@ export const de: Messages = {
   "account.mayPost":
     "Ein Einladungslink erlaubt deinem Konto, hier Treffen zu erstellen (seit {date}).",
   "account.deleteMayPost": "seine Erlaubnis, Treffen zu erstellen, aus einem Einladungslink",
-  "account.deleteProfile": "sein Fediverse-Profil {handle}: Der Name wird dauerhaft stillgelegt",
+  "account.deleteProfile":
+    "sein Fediverse-Profil {handle}: Seine Follower:innen erfahren, dass es weg ist, und werden vergessen; der Name wird dauerhaft stillgelegt",
   "account.deleteLogsOut":
     "Browser, die bei ihm angemeldet sind, werden abgemeldet; was sie selbst haben, bleibt.",
   "account.deleteConfirm": "Konto endgültig löschen",

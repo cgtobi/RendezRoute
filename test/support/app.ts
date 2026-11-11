@@ -1,4 +1,6 @@
 import { actorKeyFactory } from "../../src/adapters/out/crypto/federation-keys.ts";
+import { createFederationOutbound } from "../../src/adapters/out/federation/outbound.ts";
+import { createFollowerRepository } from "../../src/adapters/out/sqlite/followers.ts";
 import { createFediverseProfileRepository } from "../../src/adapters/out/sqlite/fediverse-profiles.ts";
 import { FakeOutboundHttp } from "../fakes/outbound-http.ts";
 import { generateCryptoKeyPair } from "@fedify/fedify";
@@ -108,6 +110,32 @@ export async function createTestApp({
   const channels = createChannelRepository(database, cipher, ids, () => clock.now());
   const jobs = createJobQueue(database, cipher, ids);
   const vapidPublicKey = generateVapidKeys().publicKey;
+  // The instance in the fediverse (0.9 steps 9a, 10a), its keys made once per test run; remote
+  // requests go to a fake that refuses everything unless a test says otherwise.
+  const federationHttp = new FakeOutboundHttp();
+  const federationKeys = config.federationEnabled
+    ? await (instanceKeys ??= Promise.all([
+        generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+        generateCryptoKeyPair("Ed25519"),
+      ]))
+    : undefined;
+  const profiles = createFediverseProfileRepository(
+    database,
+    cipher,
+    createLookupHasher(randomBytes(32)),
+  );
+  const federationOutbound =
+    federationKeys === undefined
+      ? undefined
+      : createFederationOutbound({
+          jobs,
+          clock,
+          ids,
+          baseUrl: config.baseUrl,
+          instanceKeys: federationKeys,
+          profiles,
+          http: federationHttp,
+        });
   const channelLinks = createChannelLinks(randomBytes(32));
   const mailer = new FakeMailer();
   const email =
@@ -168,12 +196,15 @@ export async function createTestApp({
     publicRequiresLogin: config.publicRequiresLogin,
     publicPlansOffered: config.nearbyEnabled,
     posterActors: {
-      profiles: createFediverseProfileRepository(
+      profiles,
+      actorKeys: actorKeyFactory,
+      followers: createFollowerRepository(
         database,
         cipher,
         createLookupHasher(randomBytes(32)),
+        ids,
       ),
-      actorKeys: actorKeyFactory,
+      publisher: federationOutbound?.publisher,
       enabled: config.federationEnabled,
     },
     invites: createInviteRepository(database),
@@ -206,27 +237,23 @@ export async function createTestApp({
     ntfy: ntfy?.delivery,
     telegram: telegram?.delivery,
     identities,
+    federation: federationOutbound,
   });
   const runJobs = () => runDueJobs({ jobs, clock }, jobHandlers);
   const pendingLogins = createPendingLoginRepository(database, cipher);
   const identityLookup = createLookupHasher(randomBytes(32));
-  // The instance in the fediverse (plan v1.0 step 9a), its keys made once per test run; remote
-  // fetches go to a fake that refuses everything unless a test says otherwise.
   const federationKv = createFedifyKvStore(database, () => clock.now());
-  const federationHttp = new FakeOutboundHttp();
-  const federation = config.federationEnabled
-    ? createInstanceFederation({
-        settings: { baseUrl: config.baseUrl, instanceName: config.instanceName },
-        kv: federationKv,
-        http: federationHttp,
-        identities,
-        instanceKeys: await (instanceKeys ??= Promise.all([
-          generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
-          generateCryptoKeyPair("Ed25519"),
-        ])),
-        planDeps,
-      })
-    : undefined;
+  const federation =
+    federationKeys === undefined
+      ? undefined
+      : createInstanceFederation({
+          settings: { baseUrl: config.baseUrl, instanceName: config.instanceName },
+          kv: federationKv,
+          http: federationHttp,
+          identities,
+          instanceKeys: federationKeys,
+          planDeps,
+        });
 
   const app = createApp({
     federation,
@@ -293,7 +320,8 @@ export async function createTestApp({
     pushed,
     runJobs,
     channelLinks,
-    /** Fedify's remote fetches (spec 3.11): refuses everything unless a test says otherwise. */
+    /** Fedify's remote fetches and deliveries (spec 3.11): refuses everything unless told otherwise. */
     federationHttp,
+    federationKeys,
   };
 }

@@ -359,7 +359,7 @@ function RequestList(props: {
             <PersonName name={request.name} language={props.language} />
             {request.note !== undefined && <p class="request-note">{request.note}</p>}
             {props.open && (
-              <div class="buttons">
+              <div class="button-row">
                 {(["accept", "reject"] as const).map((action) => (
                   <form
                     method="post"

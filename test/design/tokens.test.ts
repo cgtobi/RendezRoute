@@ -15,6 +15,16 @@ import {
 const CSS = readFileSync(join(import.meta.dirname, "../../public/app.css"), "utf8");
 const DARK = "@media (prefers-color-scheme: dark)";
 
+/**
+ * The declarations of the first rule in `css` written for exactly `selector`, at the start of a
+ * line (also indented, inside a media query), up to its closing brace; "" if there is none.
+ */
+function ruleFor(css: string, selector: string): string {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`\\n[ \\t]*${escapedSelector} \\{\\n`).exec(css);
+  return match === null ? "" : css.slice(match.index, css.indexOf("}", match.index));
+}
+
 /** The colour tokens of the first `:root { … }` block after `from`, written as #rrggbb. */
 function tokens(from: number): Record<string, string> {
   const start = CSS.indexOf(":root {", from);
@@ -111,8 +121,7 @@ describe.each([
   });
 
   it("reads the exact start card in --fg, its hint and links too", () => {
-    const card = CSS.slice(CSS.indexOf("\n.exact-start {\n"));
-    const rule = card.slice(0, card.indexOf("}"));
+    const rule = ruleFor(CSS, ".exact-start");
     expect([rule.includes("--muted: var(--fg)"), rule.includes("--accent: var(--fg)")]).toEqual([
       true,
       true,
@@ -127,20 +136,36 @@ describe("maps in dark mode", () => {
   const darkRules = [...CSS.matchAll(/@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n\}/g)]
     .map(([, body = ""]) => body)
     .join("\n");
-  const ruleFor = (selector: string) => {
-    const start = darkRules.indexOf(`${selector} {`);
-    return start === -1 ? "" : darkRules.slice(start, darkRules.indexOf("}", start));
-  };
+  const darkRule = (selector: string) => ruleFor(darkRules, selector);
 
   it("darkens the tiles, and only the tiles", () => {
-    expect(ruleFor(".map .leaflet-tile-pane")).toContain("filter: invert(1) hue-rotate(180deg)");
+    expect(darkRule(".map .leaflet-tile-pane")).toContain("filter: invert(1) hue-rotate(180deg)");
     expect(darkRules).not.toMatch(/\.leaflet-(overlay|marker)-pane[^{]*\{[^}]*filter/);
   });
 
   it("gives the zoom buttons and the attribution the page's dark colours", () => {
-    expect(ruleFor(".map .leaflet-bar a")).toContain("background: var(--surface)");
-    expect(ruleFor(".map.leaflet-container .leaflet-control-attribution")).toContain(
+    expect(darkRule(".map .leaflet-bar a")).toContain("background: var(--surface)");
+    expect(darkRule(".map.leaflet-container .leaflet-control-attribution")).toContain(
       "color: var(--muted)",
     );
+  });
+});
+
+// Layout rules closed at the design session's wrap-up (design note in docs/decisions.md, "Closed
+// at the wrap-up"): one component for groups of buttons, and room below a part's line.
+describe("layout of parts and button rows", () => {
+  it("groups buttons only in .button-row, whose buttons fill it on phones and sit side by side from 600 px", () => {
+    expect(CSS).not.toMatch(/\n\.buttons \{/);
+    expect(ruleFor(CSS, ".button-row > *")).toContain("flex: 1 1 auto");
+    expect(ruleFor(CSS, ".button-row form > button")).toContain("width: 100%");
+    expect(CSS).toMatch(/@media \(min-width: 600px\) \{\s*\.button-row > \* \{\s*flex: none;/);
+  });
+
+  it("gives a part that starts with a form room below its line, and nothing else", () => {
+    expect(ruleFor(CSS, ".sectioned > section:not(.status) > form:first-child")).toContain(
+      "margin-top: var(--s4)",
+    );
+    // A wider rule would override e.g. the delete fold's own margin (.danger-zone).
+    expect(CSS).not.toContain(":first-child:not(h2)");
   });
 });

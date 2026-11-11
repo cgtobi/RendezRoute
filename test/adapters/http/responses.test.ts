@@ -23,6 +23,10 @@ describe("plan page response form (spec 5 feature 5, 3.4)", () => {
     expect(html).toContain('name="choice" value="interested"');
     expect(html).toContain('name="choice" value="joined"');
     expect(html).toContain(escaped(en["respond.openModeNote"]));
+    // In the page's one button row, so they stack evenly on phones (design note).
+    expect(html).toMatch(
+      /<div class="button-row"><button type="submit" name="choice" value="joined">/,
+    );
   });
 
   it("shows counts and no response form to the host", async () => {

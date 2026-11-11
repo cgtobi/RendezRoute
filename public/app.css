@@ -3,7 +3,9 @@
 
    Components, for pages added later (milestones B and C):
    - Buttons: <button> or a.button is the page's one primary action; .secondary for everything
-     else; .danger for deleting. Groups of buttons go in .buttons.
+     else; .danger for deleting. Groups of buttons go in .button-row: on phones they fill the row
+     and stack evenly when wrapped, side by side from 600 px. The plan page's own actions row
+     (.actions) follows the mock-up (D30).
    - Fields: .field (label, control, .hint, .error); .field-row puts two side by side; .choice is a
      radio or checkbox with its label; fieldset with legend groups related choices.
    - Messages: .notice (neutral), .warning (needs care), .error (a field's problem), .link-box (a
@@ -15,7 +17,9 @@
      section.message-page for a page that only says what happened.
    - Plan facts: dl.when-where (boxes, or .lines on the plan page), dl.metrics (inline, or .tiles
      on the plan page); people as li.person with the initial, .person-label and the host's .host-mark.
-   - Radii: --r-sm, --r-md for controls and cards, --r-lg for the plan's title block.
+   - Radii: --r-sm for text inputs and small labels (.pill, .plan-activity), --r-md for buttons,
+     fieldsets, message boxes, tiles, cards and maps, --r-lg for the plan's title block, --r-pill
+     for badges and counts.
    - Icons: <span class="icon icon-NAME" aria-hidden="true">; each needs its SVG in public/icons/
      and a rule `.icon-NAME { --icon: url("icons/NAME.svg"); }` below.
    The design tokens below are checked for WCAG AA contrast by test/design/tokens.test.ts. */
@@ -417,12 +421,6 @@ button.danger {
   color: var(--on-danger);
 }
 
-.buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-}
-
 /* Main buttons on plan pages use the plan's primary color (spec 3.1). */
 .plan .button:not(.secondary, .danger),
 .plan button:not(.secondary, .danger) {
@@ -624,6 +622,12 @@ input[type="checkbox"] {
   border-top: 1px solid var(--line);
 }
 
+/* A part that starts with a form, not a heading, gets room below its line (text and button rows
+   bring their own margin). */
+.sectioned > section:not(.status) > form:first-child {
+  margin-top: var(--s4);
+}
+
 /* A plan or template in a list: title, a muted line saying when, then its actions (D27). */
 .item-title {
   margin: 0;
@@ -672,6 +676,21 @@ input[type="checkbox"] {
 
 .button-row form {
   margin: 0;
+}
+
+/* On phones the buttons of a row fill it, so wrapped ones stack evenly; side by side from 600 px. */
+.button-row > * {
+  flex: 1 1 auto;
+}
+
+.button-row form > button {
+  width: 100%;
+}
+
+@media (min-width: 600px) {
+  .button-row > * {
+    flex: none;
+  }
 }
 
 .person-name {

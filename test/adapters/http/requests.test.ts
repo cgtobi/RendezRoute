@@ -67,6 +67,8 @@ describe("requesting to join (spec 6 feature 1)", () => {
     const hostPage = await (await host.get(`/p/${planId}/host`)).text();
     expect(hostPage).toContain("Ben");
     expect(hostPage).toContain(escaped(NOTE));
+    // Accept and Reject in the page's one button row, so they stack evenly on phones (design note).
+    expect(hostPage).toMatch(/<div class="button-row"><form method="post" action="[^"]+\/accept">/);
     expect(await (await host.get(`/p/${planId}`)).text()).toContain(
       escaped(t("plan.pendingRequests", { count: 1 })),
     );

@@ -73,7 +73,7 @@ export function RespondForm({
         </div>
       )}
       <p class="hint">{t(approval ? "respond.approvalNote" : "respond.openModeNote")}</p>
-      <div class="buttons">
+      <div class="button-row">
         {approval ? (
           <button type="submit" name="choice" value="requested">
             {t("respond.request")}

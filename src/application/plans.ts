@@ -84,6 +84,11 @@ export interface PlanDeps extends DeviceDeps {
    * Absent means true, the stricter rule.
    */
   publicRequiresLogin?: boolean | undefined;
+  /**
+   * Whether public may be chosen at all: in 0.8 a public plan is only listed in Nearby, so not
+   * while it is off (decision I59). Absent means true.
+   */
+  publicPlansOffered?: boolean | undefined;
   invites: InviteRepository;
   permissions: PermissionRepository;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */

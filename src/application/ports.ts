@@ -1,3 +1,5 @@
+import type { ActivityType } from "../domain/activity.ts";
+import type { BoundingBox } from "../domain/nearby.ts";
 import type { GeoPoint } from "../domain/geo.ts";
 import type { Identity, IdentityProviderKind } from "../domain/identity.ts";
 import type { Invite } from "../domain/invite.ts";
@@ -125,6 +127,16 @@ export interface PlanRepository {
   findDueForDeletion(now: Date): Promise<Plan[]>;
   /** Active plans starting within the range, bounds included (spec 6 feature 3: day-before reminder). */
   findActiveStartingBetween(from: Date, to: Date): Promise<Plan[]>;
+  /**
+   * Active public plans with a point inside the box, starting in [from, to), of the activity if
+   * given, by start, one page at a time (spec 7 Nearby): the candidates; the exact distance and
+   * the other filters are the domain's (decision I59).
+   */
+  findPublicIn(
+    box: BoundingBox,
+    window: { from: Date; to: Date },
+    page: { activity: ActivityType | undefined; limit: number; offset: number },
+  ): Promise<Plan[]>;
   /** Active plans being deleted within the range, bounds included (spec 3.10: deletion reminder). */
   findActiveDeletingBetween(from: Date, to: Date): Promise<Plan[]>;
   /** Plans the device hosts or manages a response to, with the response's kind (spec 6 feature 2). */

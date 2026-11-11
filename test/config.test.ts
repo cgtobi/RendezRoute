@@ -79,6 +79,13 @@ describe("PUBLIC_REQUIRES_LOGIN (spec 7 Visibility and Nearby plans)", () => {
   });
 });
 
+describe("NEARBY_ENABLED (spec 7 Visibility and Nearby plans)", () => {
+  it("is on unless turned off", () => {
+    expect(ok(minimal).config.nearbyEnabled).toBe(true);
+    expect(ok({ ...minimal, NEARBY_ENABLED: "false" }).config.nearbyEnabled).toBe(false);
+  });
+});
+
 describe("POSTING_MODE (spec 7 Moderation)", () => {
   it("lets anyone post by default", () => {
     expect(ok(minimal).config.postingMode).toBe("anyone");

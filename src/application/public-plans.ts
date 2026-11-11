@@ -10,7 +10,8 @@ import type { PlanTemplate } from "../domain/template.ts";
 import { type DeviceDeps, lookupDevice } from "./devices.ts";
 import type { PlanDeps } from "./plans.ts";
 
-type PublicDeps = Pick<PlanDeps, "publicRequiresLogin" | "plans"> & DeviceDeps;
+type PublicDeps = Pick<PlanDeps, "publicRequiresLogin" | "publicPlansOffered" | "plans"> &
+  DeviceDeps;
 
 /**
  * The plan in question: a new one this device makes (it belongs to the device's account, if
@@ -23,6 +24,11 @@ export type PublicFor =
 
 /** Whether the plan in question may be public. */
 export async function publicAllowedFor(deps: PublicDeps, about: PublicFor): Promise<boolean> {
+  if (deps.publicPlansOffered === false) {
+    // Not offered: only what is public already stays so.
+    const stored = "plan" in about ? about.plan : "template" in about ? about.template : undefined;
+    return stored?.visibility === "public";
+  }
   const rule = { requiresLogin: deps.publicRequiresLogin ?? true };
   // Without the rule, nothing needs looking up.
   if (!rule.requiresLogin) return true;

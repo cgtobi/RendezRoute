@@ -133,6 +133,7 @@ export function Layout({
                 </>
               )}
               <p class="footer-links">
+                {config.nearbyEnabled && <a href={`${pathBase}nearby`}>{t("layout.nearby")}</a>}
                 <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
                 {loginConfigured(config) && (
                   <a href={`${pathBase}account`}>{t("layout.account")}</a>

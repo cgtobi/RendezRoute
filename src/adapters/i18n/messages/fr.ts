@@ -724,6 +724,49 @@ export const fr: Messages = {
   "linkTools.alreadyIssued":
     "Ce lien a déjà été affiché, rien n’a donc changé. Si vous ne l’avez pas enregistré, obtenez-en un nouveau.",
   "linkTools.back": "Retour",
+  "nearby.title": "À proximité",
+  "nearby.intro": "Les sorties publiques de ce site près d’un lieu que vous choisissez.",
+  "nearby.placePrivacy":
+    "Un endroit choisi sur la carte ou votre position est arrondi à environ 2 km dans votre navigateur avant d’être envoyé. Un lieu saisi est transmis au service de recherche de lieux puis arrondi de la même façon ; sans JavaScript, il figure aussi dans l’adresse de cette requête. Rien n’en est enregistré ni journalisé ici.",
+  "nearby.place": "Lieu",
+  "nearby.placeHint": "Une ville, un quartier ou un parc.",
+  "nearby.locate": "Utiliser ma position",
+  "nearby.mapLabel": "Touchez la carte pour chercher autour de cet endroit",
+  "nearby.atPoint": "Autour de l’endroit choisi (arrondi à environ 2 km).",
+  "nearby.radius": "Dans un rayon de",
+  "nearby.from": "Premier jour",
+  "nearby.to": "Dernier jour",
+  "nearby.activity": "Activité",
+  "nearby.anyActivity": "Toutes",
+  "nearby.distance": "Distance en {unit}",
+  "nearby.atLeast": "Au moins",
+  "nearby.atMost": "Au plus",
+  "nearby.pace": "Allure ou vitesse",
+  "nearby.paceHint":
+    "Choisissez d’abord une activité : minutes et secondes pour la course (par exemple 5:30), une vitesse pour le vélo.",
+  "nearby.filters": "Plus de filtres : rayon, jours, activité, distance, allure",
+  "nearby.search": "Rechercher",
+  "nearby.results": { one: "1 sortie publique", other: "{count} sorties publiques" },
+  "nearby.truncated":
+    "Les {count} premières, par début. Affinez la recherche pour en voir d’autres.",
+  "nearby.none":
+    "Aucune sortie publique ne correspond. Essayez un rayon plus grand ou d’autres jours.",
+  "nearby.close": "à moins de 2 km",
+  "nearby.away": "à environ {distance}",
+  "nearby.placeNotFound":
+    "Ce lieu est introuvable. Essayez un autre nom, la carte ou votre position.",
+  "nearby.placeUnavailable":
+    "Les lieux ne peuvent pas être recherchés pour le moment. Utilisez plutôt la carte ou votre position.",
+  "nearby.nothingPublic":
+    "Les sorties de ce site ne peuvent pas être publiques : il n’y a donc rien à trouver ici.",
+  "home.nearby": "Trouver des sorties publiques à proximité",
+  "layout.nearby": "À proximité",
+  "privacy.nearby":
+    "« À proximité » n’utilise le lieu d’où vous cherchez que pour cette recherche. Un endroit choisi sur la carte ou votre position est arrondi à environ 2 km par votre navigateur avant d’être envoyé, puis à nouveau par le serveur. Un lieu saisi est recherché comme pour la recherche de lieux ci-dessus, et la recherche continue depuis son endroit arrondi ; sans JavaScript, le lieu saisi figure dans l’adresse de cette première requête. Rien n’en est enregistré ni écrit dans les journaux de ce site. L’endroit arrondi figure dans l’adresse de la page de résultats et peut donc rester dans l’historique de votre navigateur et dans le journal d’accès du serveur web placé devant ce site.",
+  "field.range_invalid": "Le dernier jour précède le premier.",
+  "field.date_too_far": "Ce jour est plus loin qu’aucune sortie ne peut l’être.",
+  "field.pace_needs_activity": "Choisissez une activité pour filtrer par allure ou vitesse.",
+  "field.place_invalid": "Veuillez saisir de 2 à 100 caractères.",
   "layout.myData": "Mes données",
   "export.plan": "Exporter cette sortie (ZIP)",
   "export.template": "Exporter ce modèle (ZIP)",

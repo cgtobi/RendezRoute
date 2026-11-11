@@ -1,5 +1,5 @@
 // Routes from GPX uploads (spec 5 feature 2, 3.8 Uploads, decisions P8 and D10).
-import { type GeoPoint, validateGeoPoint } from "./geo.ts";
+import { distanceMeters, type GeoPoint, validateGeoPoint } from "./geo.ts";
 import type { PlanInput } from "./plan-input.ts";
 import { err, ok, type Result } from "./result.ts";
 
@@ -18,7 +18,6 @@ export const ROUTE_LIMITS = { maxBytes: 5 * 1024 * 1024, maxPoints: 50_000 } as 
 
 /** Elevation changes below this are GPS noise, not climbing. */
 const ELEVATION_THRESHOLD_M = 3;
-const EARTH_RADIUS_M = 6_371_008.8;
 
 export type RouteError = "route_empty" | "route_too_many_points" | "route_invalid";
 
@@ -46,16 +45,6 @@ export function validateRoute(route: Route): Result<Route, RouteError> {
   return segments.length === 0 ? err("route_empty") : ok({ segments });
 }
 
-function haversine(a: RoutePoint, b: RoutePoint): number {
-  const rad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * rad;
-  const dLng = (b.lng - a.lng) * rad;
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
-}
-
 /** Distances the host can hide at both ends of a route, in meters (decision D13). */
 export const ROUTE_TRIM_OPTIONS = [0, 200, 500, 1000] as const;
 export type RouteTrim = (typeof ROUTE_TRIM_OPTIONS)[number];
@@ -81,9 +70,9 @@ export function trimRoute(route: Route, meters: number): Result<Route, "route_tr
   const last = points.at(-1)?.point;
   if (first === undefined || last === undefined) return err("route_trimmed_away");
   let start = 0;
-  while (start < points.length && haversine(first, points[start]!.point) <= meters) start++;
+  while (start < points.length && distanceMeters(first, points[start]!.point) <= meters) start++;
   let end = points.length;
-  while (end > start && haversine(last, points[end - 1]!.point) <= meters) end--;
+  while (end > start && distanceMeters(last, points[end - 1]!.point) <= meters) end--;
 
   const segments: RoutePoint[][] = [];
   let previous: number | undefined;
@@ -112,7 +101,7 @@ export function routeStats(route: Route): RouteStats {
     let reference: number | undefined;
     segment.forEach((point, index) => {
       const previous = segment[index - 1];
-      if (previous !== undefined) distance += haversine(previous, point);
+      if (previous !== undefined) distance += distanceMeters(previous, point);
       if (point.ele === undefined) return;
       hasElevation = true;
       if (reference === undefined) {

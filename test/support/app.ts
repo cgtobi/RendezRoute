@@ -157,6 +157,7 @@ export async function createTestApp({
     reports: createReportRepository(database, cipher),
     postingMode: config.postingMode,
     publicRequiresLogin: config.publicRequiresLogin,
+    publicPlansOffered: config.nearbyEnabled,
     invites: createInviteRepository(database),
     permissions: createPermissionRepository(database),
     notify: {

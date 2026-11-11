@@ -270,5 +270,6 @@ export function switchRoute(
  */
 export const visibilityChoice = (config: Config, publicAllowed: boolean): VisibilityChoice => ({
   publicAllowed,
-  loginHref: loginConfigured(config) ? "/account" : undefined,
+  // Logging in cannot help while public plans are not offered (Nearby off, decision I59).
+  loginHref: loginConfigured(config) && config.nearbyEnabled ? "/account" : undefined,
 });

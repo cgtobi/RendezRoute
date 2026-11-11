@@ -219,6 +219,34 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       return rows.map(fromRow);
     },
 
+    async findPublicIn(box, window, page) {
+      // The index on (visibility, area_lat, area_lng) narrows to the box (spec 4).
+      let query = selectPlans()
+        .where("plans.visibility", "=", "public")
+        .where("plans.area_lat", ">=", box.minLat)
+        .where("plans.area_lat", "<=", box.maxLat)
+        .where((eb) =>
+          eb.or(
+            box.lngRanges.map(([west, east]) =>
+              eb.and([eb("plans.area_lng", ">=", west), eb("plans.area_lng", "<=", east)]),
+            ),
+          ),
+        )
+        .where("plans.status", "=", "active")
+        .where("plans.starts_at", ">=", window.from.toISOString())
+        .where("plans.starts_at", "<", window.to.toISOString());
+      if (page.activity !== undefined) {
+        query = query.where("plans.activity_type", "=", page.activity);
+      }
+      const rows = await query
+        .orderBy("plans.starts_at")
+        .orderBy("plans.id")
+        .limit(page.limit)
+        .offset(page.offset)
+        .execute();
+      return rows.map(fromRow);
+    },
+
     async findActiveDeletingBetween(from, to) {
       const rows = await selectPlans()
         .where("plans.status", "=", "active")

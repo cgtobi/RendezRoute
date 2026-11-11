@@ -29,6 +29,7 @@ import { registerHostRoutes } from "./routes/host.tsx";
 import { registerNotificationRoutes } from "./routes/notifications.ts";
 import { registerPreferenceRoutes } from "./routes/preferences.ts";
 import { registerPlaceRoutes } from "./routes/places.ts";
+import { registerNearbyRoutes } from "./routes/nearby.tsx";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerRecapRoutes } from "./routes/recap.tsx";
 import { registerTemplateRoutes } from "./routes/templates.tsx";
@@ -79,6 +80,11 @@ declare module "hono" {
          * forms, whose token would set a cookie on every unknown address.
          */
         plain?: boolean | undefined;
+        /**
+         * Where the language and units forms return to, instead of the request's own address:
+         * Nearby passes its query with the viewer's place rounded (decision D35).
+         */
+        returnTo?: string | undefined;
       },
     ): Response | Promise<Response>;
   }
@@ -164,7 +170,7 @@ export function createApp({
   // Before the body limit and CSRF, so that their answers are pages of the site too (decision D29).
   app.use(
     jsxRenderer(
-      ({ children, title, head, pathBase, wide, plain }, c: Context<AppEnv>) => (
+      ({ children, title, head, pathBase, wide, plain, returnTo }, c: Context<AppEnv>) => (
         <Layout
           config={config}
           language={c.get("language")}
@@ -176,7 +182,7 @@ export function createApp({
             // Pages answering a form post (e.g. links shown once) cannot be loaded again; admin
             // pages keep only relative links, and the switch posts to absolute paths.
             c.req.method === "GET" && pathBase === undefined && plain !== true
-              ? { csrfToken: c.get("csrfToken")(), returnTo: localPath(c.req.url) }
+              ? { csrfToken: c.get("csrfToken")(), returnTo: returnTo ?? localPath(c.req.url) }
               : undefined
           }
           pathBase={pathBase}
@@ -251,6 +257,11 @@ export function createApp({
             {t("home.cta")}
           </a>
         </p>
+        {config.nearbyEnabled && (
+          <p>
+            <a href="/nearby">{t("home.nearby")}</a>
+          </p>
+        )}
         <TemplateList t={t} templates={templates} />
       </section>,
     );
@@ -301,6 +312,8 @@ export function createApp({
     reporting: adminAuth !== undefined,
   };
   registerPlanRoutes(app, deps);
+  // Off: no page, no link, no query (spec 7 Visibility and Nearby plans).
+  if (config.nearbyEnabled) registerNearbyRoutes(app, deps);
   registerResponseRoutes(app, deps);
   registerSecretLinkRoutes(app, deps);
   // Also without SMTP or ntfy: links sent before either was switched off still turn them off.

@@ -724,6 +724,48 @@ export const de: Messages = {
   "linkTools.alreadyIssued":
     "Dieser Link wurde schon angezeigt, daher hat sich nichts geändert. Wenn du ihn nicht gespeichert hast, erstelle einen neuen.",
   "linkTools.back": "Zurück",
+  "nearby.title": "In der Nähe",
+  "nearby.intro": "Öffentliche Treffen auf dieser Seite in der Nähe eines Orts, den du wählst.",
+  "nearby.placePrivacy":
+    "Eine Stelle von der Karte oder dein Standort wird in deinem Browser vor dem Senden auf etwa 2 km gerundet. Ein eingetippter Ort geht an den Dienst für die Ortssuche und wird ebenso gerundet; ohne JavaScript steht er auch in der Adresse dieser einen Anfrage. Nichts davon wird hier gespeichert oder protokolliert.",
+  "nearby.place": "Ort",
+  "nearby.placeHint": "Eine Stadt, ein Viertel oder ein Park.",
+  "nearby.locate": "Meinen Standort verwenden",
+  "nearby.mapLabel": "Tippe auf die Karte, um um diese Stelle zu suchen",
+  "nearby.atPoint": "Um die gewählte Stelle (auf etwa 2 km gerundet).",
+  "nearby.radius": "Im Umkreis von",
+  "nearby.from": "Erster Tag",
+  "nearby.to": "Letzter Tag",
+  "nearby.activity": "Aktivität",
+  "nearby.anyActivity": "Alle",
+  "nearby.distance": "Distanz ({unit})",
+  "nearby.atLeast": "Mindestens",
+  "nearby.atMost": "Höchstens",
+  "nearby.pace": "Pace oder Tempo",
+  "nearby.paceHint":
+    "Wähle zuerst eine Aktivität: Minuten:Sekunden beim Laufen (zum Beispiel 5:30), ein Tempo beim Radfahren.",
+  "nearby.filters": "Weitere Filter: Umkreis, Tage, Aktivität, Distanz, Tempo",
+  "nearby.search": "Suchen",
+  "nearby.results": { one: "1 öffentliches Treffen", other: "{count} öffentliche Treffen" },
+  "nearby.truncated": "Die ersten {count}, nach Beginn. Grenze die Suche ein, um weitere zu sehen.",
+  "nearby.none":
+    "Keine öffentlichen Treffen gefunden. Versuch einen größeren Umkreis oder andere Tage.",
+  "nearby.close": "im Umkreis von 2 km",
+  "nearby.away": "etwa {distance} entfernt",
+  "nearby.placeNotFound":
+    "Dieser Ort wurde nicht gefunden. Versuch einen anderen Namen, die Karte oder deinen Standort.",
+  "nearby.placeUnavailable":
+    "Orte lassen sich gerade nicht suchen. Nimm stattdessen die Karte oder deinen Standort.",
+  "nearby.nothingPublic":
+    "Treffen auf dieser Seite können nicht öffentlich sein, darum gibt es hier nichts zu finden.",
+  "home.nearby": "Öffentliche Treffen in der Nähe finden",
+  "layout.nearby": "In der Nähe",
+  "privacy.nearby":
+    "„In der Nähe“ nutzt den Ort, von dem aus du suchst, nur für diese Suche. Eine Stelle von der Karte oder dein Standort wird von deinem Browser vor dem Senden auf etwa 2 km gerundet und vom Server noch einmal. Ein eingetippter Ort wird wie bei der Ortssuche oben nachgeschlagen, und die Suche geht von seiner gerundeten Stelle aus weiter; ohne JavaScript steht der eingetippte Ort in der Adresse dieser ersten Anfrage. Nichts davon wird gespeichert oder in die Protokolle dieser Seite geschrieben. Die gerundete Stelle steht in der Adresse der Ergebnisseite und kann so in deinem Browserverlauf und im Zugriffsprotokoll des Webservers vor dieser Seite bleiben.",
+  "field.range_invalid": "Der letzte Tag liegt vor dem ersten.",
+  "field.date_too_far": "Dieser Tag liegt weiter in der Zukunft, als ein Treffen sein kann.",
+  "field.pace_needs_activity": "Wähle eine Aktivität, um nach Pace oder Tempo zu filtern.",
+  "field.place_invalid": "Bitte gib 2 bis 100 Zeichen ein.",
   "layout.myData": "Meine Daten",
   "export.plan": "Dieses Treffen exportieren (ZIP)",
   "export.template": "Diese Vorlage exportieren (ZIP)",

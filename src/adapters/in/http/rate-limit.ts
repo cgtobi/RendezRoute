@@ -40,6 +40,8 @@ export interface RateLimits {
   email: RateLimiter;
   /** The same, per address, whoever types it: no flooding someone's mailbox (spec 3.11). */
   emailAddress: RateLimiter;
+  /** Nearby searches, against scraping public plans (spec 3.11, 7 Nearby). */
+  nearby: RateLimiter;
 }
 
 /**
@@ -67,6 +69,8 @@ export function createRateLimits(now: () => number): RateLimits {
     login: createRateLimiter({ capacity: 10, perHour: 30, now }),
     email: createRateLimiter({ capacity: 5, perHour: 10, now }),
     emailAddress: createRateLimiter({ capacity: 3, perHour: 3, now }),
+    // Searches against scraping (spec 3.11); changing a filter is a new search.
+    nearby: createRateLimiter({ capacity: 20, perHour: 120, now }),
   };
 }
 

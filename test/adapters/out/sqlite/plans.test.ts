@@ -163,3 +163,79 @@ describe("deleting a plan", () => {
     }
   });
 });
+
+describe("findPublicIn (spec 7 Nearby)", () => {
+  it("finds active public plans in the box and the dates, by start, up to the limit", async () => {
+    const { plans, devices } = repos();
+    await devices.create({ id: "device-1", tokenHash: "device-hash-1", now: fixtureNow });
+    const add = async (id: string, overrides: Parameters<typeof samplePlan>[0]) =>
+      plans.create({
+        plan: samplePlan({ id, visibility: "public", ...overrides }),
+        hostTokenHash: `host-${id}`,
+        creationNonce: `nonce-${id}`,
+        hostDeviceId: "device-1",
+      });
+    const at = (iso: string) => new Date(iso);
+    await add("later", { startsAt: at("2026-06-09T06:00:00Z") });
+    await add("sooner", { startsAt: at("2026-06-08T06:00:00Z") });
+    await add("link-only", { visibility: "link" });
+    await add("cancelled", { status: "cancelled" });
+    await add("far", { area: { label: "Berlin", point: { lat: 52.52, lng: 13.4 } } });
+    await add("no-point", {
+      area: { label: "Somewhere", point: undefined },
+      exactStart: undefined,
+    });
+    await add("too-late", { startsAt: at("2026-07-01T06:00:00Z") });
+    await add("ride", { activity: "ride", startsAt: at("2026-06-10T06:00:00Z") });
+    const box = { minLat: 48, maxLat: 48.3, lngRanges: [[11.4, 11.8]] as const };
+    const window = { from: at("2026-06-01T00:00:00Z"), to: at("2026-06-15T00:00:00Z") };
+    const ids = async (page: { activity?: "ride"; limit: number; offset?: number }) =>
+      (
+        await plans.findPublicIn(box, window, {
+          activity: page.activity,
+          limit: page.limit,
+          offset: page.offset ?? 0,
+        })
+      ).map((plan) => plan.id);
+    expect(await ids({ limit: 10 })).toEqual(["sooner", "later", "ride"]);
+    expect(await ids({ limit: 1 })).toEqual(["sooner"]);
+    expect(await ids({ limit: 1, offset: 1 })).toEqual(["later"]);
+    expect(await ids({ activity: "ride", limit: 10 })).toEqual(["ride"]);
+  });
+
+  it("looks on both sides of ±180°", async () => {
+    const { plans, devices } = repos();
+    await devices.create({ id: "device-1", tokenHash: "device-hash-1", now: fixtureNow });
+    for (const [id, lng] of [
+      ["east", 179.9],
+      ["west", -179.9],
+      ["middle", 0],
+    ] as const) {
+      await plans.create({
+        plan: samplePlan({
+          id,
+          visibility: "public",
+          area: { label: id, point: { lat: -17.7, lng } },
+          exactStart: undefined,
+        }),
+        hostTokenHash: `host-${id}`,
+        creationNonce: `nonce-${id}`,
+        hostDeviceId: "device-1",
+      });
+    }
+    const box = {
+      minLat: -18,
+      maxLat: -17.4,
+      lngRanges: [
+        [179.5, 180],
+        [-180, -179.5],
+      ] as const,
+    };
+    const found = await plans.findPublicIn(
+      box,
+      { from: new Date("2026-06-01T00:00:00Z"), to: new Date("2026-06-15T00:00:00Z") },
+      { activity: undefined, limit: 10, offset: 0 },
+    );
+    expect(found.map((plan) => plan.id).sort()).toEqual(["east", "west"]);
+  });
+});

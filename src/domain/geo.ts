@@ -7,7 +7,7 @@ export interface GeoPoint {
 }
 
 /** 0.01° ≈ 1 km: the public point never reveals more than the grid cell. */
-const GRID = 100;
+const PUBLIC_GRID_PER_DEGREE = 100;
 const MAX_DESCRIPTION_LENGTH = 200;
 
 export function validateGeoPoint(point: GeoPoint): Result<GeoPoint, "coordinates_invalid"> {
@@ -19,9 +19,25 @@ export function validateGeoPoint(point: GeoPoint): Result<GeoPoint, "coordinates
   return valid ? ok(point) : err("coordinates_invalid");
 }
 
-function snap(value: number): number {
-  const snapped = Number((Math.round(value * GRID) / GRID).toFixed(2));
+/** The nearest point of a grid with `perDegree` lines per degree (100: 0.01°, 50: 0.02°). */
+export function snapToGrid(value: number, perDegree: number): number {
+  const snapped = Number((Math.round(value * perDegree) / perDegree).toFixed(2));
   return snapped === 0 ? 0 : snapped; // no negative zero
+}
+
+const snap = (value: number) => snapToGrid(value, PUBLIC_GRID_PER_DEGREE);
+
+const EARTH_RADIUS_M = 6_371_008.8;
+
+/** Great-circle distance in meters (haversine). */
+export function distanceMeters(a: GeoPoint, b: GeoPoint): number {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
 }
 
 /** Public point derived from an exact point: the nearest point on the 0.01° grid. */

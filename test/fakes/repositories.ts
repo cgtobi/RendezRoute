@@ -1,3 +1,4 @@
+import { inBox } from "../../src/domain/nearby.ts";
 import type {
   CalendarFeed,
   CalendarFeedRepository,
@@ -276,6 +277,22 @@ export function createFakeRepositories(): {
       },
       async findActiveStartingBetween(from, to) {
         return activeWhere((plan) => plan.startsAt >= from && plan.startsAt <= to);
+      },
+      findPublicIn(box, window, page) {
+        const found = activeWhere(
+          (plan) =>
+            plan.visibility === "public" &&
+            plan.area.point !== undefined &&
+            inBox(box, plan.area.point) &&
+            (page.activity === undefined || plan.activity === page.activity) &&
+            plan.startsAt >= window.from &&
+            plan.startsAt < window.to,
+        );
+        return Promise.resolve(
+          found
+            .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime() || a.id.localeCompare(b.id))
+            .slice(page.offset, page.offset + page.limit),
+        );
       },
       async findActiveDeletingBetween(from, to) {
         return activeWhere((plan) => plan.deleteAt >= from && plan.deleteAt <= to);

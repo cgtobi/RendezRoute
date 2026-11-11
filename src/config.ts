@@ -43,6 +43,8 @@ export interface Config {
   postingMode: PostingMode;
   /** Only plans that belong to an account may be public (spec 7 Visibility and Nearby plans). */
   publicRequiresLogin: boolean;
+  /** The Nearby page (spec 7 Visibility and Nearby plans); off: no page, no link, no query. */
+  nearbyEnabled: boolean;
   /** Login with an OpenID Connect provider (spec 7 Identity); off unless configured. */
   oidc: OidcConfig | undefined;
   /** Login with a fediverse account (decision D24); off unless FEDIVERSE_LOGIN=true. */
@@ -317,8 +319,10 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     return { issuer, clientId, clientSecret: read("OIDC_CLIENT_SECRET") || undefined, name };
   })();
 
-  // PUBLIC_REQUIRES_LOGIN: public plans only for accounts unless turned off (decision D35).
+  // PUBLIC_REQUIRES_LOGIN: public plans only for accounts unless turned off; NEARBY_ENABLED: the
+  // Nearby page, on unless turned off (decision D35).
   const publicRequiresLogin = bool("PUBLIC_REQUIRES_LOGIN", true);
+  const nearbyEnabled = bool("NEARBY_ENABLED", true);
 
   // FEDIVERSE_LOGIN: off unless turned on; FEDIVERSE_LOGIN_SERVERS limits the servers (decision D24).
   const fediverseOn = bool("FEDIVERSE_LOGIN", false);
@@ -489,6 +493,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       adminToken,
       postingMode,
       publicRequiresLogin,
+      nearbyEnabled,
       oidc,
       fediverseLogin,
       smtp,

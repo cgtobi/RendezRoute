@@ -531,7 +531,9 @@ export type NotificationTarget =
   | { channelId: string }
   | { subscription: PushSubscription }
   /** An email address, carried the same way; nothing is left to turn off once it is gone. */
-  | { email: { address: string } };
+  | { email: { address: string } }
+  /** An ntfy topic, carried the same way, with the server it lives on. */
+  | { ntfy: { topic: string; server: string } };
 
 /** Delivers a notification (spec 2a); one adapter per channel kind. */
 export interface Notifier {
@@ -581,11 +583,25 @@ export interface EmailChannel extends ChannelBase {
   language: string | undefined;
 }
 
-export type NotificationChannel = PushChannel | EmailChannel;
+/** An ntfy topic on the instance's server, made by the app (decision D33). */
+export interface NtfyChannel extends ChannelBase {
+  kind: "ntfy";
+  /** Random and unguessable: whoever knows it can read the messages. */
+  topic: string;
+  /** The server it was made on (NTFY_URL then); after a change of server it gets nothing. */
+  server: string;
+  /** As for email: an account's topic keeps the language it was set up in. */
+  language: string | undefined;
+}
+
+/** Channels confirmed through a link the app sends to them (decisions D31, D33). */
+export type ConfirmableChannel = EmailChannel | NtfyChannel;
+
+export type NotificationChannel = PushChannel | ConfirmableChannel;
 
 /**
- * Browser push subscriptions and email addresses per response or hosted plan (spec 6 feature 3,
- * decision D31), stored encrypted.
+ * Browser push subscriptions, email addresses and ntfy topics per response, hosted plan or account
+ * (spec 6 feature 3, decisions D31, D33), stored encrypted.
  */
 export interface ChannelRepository {
   /**
@@ -606,12 +622,19 @@ export interface ChannelRepository {
   /** Marks a channel confirmed; false when it no longer exists. */
   confirm(id: string): Promise<boolean>;
   emailFor(owner: ChannelOwner): Promise<EmailChannel | undefined>;
+  /** Sets the owner's one ntfy topic, unconfirmed, replacing any earlier one (decision D33). */
+  setNtfy(
+    owner: ChannelOwner,
+    topic: { topic: string; server: string },
+    language?: string,
+  ): Promise<string>;
+  ntfyFor(owner: ChannelOwner): Promise<NtfyChannel | undefined>;
 }
 
 /**
- * The secret in an email channel's link (decision D31): derived from its id with an instance key,
- * so only messages carry it and nothing is stored. The link confirms the address, and later turns
- * the emails off.
+ * The secret in a confirmable channel's link (decisions D31, D33): derived from its id with an
+ * instance key, so only messages carry it and nothing is stored. The link confirms the channel,
+ * refuses it, and later turns it off.
  */
 export interface ChannelLinks {
   tokenFor(channelId: string): string;
@@ -619,27 +642,41 @@ export interface ChannelLinks {
   channelOf(token: string): string | undefined;
 }
 
-/** What an email channel is for: a plan (as host or responder), or the account itself. */
-export type EmailSubject = { kind: "plan"; planTitle: string } | { kind: "account" };
+/** What a channel is for: a plan (as host or responder), or the account itself. */
+export type ChannelSubject = { kind: "plan"; planTitle: string } | { kind: "account" };
 
-/** An email channel as the outbox writes to it: the address, and its id for the channel's link. */
-export interface EmailRecipient {
+/** A channel as an outbox writes to it: where, its language, and its id for the channel's link. */
+interface RecipientBase {
   channelId: string;
-  address: string;
   language: string;
+}
+export interface EmailRecipient extends RecipientBase {
+  kind: "email";
+  address: string;
+}
+export interface NtfyRecipient extends RecipientBase {
+  kind: "ntfy";
+  topic: string;
+}
+export type ChannelRecipient = EmailRecipient | NtfyRecipient;
+
+/** The messages every confirmable channel gets besides notifications (decisions D31, D33). */
+export interface ChannelOutbox<R extends ChannelRecipient> {
+  /** The link that confirms the channel, before anything else is sent to it. */
+  confirmation(to: R, about: ChannelSubject): Promise<SendResult>;
+  /** An unused account is deleted on this date unless used before (spec 3.10, decision I52). */
+  accountExpiry(to: R, deleteAt: Date): Promise<SendResult>;
 }
 
 /** Emails that are not notifications (decision D31). */
-export interface EmailOutbox {
-  /** The link that confirms a new address, before anything else is sent to it. */
-  confirmation(to: EmailRecipient, about: EmailSubject): Promise<SendResult>;
+export interface EmailOutbox extends ChannelOutbox<EmailRecipient> {
   /** Tells CONTACT_EMAIL that a report came in, without its content (spec 7 Moderation). */
   reportAlert(): Promise<SendResult>;
-  /** An unused account is deleted on this date unless used before (spec 3.10, decision I52). */
-  accountExpiry(to: EmailRecipient, deleteAt: Date): Promise<SendResult>;
   /** "Email me my links": the item's new link, which replaces the old one (decision D31). */
   newLink(to: EmailRecipient, link: { title: string; url: string }): Promise<SendResult>;
 }
+
+export type NtfyOutbox = ChannelOutbox<NtfyRecipient>;
 
 /** A personal calendar feed (spec 6 feature 2); only the hash of its token is stored. */
 export interface CalendarFeed {

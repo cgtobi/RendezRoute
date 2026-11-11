@@ -17,7 +17,8 @@ import {
   type MyDataItem,
   removeOwnData,
 } from "./my-data.ts";
-import { exportedEmail, queueExpiryWarnings } from "./email.ts";
+import { queueExpiryWarnings } from "./channel-links.ts";
+import { exportedEmail } from "./email.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { Device, IdentityRepository } from "./ports.ts";
 

@@ -1,7 +1,7 @@
 import type {
   EmailOutbox,
   EmailRecipient,
-  EmailSubject,
+  ChannelSubject,
   SendResult,
 } from "../../src/application/ports.ts";
 
@@ -12,7 +12,7 @@ export class FakeOutbox implements EmailOutbox {
   readonly links = new Map<string, string>();
   result: SendResult = "sent";
 
-  confirmation(to: EmailRecipient, about: EmailSubject) {
+  confirmation(to: EmailRecipient, about: ChannelSubject) {
     const what = about.kind === "plan" ? about.planTitle : "account";
     this.sent.push(`confirm ${to.address} ${what} ${to.language}`);
     return Promise.resolve(this.result);

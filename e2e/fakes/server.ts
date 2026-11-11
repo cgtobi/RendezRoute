@@ -1,10 +1,11 @@
 // Fake external services for end-to-end tests (spec 2b): map tiles, a Nominatim-style place
 // search, an Open-Meteo-style forecast, an OIDC provider and a Mastodon-API server (identity.ts),
-// and a mail server (smtp.ts), so E2E runs never touch real providers. Runs with Node's type
-// stripping.
+// a mail server (smtp.ts) and an ntfy server (ntfy.ts), so E2E runs never touch real providers.
+// Runs with Node's type stripping.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { deflateSync } from "node:zlib";
 import { handleIdentity } from "./identity.ts";
+import { handleNtfy } from "./ntfy.ts";
 import { handleMail, startSmtp } from "./smtp.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
@@ -54,6 +55,7 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
   const url = new URL(request.url ?? "/", "http://fakes");
   if (await handleIdentity(request, response, url)) return;
   if (handleMail(request, response, url)) return;
+  if (await handleNtfy(request, response, url)) return;
   if (/^\/tiles\/\d+\/\d+\/\d+\.png$/.test(url.pathname)) {
     response.writeHead(200, { "content-type": "image/png", "access-control-allow-origin": "*" });
     response.end(TILE);

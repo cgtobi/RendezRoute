@@ -87,6 +87,7 @@ services:
       SMTP_PORT: "2525"
       SMTP_TLS: none
       SMTP_FROM: runs@example.org
+      NTFY_URL: http://fakes:8080/ntfy
     volumes:
       - accounts-data:/data
     ports:

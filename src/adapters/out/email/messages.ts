@@ -4,10 +4,12 @@
 // heading, one main link styled as the primary button, every link also written out, and a muted
 // footer saying why the email came and how to turn it off. No images and nothing loaded from
 // other servers.
-import type { EmailSubject } from "../../../application/ports.ts";
-import type { Notification, NotificationFacts } from "../../../domain/notification.ts";
-import { formatDate, formatDay, formatTime } from "../../i18n/dates.ts";
-import { negotiateLanguage, type Translate, translator } from "../../i18n/i18n.ts";
+import type { ChannelSubject } from "../../../application/ports.ts";
+import type { Notification } from "../../../domain/notification.ts";
+import type { MessageInstance } from "../instance.ts";
+import { formatDate } from "../../i18n/dates.ts";
+import { factLines } from "../../i18n/notifications.ts";
+import { negotiateLanguage, translator } from "../../i18n/i18n.ts";
 
 /** The light tokens of public/app.css (decision D27). */
 const COLOURS = {
@@ -26,12 +28,6 @@ export interface ComposedEmail {
   headers: Record<string, string>;
 }
 
-/** The instance as its emails name and link it. */
-export interface EmailInstance {
-  instanceName: string;
-  baseUrl: URL;
-}
-
 /** Marks a message as sent by a program, so mail apps send no out-of-office replies (RFC 3834). */
 const AUTOMATIC = { "Auto-Submitted": "auto-generated" };
 
@@ -42,23 +38,13 @@ const offHeaders = (url: string) => ({
   ...AUTOMATIC,
 });
 
-/** "Monday, 16 November 2026, 08:30 (Europe/Berlin time)" and the area, as on the plan page. */
-function factLines(facts: NotificationFacts | undefined, language: string, t: Translate): string[] {
-  if (facts === undefined) return [];
-  const start = new Date(facts.startsAt);
-  return [
-    `${formatDay(start, facts.timeZone, language)}, ${formatTime(start, facts.timeZone, language)} (${t("plan.timeZone", { zone: facts.timeZone })})`,
-    facts.area,
-  ];
-}
-
 /**
  * `offUrl` is the channel's link; undefined once the channel is gone with its plan, when this is
  * the last email about it and there is nothing left to turn off.
  */
 export function notificationEmail(
   notification: Notification,
-  instance: EmailInstance & { offUrl: string | undefined },
+  instance: MessageInstance & { offUrl: string | undefined },
 ): ComposedEmail {
   const language = negotiateLanguage(notification.language);
   const t = translator(language);
@@ -91,8 +77,8 @@ export function notificationEmail(
 
 /** The only email sent to an address before it is confirmed (decision D31). */
 export function confirmationEmail(
-  about: EmailSubject & { language: string },
-  instance: EmailInstance & { confirmUrl: string },
+  about: ChannelSubject & { language: string },
+  instance: MessageInstance & { confirmUrl: string },
 ): ComposedEmail {
   const language = negotiateLanguage(about.language);
   const t = translator(language);
@@ -131,19 +117,19 @@ export function confirmationEmail(
 export function accountExpiryEmail(
   to: { language: string },
   deleteAt: Date,
-  instance: EmailInstance & { offUrl: string; timeZone: string },
+  instance: MessageInstance & { offUrl: string; timeZone: string },
 ): ComposedEmail {
   const language = negotiateLanguage(to.language);
   const t = translator(language);
   const name = { instance: instance.instanceName };
   const date = formatDate(deleteAt, instance.timeZone, language);
   return {
-    subject: t("email.expirySubject", { ...name, date }),
+    subject: t("notice.expirySubject", { ...name, date }),
     ...compose({
       language,
       instanceName: instance.instanceName,
       heading: t("email.accountHeading", name),
-      body: [t("email.expiryBody", { date })],
+      body: [t("notice.expiryBody", { date })],
       facts: [],
       action: { label: t("email.openAccount"), url: new URL("/account", instance.baseUrl).href },
       footer: t("email.accountWhy", name),
@@ -160,7 +146,7 @@ export function accountExpiryEmail(
 export function newLinkEmail(
   to: { language: string },
   link: { title: string; url: string },
-  instance: EmailInstance & { offUrl: string },
+  instance: MessageInstance & { offUrl: string },
 ): ComposedEmail {
   const language = negotiateLanguage(to.language);
   const t = translator(language);
@@ -181,7 +167,7 @@ export function newLinkEmail(
 }
 
 /** To CONTACT_EMAIL for each new report, without anything of it (spec 7 Moderation). */
-export function reportAlertEmail(instance: EmailInstance): ComposedEmail {
+export function reportAlertEmail(instance: MessageInstance): ComposedEmail {
   const language = negotiateLanguage(undefined);
   const t = translator(language);
   const heading = t("email.reportSubject", { instance: instance.instanceName });

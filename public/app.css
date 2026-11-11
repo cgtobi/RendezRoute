@@ -13,6 +13,8 @@
    - Lists: ul.list for rows divided by hairlines; ul.items with li.item (.item-title, .item-meta,
      .item-actions) for plans, templates and the like.
    - Pages in parts: .sectioned on the page, each part a <section> divided by a hairline.
+   - Notifications: .push (the browser switch), .email-switch, and .more-channels, a <details>
+     fold "More ways to be notified" holding .ntfy-switch (decisions D31, D33).
    - States: section.status (with .status-joined, .status-loggedIn, …) for one's own state;
      section.message-page for a page that only says what happened.
    - Plan facts: dl.when-where (boxes, or .lines on the plan page), dl.metrics (inline, or .tiles
@@ -1392,13 +1394,34 @@ details > summary {
   margin: var(--s5) 0;
 }
 
-/* The email setting under the push switch (decision D31): its notice and buttons close together;
-   the row's forms keep no margin of their own, also where a page gives its forms one (.manage). */
-.email-switch .notice {
+/* The email setting under the push switch (decision D31), and ntfy in the fold (D33): their notice
+   and buttons close together; the row's forms keep no margin of their own, also where a page gives
+   its forms one (.manage). */
+.email-switch .notice,
+.ntfy-switch .notice {
   margin-bottom: var(--s3);
 }
 
 .email-switch .button-row form {
+  margin: 0;
+}
+
+/* "More ways to be notified" (decision D33): ntfy and later Telegram in one fold under email. */
+.more-channels {
+  margin: var(--s5) 0;
+}
+
+.more-channels h3 {
+  margin: var(--s4) 0 var(--s2);
+  font-size: var(--text-md);
+}
+
+.more-channels .button-row {
+  margin-top: var(--s3);
+}
+
+/* As in the email block: the row's forms keep no margin of their own, also on .manage pages. */
+.more-channels .button-row form {
   margin: 0;
 }
 

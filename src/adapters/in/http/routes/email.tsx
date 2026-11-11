@@ -1,41 +1,31 @@
 // Email (spec 7 Optional notification channels, decisions D31, I55): the address forms on the
-// manage, host and account pages (and lending the account's address), and the link every email
-// carries, which confirms the address and later turns the emails off. Like other secret links it
-// changes nothing on GET (decision D1), since mail scanners open links; the mail app's one-click
-// unsubscribe posts to the link itself (RFC 8058).
+// manage, host and account pages, and lending the account's address. The link every email carries
+// is in channel-links.tsx.
 import { createHash } from "node:crypto";
 import type { Context, Hono } from "hono";
 import {
   accountEmailSetting,
   emailSetting,
-  openEmailLink,
   requestAccountEmail,
   requestEmail,
   turnOffAccountEmail,
   turnOffEmail,
   useAccountEmail,
-  useEmailLink,
 } from "../../../../application/email.ts";
 import type { SwitchRequest } from "../../../../application/channels.ts";
 import type { PlanDeps } from "../../../../application/plans.ts";
 import type { AppEnv } from "../app.tsx";
-import { CSRF_FIELD } from "../csrf.ts";
 import { readDeviceToken } from "../device-cookie.ts";
 import type { EmailSwitchProps } from "../views/email-switch.tsx";
-import { SecretLinkHead } from "../views/secret-link.tsx";
 import {
   badRequest,
   clientOf,
   formField,
-  messagePage,
   readForm,
   type RouteDeps,
-  secretLinkHeaders,
+  switchRoute,
   tooManyRequests,
 } from "./shared.tsx";
-
-/** The path an email's link has, and that a one-click unsubscribe posts to. */
-export const EMAIL_LINK_PATH = /^\/e\/[^/]+$/;
 
 type Role = SwitchRequest["role"];
 
@@ -107,13 +97,10 @@ export function registerEmailForms(
   { config, planDeps, limits }: RouteDeps,
   { role, base, rerender }: { role: Role; base: string; rerender: EmailRerender },
 ) {
-  const request = (c: Context<AppEnv>): SwitchRequest => ({
-    planId: c.req.param("id") ?? "",
-    deviceToken: readDeviceToken(c, config),
-    role,
-  });
-  const page = (c: Context<AppEnv>) => base.replace(":id", request(c).planId);
-  const plan = (c: Context<AppEnv>) => `/p/${request(c).planId}`;
+  const route = (c: Context<AppEnv>) => switchRoute(c, config, role, base);
+  const request = (c: Context<AppEnv>): SwitchRequest => route(c).request;
+  const page = (c: Context<AppEnv>) => route(c).page;
+  const plan = (c: Context<AppEnv>) => route(c).plan;
 
   app.post(`${base}/email`, async (c) => {
     const body = await readForm(c);
@@ -176,86 +163,5 @@ export function registerAccountEmailForms(
   app.post("/account/email/off", async (c) => {
     await turnOffAccountEmail(planDeps, { deviceToken: readDeviceToken(c, config) });
     return c.redirect("/account", 303);
-  });
-}
-
-/** The link in every email: `/e/<token>`. */
-export function registerEmailLinkRoutes(app: Hono<AppEnv>, { config, planDeps }: RouteDeps) {
-  const invalid = (c: Context<AppEnv>) => {
-    secretLinkHeaders(c);
-    return messagePage(c, 404, c.get("t")("emailLink.invalid"));
-  };
-
-  app.get("/e/:token", async (c) => {
-    const token = c.req.param("token");
-    const t = c.get("t");
-    const result = await openEmailLink(planDeps, token);
-    if (result.kind === "not_found") return invalid(c);
-    secretLinkHeaders(c);
-    c.header("x-robots-tag", "noindex");
-    const confirm = result.kind === "confirm";
-    const heading = t(confirm ? "emailLink.confirmHeading" : "emailLink.offHeading");
-    const values = { instance: config.instanceName, address: result.address };
-    const body =
-      result.subject.kind === "plan"
-        ? t(confirm ? "emailLink.confirmBody" : "emailLink.offBody", {
-            ...values,
-            title: result.subject.planTitle,
-          })
-        : t(confirm ? "emailLink.accountConfirmBody" : "emailLink.accountOffBody", values);
-    const csrfToken = c.get("csrfToken")();
-    const action = (name: "confirm" | "off", label: string, style: string | undefined) => (
-      <form method="post" action="/e">
-        <input type="hidden" name={CSRF_FIELD} value={csrfToken} />
-        <input type="hidden" name="token" value={token} />
-        <input type="hidden" name="action" value={name} />
-        <button type="submit" class={style}>
-          {label}
-        </button>
-      </form>
-    );
-    // Whoever got the confirmation without asking for it can refuse it here (decision D31).
-    return c.render(
-      <section>
-        <h1>{heading}</h1>
-        <p>{body}</p>
-        {confirm ? (
-          <div class="button-row">
-            {action("confirm", t("emailLink.confirm"), undefined)}
-            {action("off", t("emailLink.refuse"), "secondary")}
-          </div>
-        ) : (
-          action("off", t("emailLink.off"), "danger")
-        )}
-      </section>,
-      { title: heading, head: <SecretLinkHead t={t} /> },
-    );
-  });
-
-  // From the link's page: the token in the body, as for the other secret links (decision D1).
-  app.post("/e", async (c) => {
-    const body = await readForm(c);
-    if (body === undefined) return badRequest(c);
-    const action = formField(body, "action");
-    if (action !== "confirm" && action !== "off") return badRequest(c);
-    const result = await useEmailLink(planDeps, { token: formField(body, "token"), action });
-    if (result.kind === "not_found") return invalid(c);
-    secretLinkHeaders(c);
-    const t = c.get("t");
-    return messagePage(
-      c,
-      200,
-      t(result.kind === "confirmed" ? "emailLink.confirmed" : "emailLink.turnedOff"),
-    );
-  });
-
-  // One click from the mail app (RFC 8058): no cookie and no form token, the link is the secret.
-  // Only turning off, and only with the body the RFC prescribes.
-  app.post("/e/:token", async (c) => {
-    const body = await readForm(c);
-    if (formField(body ?? {}, "List-Unsubscribe") !== "One-Click") return badRequest(c);
-    await useEmailLink(planDeps, { token: c.req.param("token"), action: "off" });
-    secretLinkHeaders(c);
-    return c.text("", 200);
   });
 }

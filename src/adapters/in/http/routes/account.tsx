@@ -47,6 +47,7 @@ import {
   tooManyRequests,
 } from "./shared.tsx";
 import { accountEmailProps, registerAccountEmailForms } from "./email.tsx";
+import { accountNtfyProps, registerAccountNtfyForms } from "./ntfy.tsx";
 
 const NOTICES = ["loggedIn", "loggedOut", "renamed", "claimed", "accountDeleted"] as const;
 
@@ -101,6 +102,7 @@ export function registerAccountRoutes(
         rename={forms.rename}
         fediverse={forms.fediverse}
         email={await accountEmailProps(deps, deviceToken(c), forms.email)}
+        ntfy={await accountNtfyProps(deps, deviceToken(c))}
       />,
       { title: t("account.heading") },
     );
@@ -114,6 +116,7 @@ export function registerAccountRoutes(
 
   app.get("/account", (c) => renderAccount(c));
   registerAccountEmailForms(app, routeDeps, (c, email) => renderAccount(c, { email }));
+  registerAccountNtfyForms(app, routeDeps);
 
   if (logins.some((login) => login.provider === "oidc")) {
     app.get("/login/oidc", async (c) => {

@@ -569,3 +569,33 @@ describe("SMTP_* (spec 7 Optional notification channels, decision D31)", () => {
     ).toMatchObject({ port: 25, tls: "none" });
   });
 });
+
+describe("NTFY_URL and NTFY_TOKEN (spec 7 Optional notification channels, decision D33)", () => {
+  it("is off unless NTFY_URL is set", () => {
+    expect(ok(minimal).config.ntfy).toBeUndefined();
+  });
+
+  it("takes the server's URL, with a path, and a token for publishing", () => {
+    expect(ok({ ...minimal, NTFY_URL: "https://ntfy.example.org" }).config.ntfy).toEqual({
+      url: new URL("https://ntfy.example.org/"),
+      token: undefined,
+    });
+    expect(
+      ok({ ...minimal, NTFY_URL: "https://example.org/ntfy/", NTFY_TOKEN: "tk_secret" }).config
+        .ntfy,
+    ).toEqual({ url: new URL("https://example.org/ntfy/"), token: "tk_secret" });
+  });
+
+  it("refuses plain http outside development, credentials, a query, and a token alone", () => {
+    expect(errors({ ...minimal, NTFY_URL: "http://ntfy.example.org" })).toEqual([
+      "NTFY_URL must use HTTPS unless ALLOW_INSECURE_DEV=true (development only).",
+    ]);
+    expect(errors({ ...minimal, NTFY_URL: "https://user:pw@ntfy.example.org" })).toEqual([
+      "NTFY_URL must not contain credentials (user:password@).",
+    ]);
+    expect(errors({ ...minimal, NTFY_URL: "https://ntfy.example.org/?x=1" })).toEqual([
+      "NTFY_URL must not contain a query or fragment.",
+    ]);
+    expect(errors({ ...minimal, NTFY_TOKEN: "tk_secret" })).toEqual(["NTFY_TOKEN needs NTFY_URL."]);
+  });
+});

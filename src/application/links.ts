@@ -3,7 +3,7 @@
 import { resolveDevice } from "./devices.ts";
 import { type Denied, isDenied } from "./host.ts";
 import { CREATION_NONCE, type PlanDeps } from "./plans.ts";
-import { confirmedRecipient } from "./email.ts";
+import { confirmedRecipient } from "./channel-links.ts";
 import type { ChannelOwner, DeviceLinkTarget, EmailRecipient } from "./ports.ts";
 
 /** Whose link: the host's or the device's own response to a plan, or a template. */

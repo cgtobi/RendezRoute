@@ -41,6 +41,7 @@ import type {
   CalendarFeedRepository,
   ChannelLinks,
   EmailOutbox,
+  NtfyOutbox,
   ChannelRepository,
   FormNonceRepository,
   InviteRepository,
@@ -85,12 +86,14 @@ export interface PlanDeps extends DeviceDeps {
         jobs: JobQueue;
         reminders: SentReminderRepository;
         /**
-         * Email channels (decision D31): links always work, so stored addresses can be turned off
-         * also after SMTP is switched off; the outbox exists only while SMTP is configured.
+         * The secret in confirmable channels' links (decisions D31, D33). Links always work, so
+         * stored channels can be turned off also after their service is switched off.
          */
-        email?:
-          | { links: ChannelLinks; outbox: EmailOutbox | undefined; reportAlerts: boolean }
-          | undefined;
+        links?: ChannelLinks | undefined;
+        /** The outbox exists only while SMTP is configured. */
+        email?: { outbox: EmailOutbox | undefined; reportAlerts: boolean } | undefined;
+        /** Present while NTFY_URL is configured (decision D33). */
+        ntfy?: { outbox: NtfyOutbox; server: URL } | undefined;
       }
     | undefined;
 }

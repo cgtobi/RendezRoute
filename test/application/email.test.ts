@@ -2,16 +2,19 @@
 // decision D31): confirmed before first use, turned off from every message.
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import {
-  emailConfirmationHandler,
   emailSetting,
-  openEmailLink,
   reportAlertHandler,
   requestEmail,
   turnOffEmail,
-  useEmailLink,
 } from "../../src/application/email.ts";
+import {
+  channelConfirmationHandler,
+  openChannelLink,
+  useChannelLink,
+} from "../../src/application/channel-links.ts";
 import { subscribe } from "../../src/application/channels.ts";
 import { removePerson } from "../../src/application/host.ts";
+import { notificationHandler } from "../../src/application/notifications.ts";
 import { notifyHost, notifyResponders, deletionNotices } from "../../src/application/notify.ts";
 import { createPlan, type PlanDeps } from "../../src/application/plans.ts";
 import { reportPlan } from "../../src/application/reports.ts";
@@ -21,6 +24,7 @@ import { FakeChannelRepository } from "../fakes/channels.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { FakeJobQueue } from "../fakes/job-queue.ts";
+import { FakeNotifier } from "../fakes/notifier.ts";
 import { FakeOutbox } from "../fakes/outbox.ts";
 import { FakeSentReminders } from "../fakes/reminders.ts";
 import { createFakeRepositories } from "../fakes/repositories.ts";
@@ -60,8 +64,8 @@ function setup(
       channels,
       jobs,
       reminders: new FakeSentReminders(),
+      links,
       email: {
-        links,
         outbox: email.sending ? outbox : undefined,
         reportAlerts: email.reportAlerts,
       },
@@ -143,7 +147,7 @@ describe("setting an address (decision D31)", () => {
     const [confirmation] = [...jobs.jobs.values()];
     // Tied to the response, so withdrawing removes the queued confirmation too (spec 3.10).
     expect(confirmation?.responseId).toBe(responseId);
-    expect(takeQueued()).toEqual([`emailConfirmation ${channel?.id}`]);
+    expect(takeQueued()).toEqual([`channelConfirmation ${channel?.id}`]);
 
     // No mail before confirmation: the host's change reaches nobody by email.
     await notifyResponders(deps, (await repos.plans.findById(planId))!, "changed");
@@ -215,14 +219,18 @@ describe("the email's link (decision D31, spec 3.2: no change on GET)", () => {
     await requestEmail(deps, { ...asHost(), address: "anna@example.org" });
     const channel = await channels.emailFor({ planId });
     const token = links.tokenFor(channel?.id ?? "");
-    expect(await openEmailLink(deps, token)).toEqual({
+    expect(await openChannelLink(deps, token)).toEqual({
       kind: "confirm",
+      channel: "email",
       subject: { kind: "plan", planTitle: sampleInput.title },
       address: "a…@example.org",
     });
     expect((await channels.emailFor({ planId }))?.verified).toBe(false);
 
-    expect(await useEmailLink(deps, { token, action: "confirm" })).toEqual({ kind: "confirmed" });
+    expect(await useChannelLink(deps, { token, action: "confirm" })).toEqual({
+      kind: "confirmed",
+      channel: "email",
+    });
     expect(await emailSetting(deps, asHost())).toEqual({
       kind: "setting",
       state: "on",
@@ -233,34 +241,38 @@ describe("the email's link (decision D31, spec 3.2: no change on GET)", () => {
     await notifyHost(deps, (await repos.plans.findById(planId))!, "newResponse");
     expect(takeQueued()).toEqual([`notification newResponse ${channel?.id}`]);
 
-    expect(await openEmailLink(deps, token)).toEqual({
+    expect(await openChannelLink(deps, token)).toEqual({
       kind: "turnOff",
+      channel: "email",
       subject: { kind: "plan", planTitle: sampleInput.title },
       address: "a…@example.org",
     });
-    expect(await useEmailLink(deps, { token, action: "off" })).toEqual({ kind: "off" });
+    expect(await useChannelLink(deps, { token, action: "off" })).toEqual({
+      kind: "off",
+      channel: "email",
+    });
     expect(await channels.emailFor({ planId })).toBeUndefined();
     // Works without any device: the link alone is enough, and a second use finds nothing.
-    expect(await openEmailLink(deps, token)).toEqual({ kind: "not_found" });
-    expect(await useEmailLink(deps, { token, action: "off" })).toEqual({ kind: "not_found" });
+    expect(await openChannelLink(deps, token)).toEqual({ kind: "not_found" });
+    expect(await useChannelLink(deps, { token, action: "off" })).toEqual({ kind: "not_found" });
   });
 
   it("refuses made-up links and a confirm for an address replaced since", async () => {
-    expect(await openEmailLink(deps, "made-up")).toEqual({ kind: "not_found" });
+    expect(await openChannelLink(deps, "made-up")).toEqual({ kind: "not_found" });
     // Signed, but for a browser's push channel: such links are never sent and mean nothing.
     const push = await channels.add(
       { planId },
       { endpoint: "https://fcm.googleapis.com/fcm/send/a", keys: { p256dh: "B", auth: "A" } },
     );
-    expect(await openEmailLink(deps, links.tokenFor(push))).toEqual({ kind: "not_found" });
-    expect(await useEmailLink(deps, { token: links.tokenFor(push), action: "off" })).toEqual({
+    expect(await openChannelLink(deps, links.tokenFor(push))).toEqual({ kind: "not_found" });
+    expect(await useChannelLink(deps, { token: links.tokenFor(push), action: "off" })).toEqual({
       kind: "not_found",
     });
     expect(await channels.findById(push)).toBeDefined();
     await requestEmail(deps, { ...asHost(), address: "anna@example.org" });
     const old = links.tokenFor((await channels.emailFor({ planId }))?.id ?? "");
     await requestEmail(deps, { ...asHost(), address: "anna.berg@example.org" });
-    expect(await useEmailLink(deps, { token: old, action: "confirm" })).toEqual({
+    expect(await useChannelLink(deps, { token: old, action: "confirm" })).toEqual({
       kind: "not_found",
     });
     expect((await channels.emailFor({ planId }))?.verified).toBe(false);
@@ -311,7 +323,7 @@ describe("email next to push (decision D31)", () => {
       address: "ben@example.org",
     });
     const channel = await channels.emailFor({ responseId });
-    await useEmailLink(deps, { token: links.tokenFor(channel?.id ?? ""), action: "confirm" });
+    await useChannelLink(deps, { token: links.tokenFor(channel?.id ?? ""), action: "confirm" });
     const { device: cleo } = await responder("Cleo");
     await requestEmail(deps, {
       planId,
@@ -322,12 +334,17 @@ describe("email next to push (decision D31)", () => {
     takeQueued();
     const send = await deletionNotices(deps, (await repos.plans.findById(planId))!);
     await send();
+    // The job runner takes it and hands it to the notifier, the channel gone with the plan.
+    const notifier = new FakeNotifier();
+    const [job] = [...jobs.jobs.values()];
+    expect(await notificationHandler({ notifier })(job?.payload)).toBe("done");
+    expect(notifier.sent[0]?.to).toEqual({ email: { address: "ben@example.org" } });
     expect(takeQueued()).toEqual(["notification deleted ben@example.org"]);
   });
 
   it("carry the plan's public time and place for emails, never the exact start", async () => {
     await requestEmail(deps, { ...asHost(), address: "anna@example.org" });
-    await useEmailLink(deps, {
+    await useChannelLink(deps, {
       token: links.tokenFor((await channels.emailFor({ planId }))?.id ?? ""),
       action: "confirm",
     });
@@ -355,9 +372,9 @@ describe("asking again (decision D31)", () => {
       kind: "sent",
     });
     expect((await channels.emailFor({ planId }))?.id).toBe(first);
-    expect(takeQueued()).toEqual([`emailConfirmation ${first}`]);
+    expect(takeQueued()).toEqual([`channelConfirmation ${first}`]);
 
-    await useEmailLink(deps, { token: links.tokenFor(first ?? ""), action: "confirm" });
+    await useChannelLink(deps, { token: links.tokenFor(first ?? ""), action: "confirm" });
     expect(await requestEmail(deps, { ...asHost(), address: "anna@example.org" })).toEqual({
       kind: "unchanged",
     });
@@ -368,7 +385,10 @@ describe("asking again (decision D31)", () => {
   it("lets whoever got the confirmation refuse it", async () => {
     await requestEmail(deps, { ...asHost(), address: "anna@example.org" });
     const token = links.tokenFor((await channels.emailFor({ planId }))?.id ?? "");
-    expect(await useEmailLink(deps, { token, action: "off" })).toEqual({ kind: "off" });
+    expect(await useChannelLink(deps, { token, action: "off" })).toEqual({
+      kind: "off",
+      channel: "email",
+    });
     expect(await channels.emailFor({ planId })).toBeUndefined();
   });
 });
@@ -386,14 +406,15 @@ describe("rejected and removed people (spec 3.5)", () => {
     const token = links.tokenFor(channel?.id ?? "");
     await removePerson(deps, { planId, deviceToken: host, responseId });
 
-    expect((await openEmailLink(deps, token)).kind).toBe("turnOff");
-    expect(await useEmailLink(deps, { token, action: "confirm" })).toEqual({ kind: "not_found" });
+    expect((await openChannelLink(deps, token)).kind).toBe("turnOff");
+    expect(await useChannelLink(deps, { token, action: "confirm" })).toEqual({ kind: "not_found" });
     expect((await channels.emailFor({ responseId }))?.verified).toBe(false);
-    expect(await emailConfirmationHandler({ ...deps, outbox })({ channelId: channel?.id })).toBe(
-      "drop",
-    );
+    expect(await channelConfirmationHandler(deps)({ channelId: channel?.id })).toBe("drop");
     expect(outbox.sent).toEqual([]);
-    expect(await useEmailLink(deps, { token, action: "off" })).toEqual({ kind: "off" });
+    expect(await useChannelLink(deps, { token, action: "off" })).toEqual({
+      kind: "off",
+      channel: "email",
+    });
   });
 });
 
@@ -401,7 +422,7 @@ describe("SMTP switched off later (decision D31)", () => {
   it("keeps stored addresses visible and removable, and sends nothing to them", async () => {
     await requestEmail(deps, { ...asHost(), address: "anna@example.org" });
     const id = (await channels.emailFor({ planId }))?.id ?? "";
-    await useEmailLink(deps, { token: links.tokenFor(id), action: "confirm" });
+    await useChannelLink(deps, { token: links.tokenFor(id), action: "confirm" });
     takeQueued();
     deps = {
       ...deps,
@@ -409,7 +430,8 @@ describe("SMTP switched off later (decision D31)", () => {
         channels,
         jobs,
         reminders: new FakeSentReminders(),
-        email: { links, outbox: undefined, reportAlerts: false },
+        links,
+        email: { outbox: undefined, reportAlerts: false },
       },
     };
 
@@ -426,9 +448,10 @@ describe("SMTP switched off later (decision D31)", () => {
     expect(await notifyHost(deps, (await repos.plans.findById(planId))!, "newResponse")).toBe(0);
     expect(takeQueued()).toEqual([]);
     // The link in an email sent before still turns them off.
-    expect((await openEmailLink(deps, links.tokenFor(id))).kind).toBe("turnOff");
-    expect(await useEmailLink(deps, { token: links.tokenFor(id), action: "off" })).toEqual({
+    expect((await openChannelLink(deps, links.tokenFor(id))).kind).toBe("turnOff");
+    expect(await useChannelLink(deps, { token: links.tokenFor(id), action: "off" })).toEqual({
       kind: "off",
+      channel: "email",
     });
   });
 });
@@ -442,8 +465,8 @@ describe("email jobs", () => {
       role: "responder",
       address: "ben@example.org",
     });
-    const [job] = [...jobs.jobs.values()].filter((queued) => queued.type === "emailConfirmation");
-    const handle = emailConfirmationHandler({ ...deps, outbox });
+    const [job] = [...jobs.jobs.values()].filter((queued) => queued.type === "channelConfirmation");
+    const handle = channelConfirmationHandler(deps);
     expect(await handle(job?.payload)).toBe("done");
     expect(outbox.sent).toEqual([`confirm ben@example.org ${sampleInput.title} fr`]);
 

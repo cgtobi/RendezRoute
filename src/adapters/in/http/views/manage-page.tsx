@@ -9,6 +9,7 @@ import { BackLink } from "./back-link.tsx";
 import { fieldErrorMessage } from "./format.ts";
 import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
+import { MoreChannels, type NtfySwitchProps } from "./more-channels.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { ResponseStatus } from "./response-status.tsx";
 
@@ -34,6 +35,8 @@ export function ManagePage(props: {
   linkEmail: LinkEmail | undefined;
   /** Email notifications; undefined without SMTP (decision D31). */
   email: EmailSwitchProps | undefined;
+  /** ntfy; undefined without NTFY_URL (decision D33). */
+  ntfy: NtfySwitchProps | undefined;
 }) {
   const { t, planId, response } = props;
   const blocked = isBlocked(response.kind);
@@ -102,6 +105,11 @@ export function ManagePage(props: {
       {props.email !== undefined && (
         <EmailSwitch t={t} csrfToken={props.csrfToken} {...props.email} offOnly={blocked} />
       )}
+      <MoreChannels
+        t={t}
+        csrfToken={props.csrfToken}
+        ntfy={props.ntfy === undefined ? undefined : { ...props.ntfy, offOnly: blocked }}
+      />
 
       <p>
         <a class="button secondary" href={`/p/${planId}/me/export.zip`}>

@@ -106,3 +106,56 @@ test("Email: confirm by link, a new link, notifications, one-click off, report a
   // Chrome logs the deliberate 404 of the used link as an error; nothing else may appear.
   expect(problems.filter((problem) => !problem.includes("status of 404"))).toEqual([]);
 });
+
+test("ntfy: a secret topic, confirmed by tapping the posted link, then notifications", async ({
+  browser,
+  baseURL,
+}) => {
+  const problems: string[] = [];
+  const base = baseURL ?? "";
+  const { page: admin } = await person(browser, base, problems);
+  const { page: host } = await person(browser, base, problems);
+  const { page: joiner } = await person(browser, base, problems);
+  await adminLogIn(admin);
+  await useInvite(host, await newInvite(admin));
+  const planUrl = await createPlan(host, `ntfy run ${RUN}`);
+
+  await joiner.goto(planUrl);
+  await joiner.getByLabel("Your name").fill("Ben");
+  await joiner.getByRole("button", { name: "I'm in" }).click();
+  await joiner.goto(`${planUrl}/me`);
+  await joiner.getByText("More ways to be notified").click();
+  await joiner.getByRole("button", { name: "Set up ntfy" }).click();
+  const topicUrl = (await joiner.locator("#ntfy .link-box code").textContent()) ?? "";
+  const topic = topicUrl.split("/").pop() ?? "";
+  expect(topic).toMatch(/^[A-Za-z0-9_-]{43}$/);
+
+  const messages = async (count: number) => {
+    let all: { click?: string; message?: string; actions?: { url: string }[] }[] = [];
+    await expect
+      .poll(
+        async () => {
+          all = (await (
+            await fetch(`http://localhost:8080/ntfy-messages?topic=${topic}`)
+          ).json()) as typeof all;
+          return all.length;
+        },
+        { timeout: 40_000, intervals: [1_000] },
+      )
+      .toBeGreaterThanOrEqual(count);
+    return all;
+  };
+  const [confirmation] = await messages(1);
+  const { page: phone } = await person(browser, base, problems);
+  await phone.goto(confirmation?.click ?? "");
+  await phone.getByRole("button", { name: "Confirm" }).click();
+  await expect(phone.getByText("ntfy notifications are on.")).toBeVisible();
+
+  await host.goto(`${planUrl}/host`);
+  await host.getByText("Cancel plan…").click();
+  await host.getByRole("button", { name: "Cancel this plan" }).click();
+  const all = await messages(2);
+  expect(all[1]?.message).toContain("The plan was cancelled.");
+  expect(all[1]?.actions?.[0]?.url).toBe(confirmation?.click);
+  expect(problems).toEqual([]);
+});

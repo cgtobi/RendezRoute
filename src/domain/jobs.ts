@@ -6,7 +6,7 @@
  */
 export const JOB_TYPES = [
   "notification",
-  "emailConfirmation",
+  "channelConfirmation",
   "reportAlert",
   "accountNotice",
 ] as const;

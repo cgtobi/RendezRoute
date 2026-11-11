@@ -413,8 +413,8 @@ export const de: Messages = {
   "email.accountHeading": "Dein Konto auf {instance}",
   "email.accountConfirmBody":
     "Jemand möchte an diese Adresse E-Mails zu einem Konto auf {instance} bekommen, etwa eine Warnung, bevor ein ungenutztes Konto gelöscht wird. Wenn du das warst, bestätige es mit dem Link unten. Wenn nicht, ignoriere diese E-Mail: Es wird nichts weiter gesendet.",
-  "email.expirySubject": "Dein Konto auf {instance} wird am {date} gelöscht",
-  "email.expiryBody":
+  "notice.expirySubject": "Dein Konto auf {instance} wird am {date} gelöscht",
+  "notice.expiryBody":
     "Es wurde fast ein Jahr nicht genutzt. Um es zu behalten, nutze es vor dem {date}: Melde dich an oder öffne die Seite auf einem angemeldeten Gerät. Sonst wird es mit allem gelöscht, was ihm gehört.",
   "email.openAccount": "Konto öffnen",
   "email.accountWhy":
@@ -437,6 +437,45 @@ export const de: Messages = {
   "privacy.accountEmail":
     "Wenn du deinem Konto eine E-Mail-Adresse hinzufügst, wird sie verschlüsselt gespeichert, nur für E-Mails zum Konto (etwa die Warnung, bevor ein ungenutztes Konto gelöscht wird) und für Treffen genutzt, für die du sie auswählst, und mit dem Konto gelöscht.",
   "email.hostShared": "Alle, die dieses Treffen verwalten, sehen diese Adresse.",
+  "channels.more": "Weitere Wege, benachrichtigt zu werden",
+  "ntfy.label": "ntfy-App",
+  "ntfy.hint":
+    "Benachrichtigungen in der ntfy-App (Android, iPhone oder Browser), über {server}. Du brauchst dort kein Konto.",
+  "ntfy.accountHint":
+    "Hinweise zu deinem Konto, etwa eine Warnung, bevor ein ungenutztes Konto gelöscht wird, in der ntfy-App über {server}.",
+  "ntfy.setUp": "ntfy einrichten",
+  "ntfy.pending":
+    "Abonniere dieses Thema in der ntfy-App und tippe dann auf die Nachricht, die wir geschickt haben, um zu bestätigen. Vorher wird nichts anderes gesendet.",
+  "ntfy.open": "In ntfy öffnen",
+  "ntfy.resend": "Nachricht noch einmal senden",
+  "ntfy.on":
+    "ntfy-Benachrichtigungen gehen an dieses Thema. Behalte es für dich: Wer es kennt, kann sie lesen.",
+  "ntfy.off": "ntfy abschalten",
+  "ntfy.turnOff": "ntfy abschalten",
+  "ntfy.confirm": "Bestätigen",
+  "ntfy.confirmTitle": "ntfy-Benachrichtigungen von {instance} bestätigen",
+  "ntfy.confirmBody":
+    "Tippe hier, um Benachrichtigungen zu „{title}“ zu bekommen. Wenn du das nicht wolltest, ignoriere es: Es wird nichts weiter gesendet.",
+  "ntfy.accountConfirmBody":
+    "Tippe hier, um Hinweise zu deinem Konto auf {instance} zu bekommen. Wenn du das nicht wolltest, ignoriere es: Es wird nichts weiter gesendet.",
+  "ntfyLink.confirmHeading": "ntfy-Benachrichtigungen bestätigen",
+  "ntfyLink.offHeading": "ntfy-Benachrichtigungen abschalten",
+  "ntfyLink.confirmBody": "Benachrichtigungen zu „{title}“ in der ntfy-App bekommen?",
+  "ntfyLink.accountConfirmBody":
+    "Hinweise zu deinem Konto auf {instance} in der ntfy-App bekommen?",
+  "ntfyLink.offBody": "Keine ntfy-Benachrichtigungen mehr zu „{title}“?",
+  "ntfyLink.accountOffBody": "Keine ntfy-Hinweise mehr zu deinem Konto auf {instance}?",
+  "ntfyLink.confirm": "Bestätigen",
+  "ntfyLink.refuse": "Keine Benachrichtigungen senden",
+  "ntfyLink.off": "ntfy abschalten",
+  "ntfyLink.confirmed": "ntfy-Benachrichtigungen sind eingeschaltet.",
+  "ntfyLink.turnedOff": "ntfy-Benachrichtigungen sind abgeschaltet.",
+  "privacy.ntfy":
+    "Wenn du ntfy einschaltest, werden Benachrichtigungen an den ntfy-Server {server} unter einem zufälligen Thema gesendet, das die App erzeugt; wer das Thema kennt, kann sie lesen. Das Thema wird verschlüsselt gespeichert und mit deiner Antwort, dem Treffen oder dem Konto gelöscht.",
+  "channelLink.invalid":
+    "Dieser Link funktioniert nicht mehr. Die Benachrichtigungen sind vielleicht schon abgeschaltet, oder das Treffen gibt es nicht mehr.",
+  "ntfy.hostShared":
+    "Alle, die dieses Treffen verwalten, sehen dieses Thema und können seine Benachrichtigungen lesen.",
   "email.label": "E-Mail für Neuigkeiten zu diesem Treffen",
   "email.hint":
     "Zuerst schicken wir einen Link, um die Adresse zu bestätigen. Jede E-Mail enthält einen Link zum Abschalten.",
@@ -469,8 +508,6 @@ export const de: Messages = {
   "emailLink.off": "E-Mails abschalten",
   "emailLink.confirmed": "Adresse bestätigt. Du bekommst E-Mails zu diesem Treffen.",
   "emailLink.turnedOff": "E-Mails zu diesem Treffen sind abgeschaltet.",
-  "emailLink.invalid":
-    "Dieser Link funktioniert nicht mehr. Die E-Mails sind vielleicht schon abgeschaltet, oder das Treffen gibt es nicht mehr.",
   "field.email_invalid": "Gib eine E-Mail-Adresse ein, zum Beispiel name@example.org.",
   "privacy.email":
     "Wenn du E-Mails zu einem Treffen einschaltest, wird deine Adresse verschlüsselt gespeichert, nur für diese E-Mails genutzt und mit deiner Antwort oder dem Treffen gelöscht. Jede E-Mail enthält einen Link zum Abschalten; vor deiner Bestätigung wird nichts gesendet.",

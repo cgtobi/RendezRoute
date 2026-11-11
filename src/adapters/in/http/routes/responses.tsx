@@ -12,6 +12,7 @@ import type { AppEnv } from "../app.tsx";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
 import { ManagePage } from "../views/manage-page.tsx";
 import { emailProps, registerEmailForms } from "./email.tsx";
+import { ntfyProps, registerNtfyForms } from "./ntfy.tsx";
 import { formatDate } from "../views/format.ts";
 import { RespondedPage } from "../views/responded-page.tsx";
 import {
@@ -151,6 +152,11 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         })}
         linkNonce={newNonce()}
         email={email}
+        ntfy={await ntfyProps(
+          planDeps,
+          { planId, deviceToken, role: "responder" },
+          `/p/${planId}/me`,
+        )}
       />,
       { title: result.planTitle },
     );
@@ -158,6 +164,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
 
   app.get("/p/:id/me", (c) => renderManagePage(c, c.req.param("id")));
 
+  registerNtfyForms(app, deps, { role: "responder", base: "/p/:id/me" });
   registerEmailForms(app, deps, {
     role: "responder",
     base: "/p/:id/me",

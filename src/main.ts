@@ -44,6 +44,8 @@ import { createSentReminderRepository } from "./adapters/out/sqlite/reminders.ts
 import { createWebPushNotifier } from "./adapters/out/push/notifier.ts";
 import { createSmtpMailer } from "./adapters/out/email/smtp-mailer.ts";
 import { createEmail, type EmailDelivery } from "./adapters/out/email/notifier.ts";
+import { createNtfyClient } from "./adapters/out/ntfy/client.ts";
+import { createNtfy, type NtfyDelivery } from "./adapters/out/ntfy/notifier.ts";
 import { createJobHandlers } from "./job-handlers.ts";
 import { isPushServiceHost } from "./domain/push.ts";
 import { type Database, openDatabase } from "./adapters/out/sqlite/database.ts";
@@ -158,8 +160,8 @@ export type StartResult =
   | { ok: false; errors: string[] };
 
 interface Instance {
-  /** Notifications by email; undefined without SMTP. */
-  emailDelivery: EmailDelivery | undefined;
+  /** Notifications by email and ntfy; each undefined while its service is not configured. */
+  deliveries: { email: EmailDelivery | undefined; ntfy: NtfyDelivery | undefined };
   config: Config;
   database: Database;
   keys: InstanceKeys;
@@ -209,6 +211,29 @@ async function openInstance(
           contactEmail: config.contactEmail,
           timeZone: config.defaultTimezone,
         });
+  // ntfy (decision D33): the instance's server is trusted configuration and may be on the local
+  // network, like the OIDC issuer.
+  const ntfy =
+    config.ntfy === undefined
+      ? undefined
+      : {
+          server: config.ntfy.url,
+          ...createNtfy({
+            server: config.ntfy.url,
+            client: createNtfyClient({
+              server: config.ntfy.url,
+              token: config.ntfy.token,
+              fetch: createTrustedFetch({
+                userAgent: `RendezRoute (+${config.baseUrl.origin})`,
+                allowHttp: config.allowInsecureDev,
+              }),
+            }),
+            links: keys.channelLinks,
+            baseUrl: config.baseUrl,
+            instanceName: config.instanceName,
+            timeZone: config.defaultTimezone,
+          }),
+        };
   const planDeps: PlanDeps = {
     plans: createPlanRepository(database, keys.cipher),
     devices: createDeviceRepository(database),
@@ -231,16 +256,24 @@ async function openInstance(
       channels: createChannelRepository(database, keys.cipher, ids, () => systemClock.now()),
       jobs: createJobQueue(database, keys.cipher, ids),
       reminders: createSentReminderRepository(database),
+      links: keys.channelLinks,
       email: {
-        links: keys.channelLinks,
         outbox: email?.outbox,
         reportAlerts: email !== undefined && config.contactEmail !== undefined,
       },
+      ntfy: ntfy === undefined ? undefined : { outbox: ntfy.outbox, server: ntfy.server },
     },
   };
   return {
     ok: true,
-    instance: { config, database, keys, planDeps, warnings, emailDelivery: email?.delivery },
+    instance: {
+      config,
+      database,
+      keys,
+      planDeps,
+      warnings,
+      deliveries: { email: email?.delivery, ntfy: ntfy?.delivery },
+    },
   };
 }
 
@@ -311,7 +344,7 @@ export async function startServer(
   const jobHandlers = createJobHandlers({
     planDeps,
     push: notifier,
-    delivery: opened.instance.emailDelivery,
+    ...opened.instance.deliveries,
     identities: accounts.identities,
   });
 

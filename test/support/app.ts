@@ -37,6 +37,8 @@ import {
 } from "../../src/adapters/out/sqlite/identities.ts";
 import { createChannelLinks } from "../../src/adapters/out/crypto/channel-links.ts";
 import { createEmail } from "../../src/adapters/out/email/notifier.ts";
+import { createNtfy } from "../../src/adapters/out/ntfy/notifier.ts";
+import { FakeNtfyClient } from "../fakes/ntfy.ts";
 import { createJobHandlers } from "../../src/job-handlers.ts";
 import { runDueJobs } from "../../src/application/jobs.ts";
 import { FakeClock } from "../fakes/clock.ts";
@@ -107,6 +109,22 @@ export async function createTestApp({
           contactEmail: config.contactEmail,
           timeZone: config.defaultTimezone,
         });
+  // ntfy posts go to the fake client (decision D33).
+  const ntfyClient = new FakeNtfyClient();
+  const ntfy =
+    config.ntfy === undefined
+      ? undefined
+      : {
+          server: config.ntfy.url,
+          ...createNtfy({
+            server: config.ntfy.url,
+            client: ntfyClient,
+            links: channelLinks,
+            baseUrl: config.baseUrl,
+            instanceName: config.instanceName,
+            timeZone: config.defaultTimezone,
+          }),
+        };
   const planDeps: PlanDeps = {
     plans: createPlanRepository(database, cipher),
     devices: createDeviceRepository(database),
@@ -129,11 +147,12 @@ export async function createTestApp({
       channels,
       jobs,
       reminders: createSentReminderRepository(database),
+      links: channelLinks,
       email: {
-        links: channelLinks,
         outbox: email?.outbox,
         reportAlerts: config.smtp !== undefined && config.contactEmail !== undefined,
       },
+      ntfy: ntfy === undefined ? undefined : { outbox: ntfy.outbox, server: ntfy.server },
     },
   };
   const identities = createIdentityRepository(database, cipher);
@@ -142,7 +161,8 @@ export async function createTestApp({
   const jobHandlers = createJobHandlers({
     planDeps,
     push: pushed,
-    delivery: email?.delivery,
+    email: email?.delivery,
+    ntfy: ntfy?.delivery,
     identities,
   });
   const runJobs = () => runDueJobs({ jobs, clock }, jobHandlers);
@@ -206,6 +226,7 @@ export async function createTestApp({
     pendingLogins,
     identities,
     mailer,
+    ntfyClient,
     pushed,
     runJobs,
     channelLinks,

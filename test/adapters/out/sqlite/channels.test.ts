@@ -150,14 +150,14 @@ describe("email channels (spec 7, decision D31)", () => {
       (database.sqlite.prepare(`select count(*) as n from ${table}`).get() as { n: number }).n;
     const responseChannel = await repo.setEmail({ responseId: "response-1" }, "ben@example.org");
     await jobs.enqueue({
-      type: "emailConfirmation",
+      type: "channelConfirmation",
       payload: { channelId: responseChannel },
       responseId: "response-1",
       runAt: fixtureNow,
     });
     const planChannel = await repo.setEmail({ planId: "plan-1" }, "anna@example.org");
     await jobs.enqueue({
-      type: "emailConfirmation",
+      type: "channelConfirmation",
       payload: { channelId: planChannel },
       planId: "plan-1",
       runAt: fixtureNow,

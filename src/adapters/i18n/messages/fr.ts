@@ -413,8 +413,8 @@ export const fr: Messages = {
   "email.accountHeading": "Votre compte sur {instance}",
   "email.accountConfirmBody":
     "Quelqu’un a demandé des e-mails sur un compte sur {instance} à cette adresse, comme un avertissement avant la suppression d’un compte inutilisé. Si c’était vous, confirmez avec le lien ci-dessous. Sinon, ignorez cet e-mail : rien d’autre ne sera envoyé.",
-  "email.expirySubject": "Votre compte sur {instance} sera supprimé le {date}",
-  "email.expiryBody":
+  "notice.expirySubject": "Votre compte sur {instance} sera supprimé le {date}",
+  "notice.expiryBody":
     "Il n’a pas été utilisé depuis presque un an. Pour le garder, utilisez-le avant le {date} : connectez-vous, ou ouvrez le site sur un appareil connecté. Sinon, il sera supprimé avec tout ce qui lui appartient.",
   "email.openAccount": "Ouvrir votre compte",
   "email.accountWhy":
@@ -438,6 +438,45 @@ export const fr: Messages = {
   "privacy.accountEmail":
     "Si vous ajoutez une adresse e-mail à votre compte, elle est stockée chiffrée, utilisée uniquement pour les e-mails sur le compte (comme l’avertissement avant la suppression d’un compte inutilisé) et pour les sorties pour lesquelles vous la choisissez, et supprimée avec le compte.",
   "email.hostShared": "Toutes les personnes qui gèrent cette sortie voient cette adresse.",
+  "channels.more": "D’autres façons d’être notifié·e",
+  "ntfy.label": "Application ntfy",
+  "ntfy.hint":
+    "Des notifications dans l’application ntfy (Android, iPhone ou navigateur), via {server}. Aucun compte n’y est nécessaire.",
+  "ntfy.accountHint":
+    "Les avis sur votre compte, comme un avertissement avant la suppression d’un compte inutilisé, dans l’application ntfy via {server}.",
+  "ntfy.setUp": "Configurer ntfy",
+  "ntfy.pending":
+    "Dans l’application ntfy, abonnez-vous à ce sujet, puis touchez le message envoyé pour confirmer. Rien d’autre n’est envoyé avant.",
+  "ntfy.open": "Ouvrir dans ntfy",
+  "ntfy.resend": "Renvoyer le message",
+  "ntfy.on":
+    "Les notifications ntfy vont à ce sujet. Gardez-le pour vous : quiconque le connaît peut les lire.",
+  "ntfy.off": "Désactiver ntfy",
+  "ntfy.turnOff": "Désactiver ntfy",
+  "ntfy.confirm": "Confirmer",
+  "ntfy.confirmTitle": "Confirmer les notifications ntfy de {instance}",
+  "ntfy.confirmBody":
+    "Touchez ici pour recevoir les notifications sur « {title} ». Si vous ne les avez pas demandées, ignorez ce message : rien d’autre ne sera envoyé.",
+  "ntfy.accountConfirmBody":
+    "Touchez ici pour recevoir les avis sur votre compte sur {instance}. Si vous ne les avez pas demandés, ignorez ce message : rien d’autre ne sera envoyé.",
+  "ntfyLink.confirmHeading": "Confirmer les notifications ntfy",
+  "ntfyLink.offHeading": "Désactiver les notifications ntfy",
+  "ntfyLink.confirmBody": "Recevoir les notifications sur « {title} » dans l’application ntfy ?",
+  "ntfyLink.accountConfirmBody":
+    "Recevoir les avis sur votre compte sur {instance} dans l’application ntfy ?",
+  "ntfyLink.offBody": "Arrêter les notifications ntfy sur « {title} » ?",
+  "ntfyLink.accountOffBody": "Arrêter les avis ntfy sur votre compte sur {instance} ?",
+  "ntfyLink.confirm": "Confirmer",
+  "ntfyLink.refuse": "Ne pas envoyer de notifications",
+  "ntfyLink.off": "Désactiver ntfy",
+  "ntfyLink.confirmed": "Les notifications ntfy sont activées.",
+  "ntfyLink.turnedOff": "Les notifications ntfy sont désactivées.",
+  "privacy.ntfy":
+    "Si vous activez ntfy, les notifications sont envoyées au serveur ntfy {server} sous un sujet aléatoire créé par l’application ; quiconque connaît le sujet peut les lire. Le sujet est stocké chiffré et supprimé avec votre réponse, la sortie ou le compte.",
+  "channelLink.invalid":
+    "Ce lien ne fonctionne plus. Les notifications sont peut-être déjà désactivées, ou la sortie n’existe plus.",
+  "ntfy.hostShared":
+    "Toutes les personnes qui gèrent cette sortie voient ce sujet et peuvent lire ses notifications.",
   "email.label": "E-mail pour les nouvelles de cette sortie",
   "email.hint":
     "Nous envoyons d’abord un lien pour confirmer l’adresse. Chaque e-mail contient un lien pour les désactiver.",
@@ -471,8 +510,6 @@ export const fr: Messages = {
   "emailLink.off": "Désactiver les e-mails",
   "emailLink.confirmed": "Adresse confirmée. Vous recevrez les e-mails sur cette sortie.",
   "emailLink.turnedOff": "Les e-mails sur cette sortie sont désactivés.",
-  "emailLink.invalid":
-    "Ce lien ne fonctionne plus. Les e-mails sont peut-être déjà désactivés, ou la sortie n’existe plus.",
   "field.email_invalid": "Saisissez une adresse e-mail, par exemple name@example.org.",
   "privacy.email":
     "Si vous activez les e-mails pour une sortie, votre adresse est stockée chiffrée, utilisée uniquement pour ces e-mails et supprimée avec votre réponse ou la sortie. Chaque e-mail contient un lien pour les désactiver ; rien n’est envoyé avant votre confirmation.",

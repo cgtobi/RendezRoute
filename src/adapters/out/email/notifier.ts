@@ -8,11 +8,11 @@ import type { Mailer } from "./mailer.ts";
 import {
   accountExpiryEmail,
   confirmationEmail,
-  type EmailInstance,
   newLinkEmail,
   notificationEmail,
   reportAlertEmail,
 } from "./messages.ts";
+import type { MessageInstance } from "../instance.ts";
 
 /** The page behind an email channel's link (confirm, refuse, or turn off). */
 const linkUrl = (links: ChannelLinks, channelId: string, baseUrl: URL) =>
@@ -31,7 +31,7 @@ export function createEmailDelivery({
   mailer,
   links,
   ...instance
-}: EmailInstance & { mailer: Mailer; links: ChannelLinks }): EmailDelivery {
+}: MessageInstance & { mailer: Mailer; links: ChannelLinks }): EmailDelivery {
   return {
     send: (to, notification) =>
       mailer.send({
@@ -51,7 +51,7 @@ export function createEmailOutbox({
   contactEmail,
   timeZone,
   ...instance
-}: EmailInstance & {
+}: MessageInstance & {
   mailer: Mailer;
   links: ChannelLinks;
   contactEmail: string | undefined;
@@ -87,7 +87,7 @@ export function createEmailOutbox({
 
 /** Both parts of email over one mailer: notifications to channels, and the other emails. */
 export function createEmail(
-  settings: EmailInstance & {
+  settings: MessageInstance & {
     mailer: Mailer;
     links: ChannelLinks;
     contactEmail: string | undefined;

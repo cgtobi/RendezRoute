@@ -72,7 +72,7 @@ describe("email outbox (decision D31, spec 7 Moderation)", () => {
     });
     expect(
       await outbox.confirmation(
-        { channelId: "c1", address: "ben@example.org", language: "de" },
+        { kind: "email", channelId: "c1", address: "ben@example.org", language: "de" },
         { kind: "plan", planTitle: "Hill repeats" },
       ),
     ).toBe("sent");
@@ -108,7 +108,7 @@ describe("channel notifier", () => {
   it("reads a stored channel once and hands it on by kind; carried targets go straight on", async () => {
     const push = new FakeNotifier();
     const email = new FakeDelivery();
-    const notifier = createChannelNotifier({ channels, push, email });
+    const notifier = createChannelNotifier({ channels, push, email, ntfy: undefined });
     const subscription = { endpoint: "https://fcm.googleapis.com/fcm/send/a", keys: KEYS };
     const pushId = await channels.add({ responseId: "r1" }, subscription);
     const emailId = await channels.setEmail({ responseId: "r1" }, "ben@example.org");
@@ -129,11 +129,21 @@ describe("channel notifier", () => {
   it("sends nothing to an unconfirmed channel, and no email without SMTP", async () => {
     const email = new FakeDelivery();
     const id = await channels.setEmail({ responseId: "r1" }, "ben@example.org");
-    const withSmtp = createChannelNotifier({ channels, push: new FakeNotifier(), email });
+    const withSmtp = createChannelNotifier({
+      channels,
+      push: new FakeNotifier(),
+      email,
+      ntfy: undefined,
+    });
     expect(await withSmtp.send({ channelId: id }, notification)).toBe("failed");
     expect(email.sent).toEqual([]);
     await channels.confirm(id);
-    const without = createChannelNotifier({ channels, push: new FakeNotifier(), email: undefined });
+    const without = createChannelNotifier({
+      channels,
+      push: new FakeNotifier(),
+      email: undefined,
+      ntfy: undefined,
+    });
     expect(await without.send({ channelId: id }, notification)).toBe("failed");
     expect(await without.send({ email: { address: "c@example.org" } }, notification)).toBe(
       "failed",

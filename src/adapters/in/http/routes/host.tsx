@@ -19,6 +19,7 @@ import { MapAssets } from "../views/maps.tsx";
 import { ROUTE_TRIM_FIELD } from "../views/route-trim.tsx";
 import { deleteRecap } from "../../../../application/recap.ts";
 import { emailProps, registerEmailForms } from "./email.tsx";
+import { ntfyProps, registerNtfyForms } from "./ntfy.tsx";
 import { removeRoute, setRoute } from "../../../../application/routes.ts";
 import {
   badRequest,
@@ -104,6 +105,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         map={mapSettings(config)}
         placeSearch={geocoder !== undefined}
         email={email}
+        ntfy={await ntfyProps(planDeps, { ...request(c), role: "host" }, `/p/${page.planId}/host`)}
       />,
       {
         title: c.get("t")("host.heading"),
@@ -124,6 +126,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
 
   app.get("/p/:id/host", (c) => render(c));
 
+  registerNtfyForms(app, deps, { role: "host", base: "/p/:id/host" });
   registerEmailForms(app, deps, {
     role: "host",
     base: "/p/:id/host",

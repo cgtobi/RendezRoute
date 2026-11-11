@@ -5,6 +5,7 @@ import type { NotificationFacts, NotificationKind } from "../domain/notification
 import type { Plan } from "../domain/plan.ts";
 import type { ResponseChoice } from "../domain/requests.ts";
 import type { PlanResponse, ResponseKind } from "../domain/response.ts";
+import { canReach } from "./channel-kinds.ts";
 import { enqueueNotification } from "./notifications.ts";
 import type { PlanDeps } from "./plans.ts";
 import type {
@@ -37,8 +38,8 @@ export const responderOf = (response: PlanResponse): Recipient => ({
 });
 
 /**
- * The recipient's channels that may be sent to: confirmed by their owner (spec 3.11), and email
- * ones only while SMTP is configured (decision D31).
+ * The recipient's channels that may be sent to: confirmed by their owner (spec 3.11), and only
+ * while they can be reached (channel-kinds.ts).
  */
 export async function deliverableChannels(
   deps: PlanDeps,
@@ -46,9 +47,8 @@ export async function deliverableChannels(
 ): Promise<NotificationChannel[]> {
   const notify = deps.notify;
   if (notify === undefined) return [];
-  const sending = notify.email?.outbox !== undefined;
   return (await notify.channels.listFor(owner)).filter(
-    (channel) => channel.verified && (channel.kind !== "email" || sending),
+    (channel) => channel.verified && canReach(notify, channel),
   );
 }
 
@@ -179,9 +179,11 @@ export async function deletionNotices(deps: PlanDeps, plan: Plan): Promise<() =>
 const carriedTarget = (channel: NotificationChannel): NotificationTarget =>
   channel.kind === "webpush"
     ? { subscription: channel.subscription }
-    : { email: { address: channel.address } };
+    : channel.kind === "email"
+      ? { email: { address: channel.address } }
+      : { ntfy: { topic: channel.topic, server: channel.server } };
 
-/** The plan's public time and place (spec 3.6), for emails. */
+/** The plan's public time and place (spec 3.6), for emails and ntfy. */
 const factsOf = (plan: Plan): NotificationFacts => ({
   startsAt: plan.startsAt.toISOString(),
   timeZone: plan.timeZone,

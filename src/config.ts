@@ -47,6 +47,8 @@ export interface Config {
   fediverseLogin: { servers: readonly string[] | undefined } | undefined;
   /** Sending email (spec 7 Optional notification channels, decision D31); off unless SMTP_HOST. */
   smtp: SmtpConfig | undefined;
+  /** The instance's ntfy server (decision D33); off unless NTFY_URL. Trusted configuration. */
+  ntfy: { url: URL; token: string | undefined } | undefined;
 }
 
 export interface SmtpConfig {
@@ -410,6 +412,24 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     };
   })();
 
+  // NTFY_URL: the server notifications are posted to, maybe behind a path (decision D33).
+  const ntfy = ((): Config["ntfy"] => {
+    const setting = read("NTFY_URL") || undefined;
+    const token = read("NTFY_TOKEN") || undefined;
+    if (setting === undefined) {
+      if (token !== undefined) errors.push("NTFY_TOKEN needs NTFY_URL.");
+      return undefined;
+    }
+    const url = httpUrl("NTFY_URL", setting);
+    if (url === undefined || !rejectCredentials("NTFY_URL", url)) return undefined;
+    if (url.search !== "" || url.hash !== "") {
+      errors.push("NTFY_URL must not contain a query or fragment.");
+      return undefined;
+    }
+    if (!requireHttps("NTFY_URL", url)) return undefined;
+    return { url, token };
+  })();
+
   if (errors.length > 0 || postingMode === undefined) return { ok: false, errors };
 
   return {
@@ -443,6 +463,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       oidc,
       fediverseLogin,
       smtp,
+      ntfy,
     },
   };
 }

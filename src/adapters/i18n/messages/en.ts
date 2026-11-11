@@ -396,8 +396,8 @@ export const en = {
   "email.accountHeading": "Your account on {instance}",
   "email.accountConfirmBody":
     "Someone asked for emails about an account on {instance} at this address, such as a warning before an unused account is deleted. If it was you, confirm it with the link below. If not, ignore this email: nothing else will be sent.",
-  "email.expirySubject": "Your account on {instance} will be deleted on {date}",
-  "email.expiryBody":
+  "notice.expirySubject": "Your account on {instance} will be deleted on {date}",
+  "notice.expiryBody":
     "It has not been used for almost a year. To keep it, use it before {date}: log in, or open the site on a device that is logged in. Otherwise it is deleted with everything it owns.",
   "email.openAccount": "Open your account",
   "email.accountWhy":
@@ -417,6 +417,44 @@ export const en = {
   "privacy.accountEmail":
     "If you add an email address to your account, it is stored encrypted, used only for emails about the account (such as the warning before an unused account is deleted) and for plans you choose it for, and deleted with the account.",
   "email.hostShared": "Everyone who manages this plan sees this address.",
+  "channels.more": "More ways to be notified",
+  "ntfy.label": "ntfy app",
+  "ntfy.hint":
+    "Notifications in the ntfy app (Android, iPhone or browser), through {server}. You need no account there.",
+  "ntfy.accountHint":
+    "Notices about your account, such as a warning before an unused account is deleted, in the ntfy app through {server}.",
+  "ntfy.setUp": "Set up ntfy",
+  "ntfy.pending":
+    "In the ntfy app, subscribe to this topic, then tap the message we sent to confirm. Nothing else is sent before that.",
+  "ntfy.open": "Open in ntfy",
+  "ntfy.resend": "Send the message again",
+  "ntfy.on":
+    "ntfy notifications go to this topic. Keep it to yourself: whoever knows it can read them.",
+  "ntfy.off": "Turn off ntfy",
+  "ntfy.turnOff": "Turn off ntfy",
+  "ntfy.confirm": "Confirm",
+  "ntfy.confirmTitle": "Confirm ntfy notifications from {instance}",
+  "ntfy.confirmBody":
+    "Tap to get notifications about “{title}” here. If you did not ask for them, ignore this: nothing else is sent.",
+  "ntfy.accountConfirmBody":
+    "Tap to get notices about your account on {instance} here. If you did not ask for them, ignore this: nothing else is sent.",
+  "ntfyLink.confirmHeading": "Confirm ntfy notifications",
+  "ntfyLink.offHeading": "Turn off ntfy notifications",
+  "ntfyLink.confirmBody": "Get notifications about “{title}” in the ntfy app?",
+  "ntfyLink.accountConfirmBody": "Get notices about your account on {instance} in the ntfy app?",
+  "ntfyLink.offBody": "Stop the ntfy notifications about “{title}”?",
+  "ntfyLink.accountOffBody": "Stop the ntfy notices about your account on {instance}?",
+  "ntfyLink.confirm": "Confirm",
+  "ntfyLink.refuse": "Don’t send notifications",
+  "ntfyLink.off": "Turn off ntfy",
+  "ntfyLink.confirmed": "ntfy notifications are on.",
+  "ntfyLink.turnedOff": "ntfy notifications are turned off.",
+  "privacy.ntfy":
+    "If you turn on ntfy, notifications are posted to the ntfy server {server} under a random topic the app makes; anyone who knows the topic can read them. The topic is stored encrypted and deleted with your response, the plan or the account.",
+  "channelLink.invalid":
+    "This link no longer works. The notifications may already be off, or the plan is gone.",
+  "ntfy.hostShared":
+    "Everyone who manages this plan sees this topic and can read its notifications.",
   "email.label": "Email for news about this plan",
   "email.hint":
     "First we send a link to confirm the address. Every email has a link to turn them off.",
@@ -447,8 +485,6 @@ export const en = {
   "emailLink.off": "Turn off emails",
   "emailLink.confirmed": "Address confirmed. You’ll get emails about this plan.",
   "emailLink.turnedOff": "Emails about this plan are turned off.",
-  "emailLink.invalid":
-    "This link no longer works. The emails may already be off, or the plan is gone.",
   "field.email_invalid": "Enter one email address, such as name@example.org.",
   "privacy.email":
     "If you turn on emails for a plan, your address is stored encrypted, used only for its emails and deleted with your response or the plan. Every email has a link to turn them off; nothing is sent before you confirm the address.",

@@ -3,6 +3,7 @@ import type {
   ChannelRepository,
   EmailChannel,
   NotificationChannel,
+  NtfyChannel,
   PushChannel,
 } from "../../src/application/ports.ts";
 import type { PushSubscription } from "../../src/domain/push.ts";
@@ -77,6 +78,21 @@ export class FakeChannelRepository implements ChannelRepository {
     const id = `channel-${++this.#next}`;
     this.channels.set(id, { id, owner, kind: "email", address, language, verified: false });
     return Promise.resolve(id);
+  }
+
+  setNtfy(
+    owner: ChannelOwner,
+    { topic, server }: { topic: string; server: string },
+    language?: string,
+  ) {
+    for (const c of this.#owned(owner)) if (c.kind === "ntfy") this.channels.delete(c.id);
+    const id = `channel-${++this.#next}`;
+    this.channels.set(id, { id, owner, kind: "ntfy", topic, server, language, verified: false });
+    return Promise.resolve(id);
+  }
+
+  ntfyFor(owner: ChannelOwner) {
+    return Promise.resolve(this.#owned(owner).find((c): c is NtfyChannel => c.kind === "ntfy"));
   }
 
   confirm(id: string) {

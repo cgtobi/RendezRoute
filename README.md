@@ -25,6 +25,7 @@ Things to know before going live:
 - **`OIDC_ISSUER`, `OIDC_CLIENT_ID`** (and `OIDC_CLIENT_SECRET` for a confidential client, `OIDC_NAME` for the button) turn on login with an OpenID Connect provider such as Keycloak or Authelia; it may run on your local network. Register `https://<your domain>/login/oidc/callback` as the redirect URI.
 - **`FEDIVERSE_LOGIN=true`** lets people log in with a Mastodon, GoToSocial, Akkoma or Pleroma account; `FEDIVERSE_LOGIN_SERVERS` (comma-separated domains) limits which servers may be used.
 - **`SMTP_HOST`** and **`SMTP_FROM`** (the sender address) turn on email: people can get a plan's notifications by email after confirming their address, and with `CONTACT_EMAIL` and `ADMIN_TOKEN` you get an email for each new report. `SMTP_PORT` defaults to 587 with STARTTLS required; `SMTP_TLS=tls` uses TLS from the start (port 465 by default). Set `SMTP_USER` and `SMTP_PASSWORD` if your server needs a login.
+- **`NTFY_URL`** (an [ntfy](https://ntfy.sh) server, your own or a public one) lets people get notifications in the ntfy app: the app makes a secret topic for each of them on that server. Set `NTFY_TOKEN` if the server needs a token to publish.
 - The generated privacy notice is at `/privacy`; set `PRIVACY_URL` and `IMPRINT_URL` to link your own pages.
 
 ## Development

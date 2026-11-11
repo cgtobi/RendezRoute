@@ -15,6 +15,7 @@ import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input
 import { clientKey, type RateLimits } from "../rate-limit.ts";
 import type { Config } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
+import { readDeviceToken } from "../device-cookie.ts";
 import { MapAssets, type MapSettings } from "../views/maps.tsx";
 import { PlanPage } from "../views/plan-page.tsx";
 import type { RespondFormState } from "../views/respond-form.tsx";
@@ -237,4 +238,26 @@ export function linkEmailOutcome(c: Context<AppEnv>): "sent" | "failed" | undefi
 export function signedOutCount(c: Context<AppEnv>): number | undefined {
   const value = c.req.query("signedOut");
   return value !== undefined && /^\d{1,6}$/.test(value) ? Number(value) : undefined;
+}
+
+/**
+ * A notification setting on a manage or host page (decisions D31, D33): who asks, as responder or
+ * host; the page to return to; and the plan's page for those it does not belong to.
+ */
+export function switchRoute(
+  c: Context<AppEnv>,
+  config: Config,
+  role: "responder" | "host",
+  base: string,
+): {
+  request: { planId: string; deviceToken: string | undefined; role: "responder" | "host" };
+  page: string;
+  plan: string;
+} {
+  const planId = c.req.param("id") ?? "";
+  return {
+    request: { planId, deviceToken: readDeviceToken(c, config), role },
+    page: base.replace(":id", planId),
+    plan: `/p/${planId}`,
+  };
 }

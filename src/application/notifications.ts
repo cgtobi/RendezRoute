@@ -1,6 +1,7 @@
 // Notifications as jobs (spec 6 features 3 and 12): one job per channel, delivered by the
 // Notifier with retries; a channel that is gone is reported so it can be removed.
 import { parseEmailAddress } from "../domain/email.ts";
+import { isNtfyTopic } from "../domain/ntfy.ts";
 import { isNotification, type Notification } from "../domain/notification.ts";
 import { parsePushSubscription } from "../domain/push.ts";
 import { REMINDER_KINDS } from "../domain/reminders.ts";
@@ -96,7 +97,7 @@ function isCarriedReminder(value: unknown): value is CarriedReminder {
 
 /**
  * A carried subscription is checked like a new one: it must still point at a push service; a
- * carried address must still be one plain address.
+ * carried address must still be one plain address, a carried topic one the app could have made.
  */
 function isNotificationTarget(value: unknown): value is NotificationTarget {
   if (typeof value !== "object" || value === null) return false;
@@ -109,6 +110,15 @@ function isNotificationTarget(value: unknown): value is NotificationTarget {
       email !== null &&
       typeof email.address === "string" &&
       parseEmailAddress(email.address).ok
+    );
+  }
+  if ("ntfy" in target) {
+    const ntfy = target.ntfy as Record<string, unknown> | null;
+    return (
+      typeof ntfy === "object" &&
+      ntfy !== null &&
+      isNtfyTopic(ntfy.topic) &&
+      typeof ntfy.server === "string"
     );
   }
   return "subscription" in target && parsePushSubscription(target.subscription).ok;

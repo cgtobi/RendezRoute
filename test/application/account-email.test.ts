@@ -5,16 +5,19 @@ import { warnExpiringAccounts } from "../../src/application/account-data.ts";
 import { type AccountDeps, finishLogin, startLogin } from "../../src/application/accounts.ts";
 import {
   accountEmailSetting,
-  accountNoticeHandler,
-  emailConfirmationHandler,
   emailSetting,
-  openEmailLink,
   requestAccountEmail,
   turnOffAccountEmail,
   useAccountEmail,
-  useEmailLink,
 } from "../../src/application/email.ts";
+import {
+  accountNoticeHandler,
+  channelConfirmationHandler,
+  openChannelLink,
+  useChannelLink,
+} from "../../src/application/channel-links.ts";
 import { emailNewLink, newLinkAddress } from "../../src/application/links.ts";
+import { requestAccountNtfy } from "../../src/application/ntfy.ts";
 import { removePerson } from "../../src/application/host.ts";
 import { createPlan } from "../../src/application/plans.ts";
 import type { ProviderAccount } from "../../src/application/ports.ts";
@@ -68,7 +71,8 @@ beforeEach(() => {
       channels,
       jobs,
       reminders: new FakeSentReminders(),
-      email: { links, outbox, reportAlerts: false },
+      links,
+      email: { outbox, reportAlerts: false },
     },
   };
 });
@@ -88,11 +92,9 @@ async function logIn(account = anna, deviceToken?: string): Promise<string> {
 }
 
 /** Runs the queued jobs of one type through its handler. */
-async function run(type: "emailConfirmation" | "accountNotice") {
+async function run(type: "channelConfirmation" | "accountNotice") {
   const handle =
-    type === "emailConfirmation"
-      ? emailConfirmationHandler({ ...deps, outbox })
-      : accountNoticeHandler({ ...deps, outbox });
+    type === "channelConfirmation" ? channelConfirmationHandler(deps) : accountNoticeHandler(deps);
   for (const [id, job] of jobs.jobs) {
     if (job.type !== type) continue;
     jobs.jobs.delete(id);
@@ -106,7 +108,7 @@ async function accountAddress(device: string, address = "anna@example.org", lang
   const channel = [...channels.channels.values()].find(
     (c) => c.kind === "email" && "identityId" in c.owner && c.address === address,
   );
-  await useEmailLink(deps, { token: links.tokenFor(channel?.id ?? ""), action: "confirm" });
+  await useChannelLink(deps, { token: links.tokenFor(channel?.id ?? ""), action: "confirm" });
   return channel?.id ?? "";
 }
 
@@ -126,16 +128,17 @@ describe("the account's address (decision D31)", () => {
       address: "anna@example.org",
       language: "de",
     });
-    await run("emailConfirmation");
+    await run("channelConfirmation");
     // In the language the address was set in: an account has none of its own.
     expect(outbox.sent).toEqual(["confirm anna@example.org account de"]);
     const id = [...channels.channels.keys()][0] ?? "";
-    expect(await openEmailLink(deps, links.tokenFor(id))).toEqual({
+    expect(await openChannelLink(deps, links.tokenFor(id))).toEqual({
       kind: "confirm",
+      channel: "email",
       subject: { kind: "account" },
       address: "a…@example.org",
     });
-    await useEmailLink(deps, { token: links.tokenFor(id), action: "confirm" });
+    await useChannelLink(deps, { token: links.tokenFor(id), action: "confirm" });
     expect(await accountEmailSetting(deps, { deviceToken: device })).toEqual({
       kind: "setting",
       state: "on",
@@ -179,7 +182,7 @@ describe("the account's address (decision D31)", () => {
       address: "anna@example.org",
       verified: true,
     });
-    expect([...jobs.jobs.values()].filter((job) => job.type === "emailConfirmation")).toEqual([]);
+    expect([...jobs.jobs.values()].filter((job) => job.type === "channelConfirmation")).toEqual([]);
 
     // Another browser that is not logged in gets no offer.
     const visitor = await respond(deps, {
@@ -239,7 +242,7 @@ describe("the expiry warning (spec 3.10, decision I52)", () => {
     const withSmtp = deps.notify;
     deps = {
       ...deps,
-      notify: withSmtp && { ...withSmtp, email: { links, outbox: undefined, reportAlerts: false } },
+      notify: withSmtp && { ...withSmtp, links, email: { outbox: undefined, reportAlerts: false } },
     };
     expect(await warnExpiringAccounts(deps)).toBe(0);
     // The next day, with SMTP: nothing was marked, so the warning follows.
@@ -277,6 +280,34 @@ describe("the expiry warning (spec 3.10, decision I52)", () => {
     const used = clock.now();
     clock.set(new Date(used.getTime() + 352 * DAY_MS).toISOString());
     expect(await warnExpiringAccounts(deps)).toBe(1);
+  });
+});
+
+describe("the expiry warning by ntfy (decision D33)", () => {
+  it("reaches the account's confirmed topic too, in the language it was set up in", async () => {
+    const sent: string[] = [];
+    const ntfyOutbox = {
+      confirmation: () => Promise.resolve("sent" as const),
+      accountExpiry: (to: { topic: string; language: string }) => (
+        sent.push(`expiry ${to.topic} ${to.language}`),
+        Promise.resolve("sent" as const)
+      ),
+    };
+    deps = {
+      ...deps,
+      notify: deps.notify && {
+        ...deps.notify,
+        ntfy: { outbox: ntfyOutbox, server: new URL("https://ntfy.example.org/") },
+      },
+    };
+    const device = await logIn();
+    await requestAccountNtfy(deps, { deviceToken: device, language: "fr" });
+    const channel = [...channels.channels.values()].find((c) => c.kind === "ntfy");
+    await useChannelLink(deps, { token: links.tokenFor(channel?.id ?? ""), action: "confirm" });
+    clock.set(new Date(fixtureNow.getTime() + 352 * DAY_MS).toISOString());
+    expect(await warnExpiringAccounts(deps)).toBe(1);
+    await run("accountNotice");
+    expect(sent).toEqual([`expiry ${channel?.kind === "ntfy" ? channel.topic : ""} fr`]);
   });
 });
 

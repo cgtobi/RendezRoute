@@ -162,7 +162,7 @@ export interface NotificationChannelsTable {
   plan_id: string | null;
   /** An account's own channel (spec 4), from v1.0 step 6b. */
   identity_id: Generated<string | null>;
-  kind: "webpush" | "email";
+  kind: "webpush" | "email" | "ntfy" | "telegram" | "fediverse_dm";
   config_enc: string;
   verified: Generated<number>;
   created_at: string;

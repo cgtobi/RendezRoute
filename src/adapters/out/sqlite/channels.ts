@@ -1,13 +1,15 @@
-// Notification channels in SQLite (spec 4): push subscriptions and email addresses encrypted with
-// the field cipher, deleted with their response or plan by the foreign keys.
+// Notification channels in SQLite (spec 4): push subscriptions, email addresses and ntfy topics
+// encrypted with the field cipher, deleted with their response, plan or account by the foreign keys.
 import type { Selectable } from "kysely";
 import type {
   ChannelOwner,
   ChannelRepository,
+  ConfirmableChannel,
   EmailChannel,
   FieldCipher,
   IdGenerator,
   NotificationChannel,
+  NtfyChannel,
   PushChannel,
 } from "../../../application/ports.ts";
 import type { PushSubscription } from "../../../domain/push.ts";
@@ -52,6 +54,15 @@ export function createChannelRepository(
     if (row.kind === "webpush") {
       return { ...base, kind: "webpush", subscription: config as PushSubscription };
     }
+    if (row.kind === "ntfy") {
+      const { topic, server, language } = config as {
+        topic: string;
+        server?: string;
+        language?: string;
+      };
+      return { ...base, kind: "ntfy", topic, server: server ?? "", language };
+    }
+    if (row.kind !== "email") throw new Error(`Unknown channel kind ${row.kind}.`);
     const { address, language } = config as { address: string; language?: string };
     return { ...base, kind: "email", address, language };
   };
@@ -69,6 +80,35 @@ export function createChannelRepository(
 
   const find = async (owner: ChannelOwner, endpoint: string) =>
     (await pushChannels(owner)).find((channel) => channel.subscription.endpoint === endpoint);
+
+  /** An owner has one channel of each confirmable kind: a new one replaces it, unconfirmed. */
+  const replace = async (
+    owner: ChannelOwner,
+    kind: ConfirmableChannel["kind"],
+    config: Record<string, string | undefined>,
+  ) => {
+    const id = ids.rowId();
+    const [column, value] = ownerColumn(owner);
+    await db.transaction().execute(async (trx) => {
+      await trx
+        .deleteFrom("notification_channels")
+        .where("kind", "=", kind)
+        .where(column, "=", value)
+        .execute();
+      await trx
+        .insertInto("notification_channels")
+        .values({
+          id,
+          ...ownerColumns(owner),
+          kind,
+          config_enc: cipher.encrypt(JSON.stringify(config), CONFIG),
+          verified: 0,
+          created_at: now().toISOString(),
+        })
+        .execute();
+    });
+    return id;
+  };
 
   const emailFor = async (owner: ChannelOwner) =>
     (await listFor(owner)).find((channel): channel is EmailChannel => channel.kind === "email");
@@ -136,28 +176,15 @@ export function createChannelRepository(
       await db.deleteFrom("notification_channels").where("id", "=", id).execute();
     },
 
-    async setEmail(owner, address, language) {
-      const id = ids.rowId();
-      const [column, value] = ownerColumn(owner);
-      await db.transaction().execute(async (trx) => {
-        await trx
-          .deleteFrom("notification_channels")
-          .where("kind", "=", "email")
-          .where(column, "=", value)
-          .execute();
-        await trx
-          .insertInto("notification_channels")
-          .values({
-            id,
-            ...ownerColumns(owner),
-            kind: "email",
-            config_enc: cipher.encrypt(JSON.stringify({ address, language }), CONFIG),
-            verified: 0,
-            created_at: now().toISOString(),
-          })
-          .execute();
-      });
-      return id;
+    setEmail: (owner, address, language) => replace(owner, "email", { address, language }),
+
+    setNtfy: (owner, { topic, server }, language) =>
+      replace(owner, "ntfy", { topic, server, language }),
+
+    async ntfyFor(owner) {
+      return (await listFor(owner)).find(
+        (channel): channel is NtfyChannel => channel.kind === "ntfy",
+      );
     },
 
     async confirm(id) {

@@ -51,6 +51,7 @@ describe("createPlan (spec 5 feature 1)", () => {
       newDeviceToken: "token-0002",
       deleteAt: new Date("2026-06-21T05:30:00Z"),
       timeZone: "Europe/Berlin",
+      shareButtons: ["copy", "native", "whatsApp"],
     });
     const plan = await repos.plans.findById("plan-0001");
     expect(plan).toMatchObject({

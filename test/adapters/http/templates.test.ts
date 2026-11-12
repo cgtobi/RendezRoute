@@ -48,9 +48,9 @@ describe("keeping a template (spec 3.10)", () => {
 });
 
 describe("the template page (spec 3.10)", () => {
-  async function withTemplate() {
+  async function withTemplate(overrides: Record<string, string> = {}) {
     const test = await setup();
-    const { planId } = await createPlanViaUi(test.host, { keepAsTemplate: "1" });
+    const { planId } = await createPlanViaUi(test.host, { keepAsTemplate: "1", ...overrides });
     await deleteViaUi(test.host, planId);
     const [templateId = ""] = templateLinks(await (await test.host.get("/")).text());
     return { ...test, templateId };
@@ -95,6 +95,56 @@ describe("the template page (spec 3.10)", () => {
     });
     expect(past.status).toBe(422);
     expect(await past.text()).toContain('value="2026-05-01"');
+  });
+
+  it("keeps the share buttons chosen: on repeating, and in its own edit form (decision D41)", async () => {
+    const { host, templateId } = await withTemplate({ shareNative: "", shareWhatsApp: "" });
+    const ticked = (html: string, name: string) =>
+      new RegExp(`<input[^>]*name="${name}"[^>]*checked`).test(html);
+    const share = (html: string) =>
+      /<section class="share"[\s\S]*?<\/section>/.exec(html)?.[0] ?? "";
+
+    const page = await (await host.get(`/templates/${templateId}`)).text();
+    const form = await (await host.get(`/templates/${templateId}/edit`)).text();
+    expect(ticked(form, "shareCopy")).toBe(true);
+    expect(ticked(form, "shareNative")).toBe(false);
+    expect(ticked(form, "shareWhatsApp")).toBe(false);
+
+    const repeated = await host.postForm(`/templates/${templateId}/repeat`, {
+      ...hiddenFields(page),
+      date: "2026-07-05",
+      time: "08:00",
+    });
+    const links = await repeated.text();
+    expect(share(links)).toContain("data-share-copy");
+    expect(share(links)).not.toContain("data-share-native");
+    expect(share(links)).not.toContain("wa.me");
+
+    // Editing the template changes the choice for later repeats.
+    await host.postForm(`/templates/${templateId}/edit`, {
+      ...hiddenFields(form),
+      posterName: "Anna",
+      activity: "run",
+      title: "Long run",
+      time: "06:45",
+      timeZone: "Europe/Berlin",
+      areaLabel: "Englischer Garten",
+      dropPolicy: "no_drop",
+      primaryColor: "#2E5BFF",
+      secondaryColor: "#FF7A45",
+      retentionDays: "14",
+      shareWhatsApp: "1",
+    });
+    const edited = await (await host.get(`/templates/${templateId}/edit`)).text();
+    expect(ticked(edited, "shareCopy")).toBe(false);
+    expect(ticked(edited, "shareWhatsApp")).toBe(true);
+    const again = await host.postForm(`/templates/${templateId}/repeat`, {
+      ...hiddenFields(page),
+      nonce: "another-nonce-0000000",
+      date: "2026-07-12",
+      time: "08:00",
+    });
+    expect(share(await again.text())).toContain("wa.me");
   });
 
   it("is edited without a date or template options, and deleted", async () => {

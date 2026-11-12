@@ -1,6 +1,7 @@
 // Plan persistence (spec 4). The exact start passes through FieldCipher; Kysely and
 // row types stay inside this adapter (spec 2a).
 import { accessSource } from "./access.ts";
+import { shareButtonsFromText, shareButtonsToText } from "./share-buttons.ts";
 import { type Insertable, type Selectable, sql } from "kysely";
 import type {
   FieldCipher,
@@ -47,6 +48,7 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     elevation_gain_m: plan.elevationGainMeters ?? null,
     ...paceColumns(plan.pace),
     drop_policy: plan.dropPolicy,
+    share_buttons: shareButtonsToText(plan.shareButtons),
     primary_color: plan.colors.primary,
     secondary_color: plan.colors.secondary,
     visibility: plan.visibility,
@@ -82,6 +84,7 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     elevationGainMeters: row.elevation_gain_m ?? undefined,
     pace: paceFrom(row),
     dropPolicy: row.drop_policy,
+    shareButtons: shareButtonsFromText(row.share_buttons),
     colors: colorsFrom(row),
     visibility: row.visibility,
     joinMode: row.join_mode,

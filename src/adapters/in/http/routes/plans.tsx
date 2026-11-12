@@ -5,6 +5,8 @@ import { createPlan, viewPlan, viewPlanTheme } from "../../../../application/pla
 import { viewAccount } from "../../../../application/accounts.ts";
 import { postingNeed } from "../../../../application/posting-rules.ts";
 import { DEFAULT_COLORS } from "../../../../domain/color.ts";
+import { SHARE_BUTTONS } from "../../../../domain/plan.ts";
+import { shareButtonsToInput } from "../../../../domain/plan-edit.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import { previewImage } from "../../../../application/previews.ts";
 import { routeForDownload } from "../../../../application/routes.ts";
@@ -45,6 +47,8 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     activity: "run",
     timeZone: config.defaultTimezone,
     dropPolicy: "no_drop",
+    // Every share button, until the host chooses otherwise (decision D41).
+    ...shareButtonsToInput(SHARE_BUTTONS),
     primaryColor: DEFAULT_COLORS.primary,
     secondaryColor: DEFAULT_COLORS.secondary,
   });
@@ -152,6 +156,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
             title={result.title}
             hostUrl={new URL(`/a/${result.hostToken}`, config.baseUrl).href}
             deletion={formatDate(result.deleteAt, result.timeZone, c.get("language"))}
+            shareButtons={result.shareButtons}
             recapWindowShortened={result.recapWindowShortened}
           />,
           { title: c.get("t")("links.heading") },

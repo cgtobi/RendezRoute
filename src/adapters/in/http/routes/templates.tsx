@@ -221,6 +221,7 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
             title={result.title}
             hostUrl={new URL(`/a/${result.hostToken}`, config.baseUrl).href}
             deletion={formatDate(result.deleteAt, result.timeZone, c.get("language"))}
+            shareButtons={result.shareButtons}
             recapWindowShortened={undefined}
             adjustments={result.adjustments}
           />,

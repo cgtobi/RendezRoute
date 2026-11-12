@@ -36,6 +36,8 @@ export interface PlansTable {
   pace_min_s_per_km: number | null;
   pace_max_s_per_km: number | null;
   drop_policy: DropPolicy;
+  /** Comma-separated, in their order (decision D41). */
+  share_buttons: string;
   primary_color: string;
   secondary_color: string;
   visibility: Visibility;
@@ -98,6 +100,8 @@ export interface PlanTemplatesTable {
   pace_min_s_per_km: number | null;
   pace_max_s_per_km: number | null;
   drop_policy: DropPolicy;
+  /** Comma-separated, in their order (decision D41). */
+  share_buttons: string;
   primary_color: string;
   secondary_color: string;
   visibility: Visibility;

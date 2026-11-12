@@ -243,3 +243,46 @@ describe("upgrading an existing database (migrations 0025 and 0026 rebuild plans
     expect(one("select id from responses")).toEqual([]);
   });
 });
+
+describe("upgrading an existing database (migration 0028 adds the share buttons)", () => {
+  it("gives plans and templates that existed all three buttons", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rendezroute-upgrade-"));
+    dirs.push(dir);
+    const path = join(dir, "rendezroute.db");
+
+    const old = new Kysely<unknown>({
+      dialect: new SqliteDialect({ database: new BetterSqlite3(path) }),
+    });
+    const upTo0027 = Object.fromEntries(
+      Object.entries(migrations).filter(([name]) => name < "0028"),
+    );
+    expect(
+      (
+        await new Migrator({
+          db: old,
+          provider: { getMigrations: () => Promise.resolve(upTo0027) },
+        }).migrateToLatest()
+      ).error,
+    ).toBeUndefined();
+    const t = "2026-06-01T08:00:00.000Z";
+    await sql`insert into plans (id, poster_name, poster_language, activity_type, title, starts_at, timezone, area_label,
+      drop_policy, recap_window, retention_days, delete_at, host_token_hash, created_at, updated_at, visibility)
+      values ('plan-1', 'Anna', 'en', 'run', 'Run', ${t}, 'UTC', 'Park', 'no_drop', '1w', 14, ${t}, 'hash', ${t}, ${t}, 'link')`.execute(
+      old,
+    );
+    await sql`insert into plan_templates (id, poster_name, poster_language, timezone, start_time, activity_type, title,
+      area_label, drop_policy, primary_color, secondary_color, visibility, join_mode, recap_window, retention_days,
+      last_used_at, expires_at, created_at, updated_at)
+      values ('template-1', 'Anna', 'en', 'UTC', '08:00', 'run', 'Run', 'Park', 'no_drop', '#2E5BFF', '#FF7A45', 'link',
+      'open', '1w', 14, ${t}, ${t}, ${t}, ${t})`.execute(old);
+    await old.destroy();
+
+    const upgraded = await openDatabase(path);
+    open.push(upgraded);
+    for (const table of ["plans", "plan_templates"]) {
+      expect(upgraded.sqlite.prepare(`select share_buttons from ${table}`).pluck().all()).toEqual([
+        "copy,native,whatsApp",
+      ]);
+    }
+  });
+});

@@ -65,7 +65,7 @@ export const en = {
     "“Use my location” asks your browser for your position and only fills in the form; it is sent only when you submit the form.",
   "privacy.locationMap":
     "With maps on, the map then moves to your position, so your browser loads map images of that area from the map service.",
-  "privacy.share": "WhatsApp and X are contacted only when you use their share links.",
+  "privacy.share": "WhatsApp is contacted only when you use its share link.",
   "privacy.previews":
     "When a plan link is shared in a chat app, the app fetches the plan’s title, time, meeting area, distance, pace and a preview image. Chat apps may keep this preview after the plan is deleted.",
   "privacy.logsHeading": "Logs and abuse protection",
@@ -153,6 +153,12 @@ export const en = {
     "Runs: pace per mile, for example 9:00 to 9:30. Rides: speed in mph, for example 15 to 18.",
   "form.paceFrom": "From",
   "form.paceTo": "To",
+  "form.shareButtons": "Share buttons on the plan page",
+  "form.shareCopy": "Copy link",
+  "form.shareNative": "The device’s share menu (on phones)",
+  "form.shareWhatsApp": "WhatsApp",
+  "form.shareButtonsHint":
+    "Only the plan’s link is shared. Where the device has a share menu, it replaces the WhatsApp button.",
   "form.visibility": "Who can find this plan",
   "form.visibilityLink": "Only people with the link",
   "form.visibilityPublic": "Anyone: listed in Nearby on this site",
@@ -235,7 +241,7 @@ export const en = {
   "form.gpx": "Route (GPX file, optional)",
   "form.gpxTrim": "Hide the start and end of the route",
   "form.gpxTrimHint":
-    "Removes the route near where your recording started and ended, for example your home. Removed parts are never stored.",
+    "Where the meeting point has a spot on the map, the route is cut to start there, and to end there if it comes back. Any other start or end, for example your home, is hidden by the distance chosen here. What is removed is never stored.",
   "form.gpxTrimOff": "Show the whole route",
   "form.gpxTrimMeters": "Hide {meters} m at each end",
   "form.gpxTrimKilometers": "Hide {km} km at each end",

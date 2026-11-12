@@ -1,14 +1,20 @@
 // Share helpers (spec 5 feature 4): copy and Web Share need JavaScript, so their buttons start
-// hidden; the WhatsApp and X links work without it. Where the device can share, its share sheet
-// already offers those apps, so their links go (decision D30).
+// hidden; the WhatsApp link works without it. Where the host offers the share sheet and the device
+// can share, the sheet already offers that app, so its link goes (decisions D30, D41).
 import { shareButtons } from "./share-buttons.ts";
 
 export function initShare(): void {
-  const show = shareButtons({
-    share: typeof navigator.share === "function",
-    copy: navigator.clipboard !== undefined,
-  });
   for (const section of document.querySelectorAll<HTMLElement>("[data-share]")) {
+    const native = section.querySelector<HTMLButtonElement>("[data-share-native]");
+    const copy = section.querySelector<HTMLButtonElement>("[data-share-copy]");
+    const apps = section.querySelectorAll<HTMLElement>("[data-share-app]");
+    const show = shareButtons({
+      supports: {
+        share: typeof navigator.share === "function",
+        copy: navigator.clipboard !== undefined,
+      },
+      offered: { native: native !== null, copy: copy !== null, whatsApp: apps.length > 0 },
+    });
     const url = section.dataset.url ?? "";
     const title = section.dataset.title ?? "";
     const status = section.querySelector<HTMLElement>("[data-status]");
@@ -16,11 +22,8 @@ export function initShare(): void {
       if (status !== null) status.textContent = text ?? "";
     };
 
-    for (const app of section.querySelectorAll<HTMLElement>("[data-share-app]")) {
-      app.hidden = !show.apps;
-    }
+    for (const app of apps) app.hidden = !show.apps;
 
-    const native = section.querySelector<HTMLButtonElement>("[data-share-native]");
     if (native !== null && show.native) {
       native.hidden = false;
       native.addEventListener("click", () => {
@@ -30,7 +33,6 @@ export function initShare(): void {
       });
     }
 
-    const copy = section.querySelector<HTMLButtonElement>("[data-share-copy]");
     if (copy !== null && show.copy) {
       copy.hidden = false;
       copy.addEventListener("click", () => {
@@ -40,5 +42,7 @@ export function initShare(): void {
         );
       });
     }
+    // Starts hidden unless it holds the WhatsApp link; shown once a button in it can be used.
+    section.hidden = !show.section;
   }
 }

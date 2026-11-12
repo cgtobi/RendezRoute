@@ -29,6 +29,13 @@ export type JoinMode = (typeof JOIN_MODES)[number];
 export const PLAN_STATUSES = ["active", "cancelled"] as const;
 export type PlanStatus = (typeof PLAN_STATUSES)[number];
 
+/**
+ * The share buttons a host can offer on the plan page (spec 5 feature 4, decisions D30, D41):
+ * copy link, the device's share sheet and a WhatsApp link, in that order.
+ */
+export const SHARE_BUTTONS = ["copy", "native", "whatsApp"] as const;
+export type ShareButton = (typeof SHARE_BUTTONS)[number];
+
 export const DROP_POLICIES = ["no_drop", "drop"] as const;
 export type DropPolicy = (typeof DROP_POLICIES)[number];
 

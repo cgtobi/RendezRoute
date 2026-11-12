@@ -17,6 +17,8 @@ import {
   type DropPolicy,
   JOIN_MODES,
   type JoinMode,
+  SHARE_BUTTONS,
+  type ShareButton,
   type Visibility,
 } from "./plan.ts";
 import { fitRecapWindow } from "./recap.ts";
@@ -66,7 +68,18 @@ export const PLAN_INPUT_FIELDS = [
   // Checkboxes, "1" when ticked (spec 3.10 Templates).
   "keepAsTemplate",
   "templateIncludePrivate",
+  // Checkboxes, "1" when ticked: the share buttons on the plan page (decision D41).
+  "shareCopy",
+  "shareNative",
+  "shareWhatsApp",
 ] as const;
+
+/** The checkbox of each share button (decision D41). */
+export const SHARE_BUTTON_FIELDS = {
+  copy: "shareCopy",
+  native: "shareNative",
+  whatsApp: "shareWhatsApp",
+} as const satisfies Record<ShareButton, (typeof PLAN_INPUT_FIELDS)[number]>;
 
 /** Raw form values; empty strings mean "not given". */
 export type PlanInput = Record<(typeof PLAN_INPUT_FIELDS)[number], string>;
@@ -97,6 +110,8 @@ export interface PlanDraft {
   recapWindow: RecapWindow;
   deleteAt: Date;
   template: TemplateOption;
+  /** What the plan page offers for sharing it, chosen by the host (decision D41). */
+  shareButtons: ShareButton[];
 }
 
 /** "Keep as repeatable template", and whether it includes the exact start and route (spec 3.10). */
@@ -121,6 +136,20 @@ export function validateTemplateOption(
   return errors.length > 0
     ? { ok: false, errors }
     : { ok: true, value: { keep, includePrivate: keep && includePrivate } };
+}
+
+/** The share checkboxes; anything but empty or "1" is invalid (decision D41). */
+export function validateShareButtons(
+  input: Pick<PlanInput, (typeof SHARE_BUTTON_FIELDS)[ShareButton]>,
+): { ok: true; value: ShareButton[] } | { ok: false; errors: FieldError[] } {
+  const errors: FieldError[] = [];
+  const chosen = SHARE_BUTTONS.filter((button) => {
+    const field = SHARE_BUTTON_FIELDS[button];
+    const value = input[field].trim();
+    if (value !== "" && value !== "1") errors.push({ field, code: "choice_invalid" });
+    return value === "1";
+  });
+  return errors.length > 0 ? { ok: false, errors } : { ok: true, value: chosen };
 }
 
 /** Decision D7. */
@@ -311,6 +340,8 @@ export function validatePlanInput(
       : choice("recapWindow", RECAP_WINDOWS, input.recapWindow.trim());
   const template = validateTemplateOption(input);
   if (!template.ok) errors.push(...template.errors);
+  const shareButtons = validateShareButtons(input);
+  if (!shareButtons.ok) errors.push(...shareButtons.errors);
 
   if (
     errors.length > 0 ||
@@ -326,7 +357,8 @@ export function validatePlanInput(
     !primary.ok ||
     !secondary.ok ||
     retentionDays === undefined ||
-    !template.ok
+    !template.ok ||
+    !shareButtons.ok
   ) {
     return { ok: false, errors };
   }
@@ -356,6 +388,7 @@ export function validatePlanInput(
           : fitRecapWindow(chosenWindow, retentionDays),
       deleteAt: deleteAt(startsAt, retentionDays),
       template: template.value,
+      shareButtons: shareButtons.value,
     },
   };
 }

@@ -28,7 +28,10 @@ export async function setRoute(
   const now = deps.clock.now();
   if (editScope(plan, now) !== "all") return { kind: "not_allowed" };
 
-  const parsed = readRoute(deps, request.gpx, request.routeTrim);
+  const parsed = readRoute(deps, request.gpx, {
+    routeTrim: request.routeTrim,
+    meetingPoint: plan.exactStart?.point,
+  });
   if (!parsed.ok) return { kind: "invalid", code: parsed.error };
   const input = applyRouteDefaults(
     planToInput(plan, "metric"),

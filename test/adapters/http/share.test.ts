@@ -14,7 +14,7 @@ const shareSection = (html: string) =>
   /<section class="share"[\s\S]*?<\/section>/.exec(html)?.[0] ?? "";
 
 describe("share helpers (spec 5 feature 4)", () => {
-  it("offer WhatsApp and X links with the plan's address, which work without JavaScript", async () => {
+  it("offer a WhatsApp link with the plan's address, which works without JavaScript, and no X link (decision D41)", async () => {
     const { host, planId } = await setup();
     const share = shareSection(await (await host.get(`/p/${planId}`)).text());
     const url = `https://runs.example.org/p/${planId}`;
@@ -24,12 +24,10 @@ describe("share helpers (spec 5 feature 4)", () => {
         "&amp;",
       ),
     );
-    expect(share).toContain(
-      `href="https://x.com/intent/post?text=${encodeURIComponent("Easy & early")}&amp;url=${encodeURIComponent(url)}"`,
-    );
+    expect(share).not.toContain("x.com");
     expect(share).toContain('rel="noopener noreferrer"');
-    // Marked, so the script can hide them where the device's share sheet offers the apps.
-    expect(share.match(/<a class="button secondary" data-share-app=""/g)).toHaveLength(2);
+    // Marked, so the script can hide it where the device's share sheet offers the app.
+    expect(share.match(/<a class="button secondary" data-share-app=""/g)).toHaveLength(1);
   });
 
   it("add copy and Web Share buttons that only the script reveals", async () => {
@@ -57,6 +55,65 @@ describe("share helpers (spec 5 feature 4)", () => {
   it("never share the host link", async () => {
     const { html, hostPath } = await setup();
     expect(shareSection(html)).not.toContain(hostPath);
+  });
+});
+
+describe("share buttons chosen by the host (decision D41)", () => {
+  const ticked = (html: string, name: string) =>
+    new RegExp(`<input[^>]*name="${name}"[^>]*checked`).test(html);
+
+  it("are all offered on a new plan, and only those chosen are shown", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const form = await (await host.get("/new")).text();
+    for (const name of ["shareCopy", "shareNative", "shareWhatsApp"]) {
+      expect(ticked(form, name)).toBe(true);
+    }
+    const { planId, html } = await createPlanViaUi(host, {
+      shareNative: "",
+      shareWhatsApp: "",
+    });
+    for (const page of [html, await (await host.get(`/p/${planId}`)).text()]) {
+      const share = shareSection(page);
+      expect(share).toContain("data-share-copy");
+      expect(share).not.toContain("data-share-native");
+      expect(share).not.toContain("wa.me");
+    }
+    // The host page shows the choice as it is stored.
+    const hostPage = await (await host.get(`/p/${planId}/host`)).text();
+    expect(ticked(hostPage, "shareCopy")).toBe(true);
+    expect(ticked(hostPage, "shareWhatsApp")).toBe(false);
+  });
+
+  it("keep the section hidden when only buttons that need JavaScript are chosen (decision D41)", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const only = (overrides: Record<string, string>) =>
+      createPlanViaUi(host, { shareCopy: "", shareNative: "", shareWhatsApp: "", ...overrides });
+    for (const choice of [
+      { shareCopy: "1" },
+      { shareNative: "1" },
+      { shareCopy: "1", shareNative: "1" },
+    ]) {
+      const { planId, html } = await only(choice);
+      for (const page of [html, await (await host.get(`/p/${planId}`)).text()]) {
+        expect(shareSection(page)).toMatch(/^<section [^>]*\bhidden=""/);
+      }
+    }
+    // The WhatsApp link works without JavaScript, so its section shows.
+    const { html } = await only({ shareWhatsApp: "1", shareCopy: "1" });
+    expect(shareSection(html)).not.toMatch(/^<section [^>]*\bhidden/);
+  });
+
+  it("can all be turned off, leaving no share section", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const { planId } = await createPlanViaUi(host, {
+      shareCopy: "",
+      shareNative: "",
+      shareWhatsApp: "",
+    });
+    expect(shareSection(await (await host.get(`/p/${planId}`)).text())).toBe("");
   });
 });
 

@@ -162,13 +162,13 @@ describe("routes on the host page (decision D10)", () => {
 describe("hiding the start and end of a route (decision D13)", () => {
   const TRIM_OPTIONS = ["0", "200", "500", "1000"].map((m) => `<option value="${m}"`);
 
-  it("offers the choice next to both upload fields, off by default", async () => {
+  it("offers the choice next to both upload fields, 500 m by default (decision D40)", async () => {
     const { host, planId } = await setup();
     for (const path of ["/new", `/p/${planId}/host`]) {
       const html = await (await host.get(path)).text();
       expect(html).toContain('name="gpxTrim"');
       for (const option of TRIM_OPTIONS) expect(html).toContain(option);
-      expect(html).toContain('<option value="0" selected="">');
+      expect(html).toContain('<option value="500" selected="">');
     }
   });
 
@@ -216,5 +216,67 @@ describe("hiding the start and end of a route (decision D13)", () => {
     expect(response.status).toBe(303);
     const gpx = await (await host.get(`/p/${planId}/route.gpx`)).text();
     expect(gpx).toMatch(/<trkseg>\s*<trkpt lat="46.502"/);
+  });
+});
+
+describe("a form posted without the hiding choice (decisions D13, D40)", () => {
+  it("means no hiding: the route is kept whole, however the browser's 500 m default looks", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const created = await createWithGpx(host, sampleGpx({ count: 10 }));
+    const planId = /\/p\/([A-Za-z0-9_-]{22})/.exec(await created.text())?.[1] ?? "";
+    const gpx = await (await host.get(`/p/${planId}/route.gpx`)).text();
+    expect(gpx).toMatch(/<trkseg>\s*<trkpt lat="47.12345"/);
+    expect(gpx).toContain('lat="47.13245"');
+
+    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
+    await host.postMultipart(
+      `/p/${planId}/host/route`,
+      { _csrf: csrf },
+      { gpx: { name: "new.gpx", content: sampleGpx({ lat: 46.5, count: 10 }) } },
+    );
+    const replaced = await (await host.get(`/p/${planId}/route.gpx`)).text();
+    expect(replaced).toMatch(/<trkseg>\s*<trkpt lat="46.5"/);
+  });
+});
+
+describe("cutting a route to the meeting point (decision D40)", () => {
+  // The recording starts at home (47.12345) and passes the meeting point 7 points (≈780 m) on.
+  const meeting = { exactLat: "47.13060", exactLng: "10.98765", distanceKm: "" };
+  const firstPoint = (gpx: string) => /<trkpt lat="([\d.]+)"/.exec(gpx)?.[1];
+
+  it("stores the route from the meeting point on, never the way there", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const hidden = await host.hiddenFields("/new");
+    const created = await host.postMultipart(
+      "/new",
+      { ...hidden, ...planForm(meeting), gpxTrim: "500" },
+      { gpx: { name: "run.gpx", content: sampleGpx({ count: 20 }) } },
+    );
+    const planId = /\/p\/([A-Za-z0-9_-]{22})/.exec(await created.text())?.[1] ?? "";
+    const gpx = await (await host.get(`/p/${planId}/route.gpx`)).text();
+    expect(firstPoint(gpx)).toBe("47.13045");
+    for (const before of ["47.12345", "47.12645", "47.12945"]) expect(gpx).not.toContain(before);
+    // The far end is hidden as chosen: the last 500 m are gone.
+    expect(gpx).not.toContain('lat="47.14245"');
+    expect(gpx).not.toContain('lat="47.13845"');
+  });
+
+  it("cuts routes uploaded on the host page the same way", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const created = await createWithGpx(host, sampleGpx({ lat: 46.5 }), meeting);
+    const planId = /\/p\/([A-Za-z0-9_-]{22})/.exec(await created.text())?.[1] ?? "";
+    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
+    await host.postMultipart(
+      `/p/${planId}/host/route`,
+      { _csrf: csrf, gpxTrim: "0" },
+      { gpx: { name: "new.gpx", content: sampleGpx({ count: 20 }) } },
+    );
+    const gpx = await (await host.get(`/p/${planId}/route.gpx`)).text();
+    expect(firstPoint(gpx)).toBe("47.13045");
+    // Hiding off: the far end stays.
+    expect(gpx).toContain('lat="47.14245"');
   });
 });

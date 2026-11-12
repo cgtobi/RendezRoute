@@ -68,7 +68,7 @@ export const fr: Messages = {
     "« Utiliser ma position » demande votre position à votre navigateur et remplit seulement le formulaire, qui ne l’envoie que si vous le validez.",
   "privacy.locationMap":
     "Si les cartes sont activées, la carte se déplace ensuite vers votre position, et votre navigateur charge donc des images de cette zone depuis le service de cartes.",
-  "privacy.share": "WhatsApp et X ne sont contactés que si vous utilisez leurs liens de partage.",
+  "privacy.share": "WhatsApp n’est contacté que si vous utilisez son lien de partage.",
   "privacy.previews":
     "Quand le lien d’une sortie est partagé dans une messagerie, celle-ci récupère le titre, l’heure, la zone de rendez-vous, la distance, l’allure et une image d’aperçu. Les messageries peuvent conserver cet aperçu après la suppression de la sortie.",
   "privacy.logsHeading": "Journaux et protection contre les abus",
@@ -161,6 +161,12 @@ export const fr: Messages = {
     "Course à pied : allure par mile, par exemple 9:00 à 9:30. Vélo : vitesse en mph, par exemple 15 à 18.",
   "form.paceFrom": "De",
   "form.paceTo": "À",
+  "form.shareButtons": "Boutons de partage sur la page de la sortie",
+  "form.shareCopy": "Copier le lien",
+  "form.shareNative": "Le menu de partage de l’appareil (sur téléphone)",
+  "form.shareWhatsApp": "WhatsApp",
+  "form.shareButtonsHint":
+    "Seul le lien de la sortie est partagé. Là où l’appareil a un menu de partage, il remplace le bouton WhatsApp.",
   "form.visibility": "Qui peut trouver cette sortie",
   "form.visibilityLink": "Seulement les personnes ayant le lien",
   "form.visibilityPublic": "Tout le monde : listée dans « À proximité » sur ce site",
@@ -245,7 +251,7 @@ export const fr: Messages = {
   "form.gpx": "Parcours (fichier GPX, facultatif)",
   "form.gpxTrim": "Masquer le début et la fin du parcours",
   "form.gpxTrimHint":
-    "Retire le parcours autour du départ et de l’arrivée de votre enregistrement, par exemple votre domicile. Les parties retirées ne sont jamais enregistrées.",
+    "Si le point de rendez-vous a un emplacement sur la carte, le parcours est coupé pour commencer là, et pour y finir s’il y revient. Tout autre départ ou arrivée, par exemple votre domicile, est masqué sur la distance choisie ici. Ce qui est retiré n’est jamais enregistré.",
   "form.gpxTrimOff": "Afficher tout le parcours",
   "form.gpxTrimMeters": "Masquer {meters} m à chaque extrémité",
   "form.gpxTrimKilometers": "Masquer {km} km à chaque extrémité",

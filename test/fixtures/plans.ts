@@ -30,6 +30,9 @@ export const sampleInput: PlanInput = {
   recapWindow: "",
   keepAsTemplate: "",
   templateIncludePrivate: "",
+  shareCopy: "1",
+  shareNative: "1",
+  shareWhatsApp: "1",
 };
 
 export function samplePlan(overrides: Partial<Plan> = {}, input: Partial<PlanInput> = {}): Plan {

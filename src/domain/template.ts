@@ -62,6 +62,7 @@ export function templateFromPlan(
     colors: plan.colors,
     retentionDays: plan.retentionDays,
     recapWindow: plan.recapWindow,
+    shareButtons: plan.shareButtons,
     lastUsedAt: now,
     expiresAt: templateExpiresAt(now),
     createdAt: now,

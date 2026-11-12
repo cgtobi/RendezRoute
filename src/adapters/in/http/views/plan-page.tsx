@@ -176,7 +176,9 @@ export function PlanPage(props: {
             </section>
           )}
 
-        {view.status !== "cancelled" && <ShareLinks t={t} url={props.planUrl} title={view.title} />}
+        {view.status !== "cancelled" && (
+          <ShareLinks t={t} url={props.planUrl} title={view.title} buttons={view.shareButtons} />
+        )}
       </div>
 
       <div class="plan-side">

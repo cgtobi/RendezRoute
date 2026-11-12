@@ -3,9 +3,14 @@
 import type { Child } from "hono/jsx";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { ACTIVITY_TYPES } from "../../../../domain/activity.ts";
-import { CHOOSABLE_VISIBILITIES, DROP_POLICIES, JOIN_MODES } from "../../../../domain/plan.ts";
+import {
+  CHOOSABLE_VISIBILITIES,
+  DROP_POLICIES,
+  JOIN_MODES,
+  SHARE_BUTTONS,
+} from "../../../../domain/plan.ts";
 import type { FieldError, PlanField, PlanInput } from "../../../../domain/plan-input.ts";
-import { PLAN_LIMITS } from "../../../../domain/plan-input.ts";
+import { PLAN_LIMITS, SHARE_BUTTON_FIELDS } from "../../../../domain/plan-input.ts";
 import { defaultRecapWindow, defaultRetentionDays } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
@@ -324,6 +329,12 @@ export function PlanForm({
         />
       )}
 
+      <ShareFieldset
+        t={t}
+        values={values}
+        error={SHARE_BUTTONS.map((button) => errorFor(SHARE_BUTTON_FIELDS[button])).find(Boolean)}
+      />
+
       <Field field="note" label={t("form.note")} hint={t("form.publicHint")}>
         <textarea id={id("note")} name="note" rows={4} maxlength={PLAN_LIMITS.note}>
           {values.note}
@@ -393,6 +404,34 @@ export function PlanForm({
         {confirmAcceptPending === undefined ? submitLabel : t("host.acceptPendingConfirm")}
       </button>
     </form>
+  );
+}
+
+/** "Share buttons on the plan page", chosen by the host (decision D41). */
+function ShareFieldset({
+  t,
+  values,
+  error,
+}: {
+  t: Translate;
+  values: PlanInput;
+  error: FieldError | undefined;
+}) {
+  return (
+    <fieldset class={error === undefined ? undefined : "field-invalid"}>
+      <legend>{t("form.shareButtons")}</legend>
+      {SHARE_BUTTONS.map((button) => {
+        const field = SHARE_BUTTON_FIELDS[button];
+        return (
+          <label class="choice">
+            <input type="checkbox" name={field} value="1" checked={values[field] === "1"} />
+            {t(`form.${field}`)}
+          </label>
+        );
+      })}
+      <p class="hint">{t("form.shareButtonsHint")}</p>
+      {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+    </fieldset>
   );
 }
 

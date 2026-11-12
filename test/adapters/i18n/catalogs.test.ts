@@ -39,10 +39,13 @@ const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
     "recap.link",
     // The service's name (decision D34).
     "telegram.label",
+    // The service's name (decision D41).
+    "form.shareWhatsApp",
   ],
   fr: [
     ...UNITS,
     "telegram.label",
+    "form.shareWhatsApp",
     "form.date",
     "form.latitude",
     "form.longitude",

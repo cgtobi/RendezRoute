@@ -31,6 +31,9 @@ const valid: PlanInput = {
   recapWindow: "",
   keepAsTemplate: "",
   templateIncludePrivate: "",
+  shareCopy: "1",
+  shareNative: "1",
+  shareWhatsApp: "1",
 };
 
 function draft(overrides: Partial<PlanInput> = {}) {
@@ -67,6 +70,7 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
       recapWindow: "1w",
       deleteAt: new Date("2026-06-21T05:30:00Z"),
       template: { keep: false, includePrivate: false },
+      shareButtons: ["copy", "native", "whatsApp"],
     });
   });
 
@@ -82,6 +86,21 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
     });
     expect(errors({ keepAsTemplate: "on" })).toEqual([
       { field: "keepAsTemplate", code: "choice_invalid" },
+    ]);
+  });
+
+  it("takes the share buttons ticked, in their order; none ticked offers none (decision D41)", () => {
+    expect(draft({ shareNative: "", shareCopy: "" }).shareButtons).toEqual(["whatsApp"]);
+    expect(draft({ shareCopy: "", shareNative: "", shareWhatsApp: "" }).shareButtons).toEqual([]);
+  });
+
+  it("rejects share checkbox values other than empty or 1, like the template checkboxes", () => {
+    expect(errors({ shareCopy: "yes", shareNative: "2", shareWhatsApp: "1" })).toEqual([
+      { field: "shareCopy", code: "choice_invalid" },
+      { field: "shareNative", code: "choice_invalid" },
+    ]);
+    expect(errors({ shareWhatsApp: "on" })).toEqual([
+      { field: "shareWhatsApp", code: "choice_invalid" },
     ]);
   });
 

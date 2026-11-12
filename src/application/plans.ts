@@ -9,6 +9,8 @@ import {
   validatePlanInput,
 } from "../domain/plan-input.ts";
 import type { PostingMode } from "../domain/invite.ts";
+import type { GeoPoint } from "../domain/geo.ts";
+import type { ShareButton } from "../domain/plan.ts";
 import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
 import type { RecapWindow } from "../domain/schedule.ts";
 import { audienceFor, canSee } from "../domain/visibility.ts";
@@ -24,7 +26,7 @@ import {
   parseRouteTrim,
   type Route,
   routeStats,
-  trimRoute,
+  routeToKeep,
 } from "../domain/route.ts";
 import { canRespond } from "../domain/responding.ts";
 import { type DeviceDeps, ensureDevice, resolveDevice } from "./devices.ts";
@@ -157,16 +159,22 @@ export type CreatePlanResult =
   /** The posting rules do not let this device create plans (spec 7 Moderation). */
   | { kind: "not_allowed"; needs: PostingNeed };
 
-/** Parses an upload and hides its ends as chosen; trimmed points are never stored (D13). */
+/**
+ * Parses an upload, cuts it to the meeting point where the plan has one with coordinates (D40)
+ * and hides its other ends as chosen (D13); what is cut or hidden is never stored.
+ */
 export function readRoute(
   deps: Pick<PlanDeps, "routeParser">,
   gpx: Uint8Array,
-  routeTrim: string | undefined,
+  {
+    routeTrim,
+    meetingPoint,
+  }: { routeTrim: string | undefined; meetingPoint: GeoPoint | undefined },
 ): Result<Route, RouteParseError | "route_trimmed_away" | "choice_invalid"> {
   const trim = parseRouteTrim(routeTrim ?? "");
   if (!trim.ok) return trim;
   const parsed = deps.routeParser.parse(gpx);
-  return parsed.ok ? trimRoute(parsed.value, trim.value) : parsed;
+  return parsed.ok ? routeToKeep(parsed.value, { trimMeters: trim.value, meetingPoint }) : parsed;
 }
 
 export async function createPlan(
@@ -199,7 +207,10 @@ export async function createPlan(
     // the route can add errors but never remove them.
     const typed = validatePlanInput(input, rules, request.units);
     if (!typed.ok) return { kind: "invalid", errors: typed.errors };
-    const parsed = readRoute(deps, request.gpx, request.routeTrim);
+    const parsed = readRoute(deps, request.gpx, {
+      routeTrim: request.routeTrim,
+      meetingPoint: typed.value.exactStart?.point,
+    });
     if (!parsed.ok) return { kind: "invalid", errors: [{ field: "gpx", code: parsed.error }] };
     route = parsed.value;
     input = applyRouteDefaults(input, routeStats(route), "fill");
@@ -245,6 +256,8 @@ export interface CreatedPlan {
   deleteAt: Date;
   /** Canonical IANA zone of the plan, for displaying dates. */
   timeZone: string;
+  /** For the share buttons on the links page, as the host chose them (decision D41). */
+  shareButtons: readonly ShareButton[];
 }
 
 /** Whether a creation nonce is well-formed and unused (decision I9). */
@@ -313,6 +326,7 @@ export async function storeNewPlan(
     newDeviceToken: newToken,
     deleteAt: plan.deleteAt,
     timeZone: plan.timeZone,
+    shareButtons: plan.shareButtons,
   };
 }
 

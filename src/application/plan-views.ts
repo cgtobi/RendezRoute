@@ -4,7 +4,14 @@ import type { ActivityType } from "../domain/activity.ts";
 import type { HexColor } from "../domain/color.ts";
 import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { PaceBand } from "../domain/pace.ts";
-import type { DropPolicy, JoinMode, Plan, PlanStatus, Visibility } from "../domain/plan.ts";
+import type {
+  DropPolicy,
+  JoinMode,
+  Plan,
+  PlanStatus,
+  ShareButton,
+  Visibility,
+} from "../domain/plan.ts";
 import type { PlanEventView } from "./ports.ts";
 import {
   canRate,
@@ -60,6 +67,8 @@ export interface PlanViewForViewer {
   joinMode: JoinMode;
   /** Who can find the plan (spec 3.3): the header names it when it is not link-only. */
   visibility: Visibility;
+  /** The share buttons the host offers on the plan page (decision D41). */
+  shareButtons: readonly ShareButton[];
   note: string | undefined;
   colors: { primary: HexColor; secondary: HexColor };
   status: PlanStatus;
@@ -264,6 +273,7 @@ export function viewForViewer(plan: Plan, counts: Counts): PlanViewForViewer {
     dropPolicy: plan.dropPolicy,
     joinMode: plan.joinMode,
     visibility: plan.visibility,
+    shareButtons: plan.shareButtons,
     note: plan.note,
     colors: plan.colors,
     status: plan.status,

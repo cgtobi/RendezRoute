@@ -1,5 +1,6 @@
 // Template persistence (spec 4, 3.10 Templates). Exact start and route pass through FieldCipher.
 import { accessSource } from "./access.ts";
+import { shareButtonsFromText, shareButtonsToText } from "./share-buttons.ts";
 import type { Insertable, Selectable, Transaction } from "kysely";
 import type { FieldCipher, NewTemplate, TemplateRepository } from "../../../application/ports.ts";
 import type { Route } from "../../../domain/route.ts";
@@ -41,6 +42,7 @@ function toRow(cipher: FieldCipher, template: PlanTemplate): Row {
     elevation_gain_m: template.elevationGainMeters ?? null,
     ...paceColumns(template.pace),
     drop_policy: template.dropPolicy,
+    share_buttons: shareButtonsToText(template.shareButtons),
     primary_color: template.colors.primary,
     secondary_color: template.colors.secondary,
     visibility: template.visibility,
@@ -118,6 +120,7 @@ export function createTemplateRepository(
     elevationGainMeters: row.elevation_gain_m ?? undefined,
     pace: paceFrom(row),
     dropPolicy: row.drop_policy,
+    shareButtons: shareButtonsFromText(row.share_buttons),
     joinMode: row.join_mode,
     visibility: row.visibility,
     colors: colorsFrom(row),

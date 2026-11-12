@@ -2,6 +2,7 @@
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { RecapWindow } from "../../../../domain/schedule.ts";
 import { RecapShortenedNotice } from "./recap.tsx";
+import type { ShareButton } from "../../../../domain/plan.ts";
 import { ShareLinks } from "./share.tsx";
 import type { TemplateAdjustment } from "../../../../domain/template.ts";
 import { TemplateAdjustments } from "./templates.tsx";
@@ -17,6 +18,8 @@ export function LinksPage(props: {
   recapWindowShortened: RecapWindow | undefined;
   /** What a repeat adjusted to the current rules (spec 3.10). */
   adjustments?: readonly TemplateAdjustment[];
+  /** As the host chose them for the plan (decision D41). */
+  shareButtons: readonly ShareButton[];
 }) {
   const { t } = props;
   return (
@@ -27,7 +30,7 @@ export function LinksPage(props: {
       <p class="link-box">
         <a href={props.planPath}>{props.planUrl}</a>
       </p>
-      <ShareLinks t={t} url={props.planUrl} title={props.title} />
+      <ShareLinks t={t} url={props.planUrl} title={props.title} buttons={props.shareButtons} />
       <h2>{t("links.hostLink")}</h2>
       <p class="link-box">
         <code>{props.hostUrl}</code>

@@ -66,7 +66,7 @@ export const de: Messages = {
     "„Meinen Standort verwenden“ fragt deinen Browser nach deiner Position und füllt nur das Formular aus; gesendet wird sie erst, wenn du das Formular abschickst.",
   "privacy.locationMap":
     "Bei eingeschalteten Karten springt die Karte danach zu deiner Position, sodass dein Browser Kartenbilder dieser Gegend vom Kartendienst lädt.",
-  "privacy.share": "WhatsApp und X werden nur kontaktiert, wenn du ihre Teilen-Links benutzt.",
+  "privacy.share": "WhatsApp wird nur kontaktiert, wenn du den Teilen-Link benutzt.",
   "privacy.previews":
     "Wird ein Link zu einem Treffen in einer Chat-App geteilt, ruft die App Titel, Zeit, Treffgebiet, Distanz, Pace und ein Vorschaubild ab. Chat-Apps können diese Vorschau auch nach dem Löschen des Treffens behalten.",
   "privacy.logsHeading": "Protokolle und Schutz vor Missbrauch",
@@ -158,6 +158,12 @@ export const de: Messages = {
     "Läufe: Pace pro Meile, zum Beispiel 9:00 bis 9:30. Radfahrten: Tempo in mph, zum Beispiel 15 bis 18.",
   "form.paceFrom": "Von",
   "form.paceTo": "Bis",
+  "form.shareButtons": "Teilen-Knöpfe auf der Seite des Treffens",
+  "form.shareCopy": "Link kopieren",
+  "form.shareNative": "Teilen-Menü des Geräts (auf Handys)",
+  "form.shareWhatsApp": "WhatsApp",
+  "form.shareButtonsHint":
+    "Geteilt wird nur der Link zum Treffen. Wo das Gerät ein Teilen-Menü hat, ersetzt es den WhatsApp-Knopf.",
   "form.visibility": "Wer das Treffen finden kann",
   "form.visibilityLink": "Nur, wer den Link hat",
   "form.visibilityPublic": "Alle: gelistet unter „In der Nähe“ auf dieser Seite",
@@ -245,7 +251,7 @@ export const de: Messages = {
   "form.gpx": "Route (GPX-Datei, optional)",
   "form.gpxTrim": "Anfang und Ende der Route ausblenden",
   "form.gpxTrimHint":
-    "Entfernt die Route rund um Start und Ende deiner Aufzeichnung, zum Beispiel deine Wohnung. Entfernte Teile werden nie gespeichert.",
+    "Hat der Treffpunkt eine Stelle auf der Karte, wird die Route so gekürzt, dass sie dort beginnt, und dort endet, wenn sie zurückkommt. Jeder andere Start und jedes andere Ende, zum Beispiel deine Wohnung, wird um die hier gewählte Strecke ausgeblendet. Entferntes wird nie gespeichert.",
   "form.gpxTrimOff": "Ganze Route zeigen",
   "form.gpxTrimMeters": "{meters} m an jedem Ende ausblenden",
   "form.gpxTrimKilometers": "{km} km an jedem Ende ausblenden",

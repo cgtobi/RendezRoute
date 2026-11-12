@@ -64,6 +64,8 @@ describe("templateFromPlan (spec 3.10 Templates)", () => {
         "posterName",
         "recapWindow",
         "retentionDays",
+        // The host's choice of share buttons (decision D41).
+        "shareButtons",
         "startTime",
         "timeZone",
         "title",

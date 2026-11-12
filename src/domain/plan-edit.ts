@@ -2,9 +2,10 @@
 import { paceStyleFor } from "./activity.ts";
 import { formatPace, formatSpeed } from "./pace.ts";
 import { metersToDistance, metersToElevation, type Units } from "./units.ts";
-import type { Plan } from "./plan.ts";
+import { type Plan, SHARE_BUTTONS, type ShareButton } from "./plan.ts";
 import {
   type FieldError,
+  SHARE_BUTTON_FIELDS,
   type PlanDraft,
   type PlanInput,
   type PlanRules,
@@ -51,6 +52,7 @@ export type PlanDetails = Pick<
   | "colors"
   | "retentionDays"
   | "recapWindow"
+  | "shareButtons"
 >;
 
 type DateAndOptionFields = "date" | "time" | "keepAsTemplate" | "templateIncludePrivate";
@@ -109,7 +111,20 @@ export function detailsToInput(
     secondaryColor: plan.colors.secondary,
     retentionDays: String(plan.retentionDays),
     recapWindow: plan.recapWindow,
+    ...shareButtonsToInput(plan.shareButtons),
   };
+}
+
+/** The share checkboxes for a choice (decision D41). */
+export function shareButtonsToInput(
+  buttons: readonly ShareButton[],
+): Pick<PlanInput, (typeof SHARE_BUTTON_FIELDS)[ShareButton]> {
+  return Object.fromEntries(
+    SHARE_BUTTONS.map((button) => [
+      SHARE_BUTTON_FIELDS[button],
+      buttons.includes(button) ? "1" : "",
+    ]),
+  ) as Pick<PlanInput, (typeof SHARE_BUTTON_FIELDS)[ShareButton]>;
 }
 
 /** Full edit before the start; a changed start must be in the future (spec 3.1 Start date). */

@@ -286,3 +286,98 @@ describe("upgrading an existing database (migration 0028 adds the share buttons)
     }
   });
 });
+
+describe("upgrading an existing database (migration 0029 adds remote participants)", () => {
+  it("keeps web responses as they are and allows one remote response per actor and plan", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rendezroute-upgrade-"));
+    dirs.push(dir);
+    const path = join(dir, "rendezroute.db");
+
+    const old = new Kysely<unknown>({
+      dialect: new SqliteDialect({ database: new BetterSqlite3(path) }),
+    });
+    const upTo0028 = Object.fromEntries(
+      Object.entries(migrations).filter(([name]) => name < "0029"),
+    );
+    expect(
+      (
+        await new Migrator({
+          db: old,
+          provider: { getMigrations: () => Promise.resolve(upTo0028) },
+        }).migrateToLatest()
+      ).error,
+    ).toBeUndefined();
+    const t = "2026-06-01T08:00:00.000Z";
+    for (const id of ["plan-1", "plan-2"]) {
+      await sql`insert into plans (id, poster_name, poster_language, activity_type, title, starts_at, timezone, area_label,
+        drop_policy, recap_window, retention_days, delete_at, host_token_hash, created_at, updated_at, visibility)
+        values (${id}, 'Anna', 'en', 'run', 'Run', ${t}, 'UTC', 'Park', 'no_drop', '1w', 14, ${t}, ${`hash-${id}`}, ${t}, ${t}, 'link')`.execute(
+        old,
+      );
+    }
+    await sql`insert into devices values ('device-1', 'token-hash', ${t}, ${t}, null)`.execute(old);
+    await sql`insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language, created_at, updated_at)
+      values ('response-1', 'plan-1', 'joined', 'enc', 'manage-hash', 'en', ${t}, ${t})`.execute(
+      old,
+    );
+    await old.destroy();
+
+    const upgraded = await openDatabase(path);
+    open.push(upgraded);
+    expect(
+      upgraded.sqlite
+        .prepare("select id, remote_actor_hmac, remote_actor_enc from responses")
+        .all(),
+    ).toEqual([{ id: "response-1", remote_actor_hmac: null, remote_actor_enc: null }]);
+
+    // A remote response: no device, random manage token hash, no creation nonce.
+    const insert = (
+      id: string,
+      planId: string,
+      hmac: string | null,
+      enc: string | null,
+      deviceId: string | null = null,
+    ) =>
+      upgraded.sqlite
+        .prepare(
+          `insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, device_id, language,
+            remote_actor_hmac, remote_actor_enc, created_at, updated_at)
+           values (?, ?, 'joined', 'enc', ?, ?, 'en', ?, ?, ?, ?)`,
+        )
+        .run(id, planId, `manage-${id}`, deviceId, hmac, enc, t, t);
+    expect(() => insert("remote-1", "plan-1", "actor-hmac", "enc")).not.toThrow();
+    expect(() => insert("remote-2", "plan-1", "actor-hmac", "enc")).toThrow(
+      /UNIQUE constraint failed/,
+    );
+    expect(() => insert("remote-3", "plan-2", "actor-hmac", "enc")).not.toThrow();
+    expect(() => insert("web-2", "plan-1", null, null)).not.toThrow();
+    expect(() => insert("web-3", "plan-1", null, null)).not.toThrow();
+    expect(() => insert("half-1", "plan-1", "other-hmac", null)).toThrow(/CHECK constraint failed/);
+    expect(() => insert("half-2", "plan-1", null, "enc")).toThrow(/CHECK constraint failed/);
+    expect(() => insert("with-device", "plan-1", "third-hmac", "enc", "device-1")).toThrow(
+      /CHECK constraint failed/,
+    );
+
+    expect(
+      upgraded.sqlite
+        .prepare(
+          "select name from sqlite_master where type = 'index' and tbl_name = 'responses' and name not like 'sqlite_%' order by name",
+        )
+        .pluck()
+        .all(),
+    ).toEqual([
+      "responses_identity_id",
+      "responses_plan_device",
+      "responses_plan_kind",
+      "responses_plan_remote_actor",
+      "responses_remote_actor",
+    ]);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
+
+    // Deleting a plan cascades to its remote responses.
+    upgraded.sqlite.prepare("delete from plans where id = 'plan-1'").run();
+    expect(
+      upgraded.sqlite.prepare("select id from responses where plan_id = 'plan-2'").pluck().all(),
+    ).toEqual(["remote-3"]);
+  });
+});

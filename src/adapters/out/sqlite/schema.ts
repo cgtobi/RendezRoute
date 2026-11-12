@@ -128,6 +128,10 @@ export interface ResponsesTable {
   language: string;
   previous_kind: ResponseKind | null;
   creation_nonce: string | null;
+  /** Remote participants (decision D42): keyed hash of the actor identifier; null for web responses. */
+  remote_actor_hmac: Generated<string | null>;
+  /** Remote participants: the actor's identifier, address and inboxes, encrypted (migration 0029). */
+  remote_actor_enc: Generated<string | null>;
   created_at: string;
   updated_at: string;
 }

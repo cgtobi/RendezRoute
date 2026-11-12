@@ -30,6 +30,7 @@ import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import { resolveDevice } from "./devices.ts";
 import { deletionNotices, notifyResponders, notifyResponse } from "./notify.ts";
+import { answerRemoteResponse } from "./remote-participants.ts";
 import { ratingResultDue, ratingResultFor, type RatingResultView } from "./plan-views.ts";
 import { freezeRatingTally } from "./ratings.ts";
 import type { PlanDeps } from "./plans.ts";
@@ -223,6 +224,7 @@ export async function editPlan(
     if (accepted.ok) {
       await deps.responses.update(accepted.value);
       await notifyResponse(deps, updated, accepted.value, "accepted");
+      await answerRemoteResponse(deps, updated, accepted.value, "accept");
     }
   }
   if (isMaterialChange(plan, updated)) await notifyResponders(deps, updated, "changed");
@@ -278,6 +280,7 @@ function personAction<Done extends string>(
     done,
     notice,
     deletesContributions = false,
+    answer,
   }: {
     /** The result's kind. */
     done: Done;
@@ -285,6 +288,8 @@ function personAction<Done extends string>(
     notice?: NotificationKind;
     /** Removal deletes the person's recap contributions and rating (spec 3.5, 6a). */
     deletesContributions?: boolean;
+    /** What a remote participant is told (decision D42); sent last, once the change is stored. */
+    answer?: (changed: PlanResponse) => "accept" | "reject" | undefined;
   },
 ) {
   return async (
@@ -305,6 +310,8 @@ function personAction<Done extends string>(
       await deps.ratings.deleteForResponse(response.id);
     }
     if (notice !== undefined) await notifyResponse(deps, plan, changed.value, notice);
+    const told = answer?.(changed.value);
+    if (told !== undefined) await answerRemoteResponse(deps, plan, changed.value, told);
     return { kind: done };
   };
 }
@@ -314,19 +321,26 @@ export const removePerson = personAction((response, _plan, now) => removeRespons
   done: "removed",
   notice: "removed",
   deletesContributions: true,
+  answer: () => "reject",
 });
 
 /** Undo of a rejection or removal (spec 3.5, decision I37). */
-export const restorePerson = personAction(requests.undoRejectionOrRemoval, { done: "restored" });
+export const restorePerson = personAction(requests.undoRejectionOrRemoval, {
+  done: "restored",
+  // A remote participant is told it is in again; only a pending request stays unanswered.
+  answer: (changed) => (changed.kind === "requested" ? undefined : "accept"),
+});
 
 /** A pending request becomes a participant, before the start only (spec 3.1, 3.4). */
 export const acceptRequest = personAction(requests.acceptRequest, {
   done: "accepted",
   notice: "accepted",
+  answer: () => "accept",
 });
 
 /** A rejected requester sees what interested people see and cannot request again (spec 3.5). */
 export const rejectRequest = personAction(requests.rejectRequest, {
   done: "rejected",
   notice: "rejected",
+  answer: () => "reject",
 });

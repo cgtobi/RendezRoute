@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { createFieldCipher } from "../../../../src/adapters/out/crypto/field-cipher.ts";
 import { createKeyring } from "../../../../src/adapters/out/crypto/keyring.ts";
+import { createLookupHasher } from "../../../../src/adapters/out/crypto/lookup-hasher.ts";
 import { type Database, openDatabase } from "../../../../src/adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "../../../../src/adapters/out/sqlite/devices.ts";
 import { createJobQueue } from "../../../../src/adapters/out/sqlite/jobs.ts";
@@ -34,7 +35,7 @@ async function seedPlanWithResponse() {
     creationNonce: "nonce-plan",
     hostDeviceId: "device-1",
   });
-  await createResponseRepository(database, cipher).create({
+  await createResponseRepository(database, cipher, createLookupHasher(randomBytes(32))).create({
     response: {
       id: "response-1",
       planId: "plan-1",

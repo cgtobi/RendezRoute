@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { createFieldCipher } from "../../../../src/adapters/out/crypto/field-cipher.ts";
 import { createKeyring } from "../../../../src/adapters/out/crypto/keyring.ts";
+import { createLookupHasher } from "../../../../src/adapters/out/crypto/lookup-hasher.ts";
 import { createCalendarFeedRepository } from "../../../../src/adapters/out/sqlite/calendar-feeds.ts";
 import { type Database, openDatabase } from "../../../../src/adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "../../../../src/adapters/out/sqlite/devices.ts";
@@ -20,7 +21,8 @@ let database: Database;
 const cipher = createFieldCipher(createKeyring(1, [[1, randomBytes(32)]]));
 const devices = () => createDeviceRepository(database);
 const plans = () => createPlanRepository(database, cipher);
-const responses = () => createResponseRepository(database, cipher);
+const responses = () =>
+  createResponseRepository(database, cipher, createLookupHasher(randomBytes(32)));
 const templates = () => createTemplateRepository(database, cipher);
 const host = (planId: string) => ({ role: "host" as const, planId });
 

@@ -64,7 +64,7 @@ export async function followerCount(deps: FollowDeps, localActor: string): Promi
   return (await deps.posterActors?.followers.count(localActor)) ?? 0;
 }
 
-function inboxesOnOwnServer(actor: RemoteActor): boolean {
+export function inboxesOnOwnServer(actor: RemoteActor): boolean {
   const origin = originOf(actor.id);
   return (
     origin !== undefined &&

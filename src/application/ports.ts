@@ -377,6 +377,28 @@ export interface FederationPublisher {
   ): Promise<void>;
   /** `Delete` for a plan, to the audience that got it. */
   withdrawPlan(publication: PlanPublication, followers: readonly RemoteActor[]): Promise<void>;
+  /**
+   * `Accept` or `Reject` for a remote actor's `Join` or `TentativeAccept` of a plan, from the
+   * plan's attributed actor, wrapping the activity answered (decision D42).
+   */
+  answerJoin(
+    answer: "accept" | "reject",
+    sender: { localActor: string; planId: string; responseId?: string | undefined },
+    participant: { actor: RemoteActor; join: RemoteJoin },
+  ): Promise<void>;
+  /**
+   * `Update` of a plan's `Event` to remote participants, one activity each, addressed to that
+   * person only, whatever the plan's audience (D42).
+   */
+  updateForParticipants(
+    plan: { planId: string; localActor: string; event: PlanEventView; language: string },
+    participants: readonly RemoteActor[],
+  ): Promise<void>;
+  /** `Delete` of a plan to remote participants, one activity each; outlives the plan (D42). */
+  deleteForParticipants(
+    plan: { planId: string; localActor: string },
+    participants: readonly RemoteActor[],
+  ): Promise<void>;
 }
 
 /** New signing keys for a poster actor, serialized for storage (decision D36). */
@@ -566,7 +588,33 @@ export interface NewResponse {
   identityId?: string | undefined;
 }
 
+/** How a remote actor answered: `Join`, or `TentativeAccept` for interested (decision D42). */
+export interface RemoteJoin {
+  /** The activity's identifier, which `Accept` and `Reject` wrap. */
+  id: string;
+  kind: "join" | "tentative";
+}
+
+/** A response made from the fediverse (decision D42): no device, the actor stored encrypted. */
+export interface RemoteParticipant {
+  response: PlanResponse;
+  actor: RemoteActor;
+  join: RemoteJoin;
+}
+
 export interface ResponseRepository {
+  /** Stores a remote actor's response; its manage token hash is never given to anyone. */
+  createRemote(input: RemoteParticipant & { manageTokenHash: string }): Promise<void>;
+  /** The actor's response to the plan, whatever its kind (a rejected one blocks). */
+  findRemote(planId: string, actorId: string): Promise<RemoteParticipant | undefined>;
+  /** Who a remote response belongs to; undefined for a response made on the web. */
+  remoteOf(responseId: string): Promise<{ actor: RemoteActor; join: RemoteJoin } | undefined>;
+  /** Every remote response of a plan, of any kind. */
+  listRemote(planId: string): Promise<RemoteParticipant[]>;
+  /** Every response of a remote actor, across plans (its `Delete`, spec 3.7). */
+  listByRemoteActor(actorId: string): Promise<PlanResponse[]>;
+  /** A repeated `Join` or `TentativeAccept`: the kind and the activity answered change. */
+  updateRemote(participant: RemoteParticipant): Promise<void>;
   /** Stores the response and links the device as manager, in one transaction. */
   create(input: NewResponse): Promise<void>;
   findById(id: string): Promise<PlanResponse | undefined>;

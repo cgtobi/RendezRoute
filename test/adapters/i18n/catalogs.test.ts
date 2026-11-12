@@ -136,3 +136,15 @@ describe("French typography (decision I31)", () => {
     expect(wrong.map(([key, text]) => `${key}: ${text}`)).toEqual([]);
   });
 });
+
+describe("German typography", () => {
+  it("has no narrow no-break space: that is French spacing before ; : ! ?", () => {
+    const wrong = Object.entries(catalogs.de as Readonly<Record<string, Message>>).flatMap(
+      ([key, message]) =>
+        forms(message)
+          .filter((text) => text.includes(" "))
+          .map((text) => `${key}: ${text}`),
+    );
+    expect(wrong).toEqual([]);
+  });
+});

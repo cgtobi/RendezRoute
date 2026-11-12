@@ -1,10 +1,11 @@
-// The instance in the fediverse (spec 7 ActivityPub; decisions D36, D38; 0.9 steps 9a, 9b, 10a),
-// with Fedify: the instance and poster actors and their WebFinger entries, a plan as an `Event` for
-// ActivityPub clients, and the inboxes, which verify signatures and take follows: `Follow` and its
-// `Undo`, and an actor's `Delete` of itself; joining plans comes with step 11. Followers are
-// counted, never listed. The Event is built from the plan page's viewer read model (spec 3.6), so
-// it can hold nothing a viewer may not see. Fedify's types stay in the adapters (spec 2a).
-import { createFederation, type Federation, type KvStore } from "@fedify/fedify";
+// The instance in the fediverse (spec 7 ActivityPub; decisions D36, D38, D42; 0.9 steps 9a, 9b,
+// 10a, 11a): the instance and poster actors and their WebFinger entries, a plan as an `Event` for
+// ActivityPub clients, and the inboxes, which verify signatures and take follows (`Follow` and its
+// `Undo`), joins of plans (`Join`, `TentativeAccept` and their `Undo`, or `Leave`) and an actor's
+// `Delete` of itself. Followers are counted, never listed. The Event is built from the plan page's
+// viewer read model (spec 3.6), so it can hold nothing a viewer may not see. Fedify's types stay
+// in the adapters (spec 2a).
+import { type Context, createFederation, type Federation, type KvStore } from "@fedify/fedify";
 import {
   Application,
   Delete,
@@ -12,12 +13,15 @@ import {
   Event,
   Follow,
   isActor,
+  Join,
+  Leave,
   Person,
+  TentativeAccept,
   Tombstone,
   Undo,
 } from "@fedify/fedify/vocab";
 import { type PlanDeps, viewPlan } from "../../../application/plans.ts";
-import type { IdentityRepository, OutboundHttp } from "../../../application/ports.ts";
+import type { IdentityRepository, LookupHasher, OutboundHttp } from "../../../application/ports.ts";
 import {
   planActor,
   posterActor,
@@ -32,6 +36,12 @@ import {
   isFollowable,
   unfollowActor,
 } from "../../../application/following.ts";
+import {
+  forgetRemoteParticipant,
+  joinRemote,
+  leaveRemote,
+} from "../../../application/remote-participants.ts";
+import type { JoinLimits } from "../http/rate-limit.ts";
 import { resolveLanguage } from "../../i18n/i18n.ts";
 import { planEvent } from "../../out/federation/event.ts";
 import {
@@ -55,6 +65,8 @@ export function createInstanceFederation({
   instanceKeys,
   planDeps,
   identities,
+  hasher,
+  joinLimits,
 }: {
   settings: FederationSettings;
   kv: KvStore;
@@ -64,6 +76,10 @@ export function createInstanceFederation({
   planDeps: PlanDeps;
   /** The display names of poster actors. */
   identities: Pick<IdentityRepository, "findById">;
+  /** Keys the processed-activity records, so no address is stored for them. */
+  hasher: LookupHasher;
+  /** Limits on remote joins (decision D42, spec 3.11). */
+  joinLimits: JoinLimits;
 }): Federation<void> {
   const actorDeps = { ...planDeps, identities };
   const { baseUrl } = settings;
@@ -160,6 +176,61 @@ export function createInstanceFederation({
     )
     .setCounter((_ctx, identifier) => followerCount(planDeps, identifier));
 
+  /** The plan an activity's object is, by its address; undefined for anything else. */
+  const planOf = (ctx: Context<void>, objectId: URL | null): string | undefined => {
+    const parsed = objectId === null ? null : ctx.parseUri(objectId);
+    return parsed?.type === "object" && parsed.class === Event ? parsed.values.id : undefined;
+  };
+
+  /** A remote actor's `Join` or `TentativeAccept` of a plan (decision D42). */
+  const joinListener =
+    (kind: "join" | "tentative") =>
+    async (ctx: Context<void>, join: Join | TentativeAccept): Promise<void> => {
+      const planId = planOf(ctx, join.objectId);
+      if (join.id === null || planId === undefined) return;
+      if (join.actorId === null) return;
+      // A server may join as often as the web may respond. Beyond that nothing is done, not even
+      // fetching the actor, and the listener fails: Fedify answers with an error and does not
+      // note the activity as processed, so the server sends it again later. Fedify has checked
+      // that the signer is this actor, so its server cannot be a false one.
+      if (!joinLimits.origin.take(join.actorId.origin).ok) throw new JoinsLimited();
+      const remote = await join.getActor(ctx);
+      if (remote === null || !isActor(remote) || remote.inboxId === null) return;
+      // The actor document must be the signer's own, or Undo and Delete could never find it.
+      if (remote.id === null || remote.id.href !== join.actorId.href) return;
+      const actor = remote.id.href;
+      await joinRemote(planDeps, {
+        planId,
+        // Taken only when a notice is due; the plan's own cap holds against many servers.
+        mayNotifyHost: (answer) => {
+          // Both must have room before either is spent: no notice, no token.
+          const actorKey = `${planId} ${actor} ${answer}`;
+          if (
+            !joinLimits.notifyActor.check(actorKey).ok ||
+            !joinLimits.notifyPlan.check(planId).ok
+          ) {
+            return false;
+          }
+          joinLimits.notifyActor.take(actorKey);
+          joinLimits.notifyPlan.take(planId);
+          return true;
+        },
+        join: { id: join.id.href, kind },
+        actor: {
+          id: remote.id.href,
+          inbox: remote.inboxId.href,
+          sharedInbox: remote.endpoints?.sharedInbox?.href,
+        },
+        username: remote.preferredUsername?.toString(),
+        name: remote.name?.toString(),
+      });
+    };
+
+  const forgetActor = async (actor: URL) => {
+    await forgetRemoteActor(planDeps, actor.href);
+    await forgetRemoteParticipant(planDeps, actor.href);
+  };
+
   // Fedify checks every signature, and that the signer is the activity's actor, before these run.
   federation
     .setInboxListeners("/actors/{identifier}/inbox", "/inbox")
@@ -180,9 +251,32 @@ export function createInstanceFederation({
         },
       });
     })
+    .on(Join, joinListener("join"))
+    .on(TentativeAccept, joinListener("tentative"))
+    .on(Leave, async (ctx, leave) => {
+      // Mobilizon leaves an event with `Leave`; the signer is the actor, so it is its own leave.
+      const planId = planOf(ctx, leave.objectId);
+      if (planId === undefined || leave.actorId === null) return;
+      await leaveRemote(planDeps, { planId, actorId: leave.actorId.href });
+    })
     .on(Undo, async (ctx, undo) => {
       const follow = await undo.getObject(ctx);
-      if (!(follow instanceof Follow) || undo.actorId === null) return;
+      if (undo.actorId === null) return;
+      if (follow instanceof Join || follow instanceof TentativeAccept) {
+        // Only one's own join can be undone: Fedify trusts an embedded activity of the signer's
+        // server, so its actor is compared here.
+        const planId = planOf(ctx, follow.objectId);
+        if (planId === undefined || follow.actorId?.href !== undo.actorId.href) return;
+        // Naming the activity undone, which a later answer of the actor may have replaced.
+        if (follow.id === null) return;
+        await leaveRemote(planDeps, {
+          planId,
+          actorId: undo.actorId.href,
+          joinId: follow.id.href,
+        });
+        return;
+      }
+      if (!(follow instanceof Follow)) return;
       // Only one's own follow can be undone.
       if (follow.actorId?.href !== undo.actorId.href || follow.objectId === null) return;
       const followed = ctx.parseUri(follow.objectId);
@@ -193,19 +287,32 @@ export function createInstanceFederation({
       });
     })
     .on(Delete, async (_ctx, deleted) => {
-      // An actor deleting itself; what else may be deleted comes with step 11.
+      // An actor deleting itself: it follows nobody and takes part in nothing any more (spec 3.7).
       const self = deletedSelf(deleted);
-      if (self !== undefined) await forgetRemoteActor(planDeps, self.href);
+      if (self !== undefined) await forgetActor(self);
     })
+    // Processed activities are noted under a keyed hash, so no actor or activity address is stored.
+    .withIdempotency((ctx, activity) =>
+      activity.id === null
+        ? null
+        : hasher.hash(`fediverse-activity:${activity.id.href}\n${ctx.recipient ?? ""}`),
+    )
     .onUnverifiedActivity(async (_ctx, activity) => {
       // An account deleted on its server can no longer sign: its key is gone too. Its Delete of
       // itself is believed once its server, asked by us, says the account is gone (spec 3.7).
       const self = activity instanceof Delete ? deletedSelf(activity) : undefined;
       if (self === undefined || !(await actorGone(http, self))) return;
-      await forgetRemoteActor(planDeps, self.href);
+      await forgetActor(self);
       return new Response(null, { status: 202 });
     });
   return federation;
+}
+
+/** A server joined more than its limit allows: to be tried again later. */
+class JoinsLimited extends Error {
+  constructor() {
+    super("too many joins from this server");
+  }
 }
 
 /** The actor of a `Delete` of itself; undefined for any other `Delete`. */

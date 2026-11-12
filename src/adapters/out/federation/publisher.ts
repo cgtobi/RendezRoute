@@ -12,7 +12,10 @@ import {
   Create,
   Delete,
   Follow,
+  Join,
   PUBLIC_COLLECTION,
+  Reject,
+  TentativeAccept,
   Tombstone,
   Update,
 } from "@fedify/fedify/vocab";
@@ -73,7 +76,11 @@ export function createFederationPublisher({
     localActor: string,
     activity: Activity,
     recipients: readonly RemoteActor[],
-    { carryKey = false, planId }: { carryKey?: boolean; planId?: string } = {},
+    {
+      carryKey = false,
+      planId,
+      responseId,
+    }: { carryKey?: boolean; planId?: string; responseId?: string | undefined } = {},
   ): Promise<void> {
     const rsa = (await keysFor(localActor))?.[0];
     // Nothing can be signed for an actor without keys.
@@ -90,8 +97,10 @@ export function createFederationPublisher({
       await jobs.enqueue({
         type: "federationDelivery",
         payload,
-        // A `Create` or `Update` not yet delivered goes with its plan; its `Delete` does not.
+        // A `Create` or `Update` not yet delivered goes with its plan; its `Delete` does not. An
+        // `Accept` or `Reject` goes with the response it answers.
         planId,
+        responseId,
         runAt: now,
         expiresAt: new Date(now.getTime() + DELIVERY_HOURS * 60 * 60 * 1000),
       });
@@ -152,6 +161,64 @@ export function createFederationPublisher({
         followers,
         { planId: publication.planId },
       );
+    },
+
+    async answerJoin(answer, { localActor, planId, responseId }, { actor: remote, join }) {
+      const actor = actorUri(localActor);
+      const Answer = answer === "accept" ? Accept : Reject;
+      // Wrapping what was received, as the remote server knows it by its identifier.
+      const Received = join.kind === "join" ? Join : TentativeAccept;
+      await enqueue(
+        localActor,
+        new Answer({
+          id: new URL(`#${answer}-${ids.rowId()}`, actor),
+          actor,
+          to: new URL(remote.id),
+          object: new Received({
+            id: new URL(join.id),
+            actor: new URL(remote.id),
+            object: planUriOf(baseUrl, planId),
+          }),
+        }),
+        [remote],
+        { planId, responseId },
+      );
+    },
+
+    // One activity per participant, addressed to that person only, so no server learns who else
+    // took part (spec 3.6); delivered to the person's own inbox (its server's shared inbox, which
+    // the body names nobody else for).
+    async updateForParticipants(plan, participants) {
+      const actor = actorUri(plan.localActor);
+      for (const participant of participants) {
+        await enqueue(
+          plan.localActor,
+          new Update({
+            id: new URL(`#update-${ids.rowId()}`, planUriOf(baseUrl, plan.planId)),
+            actor,
+            object: planEvent(plan.event, plan.language, { baseUrl, localActor: plan.localActor }),
+            tos: [new URL(participant.id)],
+          }),
+          [participant],
+          { planId: plan.planId },
+        );
+      }
+    },
+
+    async deleteForParticipants(plan, participants) {
+      const actor = actorUri(plan.localActor);
+      for (const participant of participants) {
+        await enqueue(
+          plan.localActor,
+          new Delete({
+            id: new URL(`#delete-${ids.rowId()}`, planUriOf(baseUrl, plan.planId)),
+            actor,
+            object: new Tombstone({ id: planUriOf(baseUrl, plan.planId) }),
+            tos: [new URL(participant.id)],
+          }),
+          [participant],
+        );
+      }
     },
 
     async withdrawPlan(publication, followers) {

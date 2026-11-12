@@ -82,6 +82,31 @@ export function createRateLimits(now: () => number): RateLimits {
   };
 }
 
+/** Limits on remote `Join`s (decision D42, spec 3.11); keys are kept in memory only. */
+export interface JoinLimits {
+  /** Per remote server, as strict as responding on the web (I32). */
+  origin: RateLimiter;
+  /** Per plan, actor and kind of response: a flip between answers is news once an hour. */
+  notifyActor: RateLimiter;
+  /** Per plan: the host hears of at most this many joins an hour, whatever servers they come from. */
+  notifyPlan: RateLimiter;
+}
+
+/** Notices to one plan's host an hour, however many servers (or subdomains) joins come from. */
+export const PLAN_NOTICES_PER_HOUR = 20;
+
+export function createJoinLimits(now: () => number): JoinLimits {
+  return {
+    origin: createRateLimiter({ capacity: 10, perHour: 30, now }),
+    notifyActor: createRateLimiter({ capacity: 1, perHour: 1, now }),
+    notifyPlan: createRateLimiter({
+      capacity: PLAN_NOTICES_PER_HOUR,
+      perHour: PLAN_NOTICES_PER_HOUR,
+      now,
+    }),
+  };
+}
+
 interface Bucket {
   tokens: number;
   updatedAt: number;

@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { createFieldCipher } from "../../../../src/adapters/out/crypto/field-cipher.ts";
 import { createKeyring } from "../../../../src/adapters/out/crypto/keyring.ts";
+import { createLookupHasher } from "../../../../src/adapters/out/crypto/lookup-hasher.ts";
 import { type Database, openDatabase } from "../../../../src/adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "../../../../src/adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "../../../../src/adapters/out/sqlite/plans.ts";
@@ -36,7 +37,7 @@ async function seed(planId = "plan-1", overrides = {}) {
 }
 
 async function seedResponse() {
-  await createResponseRepository(database, cipher).create({
+  await createResponseRepository(database, cipher, createLookupHasher(randomBytes(32))).create({
     response: {
       id: "response-1",
       planId: "plan-1",
@@ -89,7 +90,9 @@ describe("sent reminders (decision I39)", () => {
       dueAt: DUE,
     });
     await sent.record({ kind: "deletionReminder", planId: "plan-1", dueAt: DUE });
-    await createResponseRepository(database, cipher).delete("response-1");
+    await createResponseRepository(database, cipher, createLookupHasher(randomBytes(32))).delete(
+      "response-1",
+    );
     expect(database.sqlite.prepare("select count(*) from sent_reminders").pluck().get()).toBe(1);
     await plans().delete("plan-1");
     expect(database.sqlite.prepare("select count(*) from sent_reminders").pluck().get()).toBe(0);

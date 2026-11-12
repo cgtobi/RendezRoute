@@ -20,6 +20,8 @@ import type {
   IdentityRepository,
   PendingLogin,
   PendingLoginRepository,
+  RemoteActor,
+  RemoteJoin,
 } from "../../src/application/ports.ts";
 import type { Identity } from "../../src/domain/identity.ts";
 import { type Invite, inviteState } from "../../src/domain/invite.ts";
@@ -55,7 +57,13 @@ export function createFakeRepositories(): {
   const links = new Set<string>();
   const responses = new Map<
     string,
-    { response: PlanResponse; manageTokenHash: string; deviceId: string | undefined }
+    {
+      response: PlanResponse;
+      manageTokenHash: string;
+      deviceId: string | undefined;
+      /** A remote participant (decision D42); `actor` and `join` as the database keeps them. */
+      remote?: { actor: RemoteActor; join: RemoteJoin };
+    }
   >();
   const responseNonces = new Map<string, string>();
   const feeds = new Map<string, CalendarFeed & { tokenHash: string }>();
@@ -723,6 +731,55 @@ export function createFakeRepositories(): {
     },
 
     responses: {
+      async createRemote({ response, actor, join, manageTokenHash }) {
+        // One response per actor and plan, as the unique index says.
+        if (
+          responses.has(response.id) ||
+          [...responses.values()].some(
+            (entry) =>
+              entry.response.planId === response.planId && entry.remote?.actor.id === actor.id,
+          )
+        ) {
+          throw new Error("duplicate key");
+        }
+        responses.set(response.id, {
+          response: copy(response),
+          manageTokenHash,
+          deviceId: undefined,
+          remote: { actor: { ...actor }, join: { ...join } },
+        });
+      },
+      async findRemote(planId, actorId) {
+        const entry = [...responses.values()].find(
+          (candidate) =>
+            candidate.response.planId === planId && candidate.remote?.actor.id === actorId,
+        );
+        return entry?.remote === undefined
+          ? undefined
+          : { response: copy(entry.response), ...structuredClone(entry.remote) };
+      },
+      async remoteOf(responseId) {
+        const remote = responses.get(responseId)?.remote;
+        return remote === undefined ? undefined : structuredClone(remote);
+      },
+      async listRemote(planId) {
+        return [...responses.values()].flatMap((entry) =>
+          entry.response.planId === planId && entry.remote !== undefined
+            ? [{ response: copy(entry.response), ...structuredClone(entry.remote) }]
+            : [],
+        );
+      },
+      async listByRemoteActor(actorId) {
+        return [...responses.values()]
+          .filter((entry) => entry.remote?.actor.id === actorId)
+          .map((entry) => copy(entry.response));
+      },
+      async updateRemote({ response, actor, join }) {
+        const entry = responses.get(response.id);
+        if (entry?.remote === undefined) return;
+        entry.response = copy(response);
+        entry.remote = { actor: { ...actor }, join: { ...join } };
+      },
       async create({ response, manageTokenHash, creationNonce, deviceId, identityId }) {
         if (responses.has(response.id) || responseNonces.has(creationNonce))
           throw new Error("duplicate key");

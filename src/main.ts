@@ -29,7 +29,7 @@ import { runReminders } from "./application/reminders.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
 import { type AccountWiring, createApp } from "./adapters/in/http/app.tsx";
 import { createTokenAdminAuth } from "./adapters/out/admin/token-admin-auth.ts";
-import { createRateLimits } from "./adapters/in/http/rate-limit.ts";
+import { createJoinLimits, createRateLimits } from "./adapters/in/http/rate-limit.ts";
 import {
   SERVICE_CACHE_MS,
   WEATHER_CACHE_MS,
@@ -312,7 +312,7 @@ async function openInstance(
   const planDeps: PlanDeps = {
     plans: createPlanRepository(database, keys.cipher),
     devices: createDeviceRepository(database),
-    responses: createResponseRepository(database, keys.cipher),
+    responses: createResponseRepository(database, keys.cipher, keys.identityLookup),
     routeParser: createGpxRouteParser(),
     tokens: createTokenService(),
     ids,
@@ -465,6 +465,8 @@ export async function startServer(
           instanceKeys: instanceFederation.instanceKeys,
           planDeps,
           identities: accounts.identities,
+          hasher: keys.identityLookup,
+          joinLimits: createJoinLimits(() => planDeps.clock.now().getTime()),
         });
 
   // The first sweep finishes before the server listens, so plans past their deletion

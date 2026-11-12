@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { createFieldCipher } from "../../../../src/adapters/out/crypto/field-cipher.ts";
 import { createKeyring } from "../../../../src/adapters/out/crypto/keyring.ts";
+import { createLookupHasher } from "../../../../src/adapters/out/crypto/lookup-hasher.ts";
 import { type Database, openDatabase } from "../../../../src/adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "../../../../src/adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "../../../../src/adapters/out/sqlite/plans.ts";
@@ -21,7 +22,7 @@ const cipher = createFieldCipher(createKeyring(1, [[1, randomBytes(32)]]));
 const repos = () => ({
   plans: createPlanRepository(database, cipher),
   devices: createDeviceRepository(database),
-  responses: createResponseRepository(database, cipher),
+  responses: createResponseRepository(database, cipher, createLookupHasher(randomBytes(32))),
 });
 
 const response = (overrides: Partial<PlanResponse> = {}): PlanResponse => ({

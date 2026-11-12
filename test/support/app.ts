@@ -11,7 +11,7 @@ import { randomBytes } from "node:crypto";
 import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts";
 import { createApp } from "../../src/adapters/in/http/app.tsx";
 import { createTokenAdminAuth } from "../../src/adapters/out/admin/token-admin-auth.ts";
-import { createRateLimits } from "../../src/adapters/in/http/rate-limit.ts";
+import { createJoinLimits, createRateLimits } from "../../src/adapters/in/http/rate-limit.ts";
 import { generateVapidKeys } from "../../src/adapters/out/crypto/vapid-keys.ts";
 import { createCalendarFeedRepository } from "../../src/adapters/out/sqlite/calendar-feeds.ts";
 import { createChannelRepository } from "../../src/adapters/out/sqlite/channels.ts";
@@ -137,6 +137,7 @@ export async function createTestApp({
           profiles,
           http: federationHttp,
         });
+  const lookupHasher = createLookupHasher(randomBytes(32));
   const channelLinks = createChannelLinks(randomBytes(32));
   const mailer = new FakeMailer();
   const email =
@@ -181,7 +182,7 @@ export async function createTestApp({
   const planDeps: PlanDeps = {
     plans: createPlanRepository(database, cipher),
     devices: createDeviceRepository(database),
-    responses: createResponseRepository(database, cipher),
+    responses: createResponseRepository(database, cipher, lookupHasher),
     routeParser: createGpxRouteParser(),
     tokens: createTokenService(),
     ids,
@@ -199,12 +200,7 @@ export async function createTestApp({
     posterActors: {
       profiles,
       actorKeys: actorKeyFactory,
-      followers: createFollowerRepository(
-        database,
-        cipher,
-        createLookupHasher(randomBytes(32)),
-        ids,
-      ),
+      followers: createFollowerRepository(database, cipher, lookupHasher, ids),
       publications: createPublicationRepository(database),
       publisher: federationOutbound?.publisher,
       enabled: config.federationEnabled,
@@ -255,6 +251,8 @@ export async function createTestApp({
           identities,
           instanceKeys: federationKeys,
           planDeps,
+          hasher: lookupHasher,
+          joinLimits: createJoinLimits(() => clock.now().getTime()),
         });
 
   const app = createApp({

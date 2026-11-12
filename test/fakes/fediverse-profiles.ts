@@ -9,6 +9,7 @@ import type {
   PublicationRepository,
   PublicationState,
   RemoteActor,
+  RemoteJoin,
 } from "../../src/application/ports.ts";
 
 /**
@@ -179,6 +180,24 @@ export class FakePublisher implements FederationPublisher {
     | { kind: "deleteActor"; localActor: string; to: string[] }
     | ({ kind: "create" | "update"; event: PlanEventView; language: string } & SentPlan)
     | ({ kind: "withdraw" } & SentPlan)
+    | {
+        kind: "answer";
+        answer: "accept" | "reject";
+        localActor: string;
+        planId: string;
+        responseId: string | undefined;
+        to: string;
+        join: RemoteJoin;
+      }
+    /** To remote participants only (decision D42). */
+    | {
+        kind: "participantsUpdate";
+        localActor: string;
+        planId: string;
+        event: PlanEventView;
+        to: string[];
+      }
+    | { kind: "participantsDelete"; localActor: string; planId: string; to: string[] }
   )[] = [];
 
   /** What was sent about plans, as kind and audience, e.g. "create public". */
@@ -201,6 +220,50 @@ export class FakePublisher implements FederationPublisher {
 
   withdrawPlan(publication: PlanPublication, followers: readonly RemoteActor[]) {
     this.sent.push({ kind: "withdraw", ...publication, to: followers.map((f) => f.id) });
+    return Promise.resolve();
+  }
+
+  answerJoin(
+    answer: "accept" | "reject",
+    sender: { localActor: string; planId: string; responseId?: string | undefined },
+    participant: { actor: RemoteActor; join: RemoteJoin },
+  ) {
+    this.sent.push({
+      kind: "answer",
+      answer,
+      localActor: sender.localActor,
+      planId: sender.planId,
+      responseId: sender.responseId,
+      to: participant.actor.id,
+      join: participant.join,
+    });
+    return Promise.resolve();
+  }
+
+  updateForParticipants(
+    plan: { planId: string; localActor: string; event: PlanEventView },
+    participants: readonly RemoteActor[],
+  ) {
+    this.sent.push({
+      kind: "participantsUpdate",
+      localActor: plan.localActor,
+      planId: plan.planId,
+      event: plan.event,
+      to: participants.map((p) => p.id),
+    });
+    return Promise.resolve();
+  }
+
+  deleteForParticipants(
+    plan: { planId: string; localActor: string },
+    participants: readonly RemoteActor[],
+  ) {
+    this.sent.push({
+      kind: "participantsDelete",
+      localActor: plan.localActor,
+      planId: plan.planId,
+      to: participants.map((p) => p.id),
+    });
     return Promise.resolve();
   }
 

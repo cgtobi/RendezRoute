@@ -1,17 +1,32 @@
 // Response persistence (spec 3.5, 4). Display names pass through FieldCipher.
 import { accessSource } from "./access.ts";
 import { type Selectable, sql } from "kysely";
-import type { FieldCipher, ResponseRepository } from "../../../application/ports.ts";
+import type {
+  FieldCipher,
+  LookupHasher,
+  RemoteActor,
+  RemoteJoin,
+  ResponseRepository,
+} from "../../../application/ports.ts";
 import type { PlanResponse } from "../../../domain/response.ts";
 import { checkpoint, type Database } from "./database.ts";
 import type { ResponsesTable } from "./schema.ts";
 
 const DISPLAY_NAME = "responses.display_name" as const;
 const REQUEST_NOTE = "responses.request_note" as const;
+const REMOTE_ACTOR = "responses.remote_actor" as const;
+
+interface StoredRemote {
+  id: string;
+  inbox: string;
+  sharedInbox: string | null;
+  join: RemoteJoin;
+}
 
 export function createResponseRepository(
   database: Database,
   cipher: FieldCipher,
+  hasher: LookupHasher,
 ): ResponseRepository {
   const fromRow = (row: Selectable<ResponsesTable>): PlanResponse => ({
     id: row.id,
@@ -31,9 +46,105 @@ export function createResponseRepository(
   const encryptNote = (note: string | undefined) =>
     note === undefined ? null : cipher.encrypt(note, REQUEST_NOTE);
 
+  // Remote participants (decision D42): the actor's address, inboxes and the activity answered,
+  // encrypted, found by a keyed hash of its address, as followers are.
+  const remoteHash = (actorId: string) => hasher.hash(`fediverse-actor:${actorId}`);
+  const encryptRemote = (actor: RemoteActor, join: RemoteJoin) =>
+    cipher.encrypt(
+      JSON.stringify({
+        id: actor.id,
+        inbox: actor.inbox,
+        sharedInbox: actor.sharedInbox ?? null,
+        join,
+      } satisfies StoredRemote),
+      REMOTE_ACTOR,
+    );
+  const decryptRemote = (value: string): { actor: RemoteActor; join: RemoteJoin } => {
+    const stored = JSON.parse(cipher.decrypt(value, REMOTE_ACTOR)) as StoredRemote;
+    return {
+      actor: { id: stored.id, inbox: stored.inbox, sharedInbox: stored.sharedInbox ?? undefined },
+      join: stored.join,
+    };
+  };
+  const remoteFromRow = (row: Selectable<ResponsesTable>) =>
+    row.remote_actor_enc === null
+      ? undefined
+      : { response: fromRow(row), ...decryptRemote(row.remote_actor_enc) };
+
   const selectResponses = () => database.db.selectFrom("responses").selectAll("responses");
 
   return {
+    async createRemote({ response, actor, join, manageTokenHash }) {
+      await database.db
+        .insertInto("responses")
+        .values({
+          id: response.id,
+          plan_id: response.planId,
+          kind: response.kind,
+          display_name_enc: cipher.encrypt(response.displayName, DISPLAY_NAME),
+          request_note_enc: null,
+          manage_token_hash: manageTokenHash,
+          device_id: null,
+          identity_id: null,
+          language: response.language,
+          previous_kind: response.previousKind ?? null,
+          creation_nonce: null,
+          remote_actor_hmac: remoteHash(actor.id),
+          remote_actor_enc: encryptRemote(actor, join),
+          created_at: response.createdAt.toISOString(),
+          updated_at: response.updatedAt.toISOString(),
+        })
+        .execute();
+    },
+
+    async findRemote(planId, actorId) {
+      const row = await selectResponses()
+        .where("plan_id", "=", planId)
+        .where("remote_actor_hmac", "=", remoteHash(actorId))
+        .executeTakeFirst();
+      return row === undefined ? undefined : remoteFromRow(row);
+    },
+
+    async remoteOf(responseId) {
+      const row = await selectResponses().where("id", "=", responseId).executeTakeFirst();
+      const remote = row === undefined ? undefined : remoteFromRow(row);
+      return remote === undefined ? undefined : { actor: remote.actor, join: remote.join };
+    },
+
+    async listRemote(planId) {
+      const rows = await selectResponses()
+        .where("plan_id", "=", planId)
+        .where("remote_actor_hmac", "is not", null)
+        .orderBy("created_at")
+        .orderBy("id")
+        .execute();
+      return rows.flatMap((row) => remoteFromRow(row) ?? []);
+    },
+
+    async listByRemoteActor(actorId) {
+      const rows = await selectResponses()
+        .where("remote_actor_hmac", "=", remoteHash(actorId))
+        .orderBy("created_at")
+        .orderBy("id")
+        .execute();
+      return rows.map(fromRow);
+    },
+
+    async updateRemote({ response, actor, join }) {
+      await database.db
+        .updateTable("responses")
+        .set({
+          kind: response.kind,
+          previous_kind: response.previousKind ?? null,
+          request_note_enc: null,
+          remote_actor_enc: encryptRemote(actor, join),
+          updated_at: response.updatedAt.toISOString(),
+        })
+        .where("id", "=", response.id)
+        .where("remote_actor_hmac", "is not", null)
+        .execute();
+    },
+
     async create({ response, manageTokenHash, creationNonce, deviceId, identityId }) {
       await database.db.transaction().execute(async (trx) => {
         await trx

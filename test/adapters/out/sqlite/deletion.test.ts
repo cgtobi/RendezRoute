@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { createFieldCipher } from "../../../../src/adapters/out/crypto/field-cipher.ts";
 import { createKeyring } from "../../../../src/adapters/out/crypto/keyring.ts";
+import { createLookupHasher } from "../../../../src/adapters/out/crypto/lookup-hasher.ts";
 import { type Database, openDatabase } from "../../../../src/adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "../../../../src/adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "../../../../src/adapters/out/sqlite/plans.ts";
@@ -39,7 +40,7 @@ const raw = () =>
 async function seed() {
   const plans = createPlanRepository(database, cipher);
   const devices = createDeviceRepository(database);
-  const responses = createResponseRepository(database, cipher);
+  const responses = createResponseRepository(database, cipher, createLookupHasher(randomBytes(32)));
   await devices.create({ id: "device-1", tokenHash: "hash-1", now: fixtureNow });
   await plans.create({
     plan: samplePlan({ id: PLAN_ID, title: "SENTINEL title" }),

@@ -187,6 +187,9 @@ function carriedTarget(channel: NotificationChannel): NotificationTarget | undef
       return { ntfy: { topic: channel.topic, server: channel.server } };
     case "telegram":
       return channel.chatId === undefined ? undefined : { telegram: { chatId: channel.chatId } };
+    case "fediverse_dm":
+      // An account's channel: plan notices never go there (decision D47), and so none is carried.
+      return undefined;
   }
 }
 

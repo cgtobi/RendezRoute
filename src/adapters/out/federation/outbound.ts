@@ -33,6 +33,7 @@ export function createFederationOutbound({
   notes,
   contributionNotes,
   http,
+  accountWants,
 }: {
   jobs: JobQueue;
   clock: Clock;
@@ -45,6 +46,8 @@ export function createFederationOutbound({
   /** And a contribution Note, for the same (decision D44). */
   contributionNotes: Pick<ContributionNoteRepository, "findByNoteId">;
   http: OutboundHttp;
+  /** Whether an account's direct message is still wanted: the account and its channel exist (D47). */
+  accountWants: (account: { identityId: string; channelId: string }) => Promise<boolean>;
 }): FederationOutbound {
   const keysFor = actorSigningKeys(instanceKeys, profiles);
   return {
@@ -56,11 +59,15 @@ export function createFederationOutbound({
       keysFor,
       contextLoader: outboundContextLoader(http),
     }),
-    deliver: federationDeliveryHandler(http, keysFor, async (guard) =>
-      "kind" in guard
-        ? (await contributionNotes.findByNoteId(guard.noteId))?.contributionId ===
-          guard.contributionId
-        : (await notes.find(guard.responseId))?.noteId === guard.noteId,
+    deliver: federationDeliveryHandler(
+      http,
+      keysFor,
+      async (guard) =>
+        "kind" in guard
+          ? (await contributionNotes.findByNoteId(guard.noteId))?.contributionId ===
+            guard.contributionId
+          : (await notes.find(guard.responseId))?.noteId === guard.noteId,
+      accountWants,
     ),
   };
 }

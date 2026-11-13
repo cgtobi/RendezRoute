@@ -53,6 +53,10 @@ export function createChannelNotifier({
               notification,
             ) ?? off()
           );
+        case "fediverse_dm":
+          // Account notices only, through the channel's outbox; plan notices never get here
+          // (decision D47).
+          return off();
         case "telegram":
           return channel.chatId === undefined
             ? off()

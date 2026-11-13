@@ -1,6 +1,7 @@
 // "More ways to be notified" (decision D33): the channels besides push and email in one fold on the
 // manage, host and account pages, open while one of them is on or waiting. ntfy shows the secret
 // topic to subscribe to; Telegram the deep link into the bot, where Start confirms (D34).
+import type { FediverseMessagesSetting } from "../../../../application/fediverse-messages.ts";
 import type { NtfySetting } from "../../../../application/ntfy.ts";
 import type { TelegramSetting } from "../../../../application/telegram.ts";
 import { topicUrl } from "../../../../domain/ntfy.ts";
@@ -31,16 +32,27 @@ export interface TelegramSwitchProps {
   shared?: boolean;
 }
 
+/** The fediverse direct messages on the account page, for accounts with a fediverse login (D47). */
+export interface FediverseMessagesSwitchProps {
+  setting: FediverseMessagesSetting;
+  /** The instance's name, which the messages come from. */
+  instance: string;
+  /** The address could not be found when switching on: nothing was turned on. */
+  failed?: boolean;
+}
+
 export function MoreChannels({
   t,
   csrfToken,
   ntfy,
   telegram,
+  fediverseMessages,
 }: {
   t: Translate;
   csrfToken: string;
   ntfy: NtfySwitchProps | undefined;
   telegram: TelegramSwitchProps | undefined;
+  fediverseMessages?: FediverseMessagesSwitchProps | undefined;
 }) {
   // Rejected and removed people see a channel only to turn it off.
   const shown = <P extends { setting: { state: string }; offOnly?: boolean }>(props?: P) =>
@@ -49,10 +61,13 @@ export function MoreChannels({
       : undefined;
   const ntfyShown = shown(ntfy);
   const telegramShown = shown(telegram);
-  if (ntfyShown === undefined && telegramShown === undefined) return null;
-  const inUse = [ntfyShown, telegramShown].some(
-    (props) => props !== undefined && props.setting.state !== "off",
-  );
+  if (ntfyShown === undefined && telegramShown === undefined && fediverseMessages === undefined) {
+    return null;
+  }
+  const inUse =
+    [ntfyShown, telegramShown, fediverseMessages].some(
+      (props) => props !== undefined && props.setting.state !== "off",
+    ) || fediverseMessages?.failed === true;
   return (
     <details class="more-channels" open={inUse}>
       <summary>{t("channels.more")}</summary>
@@ -60,7 +75,46 @@ export function MoreChannels({
       {telegramShown !== undefined && (
         <TelegramSwitch t={t} csrfToken={csrfToken} {...telegramShown} />
       )}
+      {fediverseMessages !== undefined && (
+        <FediverseMessagesSwitch t={t} csrfToken={csrfToken} {...fediverseMessages} />
+      )}
     </details>
+  );
+}
+
+function FediverseMessagesSwitch({
+  t,
+  csrfToken,
+  setting,
+  instance,
+  failed = false,
+}: FediverseMessagesSwitchProps & { t: Translate; csrfToken: string }) {
+  const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
+  return (
+    <div class="fediverse-messages-switch" id="fediverse-messages">
+      <h3>{t("fediverseDm.label")}</h3>
+      {failed && (
+        <p class="error" role="alert">
+          {t("fediverseDm.notFound")}
+        </p>
+      )}
+      <p class="hint">
+        {setting.paused === true
+          ? t("fediverseDm.paused")
+          : t(setting.state === "on" ? "fediverseDm.on" : "fediverseDm.hint", { instance })}
+      </p>
+      <form
+        method="post"
+        action={
+          setting.state === "on" ? "/account/fediverse-messages/off" : "/account/fediverse-messages"
+        }
+      >
+        {csrf}
+        <button type="submit" class="secondary">
+          {t(setting.state === "on" ? "fediverseDm.off" : "fediverseDm.turnOn")}
+        </button>
+      </form>
+    </div>
   );
 }
 

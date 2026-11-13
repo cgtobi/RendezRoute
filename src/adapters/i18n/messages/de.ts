@@ -841,6 +841,23 @@ export const de: Messages = {
     "Wenn Leute im Fediverse einem Treffen beigetreten sind, wird jeder Kommentar und jeder Link im Rückblick ihnen als Direktnachricht vom Akteur dieser Seite oder vom Profil der Organisator:in geschickt, unter dem Namen der Verfasser:in, wie ihn die Teilnehmenden sehen, und sonst niemandem; die Verfasser:in bekommt den eigenen nicht zurück. Wer vom Fediverse aus beigetreten ist, kann auf eine solche Nachricht privat antworten: Die Antwort wird zu einem Kommentar im Rückblick, den die Gastgeber:in und die Teilnehmenden unter dem für das Konto angezeigten Namen sehen, und gleichermaßen an die anderen Teilnehmenden im Fediverse weitergegeben. Änderungen werden erneut geschickt, und eine Nachricht wird zurückgezogen, wenn ihr Kommentar gelöscht oder ausgeblendet wird, wenn ihre Verfasser:in oder die Empfänger:in austritt oder entfernt wird oder wenn das Treffen abgesagt oder gelöscht wird; wer später beitritt, bekommt die neuesten 50 Kommentare. Ihr Server kann Kopien behalten, die diese Seite nicht löschen kann. Teilnehmende aus dem Fediverse gehören nicht zum Datenexport eines Kontos, der unverändert bleibt.",
   "privacy.federationReports":
     "Ein Server im Fediverse kann dieser Seite eine Meldung über ein Treffen schicken oder über eine Nachricht dieser Seite an die Leute dieses Servers. Sie erreicht die Instanzadministration wie jede andere Meldung, mit dem Text, den der andere Server geschickt hat, und, wenn sie eine dieser Nachrichten nennt, mit einer Kopie von deren Text und Link ohne die Verfasser:in. Diese Seite speichert nicht, wer oder welcher Server sie geschickt hat.",
+  "fediverseDm.label": "Fediverse-Nachrichten",
+  "fediverseDm.hint":
+    "Hinweise zu deinem Konto, etwa eine Warnung, bevor ein ungenutztes Konto gelöscht wird, als Direktnachrichten von {instance} an dein Fediverse-Konto. Dein Server behält Direktnachrichten; hier kannst du das abschalten.",
+  "fediverseDm.on":
+    "Hinweise zu deinem Konto kommen als Direktnachrichten von {instance} zu dir. Dein Server behält sie.",
+  "fediverseDm.turnOn": "Fediverse-Nachrichten einschalten",
+  "fediverseDm.off": "Fediverse-Nachrichten abschalten",
+  "fediverseDm.notFound":
+    "Dieses Konto war gerade nicht erreichbar. Prüfe, ob der Server Nachrichten von anderen Servern annimmt, oder versuche es später noch einmal.",
+  "fediverseDm.first":
+    "Nachrichten von {instance} kommen jetzt als Direktnachrichten zu dir. Sie betreffen nur dein Konto, etwa eine Warnung, bevor ein ungenutztes Konto gelöscht wird.",
+  "fediverseDm.keeps": "Dein Server behält Direktnachrichten; diese Seite kann sie nicht löschen.",
+  "fediverseDm.turnOff": "Zum Abschalten öffne deine Kontoseite: {link}",
+  "privacy.federationMessages":
+    "Wenn du dich über das Fediverse anmeldest und auf deiner Kontoseite Fediverse-Nachrichten einschaltest, sucht diese Seite bei jedem Versand deine Fediverse-Adresse heraus und schickt dir eine Direktnachricht von ihrem Akteur: eine beim Einschalten, danach die Hinweise zu deinem Konto, etwa die Warnung, bevor ein ungenutztes Konto gelöscht wird. Dein Server behält Direktnachrichten, die diese Seite nicht löschen kann. Diese Seite speichert nur, dass der Schalter an ist, und die Sprache der Seite, die du benutzt hast, nicht deinen Akteur oder Posteingang; eine Nachricht, die noch zugestellt wird, liegt höchstens 12 Stunden verschlüsselt und wird mit deinem Konto gelöscht.",
+  "fediverseDm.paused":
+    "Fediverse-Nachrichten sind eingeschaltet, aber diese Seite sendet gerade keine. Hier kannst du sie abschalten.",
   "privacy.nearby":
     "„In der Nähe“ nutzt den Ort, von dem aus du suchst, nur für diese Suche. Eine Stelle von der Karte oder dein Standort wird von deinem Browser vor dem Senden auf etwa 2 km gerundet und vom Server noch einmal. Ein eingetippter Ort wird wie bei der Ortssuche oben nachgeschlagen, und die Suche geht von seiner gerundeten Stelle aus weiter; ohne JavaScript steht der eingetippte Ort in der Adresse dieser ersten Anfrage. Nichts davon wird gespeichert oder in die Protokolle dieser Seite geschrieben. Die gerundete Stelle steht in der Adresse der Ergebnisseite und kann so in deinem Browserverlauf und im Zugriffsprotokoll des Webservers vor dieser Seite bleiben.",
   "field.range_invalid": "Der letzte Tag liegt vor dem ersten.",

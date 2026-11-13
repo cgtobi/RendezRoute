@@ -96,3 +96,66 @@ export function isNoteActivity(activity: Record<string, unknown>): boolean {
 
 export const rows = (test: TestApp, table: string) =>
   JSON.stringify(test.database.sqlite.prepare(`select * from ${table}`).all());
+
+/** What a fake fediverse account serves: WebFinger, the actor, and its two inboxes. */
+export interface FediverseAccountOptions {
+  /** What WebFinger names as the actor; the actor's own address by default. */
+  href?: string;
+  /** The `id` the actor document claims. */
+  id?: string;
+  inbox?: string;
+  sharedInbox?: string;
+  preferredUsername?: string;
+  /** The WebFinger status; anything but 200 serves no body. */
+  fingerStatus?: number;
+  /** The actor document's status. */
+  actorStatus?: number;
+  fingerBody?: string;
+  actorBody?: string;
+}
+
+/**
+ * Serves `@name@server` as a Mastodon would: WebFinger at the server, the actor under /users, its
+ * own inbox and a shared one. Returns the addresses, for assertions.
+ */
+export function serveFediverseAccount(
+  test: Pick<TestApp, "federationHttp">,
+  name: string,
+  server = "social.example",
+  options: FediverseAccountOptions = {},
+) {
+  const actorId = `https://${server}/users/${name}`;
+  const inbox = options.inbox ?? `${actorId}/inbox`;
+  const sharedInbox = options.sharedInbox ?? `https://${server}/inbox`;
+  test.federationHttp.respond(`https://${server}/.well-known/webfinger`, {
+    status: options.fingerStatus ?? 200,
+    headers: { "content-type": "application/jrd+json" },
+    body:
+      options.fingerBody ??
+      JSON.stringify({
+        subject: `acct:${name}@${server}`,
+        links: [
+          { rel: "http://webfinger.net/rel/profile-page", type: "text/html", href: actorId },
+          { rel: "self", type: "application/activity+json", href: options.href ?? actorId },
+        ],
+      }),
+  });
+  test.federationHttp.respond(actorId, {
+    status: options.actorStatus ?? 200,
+    headers: { "content-type": "application/activity+json" },
+    body:
+      options.actorBody ??
+      JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: options.id ?? actorId,
+        type: "Person",
+        preferredUsername: options.preferredUsername ?? name,
+        inbox,
+        endpoints: { sharedInbox },
+      }),
+  });
+  // Both accept a delivery; the tests look at which one got it.
+  test.federationHttp.respond(`${actorId}/inbox`, { status: 202 });
+  test.federationHttp.respond(sharedInbox, { status: 202 });
+  return { actorId, inbox: `${actorId}/inbox`, sharedInbox };
+}

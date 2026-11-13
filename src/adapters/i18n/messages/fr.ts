@@ -839,6 +839,24 @@ export const fr: Messages = {
     "Quand des personnes du fédivers ont rejoint une sortie, chaque commentaire ou lien ajouté à son récapitulatif leur est envoyé en message direct par l’acteur de ce site ou par le profil de l’organisateur ou de l’organisatrice, sous le nom de l’auteur ou de l’autrice tel que le voient les personnes inscrites, et à personne d’autre ; l’auteur ou l’autrice ne reçoit pas le sien. Une personne qui a rejoint depuis le fédivers peut répondre en privé à un tel message : la réponse devient un commentaire du récapitulatif, vu par l’organisateur ou l’organisatrice et les personnes inscrites sous le nom affiché pour son compte, et transmis de la même façon aux autres participants du fédivers. Les modifications sont renvoyées, et un message est retiré quand son commentaire est supprimé ou masqué, quand son auteur ou la personne à qui il a été envoyé part ou est retiré, ou quand la sortie est annulée ou supprimée ; une personne qui rejoint plus tard reçoit les 50 derniers commentaires. Son serveur peut en garder des copies, que ce site ne peut pas supprimer. Les participants du fédivers ne font pas partie de l’export des données d’un compte, qui reste inchangé.",
   "privacy.federationReports":
     "Un serveur du fédivers peut envoyer à ce site un signalement concernant une sortie ou l’un des messages de ce site adressés aux personnes de ce serveur. Il parvient à l’administration de l’instance comme n’importe quel autre signalement, avec le texte envoyé par l’autre serveur et, s’il désigne l’un de ces messages, une copie de son texte et de son lien sans l’auteur ni l’autrice. Ce site n’enregistre ni qui ni quel serveur l’a envoyé.",
+  "fediverseDm.label": "Messages du fédivers",
+  "fediverseDm.hint":
+    "Les avis sur votre compte, comme un avertissement avant la suppression d’un compte inutilisé, en messages directs de {instance} à votre compte du fédivers. Votre serveur conserve les messages directs ; vous pouvez les désactiver ici.",
+  "fediverseDm.on":
+    "Les avis sur votre compte vous parviennent en messages directs de {instance}. Votre serveur les conserve.",
+  "fediverseDm.turnOn": "Activer les messages du fédivers",
+  "fediverseDm.off": "Désactiver les messages du fédivers",
+  "fediverseDm.notFound":
+    "Ce compte est injoignable pour le moment. Vérifiez que le serveur accepte les messages d’autres serveurs, ou réessayez plus tard.",
+  "fediverseDm.first":
+    "Les messages de {instance} vous parviennent désormais ici, en messages directs. Ils ne concernent que votre compte, comme un avertissement avant la suppression d’un compte inutilisé.",
+  "fediverseDm.keeps":
+    "Votre serveur conserve les messages directs ; ce site ne peut pas les supprimer.",
+  "fediverseDm.turnOff": "Pour les désactiver, ouvrez la page de votre compte : {link}",
+  "privacy.federationMessages":
+    "Si vous vous connectez par le fédivers et activez les messages du fédivers sur la page de votre compte, ce site recherche votre adresse du fédivers à chaque envoi et vous envoie un message direct depuis son acteur : un à l’activation, puis les avis sur votre compte, comme l’avertissement avant la suppression d’un compte inutilisé. Votre serveur conserve les messages directs, que ce site ne peut pas supprimer. Ce site ne retient que le fait que l’option est activée et la langue de la page utilisée, pas votre acteur ni votre boîte de réception ; un message en attente de livraison est conservé chiffré 12 heures au plus et supprimé avec votre compte.",
+  "fediverseDm.paused":
+    "Les messages du fédivers sont activés, mais ce site n’en envoie aucun pour le moment. Vous pouvez les désactiver ici.",
   "privacy.nearby":
     "« À proximité » n’utilise le lieu d’où vous cherchez que pour cette recherche. Un endroit choisi sur la carte ou votre position est arrondi à environ 2 km par votre navigateur avant d’être envoyé, puis à nouveau par le serveur. Un lieu saisi est recherché comme pour la recherche de lieux ci-dessus, et la recherche continue depuis son endroit arrondi ; sans JavaScript, le lieu saisi figure dans l’adresse de cette première requête. Rien n’en est enregistré ni écrit dans les journaux de ce site. L’endroit arrondi figure dans l’adresse de la page de résultats et peut donc rester dans l’historique de votre navigateur et dans le journal d’accès du serveur web placé devant ce site.",
   "field.range_invalid": "Le dernier jour précède le premier.",

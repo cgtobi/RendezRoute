@@ -2,6 +2,7 @@ import type {
   ChannelOwner,
   ChannelRepository,
   EmailChannel,
+  FediverseDmChannel,
   NotificationChannel,
   NtfyChannel,
   TelegramChannel,
@@ -127,6 +128,20 @@ export class FakeChannelRepository implements ChannelRepository {
     const channel = this.channels.get(id);
     if (channel !== undefined) this.channels.set(id, { ...channel, verified: true });
     return Promise.resolve(channel !== undefined);
+  }
+
+  setFediverseDm(owner: { identityId: string }, language?: string) {
+    const existing = this.#owned(owner).find((c) => c.kind === "fediverse_dm");
+    if (existing !== undefined) return Promise.resolve({ id: existing.id, created: false });
+    const id = `channel-${++this.#next}`;
+    this.channels.set(id, { id, owner, kind: "fediverse_dm", language, verified: true });
+    return Promise.resolve({ id, created: true });
+  }
+
+  fediverseDmFor(owner: ChannelOwner) {
+    return Promise.resolve(
+      this.#owned(owner).find((c): c is FediverseDmChannel => c.kind === "fediverse_dm"),
+    );
   }
 
   emailFor(owner: ChannelOwner) {

@@ -11,7 +11,12 @@ import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { BackLink } from "./back-link.tsx";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
-import { MoreChannels, type NtfySwitchProps, type TelegramSwitchProps } from "./more-channels.tsx";
+import {
+  type FediverseMessagesSwitchProps,
+  MoreChannels,
+  type NtfySwitchProps,
+  type TelegramSwitchProps,
+} from "./more-channels.tsx";
 import { fieldErrorMessage, formatDate, itemWhen } from "./format.ts";
 import { Item, ItemList } from "./item.tsx";
 import { Titles } from "./my-data.tsx";
@@ -57,6 +62,8 @@ export function AccountPage(props: {
   ntfy?: NtfySwitchProps | undefined;
   /** The account's own Telegram chat (decision D34); undefined without a bot. */
   telegram?: TelegramSwitchProps | undefined;
+  /** Direct messages to the fediverse login (decision D47); undefined without one or federation. */
+  fediverseMessages?: FediverseMessagesSwitchProps | undefined;
   /** The fediverse profile (decision D36); undefined while federation is off. */
   profile?: ProfileSectionProps | undefined;
   /** After turning the profile on or off. */
@@ -139,7 +146,8 @@ export function AccountPage(props: {
           </section>
           {(props.email !== undefined ||
             props.ntfy !== undefined ||
-            props.telegram !== undefined) && (
+            props.telegram !== undefined ||
+            props.fediverseMessages !== undefined) && (
             <section>
               {props.email !== undefined && (
                 <EmailSwitch t={t} csrfToken={props.csrfToken} {...props.email} />
@@ -149,6 +157,7 @@ export function AccountPage(props: {
                 csrfToken={props.csrfToken}
                 ntfy={props.ntfy}
                 telegram={props.telegram}
+                fediverseMessages={props.fediverseMessages}
               />
             </section>
           )}

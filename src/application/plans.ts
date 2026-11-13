@@ -52,6 +52,8 @@ import type {
   EmailOutbox,
   NtfyOutbox,
   TelegramOutbox,
+  FediverseDmOutbox,
+  RemoteActorLookup,
   ChannelRepository,
   FormNonceRepository,
   InviteRepository,
@@ -149,6 +151,11 @@ export interface PlanDeps extends DeviceDeps {
          * Telegram and is undefined until the bot could be reached.
          */
         telegram?: { outbox: TelegramOutbox; botName: () => string | undefined } | undefined;
+        /**
+         * Present while federation is on (decision D47): account notices as direct messages to
+         * the fediverse login's address, which `lookup` finds by WebFinger when one is sent.
+         */
+        fediverseMessages?: { outbox: FediverseDmOutbox; lookup: RemoteActorLookup } | undefined;
       }
     | undefined;
 }

@@ -6,6 +6,7 @@ import type {
   ChannelRepository,
   ConfirmableChannel,
   EmailChannel,
+  FediverseDmChannel,
   FieldCipher,
   IdGenerator,
   NotificationChannel,
@@ -67,7 +68,11 @@ export function createChannelRepository(
       const { chatId, language } = config as { chatId?: string; language?: string };
       return { ...base, kind: "telegram", chatId, language };
     }
-    if (row.kind !== "email") throw new Error(`Unknown channel kind ${row.kind}.`);
+    if (row.kind === "fediverse_dm") {
+      const { language } = config as { language?: string };
+      return { ...base, kind: "fediverse_dm", language };
+    }
+    if (row.kind !== "email") throw new Error(`Unknown channel kind ${String(row.kind)}.`);
     const { address, language } = config as { address: string; language?: string };
     return { ...base, kind: "email", address, language };
   };
@@ -230,5 +235,41 @@ export function createChannelRepository(
     },
 
     emailFor,
+
+    // Confirmed from the start, and with no recipient: only the page's language (decision D47).
+    async setFediverseDm(owner, language) {
+      const [column, value] = ownerColumn(owner);
+      return db.transaction().execute(async (trx) => {
+        const existing = await trx
+          .selectFrom("notification_channels")
+          .select("id")
+          .where("kind", "=", "fediverse_dm")
+          .where(column, "=", value)
+          .executeTakeFirst();
+        if (existing !== undefined) return { id: existing.id, created: false };
+        const id = ids.rowId();
+        await trx
+          .insertInto("notification_channels")
+          .values({
+            id,
+            ...ownerColumns(owner),
+            kind: "fediverse_dm",
+            config_enc: cipher.encrypt(
+              JSON.stringify(language === undefined ? {} : { language }),
+              CONFIG,
+            ),
+            verified: 1,
+            created_at: now().toISOString(),
+          })
+          .execute();
+        return { id, created: true };
+      });
+    },
+
+    async fediverseDmFor(owner) {
+      return (await listFor(owner)).find(
+        (channel): channel is FediverseDmChannel => channel.kind === "fediverse_dm",
+      );
+    },
   };
 }

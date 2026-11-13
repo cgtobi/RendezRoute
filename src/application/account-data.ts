@@ -19,6 +19,7 @@ import {
   removeOwnData,
 } from "./my-data.ts";
 import { queueExpiryWarnings } from "./channel-links.ts";
+import { removeAccountMessageJobs } from "./fediverse-messages.ts";
 import { exportedEmail } from "./email.ts";
 import { exportedTelegramChat } from "./telegram.ts";
 import type { PlanDeps } from "./plans.ts";
@@ -142,8 +143,19 @@ async function deleteIdentity(deps: AccountDataDeps, identity: Identity): Promis
     await deps.plans.findOwnedBy(identity.id),
     await deps.templates.listOwnedBy(identity.id),
   );
+  // The channel's id, before it goes with the account, to find the jobs made for it.
+  const channel =
+    identity.provider === "fediverse"
+      ? await deps.notify?.channels.fediverseDmFor({ identityId: identity.id })
+      : undefined;
   // Its permissions go with it; its devices' identity_id is set null.
   await deps.identities.delete(identity.id);
+  // Messages not yet delivered name the recipient: they go once nothing can make more.
+  await removeAccountMessageJobs(deps, {
+    identityId: identity.id,
+    provider: identity.provider,
+    channelId: channel?.id,
+  });
 }
 
 /** "Delete my account" (spec 3.7): immediate and for good. */

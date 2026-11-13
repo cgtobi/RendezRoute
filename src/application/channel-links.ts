@@ -19,6 +19,7 @@ import type {
   ChannelSubject,
   ConfirmableChannel,
   IdentityRepository,
+  OutboxChannel,
   SendResult,
 } from "./ports.ts";
 
@@ -32,7 +33,7 @@ type ChannelDeps = Pick<PlanDeps, "notify" | "plans" | "responses">;
  */
 export async function sendVia(
   notify: NonNullable<PlanDeps["notify"]>,
-  channel: ConfirmableChannel,
+  channel: OutboxChannel,
   to: ChannelRecipient,
   message: <R extends ChannelRecipient>(outbox: ChannelOutbox<R>, to: R) => Promise<SendResult>,
 ): Promise<SendResult> {
@@ -43,7 +44,7 @@ export async function sendVia(
 
 function sendThrough(
   notify: NonNullable<PlanDeps["notify"]>,
-  channel: ConfirmableChannel,
+  channel: OutboxChannel,
   to: ChannelRecipient,
   message: <R extends ChannelRecipient>(outbox: ChannelOutbox<R>, to: R) => Promise<SendResult>,
 ): Promise<SendResult> {
@@ -54,6 +55,9 @@ function sendThrough(
     if (to.kind === "ntfy" && notify.ntfy !== undefined) return message(notify.ntfy.outbox, to);
     if (to.kind === "telegram" && notify.telegram !== undefined) {
       return message(notify.telegram.outbox, to);
+    }
+    if (to.kind === "fediverse_dm" && notify.fediverseMessages !== undefined) {
+      return message(notify.fediverseMessages.outbox, to);
     }
   }
   return Promise.resolve("failed");
@@ -78,7 +82,7 @@ interface ChannelAbout {
 
 export async function aboutChannel(
   deps: Pick<PlanDeps, "plans" | "responses">,
-  channel: ConfirmableChannel,
+  channel: OutboxChannel,
 ): Promise<ChannelAbout | undefined> {
   const { owner } = channel;
   if ("identityId" in owner) {
@@ -102,7 +106,11 @@ export async function aboutChannel(
 }
 
 /** Where the channel's outbox writes; a Telegram channel has nowhere until Start linked a chat. */
-function recipientOf(channel: ConfirmableChannel, language: string): ChannelRecipient | undefined {
+function recipientOf(
+  channel: OutboxChannel,
+  language: string,
+  identityId?: string,
+): ChannelRecipient | undefined {
   switch (channel.kind) {
     case "email":
       return { kind: "email", channelId: channel.id, address: channel.address, language };
@@ -112,14 +120,23 @@ function recipientOf(channel: ConfirmableChannel, language: string): ChannelReci
       return channel.chatId === undefined
         ? undefined
         : { kind: "telegram", channelId: channel.id, chatId: channel.chatId, language };
+    case "fediverse_dm":
+      // Only an account's own channel has a login to write to (decision D47).
+      return identityId === undefined
+        ? undefined
+        : { kind: "fediverse_dm", channelId: channel.id, identityId, language };
   }
 }
+
+/** The account a channel belongs to, if it is an account's. */
+const accountOfChannel = (channel: OutboxChannel): string | undefined =>
+  "identityId" in channel.owner ? channel.owner.identityId : undefined;
 
 /**
  * A confirmed channel as its outbox writes to it, in its owner's language; none for rejected and
  * removed people, who may only turn channels off (spec 3.5).
  */
-export async function confirmedRecipient<C extends ConfirmableChannel>(
+export async function confirmedRecipient<C extends OutboxChannel>(
   deps: Pick<PlanDeps, "plans" | "responses">,
   channel: C | undefined,
 ): Promise<Extract<ChannelRecipient, { kind: C["kind"] }> | undefined> {
@@ -127,7 +144,7 @@ export async function confirmedRecipient<C extends ConfirmableChannel>(
   const about = await aboutChannel(deps, channel);
   return about === undefined || about.blocked
     ? undefined
-    : (recipientOf(channel, about.language) as
+    : (recipientOf(channel, about.language, accountOfChannel(channel)) as
         | Extract<ChannelRecipient, { kind: C["kind"] }>
         | undefined);
 }
@@ -141,7 +158,10 @@ async function linkTarget(
   const channelId = notify?.links?.channelOf(token);
   if (notify === undefined || channelId === undefined) return undefined;
   const channel = await notify.channels.findById(channelId);
-  if (channel === undefined || channel.kind === "webpush") return undefined;
+  // A fediverse direct message has no link: there is nothing to confirm (decision D44).
+  if (channel === undefined || channel.kind === "webpush" || channel.kind === "fediverse_dm") {
+    return undefined;
+  }
   const about = await aboutChannel(deps, channel);
   if (about === undefined) return undefined;
   // Telegram is confirmed by pressing Start in the bot, never through its link (decision D34).
@@ -234,10 +254,13 @@ export function channelConfirmationHandler(
   return async (payload) => {
     if (!hasChannelId(payload) || deps.notify === undefined) return "drop";
     const channel = await deps.notify.channels.findById(payload.channelId);
-    if (channel === undefined || channel.kind === "webpush" || channel.verified) return "drop";
+    if (channel === undefined || channel.kind === "webpush") return "drop";
+    // A fediverse direct message is stored confirmed; its "confirmation" is the first message
+    // (decision D47), sent when the switch goes on, to a recipient found then.
+    if (channel.verified && channel.kind !== "fediverse_dm") return "drop";
     const about = await aboutChannel(deps, channel);
     if (about === undefined || about.blocked) return "drop";
-    const to = recipientOf(channel, about.language);
+    const to = recipientOf(channel, about.language, accountOfChannel(channel));
     if (to === undefined) return "drop";
     return jobOutcomeOf(
       await sendVia(deps.notify, channel, to, (outbox, recipient) =>

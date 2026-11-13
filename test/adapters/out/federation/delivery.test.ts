@@ -152,3 +152,46 @@ describe("delivering an activity (decision D38)", () => {
     expect(http.posts).toEqual([]);
   });
 });
+
+describe("delivering an account's direct message (decision D47)", () => {
+  const forAccount: DeliveryPayload = {
+    ...payload,
+    forAccount: "identity-1",
+    forChannel: "channel-1",
+  };
+  const keysFor = (localActor: string) =>
+    Promise.resolve(localActor === "instance" ? [keys] : undefined);
+
+  it("is sent while the account still has the channel it was made for", async () => {
+    const http = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+    const asked: { identityId: string; channelId: string }[] = [];
+    const handler = federationDeliveryHandler(http, keysFor, undefined, (account) => {
+      asked.push(account);
+      return Promise.resolve(true);
+    });
+    expect(await handler(forAccount)).toBe("done");
+    expect(asked).toEqual([{ identityId: "identity-1", channelId: "channel-1" }]);
+    expect(http.posts).toHaveLength(1);
+  });
+
+  it("is dropped, unsent, when the account or its channel is gone by delivery time", async () => {
+    const http = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+    const handler = federationDeliveryHandler(http, keysFor, undefined, () =>
+      Promise.resolve(false),
+    );
+    expect(await handler(forAccount)).toBe("drop");
+    expect(http.posts).toEqual([]);
+  });
+
+  it("drops a message that names an account but no channel, and asks nothing of other deliveries", async () => {
+    const http = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+    let asked = 0;
+    const handler = federationDeliveryHandler(http, keysFor, undefined, () => {
+      asked++;
+      return Promise.resolve(false);
+    });
+    expect(await handler({ ...payload, forAccount: "identity-1" })).toBe("drop");
+    expect(await handler(payload)).toBe("done");
+    expect(asked).toBe(0);
+  });
+});

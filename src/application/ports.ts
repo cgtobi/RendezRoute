@@ -300,6 +300,20 @@ export interface FediverseProfileRepository {
   retire(identityId: string, now: Date): Promise<string | undefined>;
 }
 
+/**
+ * Finds a fediverse account's actor from its address (@name@host) by WebFinger, for the account
+ * direct messages (decision D47). Nothing is stored about the answer.
+ */
+export interface RemoteActorLookup {
+  resolve(handle: string): Promise<
+    | { kind: "found"; actor: RemoteActor }
+    /** A permanent answer: no such account, or one this site does not trust. */
+    | { kind: "not_found" }
+    /** Maybe temporary: unreachable, slow, or the server is busy; worth trying again. */
+    | { kind: "unavailable" }
+  >;
+}
+
 /** An actor on another server, as far as delivering to it needs (decision D38). */
 export interface RemoteActor {
   id: string;
@@ -566,6 +580,15 @@ export interface FederationPublisher {
   deleteForParticipants(
     plan: { planId: string; localActor: string },
     participants: readonly RemoteActor[],
+  ): Promise<void>;
+  /**
+   * A direct message from the instance actor to one account's own inbox, addressed to that actor
+   * alone with a mention (decision D47). The text is final; nothing of it is stored but the
+   * encrypted job, which belongs to the account and goes with it.
+   */
+  sendAccountNotice(
+    recipient: RemoteActor,
+    notice: { identityId: string; channelId: string; handle: string; text: string },
   ): Promise<void>;
 }
 
@@ -869,6 +892,8 @@ export interface JobQueue {
   due(now: Date, limit: number): Promise<QueuedJob[]>;
   /** Removes a job that is done or given up. */
   complete(id: string): Promise<void>;
+  /** Removes the jobs of a type whose payload matches; returns how many (an account's notices). */
+  deleteWhere(type: JobType, matches: (payload: unknown) => boolean): Promise<number>;
   /** Records a failure (error class only) and runs the job again at `runAt`. */
   retry(id: string, runAt: Date, error: string): Promise<void>;
   deleteExpired(now: Date): Promise<number>;
@@ -966,13 +991,27 @@ export interface TelegramChannel extends ChannelBase {
 }
 
 /**
+ * Direct messages to an account's fediverse address (decisions D44, D47): only the choice is
+ * stored. The recipient is looked up by the login handle each time a message is sent, so no
+ * address, actor or inbox is kept. Stored as confirmed: the fediverse login proved the account.
+ */
+export interface FediverseDmChannel extends ChannelBase {
+  kind: "fediverse_dm";
+  /** As for email: the notices keep the language the channel was switched on in. */
+  language: string | undefined;
+}
+
+/**
  * Channels the app confirms with their owner before using them: by a link it sends (email, ntfy)
  * or by the owner starting the bot (Telegram) (decisions D31, D33, D34). Each has a link that
  * turns it off.
  */
 export type ConfirmableChannel = EmailChannel | NtfyChannel | TelegramChannel;
 
-export type NotificationChannel = PushChannel | ConfirmableChannel;
+/** Channels that have an outbox, so confirmations and account notices go through it. */
+export type OutboxChannel = ConfirmableChannel | FediverseDmChannel;
+
+export type NotificationChannel = PushChannel | OutboxChannel;
 
 /**
  * Browser push subscriptions, email addresses and ntfy topics per response, hosted plan or account
@@ -1009,6 +1048,15 @@ export interface ChannelRepository {
   telegramFor(owner: ChannelOwner): Promise<TelegramChannel | undefined>;
   /** Links the chat that pressed Start and confirms the channel; false when it is gone. */
   attachTelegramChat(id: string, chatId: string): Promise<boolean>;
+  /**
+   * Stores the account's one fediverse direct-message channel, confirmed and with nothing about
+   * the recipient (decision D47); returns its id and whether it was made now (idempotent).
+   */
+  setFediverseDm(
+    owner: { identityId: string },
+    language?: string,
+  ): Promise<{ id: string; created: boolean }>;
+  fediverseDmFor(owner: ChannelOwner): Promise<FediverseDmChannel | undefined>;
 }
 
 /**
@@ -1048,7 +1096,16 @@ export interface TelegramRecipient extends RecipientBase {
   kind: "telegram";
   chatId: string;
 }
-export type ChannelRecipient = EmailRecipient | NtfyRecipient | TelegramRecipient;
+/** A fediverse direct message goes to the account's login handle, found when it is sent (D47). */
+export interface FediverseDmRecipient extends RecipientBase {
+  kind: "fediverse_dm";
+  identityId: string;
+}
+export type ChannelRecipient =
+  | EmailRecipient
+  | NtfyRecipient
+  | TelegramRecipient
+  | FediverseDmRecipient;
 
 /** The messages every confirmable channel gets besides notifications (decisions D31, D33). */
 export interface ChannelOutbox<R extends ChannelRecipient> {
@@ -1070,6 +1127,12 @@ export type NtfyOutbox = ChannelOutbox<NtfyRecipient>;
 
 /** Telegram's confirmation is the bot's answer to Start: notifications are on (decision D34). */
 export type TelegramOutbox = ChannelOutbox<TelegramRecipient>;
+
+/**
+ * The fediverse direct message (decision D47): its confirmation is the first message, which says
+ * messages now come here; nothing is confirmed, as the login proved the account.
+ */
+export type FediverseDmOutbox = ChannelOutbox<FediverseDmRecipient>;
 
 /** A personal calendar feed (spec 6 feature 2); only the hash of its token is stored. */
 export interface CalendarFeed {

@@ -59,6 +59,7 @@ export function PrivacyPage({
         {config.federationEnabled && <p>{t("privacy.federationNotes")}</p>}
         {config.federationEnabled && <p>{t("privacy.federationRecap")}</p>}
         {config.federationEnabled && adminLogin && <p>{t("privacy.federationReports")}</p>}
+        {config.federationEnabled && <p>{t("privacy.federationMessages")}</p>}
         {config.smtp !== undefined && <p>{t("privacy.email")}</p>}
         {config.ntfy !== undefined && <p>{t("privacy.ntfy", { server: config.ntfy.url.host })}</p>}
         {config.telegram !== undefined && <p>{t("privacy.telegram")}</p>}

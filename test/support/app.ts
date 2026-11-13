@@ -1,4 +1,6 @@
 import { actorKeyFactory } from "../../src/adapters/out/crypto/federation-keys.ts";
+import { createFediverseDirectMessages } from "../../src/adapters/out/federation/direct-message.ts";
+import { createRemoteActorLookup } from "../../src/adapters/out/federation/remote-actor.ts";
 import { createFederationOutbound } from "../../src/adapters/out/federation/outbound.ts";
 import { createFollowerRepository } from "../../src/adapters/out/sqlite/followers.ts";
 import { createContributionNoteRepository } from "../../src/adapters/out/sqlite/contribution-notes.ts";
@@ -136,6 +138,7 @@ export async function createTestApp({
   const lookupHasher = createLookupHasher(randomBytes(32));
   const participantNotes = createParticipantNoteRepository(database, cipher, lookupHasher);
   const contributionNotes = createContributionNoteRepository(database, lookupHasher);
+  const identities = createIdentityRepository(database, cipher);
   const federationOutbound =
     federationKeys === undefined
       ? undefined
@@ -149,7 +152,27 @@ export async function createTestApp({
           notes: participantNotes,
           contributionNotes,
           http: federationHttp,
+          accountWants: async ({ identityId, channelId }) =>
+            (await identities.findById(identityId)) !== undefined &&
+            (await channels.findById(channelId)) !== undefined,
         });
+  // Account notices as direct messages; the actor lookup goes to the same fake remote servers.
+  const remoteActors = createRemoteActorLookup({ http: federationHttp });
+  const fediverseMessages =
+    federationOutbound === undefined
+      ? undefined
+      : {
+          lookup: remoteActors,
+          outbox: createFediverseDirectMessages({
+            lookup: remoteActors,
+            publisher: federationOutbound.publisher,
+            identities,
+            channels,
+            instanceName: config.instanceName,
+            baseUrl: config.baseUrl,
+            timeZone: config.defaultTimezone,
+          }),
+        };
   const channelLinks = createChannelLinks(randomBytes(32));
   const mailer = new FakeMailer();
   const email =
@@ -236,11 +259,11 @@ export async function createTestApp({
         telegram === undefined
           ? undefined
           : { outbox: telegram.outbox, botName: () => telegramClient.name },
+      fediverseMessages,
     },
   };
   const pressStart = (startToken: string, chatId = "424242") =>
     startTelegramChat(planDeps, { startToken, chatId });
-  const identities = createIdentityRepository(database, cipher);
   // Jobs run on demand with the real handlers; email goes to the fake mailer (decision D31).
   const pushed = new FakeNotifier();
   const jobHandlers = createJobHandlers({

@@ -20,11 +20,27 @@ export function federationDeliveryHandler(
   keysFor: ActorSigningKeys,
   /** Whether a private Note's `Create` or `Update` may still be sent: the Note is still there. */
   isCurrent: (guard: NoteGuard) => Promise<boolean> = () => Promise.resolve(true),
+  /**
+   * Whether an account's direct message may still be sent: the account exists and still has the
+   * channel the message was made for (decision D47). Checked at delivery, since a message may
+   * have been loaded by the job runner before the account was deleted or switched it off.
+   */
+  accountWants: (account: { identityId: string; channelId: string }) => Promise<boolean> = () =>
+    Promise.resolve(true),
 ): (payload: unknown) => Promise<JobOutcome> {
   return async (payload) => {
     const delivery = asDelivery(payload);
     if (delivery === undefined) return "drop";
     if (delivery.guard !== undefined && !(await isCurrent(delivery.guard))) return "drop";
+    if (
+      delivery.forAccount !== undefined &&
+      !(await accountWants({
+        identityId: delivery.forAccount,
+        channelId: delivery.forChannel ?? "",
+      }))
+    ) {
+      return "drop";
+    }
     const privateKey =
       delivery.privateKey === undefined
         ? (await keysFor(delivery.localActor))?.[0]?.privateKey
@@ -56,7 +72,8 @@ export function federationDeliveryHandler(
 
 function asDelivery(payload: unknown): DeliveryPayload | undefined {
   if (typeof payload !== "object" || payload === null) return undefined;
-  const { localActor, inbox, body, keyId, privateKey, guard } = payload as Partial<DeliveryPayload>;
+  const { localActor, inbox, body, keyId, privateKey, guard, forAccount, forChannel } =
+    payload as Partial<DeliveryPayload>;
   if (
     typeof localActor !== "string" ||
     typeof body !== "string" ||
@@ -69,7 +86,23 @@ function asDelivery(payload: unknown): DeliveryPayload | undefined {
   // A guard that is there but not whole is a damaged job, not one without a guard.
   const noteGuard = asGuard(guard);
   if (guard !== undefined && noteGuard === undefined) return undefined;
-  return { localActor, inbox: inbox ?? "", body, keyId: keyId ?? "", privateKey, guard: noteGuard };
+  // A message for an account names its channel too; one that does not is damaged.
+  if (
+    (forAccount !== undefined && typeof forAccount !== "string") ||
+    (forAccount !== undefined && typeof forChannel !== "string")
+  ) {
+    return undefined;
+  }
+  return {
+    localActor,
+    inbox: inbox ?? "",
+    body,
+    keyId: keyId ?? "",
+    privateKey,
+    guard: noteGuard,
+    forAccount,
+    forChannel,
+  };
 }
 
 /** A participant Note's guard (response, Note) or a contribution Note's (contribution, Note). */

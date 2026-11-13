@@ -122,4 +122,44 @@ describe("job queue (spec 4 job_queue, 6 feature 12)", () => {
       { standalone: true },
     ]);
   });
+
+  it("removes the jobs of one type whose payload matches, and no others", async () => {
+    const jobs = queue();
+    const job = (type: "federationDelivery" | "accountNotice", payload: unknown) =>
+      jobs.enqueue({ type, payload, runAt: at("2026-01-01T00:00:00Z") });
+    await job("federationDelivery", { forAccount: "a", n: 1 });
+    await job("federationDelivery", { forAccount: "b", n: 2 });
+    await job("federationDelivery", { n: 3 });
+    await job("accountNotice", { forAccount: "a", n: 4 });
+    const removed = await jobs.deleteWhere(
+      "federationDelivery",
+      (payload) => (payload as { forAccount?: string }).forAccount === "a",
+    );
+    expect(removed).toBe(1);
+    const left = await jobs.due(at("2026-01-02T00:00:00Z"), 10);
+    expect(left.map((entry) => (entry.payload as { n: number }).n).sort((a, b) => a - b)).toEqual([
+      2, 3, 4,
+    ]);
+    expect(await jobs.deleteWhere("federationDelivery", () => false)).toBe(0);
+  });
+
+  it("does not stop at a payload it cannot read: that row is not a match and stays", async () => {
+    const jobs = queue();
+    await jobs.enqueue({
+      type: "federationDelivery",
+      payload: { forAccount: "a" },
+      runAt: at("2026-01-01T00:00:00Z"),
+    });
+    database.sqlite
+      .prepare(
+        "insert into job_queue (id, type, payload_enc, run_at) values ('bad', 'federationDelivery', 'not-encrypted', '2026-01-01T00:00:00Z')",
+      )
+      .run();
+    const removed = await jobs.deleteWhere(
+      "federationDelivery",
+      (payload) => (payload as { forAccount?: string }).forAccount === "a",
+    );
+    expect(removed).toBe(1);
+    expect(database.sqlite.prepare("select id from job_queue").pluck().all()).toEqual(["bad"]);
+  });
 });

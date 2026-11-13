@@ -1,7 +1,8 @@
 // Whether a stored channel can be reached now (decisions D31, D33, D34): browser push always;
 // email while SMTP is configured; ntfy while NTFY_URL is, and only on the server the topic was
 // made on, since people subscribed there; Telegram while the bot is configured and the chat is
-// linked. One place for every caller: sending, reminders, links, warnings.
+// linked; fediverse direct messages while federation is on (decision D47). One place for every
+// caller: sending, reminders, links, warnings.
 import type { PlanDeps } from "./plans.ts";
 import type { NotificationChannel } from "./ports.ts";
 
@@ -19,5 +20,7 @@ export function canReach(
     case "telegram":
       // Only once the person pressed Start and so linked their chat (decision D34).
       return notify?.telegram !== undefined && channel.chatId !== undefined;
+    case "fediverse_dm":
+      return notify?.fediverseMessages !== undefined;
   }
 }

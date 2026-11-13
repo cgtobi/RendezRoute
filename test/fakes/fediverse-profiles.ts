@@ -391,6 +391,16 @@ export class FakePublisher implements FederationPublisher {
         to: string[];
       }
     | { kind: "participantsDelete"; localActor: string; planId: string; to: string[] }
+    /** A direct message to an account's own inbox (decision D47). */
+    | {
+        kind: "accountNotice";
+        localActor: "instance";
+        identityId: string;
+        channelId: string;
+        handle: string;
+        text: string;
+        to: RemoteActor;
+      }
   )[] = [];
 
   /** What was sent about plans, as kind and audience, e.g. "create public". */
@@ -408,6 +418,14 @@ export class FakePublisher implements FederationPublisher {
     followers: readonly RemoteActor[],
   ) {
     this.sent.push({ kind: activity, ...publication, to: followers.map((f) => f.id) });
+    return Promise.resolve();
+  }
+
+  sendAccountNotice(
+    recipient: RemoteActor,
+    notice: { identityId: string; channelId: string; handle: string; text: string },
+  ) {
+    this.sent.push({ kind: "accountNotice", localActor: "instance", ...notice, to: recipient });
     return Promise.resolve();
   }
 

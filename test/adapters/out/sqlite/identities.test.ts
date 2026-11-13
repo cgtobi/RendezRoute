@@ -81,6 +81,56 @@ describe("SQLite identities (spec 4, 7 Identity)", () => {
     expect(raw).not.toContain("SENTINEL");
   });
 
+  it("hold a fediverse direct-message channel that stores only the choice, and take it with them (decision D47)", async () => {
+    await identities().create(identity(), "subject-hash");
+    const channels = createChannelRepository(
+      database,
+      cipher,
+      new SequentialIdGenerator(),
+      () => fixtureNow,
+    );
+    const owner = { identityId: "identity-1" };
+    const made = await channels.setFediverseDm(owner, "de");
+    expect(made.created).toBe(true);
+    expect(await channels.setFediverseDm(owner, "fr")).toEqual({ id: made.id, created: false });
+    expect(await channels.fediverseDmFor(owner)).toEqual({
+      id: made.id,
+      owner,
+      kind: "fediverse_dm",
+      // Confirmed from the start: the login proved the account.
+      verified: true,
+      language: "de",
+    });
+    const row = database.sqlite.prepare("select * from notification_channels").get() as {
+      kind: string;
+      verified: number;
+      config_enc: string;
+    };
+    expect([row.kind, row.verified]).toEqual(["fediverse_dm", 1]);
+    // Nothing but the language: no address, actor or inbox.
+    expect(JSON.parse(cipher.decrypt(row.config_enc, "notification_channels.config"))).toEqual({
+      language: "de",
+    });
+    await channels.delete(made.id);
+    const bare = await channels.setFediverseDm(owner);
+    const bareRow = database.sqlite
+      .prepare("select config_enc from notification_channels")
+      .get() as {
+      config_enc: string;
+    };
+    expect(JSON.parse(cipher.decrypt(bareRow.config_enc, "notification_channels.config"))).toEqual(
+      {},
+    );
+    expect(await channels.findById(bare.id)).toMatchObject({
+      kind: "fediverse_dm",
+      language: undefined,
+    });
+    await identities().delete("identity-1");
+    expect(
+      database.sqlite.prepare("select count(*) as n from notification_channels").get(),
+    ).toEqual({ n: 0 });
+  });
+
   it("are linked to devices, which keep nothing else of them", async () => {
     await identities().create(identity(), "subject-hash");
     await devices().setIdentity("device-1", "identity-1");

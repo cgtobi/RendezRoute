@@ -808,6 +808,23 @@ export const en = {
     "When people in the fediverse have joined a plan, each comment or link added to its recap is sent to them as a direct message from this site’s actor, or from the poster’s profile, under the author’s name as the people who joined see it, and to no one else; its author does not get their own back. Someone who joined from the fediverse can answer such a message privately: the reply becomes a comment in the recap, shown to the host and the people who joined under the name shown for their account, and sent on to the other participants from the fediverse the same way. Edits are sent again, and a message is withdrawn when its comment is deleted or hidden, when its author or the person it was sent to leaves or is removed, or when the plan is cancelled or deleted; a participant who joins late is sent the latest 50 comments. Their server may keep copies, which this site cannot delete. Remote participants are not part of an account’s data export, which is unchanged.",
   "privacy.federationReports":
     "A server in the fediverse can send this site a report about a plan, or about one of this site’s messages to that server’s users. It reaches the instance admin like any other report, with the text the other server sent and, if it names one of those messages, a copy of its text and link without the author. This site does not store who or which server sent it.",
+  "fediverseDm.label": "Fediverse messages",
+  "fediverseDm.hint":
+    "Notices about your account, such as a warning before an unused account is deleted, as direct messages from {instance} to your fediverse account. Your server keeps direct messages; you can turn this off here.",
+  "fediverseDm.on":
+    "Notices about your account come to you as direct messages from {instance}. Your server keeps them.",
+  "fediverseDm.turnOn": "Turn on fediverse messages",
+  "fediverseDm.off": "Turn off fediverse messages",
+  "fediverseDm.notFound":
+    "We could not reach that account just now. Check that the server accepts messages from other servers, or try again later.",
+  "fediverseDm.first":
+    "Messages from {instance} now come to you here, as direct messages. They are about your account only, such as a warning before an unused account is deleted.",
+  "fediverseDm.keeps": "Your server keeps direct messages; this site cannot delete them.",
+  "fediverseDm.turnOff": "To turn them off, open your account page: {link}",
+  "privacy.federationMessages":
+    "If you log in through the fediverse and switch on fediverse messages on your account page, this site looks up your fediverse address each time it sends one, and sends you a direct message from its actor: one when you switch it on, then the notices about your account, such as the warning before an unused account is deleted. Your server keeps direct messages, which this site cannot delete. This site stores only that the switch is on and the language of the page you used, not your actor or inbox; a message waiting to be delivered is kept encrypted for at most 12 hours and removed when your account is deleted.",
+  "fediverseDm.paused":
+    "Fediverse messages are on, but this site sends none right now. You can turn them off here.",
   "privacy.nearby":
     "Nearby uses the place you search from only for that search. A spot from the map or your location is rounded to about 2 km by your browser before it is sent, and again by the server. A typed place is looked up like place search above, and the search continues from its rounded spot; without JavaScript the typed place is in the address of that first request. Nothing of it is stored or written to this site’s logs. The rounded spot is in the address of the results page, so it can stay in your browser history and in the access log of a web server in front of this site.",
   "field.range_invalid": "The last day comes before the first.",

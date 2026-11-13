@@ -48,6 +48,10 @@ export interface RateLimits {
   noteRoute: RateLimiter;
   /** Turning a fediverse profile on, which makes signing keys (decision D36). */
   profile: RateLimiter;
+  /** Switching fediverse messages on, which looks the account's address up (decision D47). */
+  fediverseMessages: RateLimiter;
+  /** The same per account, whatever client it comes from, keyed by its id: 3, then 6 an hour. */
+  fediverseMessagesAccount: RateLimiter;
 }
 
 /**
@@ -57,7 +61,8 @@ export interface RateLimits {
  * Switching to joined or requested on the manage page counts as responding, since it notifies the
  * host; every attempt to turn notifications on counts too, and every created calendar link, recap
  * contribution and report, and every confirmation link asked for, per client and per address;
- * turning a fediverse profile on counts only when it made keys.
+ * turning a fediverse profile on counts only when it made keys, and turning fediverse messages
+ * on counts when it looked an address up (D47).
  * A client is forgotten once its bucket is full again, after at most an hour (an address asking
  * for confirmation links: 3 tokens at 3 per hour).
  */
@@ -82,6 +87,8 @@ export function createRateLimits(now: () => number): RateLimits {
     inbox: createRateLimiter({ capacity: 120, perHour: 3600, now }),
     noteRoute: createRateLimiter({ capacity: 20, perHour: 120, now }),
     profile: createRateLimiter({ capacity: 5, perHour: 10, now }),
+    fediverseMessages: createRateLimiter({ capacity: 5, perHour: 10, now }),
+    fediverseMessagesAccount: createRateLimiter({ capacity: 3, perHour: 6, now }),
   };
 }
 

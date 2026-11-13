@@ -52,6 +52,27 @@ export function createJobQueue(
       await db.deleteFrom("job_queue").where("id", "=", id).execute();
     },
 
+    async deleteWhere(type, matches) {
+      const rows = await db
+        .selectFrom("job_queue")
+        .select(["id", "payload_enc"])
+        .where("type", "=", type)
+        .execute();
+      const ids = rows
+        .filter((row) => {
+          // A payload that cannot be read matches nothing: one damaged row must not stop the
+          // removal of an account.
+          try {
+            return matches(JSON.parse(cipher.decrypt(row.payload_enc, PAYLOAD)) as unknown);
+          } catch {
+            return false;
+          }
+        })
+        .map((row) => row.id);
+      if (ids.length > 0) await db.deleteFrom("job_queue").where("id", "in", ids).execute();
+      return ids.length;
+    },
+
     async retry(id, runAt, error) {
       await db
         .updateTable("job_queue")

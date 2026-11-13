@@ -27,6 +27,7 @@ import type {
   RemoteActor,
 } from "../../../application/ports.ts";
 import { actorUriOf, addressing, planEvent, planUriOf } from "./event.ts";
+import { accountNote } from "./account-note.ts";
 import { contributionNote } from "./contribution-note.ts";
 import { copiesNotice, noteUriOf, participantNote } from "./note.ts";
 import type { SigningKeyPair } from "../crypto/federation-keys.ts";
@@ -51,6 +52,13 @@ export interface DeliveryPayload {
    * one waiting to be tried again cannot arrive after the Note's `Delete` (decision D43).
    */
   guard?: NoteGuard | undefined;
+  /**
+   * Only for an account's direct message: the account it is for, so deleting the account removes
+   * the job (decision D47). Encrypted with the rest of the payload.
+   */
+  forAccount?: string | undefined;
+  /** And the channel it was made for: after switching off and on again, only the new one's count. */
+  forChannel?: string | undefined;
 }
 
 /**
@@ -96,11 +104,15 @@ export function createFederationPublisher({
       planId,
       responseId,
       guard,
+      forAccount,
+      forChannel,
     }: {
       carryKey?: boolean;
       planId?: string;
       responseId?: string | undefined;
       guard?: NoteGuard;
+      forAccount?: string;
+      forChannel?: string;
     } = {},
   ): Promise<void> {
     const rsa = (await keysFor(localActor))?.[0];
@@ -113,6 +125,8 @@ export function createFederationPublisher({
       keyId: mainKeyId(baseUrl, localActor),
       privateKey: carryKey ? await exportJwk(rsa.privateKey) : undefined,
       guard,
+      forAccount,
+      forChannel,
     };
     for (const inbox of inboxesOf(recipients)) {
       const payload: DeliveryPayload = { inbox, ...delivery };
@@ -322,6 +336,31 @@ export function createFederationPublisher({
 
     async withdrawContributionNote(note, recipient, options = {}) {
       await withdrawNote(note, recipient, options);
+    },
+
+    // One message to one person's own inbox from the instance actor (decision D47).
+    async sendAccountNotice(recipient, { identityId, channelId, handle, text }) {
+      const actor = actorUri("instance");
+      const noteId = ids.rowId();
+      const to = new URL(recipient.id);
+      await enqueue(
+        "instance",
+        new Create({
+          id: new URL(`#create-${ids.rowId()}`, noteUriOf(baseUrl, noteId)),
+          actor,
+          object: accountNote({
+            noteId,
+            text,
+            handle,
+            recipient: to,
+            baseUrl,
+            publishedAt: clock.now(),
+          }),
+          tos: [to],
+        }),
+        [recipient],
+        { forAccount: identityId, forChannel: channelId },
+      );
     },
 
     async withdrawPlan(publication, followers) {

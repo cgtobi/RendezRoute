@@ -1,3 +1,4 @@
+import type { JobType } from "../../src/domain/jobs.ts";
 import type { JobQueue, NewJob, QueuedJob } from "../../src/application/ports.ts";
 
 interface Stored extends QueuedJob {
@@ -46,6 +47,17 @@ export class FakeJobQueue implements JobQueue {
   complete(id: string) {
     this.jobs.delete(id);
     return Promise.resolve();
+  }
+
+  deleteWhere(type: JobType, matches: (payload: unknown) => boolean) {
+    let deleted = 0;
+    for (const [id, job] of this.jobs) {
+      if (job.type === type && matches(job.payload)) {
+        this.jobs.delete(id);
+        deleted++;
+      }
+    }
+    return Promise.resolve(deleted);
   }
 
   retry(id: string, runAt: Date, error: string) {

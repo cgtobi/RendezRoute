@@ -55,6 +55,10 @@ import {
 import { accountEmailProps, registerAccountEmailForms } from "./email.tsx";
 import { accountNtfyProps, registerAccountNtfyForms } from "./ntfy.tsx";
 import { accountTelegramProps, registerAccountTelegramForms } from "./telegram.tsx";
+import {
+  accountFediverseMessagesProps,
+  registerAccountFediverseMessagesForms,
+} from "./fediverse-messages.tsx";
 
 const NOTICES = ["loggedIn", "loggedOut", "renamed", "claimed", "accountDeleted"] as const;
 
@@ -87,6 +91,8 @@ export function registerAccountRoutes(
       fediverse?: FediverseLoginForm;
       email?: { value: string; error: string };
       profile?: { value: string; error: string };
+      /** Switching fediverse messages on failed: the address could not be found (D47). */
+      fediverseMessages?: { failed: true };
     } = {},
   ) => {
     const t = c.get("t");
@@ -94,7 +100,8 @@ export function registerAccountRoutes(
       forms.rename !== undefined ||
       forms.fediverse !== undefined ||
       forms.email !== undefined ||
-      forms.profile !== undefined;
+      forms.profile !== undefined ||
+      forms.fediverseMessages !== undefined;
     const notice: AccountNotice = failed
       ? undefined
       : NOTICES.find((name) => c.req.query(name) !== undefined);
@@ -115,6 +122,12 @@ export function registerAccountRoutes(
         email={await accountEmailProps(deps, deviceToken(c), forms.email)}
         ntfy={await accountNtfyProps(deps, deviceToken(c))}
         telegram={await accountTelegramProps(deps, deviceToken(c))}
+        fediverseMessages={await accountFediverseMessagesProps(
+          deps,
+          deviceToken(c),
+          config.instanceName,
+          forms.fediverseMessages?.failed,
+        )}
         profile={await profileProps(deviceToken(c), forms.profile)}
         profileNotice={failed ? undefined : profileNotice(c)}
       />,
@@ -182,6 +195,9 @@ export function registerAccountRoutes(
   registerAccountEmailForms(app, routeDeps, (c, email) => renderAccount(c, { email }));
   registerAccountNtfyForms(app, routeDeps);
   registerAccountTelegramForms(app, routeDeps);
+  registerAccountFediverseMessagesForms(app, routeDeps, deps, (c) =>
+    renderAccount(c, { fediverseMessages: { failed: true } }),
+  );
 
   if (logins.some((login) => login.provider === "oidc")) {
     app.get("/login/oidc", async (c) => {

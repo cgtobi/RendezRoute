@@ -5,6 +5,8 @@ import {
   loadOrCreateInstanceKeys,
   type SigningKeyPair,
 } from "./adapters/out/crypto/federation-keys.ts";
+import { createFediverseDirectMessages } from "./adapters/out/federation/direct-message.ts";
+import { createRemoteActorLookup } from "./adapters/out/federation/remote-actor.ts";
 import {
   createFederationOutbound,
   type FederationOutbound,
@@ -307,6 +309,8 @@ async function openInstance(
   );
   const contributionNotes = createContributionNoteRepository(database, keys.identityLookup);
   const jobs = createJobQueue(database, keys.cipher, ids);
+  const channels = createChannelRepository(database, keys.cipher, ids, () => systemClock.now());
+  const identities = createIdentityRepository(database, keys.cipher);
   const federation = config.federationEnabled
     ? await (async () => {
         const instanceKeys = await loadOrCreateInstanceKeys(keys.directory);
@@ -321,6 +325,10 @@ async function openInstance(
           notes: participantNotes,
           contributionNotes,
           http,
+          // A message for an account goes only while the account and its channel are there.
+          accountWants: async ({ identityId, channelId }) =>
+            (await identities.findById(identityId)) !== undefined &&
+            (await channels.findById(channelId)) !== undefined,
         });
         return { instanceKeys, http, outbound };
       })()
@@ -359,7 +367,7 @@ async function openInstance(
     invites: createInviteRepository(database),
     permissions: createPermissionRepository(database),
     notify: {
-      channels: createChannelRepository(database, keys.cipher, ids, () => systemClock.now()),
+      channels,
       jobs,
       reminders: createSentReminderRepository(database),
       links: keys.channelLinks,
@@ -372,6 +380,28 @@ async function openInstance(
         telegram === undefined
           ? undefined
           : { outbox: telegram.outbox, botName: () => botName.current() },
+      // Account notices as direct messages to the fediverse login, while federation is on (D47).
+      fediverseMessages:
+        federation === undefined
+          ? undefined
+          : (() => {
+              const lookup = createRemoteActorLookup({
+                http: federation.http,
+                allowInsecure: config.allowInsecureDev,
+              });
+              return {
+                lookup,
+                outbox: createFediverseDirectMessages({
+                  lookup,
+                  publisher: federation.outbound.publisher,
+                  identities,
+                  channels,
+                  instanceName: config.instanceName,
+                  baseUrl: config.baseUrl,
+                  timeZone: config.defaultTimezone,
+                }),
+              };
+            })(),
     },
   };
   return {

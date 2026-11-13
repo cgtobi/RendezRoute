@@ -33,6 +33,7 @@ import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/p
 import { type AccountWiring, createApp } from "./adapters/in/http/app.tsx";
 import { createTokenAdminAuth } from "./adapters/out/admin/token-admin-auth.ts";
 import {
+  createFlagLimits,
   createJoinLimits,
   createRateLimits,
   createReplyLimits,
@@ -486,6 +487,8 @@ export async function startServer(
           hasher: keys.identityLookup,
           joinLimits: createJoinLimits(() => planDeps.clock.now().getTime()),
           replyLimits: createReplyLimits(() => planDeps.clock.now().getTime()),
+          flagLimits: createFlagLimits(() => planDeps.clock.now().getTime()),
+          reporting: config.adminToken !== undefined,
         });
 
   // The first sweep finishes before the server listens, so plans past their deletion

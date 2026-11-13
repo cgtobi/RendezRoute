@@ -15,6 +15,7 @@ import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts
 import { createApp } from "../../src/adapters/in/http/app.tsx";
 import { createTokenAdminAuth } from "../../src/adapters/out/admin/token-admin-auth.ts";
 import {
+  createFlagLimits,
   createJoinLimits,
   createRateLimits,
   createReplyLimits,
@@ -268,6 +269,8 @@ export async function createTestApp({
           hasher: lookupHasher,
           joinLimits: createJoinLimits(() => clock.now().getTime()),
           replyLimits: createReplyLimits(() => clock.now().getTime()),
+          flagLimits: createFlagLimits(() => clock.now().getTime()),
+          reporting: config.adminToken !== undefined,
         });
 
   const app = createApp({

@@ -13,6 +13,7 @@ import {
   Delete,
   Endpoints,
   Event,
+  Flag,
   Follow,
   isActor,
   Join,
@@ -48,11 +49,16 @@ import {
   isJoinedAnywhere,
 } from "../../../application/remote-contributions.ts";
 import {
+  type FlagObject,
+  MAX_FLAG_OBJECTS,
+  reportFromFederation,
+} from "../../../application/federated-reports.ts";
+import {
   forgetRemoteParticipant,
   joinRemote,
   leaveRemote,
 } from "../../../application/remote-participants.ts";
-import type { JoinLimits, ReplyLimits } from "../http/rate-limit.ts";
+import type { FlagLimits, JoinLimits, ReplyLimits } from "../http/rate-limit.ts";
 import { replyContent } from "./reply-text.ts";
 import { resolveLanguage } from "../../i18n/i18n.ts";
 import { planEvent } from "../../out/federation/event.ts";
@@ -81,6 +87,8 @@ export function createInstanceFederation({
   hasher,
   joinLimits,
   replyLimits,
+  flagLimits,
+  reporting,
 }: {
   settings: FederationSettings;
   kv: KvStore;
@@ -96,6 +104,10 @@ export function createInstanceFederation({
   joinLimits: JoinLimits;
   /** Limits on replies from remote participants (decision D45, spec 3.11). */
   replyLimits: ReplyLimits;
+  /** Limits on incoming reports (decision D46, spec 3.11). */
+  flagLimits: FlagLimits;
+  /** Whether reports are taken: only with admin authentication, as on the web (decision D46). */
+  reporting: boolean;
 }): Federation<void> {
   const actorDeps = { ...planDeps, identities };
   const { baseUrl } = settings;
@@ -320,6 +332,39 @@ export function createInstanceFederation({
       if (result === "limited") throw new RepliesLimited();
     };
 
+  /**
+   * A remote `Flag` as a report (decision D46). The objects it names are looked up without
+   * fetching anything; what is not ours is passed over. Nothing about the reporter is kept: its
+   * server is the key of an in-memory quota only. Over a quota the listener fails, so Fedify
+   * answers with an error and does not note the activity, and the server sends it again later.
+   */
+  const flagListener = async (ctx: Context<void>, flag: Flag): Promise<void> => {
+    if (!reporting || flag.actorId === null) return;
+    const origin = flag.actorId.origin;
+    const objects: FlagObject[] = [];
+    for (const objectId of flag.objectIds.slice(0, MAX_FLAG_OBJECTS)) {
+      const planId = planOf(ctx, objectId);
+      const noteId = noteIdOf(baseUrl, objectId);
+      if (planId !== undefined) objects.push({ kind: "plan", planId });
+      else if (noteId !== undefined) objects.push({ kind: "note", noteId });
+    }
+    if (objects.length === 0) return;
+    const html = flag.content === null ? "" : flag.content.toString();
+    const result = await reportFromFederation(planDeps, {
+      objects,
+      reporterOrigin: origin,
+      text: flagText(html),
+      // Both must have room before either is spent: a refusal takes nothing of the other.
+      admit: (planId) => {
+        if (!flagLimits.origin.check(origin).ok || !flagLimits.plan.check(planId).ok) return false;
+        flagLimits.origin.take(origin);
+        flagLimits.plan.take(planId);
+        return true;
+      },
+    });
+    if (result === "limited") throw new FlagsLimited();
+  };
+
   const forgetActor = async (actor: URL) => {
     await forgetRemoteActor(planDeps, actor.href);
     await forgetRemoteParticipant(planDeps, actor.href);
@@ -380,6 +425,7 @@ export function createInstanceFederation({
         remoteActorId: undo.actorId.href,
       });
     })
+    .on(Flag, flagListener)
     .on(Create, replyListener("create"))
     .on(Update, replyListener("update"))
     .on(Delete, async (_ctx, deleted) => {
@@ -431,6 +477,13 @@ class RepliesLimited extends Error {
   }
 }
 
+/** A server or plan got more reports than its limit allows: to be tried again later. */
+class FlagsLimited extends Error {
+  constructor() {
+    super("too many reports");
+  }
+}
+
 /** Looks at what an activity embeds, never at what it only names. */
 const neverFetches: DocumentLoader = () => Promise.reject(new Error("not fetched"));
 
@@ -459,6 +512,16 @@ function privateAddressees(
   }
   return identifiers.length === 0 ? undefined : [...new Set(identifiers)];
 }
+
+/** A `Flag`'s content as plain text; a link in it is kept, written out after the text. */
+function flagText(html: string): string {
+  const content = replyContent(html.slice(0, MAX_FLAG_HTML), []);
+  if (content === undefined) return "";
+  return content.link === undefined ? content.body : `${content.body}\n${content.link}`.trim();
+}
+
+/** Content beyond this is not worked through: a report holds 1,000 characters. */
+const MAX_FLAG_HTML = 20_000;
 
 /** The actor of a `Delete` of itself; undefined for any other `Delete`. */
 function deletedSelf(deleted: Delete): URL | undefined {

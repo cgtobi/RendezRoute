@@ -126,6 +126,25 @@ export function createReplyLimits(now: () => number): ReplyLimits {
   return { origin: createRateLimiter({ capacity: 10, perHour: 30, now }) };
 }
 
+/** Limits on incoming `Flag`s (decision D46, spec 3.11); keys are kept in memory only. */
+export interface FlagLimits {
+  /**
+   * Per remote server, keyed by the signer's origin: burst 5, then 10 an hour. Taken only for a
+   * `Flag` that could become a report (reporting is on and it names a plan we would show), so
+   * `Flag`s that name nothing of ours cannot lock out a server's real ones.
+   */
+  origin: RateLimiter;
+  /** Per plan, whatever servers the `Flag`s come from: 10 an hour. */
+  plan: RateLimiter;
+}
+
+export function createFlagLimits(now: () => number): FlagLimits {
+  return {
+    origin: createRateLimiter({ capacity: 5, perHour: 10, now }),
+    plan: createRateLimiter({ capacity: 10, perHour: 10, now }),
+  };
+}
+
 interface Bucket {
   tokens: number;
   updatedAt: number;

@@ -4,9 +4,11 @@
 import { generateCryptoKeyPair, signRequest } from "@fedify/fedify";
 import { describe, expect, it } from "vite-plus/test";
 import { translator } from "../../../src/adapters/i18n/i18n.ts";
+import { FakeOidcServer } from "../../fakes/oidc-server.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
 import { createPlanViaUi, respondViaUi } from "../../support/plans.ts";
+import { joinOf, remotePerson } from "../../support/remote-people.ts";
 
 const en = translator("en");
 const AP = { accept: "application/activity+json" };
@@ -194,6 +196,161 @@ describe("remote fetches (spec 3.11: through OutboundHttp)", () => {
       body,
     });
     expect(federationHttp.requests.map(String)).toContain(`${actor}#main-key`);
+  });
+});
+
+describe("remote fetches on the personal inboxes (decision I71)", () => {
+  /** Posts a signed activity to `path`, signing for the very address it goes to. */
+  async function postTo(
+    test: Awaited<ReturnType<typeof createTestApp>>,
+    path: string,
+    from: { id: string; keys: Awaited<ReturnType<typeof generateCryptoKeyPair>> },
+    activity: Record<string, unknown>,
+    keyId = `${from.id}#main-key`,
+  ) {
+    const body = JSON.stringify({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      actor: from.id,
+      ...activity,
+    });
+    const signed = await signRequest(
+      new Request(`https://${HOST}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/activity+json" },
+        body,
+      }),
+      from.keys.privateKey,
+      new URL(keyId),
+    );
+    return test.app.request(path, { method: "POST", headers: signed.headers, body });
+  }
+
+  const follow = (from: { id: string }, object: string) => ({
+    id: `${from.id}#follow-1`,
+    type: "Follow",
+    object,
+  });
+
+  it("fetch the key and actor of a signed Follow through OutboundHttp, on the instance actor's inbox", async () => {
+    const test = await createTestApp();
+    const ben = await remotePerson(test, "ben");
+    const response = await postTo(
+      test,
+      "/actors/instance/inbox",
+      ben,
+      follow(ben, `https://${HOST}/actors/instance`),
+    );
+    expect(response.status).toBe(202);
+    const fetched = test.federationHttp.requests.map(String);
+    expect(fetched).toContain(`${ben.id}#main-key`);
+    expect(fetched).toContain(ben.id);
+    expect(
+      JSON.parse(
+        JSON.stringify(test.database.sqlite.prepare("select * from fediverse_followers").all()),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("do the same on a poster actor's inbox", async () => {
+    const oidc = new FakeOidcServer();
+    const test = await createTestApp({ env: oidc.env(), oidc });
+    const anna = new TestClient(test.app);
+    const started = await anna.get("/login/oidc");
+    const callback = oidc.approve(new URL(started.headers.get("location") ?? ""), {
+      sub: "anna",
+      name: "Anna Müller",
+    });
+    await anna.get(`${callback.pathname}${callback.search}`);
+    await anna.postForm("/account/profile", {
+      _csrf: (await anna.hiddenFields("/account"))._csrf ?? "",
+      handle: "anna",
+    });
+    const finger = (await (
+      await test.app.request(`/.well-known/webfinger?resource=acct:anna@${HOST}`)
+    ).json()) as { links: { rel: string; href: string }[] };
+    const actor = finger.links.find((link) => link.rel === "self")?.href ?? "";
+    const ben = await remotePerson(test, "ben");
+    const response = await postTo(
+      test,
+      new URL(actor).pathname + "/inbox",
+      ben,
+      follow(ben, actor),
+    );
+    expect(response.status).toBe(202);
+    const fetched = test.federationHttp.requests.map(String);
+    expect(fetched).toContain(`${ben.id}#main-key`);
+    expect(fetched).toContain(ben.id);
+    expect(
+      JSON.parse(
+        JSON.stringify(test.database.sqlite.prepare("select * from fediverse_followers").all()),
+      ),
+    ).toHaveLength(1);
+  });
+
+  // That the guard itself refuses private addresses is covered by the OutboundHttp adapter tests;
+  // here: the key lookup goes through OutboundHttp (the fake records it), and nothing is taken.
+  it("send a signature whose key is on a private address through OutboundHttp, and take nothing from it", async () => {
+    const test = await createTestApp();
+    const ben = await remotePerson(test, "ben");
+    for (const keyId of ["http://127.0.0.1/keys/ben#main-key", "https://localhost/keys/ben"]) {
+      const response = await postTo(
+        test,
+        "/actors/instance/inbox",
+        ben,
+        follow(ben, `https://${HOST}/actors/instance`),
+        keyId,
+      );
+      expect(response.status).toBe(401);
+    }
+    expect(test.federationHttp.requests.map(String)).toEqual(
+      expect.arrayContaining(["http://127.0.0.1/keys/ben#main-key", "https://localhost/keys/ben"]),
+    );
+    expect(test.federationHttp.posts).toEqual([]);
+    expect(
+      JSON.stringify(test.database.sqlite.prepare("select * from fediverse_followers").all()),
+    ).toBe("[]");
+  });
+
+  it("still take a remote Join, its Undo and a reply on the instance actor's inbox", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const { planId } = await createPlanViaUi(host, {});
+    const ben = await remotePerson(test, "ben");
+    const inbox = "/actors/instance/inbox";
+    const instance = `https://${HOST}/actors/instance`;
+    const found = () => test.planDeps.responses.findRemote(planId, ben.id);
+    expect((await postTo(test, inbox, ben, joinOf(ben, planId))).status).toBe(202);
+    expect(await found()).toBeDefined();
+    // Replies are taken once the plan has started.
+    test.clock.set("2026-06-07T06:00:00Z");
+    const note = `${ben.id}/statuses/1`;
+    const create = await postTo(test, inbox, ben, {
+      id: `${note}/activity-1`,
+      type: "Create",
+      to: [instance],
+      object: {
+        id: note,
+        type: "Note",
+        attributedTo: ben.id,
+        inReplyTo: `https://${HOST}/p/${planId}`,
+        to: [instance],
+        content: "<p>Nice one</p>",
+        published: "2026-06-07T07:00:00Z",
+      },
+    });
+    expect(create.status).toBe(202);
+    const comments = (await test.planDeps.recap.listByPlan(planId)).map((c) => c.body);
+    expect(comments.join(" ")).toContain("Nice one");
+    expect(
+      (
+        await postTo(test, inbox, ben, {
+          id: `${ben.id}#undo-1`,
+          type: "Undo",
+          object: { ...joinOf(ben, planId), actor: ben.id },
+        })
+      ).status,
+    ).toBe(202);
+    expect(await found()).toBeUndefined();
   });
 });
 

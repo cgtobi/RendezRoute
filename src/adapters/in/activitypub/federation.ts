@@ -113,12 +113,15 @@ export function createInstanceFederation({
   const { baseUrl } = settings;
   // The instance's own handle is its host, as Mastodon names its instance actor.
   const handle = baseUrl.hostname;
-  // No queue yet: nothing is sent or queued before step 10, and the inbox acts on nothing.
   const federation = createFederation<void>({
     kv,
     origin: baseUrl.origin,
     documentLoaderFactory: () => outboundDocumentLoader(http),
     contextLoaderFactory: () => outboundContextLoader(http),
+    // The personal inboxes fetch senders' keys and actors with this one, not Fedify's own loader.
+    // It is deliberately unsigned and goes through OutboundHttp (decision I71): never sign a
+    // fetch outside OutboundHttp.
+    authenticatedDocumentLoaderFactory: () => outboundDocumentLoader(http),
     publicKeyTtl: { days: PUBLIC_KEY_DAYS },
   });
 

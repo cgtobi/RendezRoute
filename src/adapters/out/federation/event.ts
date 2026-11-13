@@ -55,7 +55,7 @@ export function planEvent(view: PlanEventView, language: string, address: EventA
 }
 
 /** The note as one paragraph of escaped text, its line breaks kept. */
-function noteHtml(note: string): string {
+export function noteHtml(note: string): string {
   const escaped = note
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")

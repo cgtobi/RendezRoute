@@ -5,6 +5,9 @@ import type {
   FediverseProfileRepository,
   FollowerRepository,
   PlanEventView,
+  ParticipantNote,
+  ParticipantNoteFacts,
+  ParticipantNoteRepository,
   PlanPublication,
   PublicationRepository,
   PublicationState,
@@ -171,6 +174,60 @@ export class FakePublications implements PublicationRepository {
   }
 }
 
+/** Private Notes to remote participants in memory (decision D43), the token kept in the clear. */
+export class FakeParticipantNotes implements ParticipantNoteRepository {
+  readonly notes = new Map<string, ParticipantNote>();
+
+  create(note: Omit<ParticipantNote, "sentAt">, now: Date) {
+    // One Note per response: a second attempt stores nothing, as the database does.
+    if (this.notes.has(note.responseId)) return Promise.resolve(false);
+    if ([...this.notes.values()].some((other) => other.noteId === note.noteId)) {
+      return Promise.reject(new Error("duplicate key"));
+    }
+    this.notes.set(note.responseId, { ...note, sentAt: now });
+    return Promise.resolve(true);
+  }
+
+  find(responseId: string) {
+    const note = this.notes.get(responseId);
+    return Promise.resolve(note === undefined ? undefined : { ...note });
+  }
+
+  listByPlan(planId: string) {
+    return Promise.resolve(
+      [...this.notes.values()].filter((note) => note.planId === planId).map((n) => ({ ...n })),
+    );
+  }
+
+  listByActor(localActor: string) {
+    return Promise.resolve(
+      [...this.notes.values()]
+        .filter((note) => note.localActor === localActor)
+        .map((n) => ({ ...n })),
+    );
+  }
+
+  update(note: Omit<ParticipantNote, "sentAt">) {
+    const before = this.notes.get(note.responseId);
+    if (before !== undefined) this.notes.set(note.responseId, { ...note, sentAt: before.sentAt });
+    return Promise.resolve();
+  }
+
+  delete(responseId: string) {
+    this.notes.delete(responseId);
+    return Promise.resolve();
+  }
+
+  findByRouteToken(token: string) {
+    const note = [...this.notes.values()].find((candidate) => candidate.routeToken === token);
+    return Promise.resolve(note === undefined ? undefined : { ...note });
+  }
+
+  fingerprint(content: string) {
+    return `fp(${content})`;
+  }
+}
+
 type SentPlan = PlanPublication & { to: string[] };
 
 /** What would have been sent, in order. */
@@ -188,6 +245,24 @@ export class FakePublisher implements FederationPublisher {
         responseId: string | undefined;
         to: string;
         join: RemoteJoin;
+        language: string;
+      }
+    /** A private Note to one participant (decision D43). */
+    | {
+        kind: "note";
+        activity: "create" | "update";
+        localActor: string;
+        note: ParticipantNoteFacts;
+        to: string;
+      }
+    | {
+        kind: "noteDelete";
+        noteId: string;
+        planId: string;
+        localActor: string;
+        to: string;
+        /** Whether the actor's key goes in the job, for a profile being retired. */
+        carryKey: boolean;
       }
     /** To remote participants only (decision D42). */
     | {
@@ -225,7 +300,12 @@ export class FakePublisher implements FederationPublisher {
 
   answerJoin(
     answer: "accept" | "reject",
-    sender: { localActor: string; planId: string; responseId?: string | undefined },
+    sender: {
+      localActor: string;
+      planId: string;
+      responseId?: string | undefined;
+      language: string;
+    },
     participant: { actor: RemoteActor; join: RemoteJoin },
   ) {
     this.sent.push({
@@ -236,6 +316,36 @@ export class FakePublisher implements FederationPublisher {
       responseId: sender.responseId,
       to: participant.actor.id,
       join: participant.join,
+      language: sender.language,
+    });
+    return Promise.resolve();
+  }
+
+  sendParticipantNote(
+    activity: "create" | "update",
+    note: ParticipantNoteFacts,
+    recipient: RemoteActor,
+  ) {
+    this.sent.push({
+      kind: "note",
+      activity,
+      localActor: note.localActor,
+      note: { ...note },
+      to: recipient.id,
+    });
+    return Promise.resolve();
+  }
+
+  withdrawParticipantNote(
+    note: { noteId: string; planId: string; localActor: string },
+    recipient: RemoteActor,
+    options: { carryKey?: boolean } = {},
+  ) {
+    this.sent.push({
+      kind: "noteDelete",
+      ...note,
+      to: recipient.id,
+      carryKey: options.carryKey === true,
     });
     return Promise.resolve();
   }

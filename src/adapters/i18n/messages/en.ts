@@ -304,6 +304,12 @@ export const en = {
   "plan.when": "When",
   "preview.cancelled": "Cancelled: {title}",
   "plan.timeZone": "{zone} time",
+  "note.start": "Start: {when}",
+  "note.place": "Meeting point: {place}",
+  "note.coordinates": "Coordinates: {lat}, {lng}",
+  "note.route": "The route is attached as a GPX file.",
+  "note.plan": "Plan page: {link}",
+  "note.copies": "Your server may keep copies of this message.",
   "plan.where": "Meeting area",
   "plan.distance": "Distance",
   "plan.elevation": "Elevation gain",
@@ -792,6 +798,8 @@ export const en = {
   "layout.nearby": "Nearby",
   "privacy.federation":
     "This site takes part in the fediverse as @{host}@{host}. Other servers can fetch a plan’s public details by its address, as anyone with the link can see them. When a server sends this site a message, this site fetches that server’s public key to check the message’s signature, and keeps the key for up to {days} days. Anyone in the fediverse can follow this site: a follower’s address and inboxes are stored encrypted until they unfollow, their account is deleted or this site stops taking part in the fediverse, and only how many there are is shown. The site itself shares no plans: only fediverse profiles do. People in the fediverse can join a plan from their own server: the address and inboxes of such a participant are stored encrypted until they leave, their account is deleted or the plan is deleted; for someone the host rejected or removed they stay as a block until the plan is deleted or their account is. The name shown comes from their profile, and the host and the accepted participants can see it. The plan’s changes are sent to each participant separately while they are in, and its deletion to everyone who joined, and their server may keep copies.",
+  "privacy.federationNotes":
+    "When someone in the fediverse joins a plan and is accepted, the exact start and the route are sent to them as a direct message from this site’s actor, or from the poster’s profile, and to no one else: the exact start as text, the route as a GPX file behind a private link that anyone holding it can open until the message is withdrawn. The message is withdrawn when they leave, are removed or the plan is deleted, and changes to the exact start, the time or the route are sent to them again. Their server may keep copies, which this site cannot delete.",
   "privacy.nearby":
     "Nearby uses the place you search from only for that search. A spot from the map or your location is rounded to about 2 km by your browser before it is sent, and again by the server. A typed place is looked up like place search above, and the search continues from its rounded spot; without JavaScript the typed place is in the address of that first request. Nothing of it is stored or written to this site’s logs. The rounded spot is in the address of the results page, so it can stay in your browser history and in the access log of a web server in front of this site.",
   "field.range_invalid": "The last day comes before the first.",

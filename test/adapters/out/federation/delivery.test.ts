@@ -70,6 +70,48 @@ describe("delivering an activity (decision D38)", () => {
     expect(http.posts[0]?.headers.signature).toContain(`keyId="${retired.keyId}"`);
   });
 
+  it("drops a Note's Create or Update that is no longer current, and sends one that is", async () => {
+    const guard = { responseId: "response-1", noteId: "note-1" };
+    const guarded = (current: boolean, http: FakeOutboundHttp) =>
+      federationDeliveryHandler(
+        http,
+        () => Promise.resolve([keys]),
+        (asked) => Promise.resolve(current && asked.noteId === "note-1"),
+      )({ ...payload, guard });
+    const stale = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+    // Withdrawn, or replaced by another Note, while it waited to be tried again.
+    expect(await guarded(false, stale)).toBe("drop");
+    expect(stale.posts).toEqual([]);
+    const current = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+    expect(await guarded(true, current)).toBe("done");
+    expect(current.posts).toHaveLength(1);
+    // A guard that is there but not whole is a damaged job: dropped, not sent.
+    for (const broken of [
+      { responseId: "response-1" },
+      { noteId: "note-1" },
+      "x",
+      { responseId: 1, noteId: "note-1" },
+    ]) {
+      const damaged = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+      expect(
+        await federationDeliveryHandler(damaged, () => Promise.resolve([keys]))({
+          ...payload,
+          guard: broken,
+        }),
+      ).toBe("drop");
+      expect(damaged.posts).toEqual([]);
+    }
+    // A payload without a guard (an Accept, a Delete) is never held back.
+    const plain = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+    expect(
+      await federationDeliveryHandler(
+        plain,
+        () => Promise.resolve([keys]),
+        () => Promise.resolve(false),
+      )(payload),
+    ).toBe("done");
+  });
+
   it("drops a payload that is not a delivery", async () => {
     const http = new FakeOutboundHttp();
     expect(await deliver(http, { inbox: INBOX })).toBe("drop");

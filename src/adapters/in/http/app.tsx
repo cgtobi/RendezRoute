@@ -9,6 +9,7 @@ import { bodyLimit } from "hono/body-limit";
 import type { Child } from "hono/jsx";
 import { jsxRenderer } from "hono/jsx-renderer";
 import type { AccountDeps } from "../../../application/accounts.ts";
+import { routeForNoteLink } from "../../../application/participant-notes.ts";
 import type { PlanDeps } from "../../../application/plans.ts";
 import { listTemplates } from "../../../application/templates.ts";
 import type {
@@ -21,6 +22,7 @@ import type { Config } from "../../../config.ts";
 import { isUnits, type Units } from "../../../domain/units.ts";
 import { type Language, resolveLanguage, type Translate, translator } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
+import { toGpx } from "../../out/gpx/write-gpx.ts";
 import { clientIp } from "./client-ip.ts";
 import { csrf } from "./csrf.ts";
 import { readDeviceToken } from "./device-cookie.ts";
@@ -261,6 +263,26 @@ export function createApp({
   app.notFound((c) => messagePage(c, 404, translate(c)("error.notFound")));
 
   app.get("/healthz", (c) => c.text("ok"));
+
+  // The GPX of a private Note to a remote participant (decision D43): public by its secret token,
+  // so every try is counted, and every failure (unknown, withdrawn, no route, federation off) is
+  // the same plain 404. Before the page routes, which have no use for it.
+  app.get("/federation/notes/:token/route.gpx", async (c) => {
+    const notFound = () => c.text("Not found", 404);
+    const allowed = rateLimits.noteRoute.take(clientKey(c.get("clientIp")));
+    if (!allowed.ok) {
+      c.header("retry-after", String(allowed.retryAfterSeconds));
+      return c.text("Too many requests", 429);
+    }
+    const found = await routeForNoteLink(planDeps, c.req.param("token"));
+    if (found.kind === "not_found") return notFound();
+    c.header("content-type", "application/gpx+xml; charset=utf-8");
+    c.header("content-disposition", 'attachment; filename="route.gpx"');
+    c.header("cache-control", "no-store");
+    c.header("x-robots-tag", "noindex, nofollow");
+    c.header("referrer-policy", "no-referrer");
+    return c.body(toGpx(found.route, found.title));
+  });
 
   app.use(
     "/static/*",

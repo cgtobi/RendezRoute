@@ -241,6 +241,25 @@ export interface PlanPublicationsTable {
   withdrawn_at: string | null;
 }
 
+/** Private direct Notes to accepted remote participants (decision D43, migration 0030). */
+export interface ParticipantNotesTable {
+  /** The remote participant's response: one Note per response. */
+  response_id: string;
+  plan_id: string;
+  /** Random id in the Note's URI. */
+  note_id: string;
+  /** Who sent it: "instance" or a poster actor's identifier; sends its Updates and Delete too. */
+  local_actor: string;
+  /** Keyed hash of the secret GPX URL token; null when the plan has no route. */
+  route_token_hmac: string | null;
+  /** The token itself, encrypted (participant_notes.route_token); null exactly with the hash. */
+  route_token_enc: string | null;
+  /** Keyed hash of the exact start, route, time and language last sent. */
+  content_hash: string;
+  sent_at: string;
+  updated_at: string;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -250,6 +269,8 @@ export interface DatabaseSchema {
   fediverse_profiles: FediverseProfilesTable;
   fediverse_followers: FediverseFollowersTable;
   plan_publications: PlanPublicationsTable;
+  /** Private Notes to accepted remote participants (decision D43). */
+  participant_notes: ParticipantNotesTable;
   plans: PlansTable;
   devices: DevicesTable;
   device_links: DeviceLinksTable;

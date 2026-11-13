@@ -1,6 +1,6 @@
 import type { ActivityType } from "../domain/activity.ts";
 import type { BoundingBox } from "../domain/nearby.ts";
-import type { GeoPoint } from "../domain/geo.ts";
+import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { Identity, IdentityProviderKind } from "../domain/identity.ts";
 import type { Invite } from "../domain/invite.ts";
 import type { Report, ReportReason } from "../domain/report.ts";
@@ -62,6 +62,8 @@ export const ENCRYPTED_FIELDS = [
   "fediverse_profiles.keys",
   // Who follows the instance's actors (decision D38).
   "fediverse_followers.remote",
+  // A private Note's secret GPX link (decision D43), found by its keyed hash.
+  "participant_notes.route_token",
 ] as const;
 export type EncryptedField = (typeof ENCRYPTED_FIELDS)[number];
 
@@ -361,6 +363,59 @@ export interface PlanEventView {
 }
 
 /**
+ * A private direct `Note` to a remote participant who joined (decision D43): what the exact start
+ * and route are sent as. One per response; its secret route link dies with it.
+ */
+export interface ParticipantNote {
+  responseId: string;
+  planId: string;
+  /** The random identifier in the Note's address. */
+  noteId: string;
+  /** Who sent it: its later `Update`s and its `Delete` come from the same actor (D43). */
+  localActor: string;
+  /** When it was first sent. */
+  sentAt: Date;
+  /** The secret token of the GPX link; undefined without a route. */
+  routeToken: string | undefined;
+  /** Keyed fingerprints of what was sent, "route.rest": an unchanged edit sends nothing. */
+  contentHash: string;
+}
+
+/** Private Notes sent to remote participants (decision D43); a plan's or response's rows go with it. */
+export interface ParticipantNoteRepository {
+  /** False, storing nothing, when the response already has a Note (two attempts at once). */
+  create(note: Omit<ParticipantNote, "sentAt">, now: Date): Promise<boolean>;
+  find(responseId: string): Promise<ParticipantNote | undefined>;
+  listByPlan(planId: string): Promise<ParticipantNote[]>;
+  /** Every Note an actor sent, for when it is retired and can no longer sign. */
+  listByActor(localActor: string): Promise<ParticipantNote[]>;
+  /** After an `Update`: the new hash and route token (the old token stops working). */
+  update(note: Omit<ParticipantNote, "sentAt">, now: Date): Promise<void>;
+  delete(responseId: string): Promise<void>;
+  /** The Note whose secret GPX link this is; the token itself is never searched in the clear. */
+  findByRouteToken(token: string): Promise<ParticipantNote | undefined>;
+  /** A keyed fingerprint (low-entropy coordinates cannot be guessed from it). */
+  fingerprint(content: string): string;
+}
+
+/** What a private Note is made of (decision D43): the adapter writes the text in the plan's language. */
+export interface ParticipantNoteFacts {
+  noteId: string;
+  planId: string;
+  responseId: string;
+  localActor: string;
+  language: string;
+  title: string;
+  startsAt: Date;
+  timeZone: string;
+  exactStart: ExactStart | undefined;
+  routeToken: string | undefined;
+  /** For receivers to order what they get: first sent, and last changed (undefined at `Create`). */
+  publishedAt: Date;
+  updatedAt: Date | undefined;
+}
+
+/**
  * Activities to other servers (spec 7 ActivityPub, decision D38): queued, signed by the local
  * actor and delivered in the background. Undefined while federation is off.
  */
@@ -383,8 +438,30 @@ export interface FederationPublisher {
    */
   answerJoin(
     answer: "accept" | "reject",
-    sender: { localActor: string; planId: string; responseId?: string | undefined },
+    sender: {
+      localActor: string;
+      planId: string;
+      responseId?: string | undefined;
+      /** The plan's language, for the notice in an `Accept`'s summary (decision D43). */
+      language: string;
+    },
     participant: { actor: RemoteActor; join: RemoteJoin },
+  ): Promise<void>;
+  /**
+   * The exact start and route as a direct `Note` to one participant, addressed to them alone
+   * (decision D43); `Create` or `Update` of the same Note. Jobs go with the plan and response.
+   */
+  sendParticipantNote(
+    activity: "create" | "update",
+    note: ParticipantNoteFacts,
+    recipient: RemoteActor,
+  ): Promise<void>;
+  /** `Delete` for a participant's Note; outlives the plan and the response (decision D43). */
+  withdrawParticipantNote(
+    note: { noteId: string; planId: string; localActor: string },
+    recipient: RemoteActor,
+    /** For a profile being retired: its key goes in the job, as it is gone by delivery (D36). */
+    options?: { carryKey?: boolean },
   ): Promise<void>;
   /**
    * `Update` of a plan's `Event` to remote participants, one activity each, addressed to that

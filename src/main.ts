@@ -11,6 +11,7 @@ import {
 } from "./adapters/out/federation/outbound.ts";
 import { createFediverseProfileRepository } from "./adapters/out/sqlite/fediverse-profiles.ts";
 import { createFollowerRepository } from "./adapters/out/sqlite/followers.ts";
+import { createParticipantNoteRepository } from "./adapters/out/sqlite/participant-notes.ts";
 import { createPublicationRepository } from "./adapters/out/sqlite/publications.ts";
 import { createFedifyKvStore } from "./adapters/out/sqlite/fedify-kv.ts";
 import { existsSync, mkdirSync } from "node:fs";
@@ -292,6 +293,11 @@ async function openInstance(
   // The instance in the fediverse (decision D36): its actor's keys in the key directory; fediverse
   // servers are named by others, so their requests get full SSRF protection (spec 3.11).
   const profiles = createFediverseProfileRepository(database, keys.cipher, keys.identityLookup);
+  const participantNotes = createParticipantNoteRepository(
+    database,
+    keys.cipher,
+    keys.identityLookup,
+  );
   const jobs = createJobQueue(database, keys.cipher, ids);
   const federation = config.federationEnabled
     ? await (async () => {
@@ -304,6 +310,7 @@ async function openInstance(
           baseUrl: config.baseUrl,
           instanceKeys,
           profiles,
+          notes: participantNotes,
           http,
         });
         return { instanceKeys, http, outbound };
@@ -333,6 +340,7 @@ async function openInstance(
       actorKeys: actorKeyFactory,
       followers: createFollowerRepository(database, keys.cipher, keys.identityLookup, ids),
       publications: createPublicationRepository(database),
+      notes: participantNotes,
       // Deliveries go through the job queue (decision D38).
       publisher: federation?.outbound.publisher,
       enabled: config.federationEnabled,

@@ -1,6 +1,7 @@
 import { actorKeyFactory } from "../../src/adapters/out/crypto/federation-keys.ts";
 import { createFederationOutbound } from "../../src/adapters/out/federation/outbound.ts";
 import { createFollowerRepository } from "../../src/adapters/out/sqlite/followers.ts";
+import { createParticipantNoteRepository } from "../../src/adapters/out/sqlite/participant-notes.ts";
 import { createPublicationRepository } from "../../src/adapters/out/sqlite/publications.ts";
 import { createFediverseProfileRepository } from "../../src/adapters/out/sqlite/fediverse-profiles.ts";
 import { FakeOutboundHttp } from "../fakes/outbound-http.ts";
@@ -125,6 +126,8 @@ export async function createTestApp({
     cipher,
     createLookupHasher(randomBytes(32)),
   );
+  const lookupHasher = createLookupHasher(randomBytes(32));
+  const participantNotes = createParticipantNoteRepository(database, cipher, lookupHasher);
   const federationOutbound =
     federationKeys === undefined
       ? undefined
@@ -135,9 +138,9 @@ export async function createTestApp({
           baseUrl: config.baseUrl,
           instanceKeys: federationKeys,
           profiles,
+          notes: participantNotes,
           http: federationHttp,
         });
-  const lookupHasher = createLookupHasher(randomBytes(32));
   const channelLinks = createChannelLinks(randomBytes(32));
   const mailer = new FakeMailer();
   const email =
@@ -202,6 +205,7 @@ export async function createTestApp({
       actorKeys: actorKeyFactory,
       followers: createFollowerRepository(database, cipher, lookupHasher, ids),
       publications: createPublicationRepository(database),
+      notes: participantNotes,
       publisher: federationOutbound?.publisher,
       enabled: config.federationEnabled,
     },

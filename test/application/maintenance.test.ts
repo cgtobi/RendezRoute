@@ -10,6 +10,7 @@ import {
   FakeActorKeys,
   FakeFediverseProfiles,
   FakeFollowers,
+  FakeParticipantNotes,
   FakePublications,
 } from "../fakes/fediverse-profiles.ts";
 import { FakeClock } from "../fakes/clock.ts";
@@ -136,6 +137,7 @@ describe("runHousekeeping and fediverse followers (decision D38)", () => {
           actorKeys: new FakeActorKeys(),
           followers,
           publications: new FakePublications(),
+          notes: new FakeParticipantNotes(),
           publisher: undefined,
           enabled,
         },

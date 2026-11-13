@@ -30,6 +30,7 @@ import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import { resolveDevice } from "./devices.ts";
 import { deletionNotices, notifyResponders, notifyResponse } from "./notify.ts";
+import { syncNoteOf, syncParticipantNotes } from "./participant-notes.ts";
 import { answerRemoteResponse } from "./remote-participants.ts";
 import { ratingResultDue, ratingResultFor, type RatingResultView } from "./plan-views.ts";
 import { freezeRatingTally } from "./ratings.ts";
@@ -225,11 +226,14 @@ export async function editPlan(
       await deps.responses.update(accepted.value);
       await notifyResponse(deps, updated, accepted.value, "accepted");
       await answerRemoteResponse(deps, updated, accepted.value, "accept");
+      await syncNoteOf(deps, updated, response.id, response.kind, accepted.value.kind);
     }
   }
   if (isMaterialChange(plan, updated)) await notifyResponders(deps, updated, "changed");
   // Last, so people here are told even if the fediverse cannot be (D38).
   await syncPublication(deps, plan, updated);
+  // And the private Notes of remote participants, if the exact start or the time changed (D43).
+  await syncParticipantNotes(deps, updated);
   return {
     kind: "updated",
     recapWindowShortened: shortenedRecapWindow(request.input.recapWindow, updated.recapWindow),
@@ -312,6 +316,8 @@ function personAction<Done extends string>(
     if (notice !== undefined) await notifyResponse(deps, plan, changed.value, notice);
     const told = answer?.(changed.value);
     if (told !== undefined) await answerRemoteResponse(deps, plan, changed.value, told);
+    // The exact start and route follow the answer, to those who joined (decision D43).
+    await syncNoteOf(deps, plan, response.id, response.kind, changed.value.kind);
     return { kind: done };
   };
 }

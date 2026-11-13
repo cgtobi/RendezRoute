@@ -9,6 +9,7 @@ import type {
   IdGenerator,
   JobQueue,
   OutboundHttp,
+  ParticipantNoteRepository,
 } from "../../../application/ports.ts";
 import { actorSigningKeys, type SigningKeyPair } from "../crypto/federation-keys.ts";
 import { federationDeliveryHandler } from "./delivery.ts";
@@ -28,6 +29,7 @@ export function createFederationOutbound({
   baseUrl,
   instanceKeys,
   profiles,
+  notes,
   http,
 }: {
   jobs: JobQueue;
@@ -36,6 +38,8 @@ export function createFederationOutbound({
   baseUrl: URL;
   instanceKeys: readonly SigningKeyPair[];
   profiles: Pick<FediverseProfileRepository, "findActor">;
+  /** Whether a private Note still exists, for its `Create` and `Update` waiting to be tried again. */
+  notes: Pick<ParticipantNoteRepository, "find">;
   http: OutboundHttp;
 }): FederationOutbound {
   const keysFor = actorSigningKeys(instanceKeys, profiles);
@@ -48,6 +52,10 @@ export function createFederationOutbound({
       keysFor,
       contextLoader: outboundContextLoader(http),
     }),
-    deliver: federationDeliveryHandler(http, keysFor),
+    deliver: federationDeliveryHandler(
+      http,
+      keysFor,
+      async (guard) => (await notes.find(guard.responseId))?.noteId === guard.noteId,
+    ),
   };
 }

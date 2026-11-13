@@ -70,6 +70,7 @@ import type {
   FederationPublisher,
   FediverseProfileRepository,
   FollowerRepository,
+  ParticipantNoteRepository,
   PublicationRepository,
 } from "./ports.ts";
 
@@ -114,6 +115,8 @@ export interface PlanDeps extends DeviceDeps {
         followers: FollowerRepository;
         /** Which plans were sent to the fediverse, by whom and to whom (D38, D39). */
         publications: PublicationRepository;
+        /** Private Notes with the exact start and route, sent to remote participants (D43). */
+        notes: ParticipantNoteRepository;
         /** Undefined while federation is off: nothing is sent. */
         publisher: FederationPublisher | undefined;
         enabled: boolean;

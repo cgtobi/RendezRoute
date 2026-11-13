@@ -44,6 +44,8 @@ export interface RateLimits {
   nearby: RateLimiter;
   /** Posts to the inboxes, per server address (spec 3.11: inbox rate limits). */
   inbox: RateLimiter;
+  /** A private Note's GPX link, public by its secret token: every try counts (decision D43). */
+  noteRoute: RateLimiter;
   /** Turning a fediverse profile on, which makes signing keys (decision D36). */
   profile: RateLimiter;
 }
@@ -78,6 +80,7 @@ export function createRateLimits(now: () => number): RateLimits {
     nearby: createRateLimiter({ capacity: 20, perHour: 120, now }),
     // Posts from fediverse servers: a busy server delivers in bursts.
     inbox: createRateLimiter({ capacity: 120, perHour: 3600, now }),
+    noteRoute: createRateLimiter({ capacity: 20, perHour: 120, now }),
     profile: createRateLimiter({ capacity: 5, perHour: 10, now }),
   };
 }

@@ -36,6 +36,7 @@ import {
   FakeActorKeys,
   FakeFediverseProfiles,
   FakeFollowers,
+  FakeParticipantNotes,
   FakePublications,
   FakePublisher,
 } from "../fakes/fediverse-profiles.ts";
@@ -80,6 +81,7 @@ beforeEach(() => {
       actorKeys: new FakeActorKeys(),
       followers,
       publications: new FakePublications(),
+      notes: new FakeParticipantNotes(),
       publisher,
       enabled: true,
     },
@@ -163,7 +165,7 @@ const join = (
 
 /** The answers sent, as "accept ben" or "reject ben" (the actor's last name part). */
 const answers = () =>
-  publisher.sent.flatMap((sent) =>
+  sentActivities().flatMap((sent) =>
     sent.kind === "answer" ? [`${sent.answer} ${sent.to.split("/").at(-1)}`] : [],
   );
 
@@ -172,6 +174,10 @@ const responsesOf = async (planId: string) =>
     entry.actor.id.split("/").at(-1),
     entry.response.kind,
   ]);
+
+/** What was sent, but for the private Notes, which have their own tests (decision D43). */
+const sentActivities = () =>
+  publisher.sent.filter((sent) => sent.kind !== "note" && sent.kind !== "noteDelete");
 
 const withFederation = (enabled: boolean) => {
   deps = { ...deps, posterActors: { ...deps.posterActors!, enabled } };
@@ -184,7 +190,7 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
     expect(await join(planId, remote("ben"))).toBe("stored");
     const [response] = await deps.responses.listByPlan(planId);
     expect(response).toMatchObject({ kind: "joined", displayName: "ben@social.example" });
-    expect(publisher.sent).toEqual([
+    expect(sentActivities()).toEqual([
       {
         kind: "answer",
         answer: "accept",
@@ -193,6 +199,7 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
         responseId: response?.id,
         to: "https://social.example/users/ben",
         join: { id: "https://social.example/users/ben#join-1", kind: "join" },
+        language: "en",
       },
     ]);
     expect(await deps.responses.counts(planId)).toEqual({ interested: 0, participants: 1 });
@@ -204,8 +211,8 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
     const actor = (await profiles.findByHandle("anna"))?.id ?? "";
     const planId = await plan(device, { visibility: "followers" });
     await join(planId, remote("cleo", "other.example"));
-    expect(publisher.sent.at(-1)).toMatchObject({ kind: "answer", answer: "accept" });
-    expect(publisher.sent.at(-1)).toMatchObject({ localActor: actor });
+    expect(sentActivities().at(-1)).toMatchObject({ kind: "answer", answer: "accept" });
+    expect(sentActivities().at(-1)).toMatchObject({ localActor: actor });
   });
 
   it("takes a TentativeAccept as interested, and a changed mind as a change", async () => {
@@ -213,7 +220,7 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
     const planId = await plan(device, { joinMode: "approval" });
     await join(planId, remote("dora"), "tentative");
     expect(await responsesOf(planId)).toEqual([["dora", "interested"]]);
-    expect(publisher.sent.at(-1)).toMatchObject({
+    expect(sentActivities().at(-1)).toMatchObject({
       answer: "accept",
       join: { id: "https://social.example/users/dora#tentative-1", kind: "tentative" },
     });
@@ -238,7 +245,7 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
       ["gus", "requested"],
       ["hal", "requested"],
     ]);
-    expect(publisher.sent).toEqual([]);
+    expect(sentActivities()).toEqual([]);
     const idOf = async (name: string) =>
       (await deps.responses.listByPlan(planId)).find((r) => r.displayName.startsWith(`${name}@`))
         ?.id ?? "";
@@ -253,7 +260,7 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
     expect(await act(acceptRequest, "eli")).toEqual({ kind: "accepted" });
     expect(await act(rejectRequest, "fay")).toEqual({ kind: "rejected" });
     expect(answers()).toEqual(["accept eli", "reject fay"]);
-    expect(publisher.sent.at(-1)).toMatchObject({
+    expect(sentActivities().at(-1)).toMatchObject({
       responseId: await idOf("fay"),
       join: { id: "https://social.example/users/fay#join-1" },
     });
@@ -287,7 +294,7 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
     clock.set(new Date(sampleStart.getTime() + 60_000).toISOString());
     expect(await join(started, remote("kim"))).toBe("rejected");
     expect(answers()).toEqual(["reject ivy", "reject jon", "reject kim"]);
-    expect(publisher.sent.map((sent) => sent.kind === "answer" && sent.responseId)).toEqual([
+    expect(sentActivities().map((sent) => sent.kind === "answer" && sent.responseId)).toEqual([
       undefined,
       undefined,
       undefined,
@@ -296,7 +303,7 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
     expect(await deps.responses.listRemote(started)).toEqual([]);
     publisher.sent.length = 0;
     expect(await join("no-such-plan-0000000001", remote("lou"))).toBe("ignored");
-    expect(publisher.sent).toEqual([]);
+    expect(sentActivities()).toEqual([]);
   });
 
   it("rejects an actor the host rejected or removed, and a Join whose inbox is on another server", async () => {
@@ -316,7 +323,7 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
     publisher.sent.length = 0;
     const elsewhere = { ...remote("ned"), inbox: "https://victim.example/inbox" };
     expect(await join(planId, elsewhere)).toBe("ignored");
-    expect(publisher.sent).toEqual([]);
+    expect(sentActivities()).toEqual([]);
   });
 
   it("is idempotent: the same Join twice is one response and one participant", async () => {
@@ -334,7 +341,7 @@ describe("a remote Join or TentativeAccept (decision D42)", () => {
     withFederation(false);
     expect(await join(planId, remote("pia"))).toBe("ignored");
     expect(await deps.responses.listRemote(planId)).toEqual([]);
-    expect(publisher.sent).toEqual([]);
+    expect(sentActivities()).toEqual([]);
   });
 
   it("is named by its fediverse address, whatever the actor calls itself", async () => {
@@ -444,7 +451,7 @@ describe("limits and notices", () => {
     for (let i = 0; i < 50; i++) await join(planId, remote(`u${i}`));
     expect(await join(planId, remote("late"))).toBe("rejected");
     expect(await deps.responses.listRemote(planId)).toHaveLength(50);
-    expect(publisher.sent.at(-1)).toMatchObject({
+    expect(sentActivities().at(-1)).toMatchObject({
       answer: "reject",
       responseId: undefined,
       to: "https://social.example/users/late",
@@ -485,7 +492,7 @@ describe("a repeated Join", () => {
     await join(planId, remote("qua"));
     await join(planId, remote("qua"), "join", { n: 2 });
     expect(answers()).toEqual(["accept qua", "accept qua"]);
-    expect(publisher.sent.at(-1)).toMatchObject({
+    expect(sentActivities().at(-1)).toMatchObject({
       join: { id: "https://social.example/users/qua#join-2" },
     });
     expect(await responsesOf(planId)).toEqual([["qua", "joined"]]);
@@ -551,22 +558,22 @@ describe("what reaches remote participants (decision D42)", () => {
     publisher.sent.length = 0;
     later(1);
     await edit(device, planId, { exactDescription: "South gate" });
-    expect(publisher.sent).toEqual([]);
+    expect(sentActivities()).toEqual([]);
     await edit(device, planId, { title: "Hill repeats" });
     await cancelPlan(deps, { planId, deviceToken: device });
-    expect(publisher.sent.map((sent) => sent.kind)).toEqual([
+    expect(sentActivities().map((sent) => sent.kind)).toEqual([
       "participantsUpdate",
       "participantsUpdate",
     ]);
-    expect(publisher.sent[0]).toMatchObject({
+    expect(sentActivities()[0]).toMatchObject({
       localActor: INSTANCE_ACTOR,
       planId,
       event: { title: "Hill repeats", status: "active" },
       to: ["https://social.example/users/uma", "https://other.example/users/vic"],
     });
-    expect(publisher.sent[1]).toMatchObject({ event: { status: "cancelled" } });
+    expect(sentActivities()[1]).toMatchObject({ event: { status: "cancelled" } });
     // The Event is the public one: no exact start, nothing private.
-    const everything = JSON.stringify(publisher.sent);
+    const everything = JSON.stringify(sentActivities());
     for (const secret of ["North gate", "South gate", "48.16321", "11.60147"]) {
       expect(everything).not.toContain(secret);
     }
@@ -581,7 +588,7 @@ describe("what reaches remote participants (decision D42)", () => {
     await rejectRequest(deps, { planId, deviceToken: device, responseId: wes?.id ?? "" });
     later(1);
     await edit(device, planId, { title: "Changed" });
-    expect(publisher.sent.at(-1)).toMatchObject({
+    expect(sentActivities().at(-1)).toMatchObject({
       kind: "participantsUpdate",
       to: ["https://social.example/users/xia"],
     });
@@ -596,13 +603,13 @@ describe("what reaches remote participants (decision D42)", () => {
     later(1);
     await edit(device, planId, { title: "Hill repeats" });
     // The followers' Update names no participant; each participant is addressed alone.
-    expect(publisher.sent).toHaveLength(2);
-    expect(publisher.sent[0]).toMatchObject({
+    expect(sentActivities()).toHaveLength(2);
+    expect(sentActivities()[0]).toMatchObject({
       kind: "update",
       localActor: actor,
       to: ["https://social.example/users/ben"],
     });
-    expect(publisher.sent[1]).toMatchObject({
+    expect(sentActivities()[1]).toMatchObject({
       kind: "participantsUpdate",
       localActor: actor,
       to: ["https://social.example/users/ben", "https://other.example/users/yan"],
@@ -617,16 +624,16 @@ describe("what reaches remote participants (decision D42)", () => {
     later(1);
     await edit(device, planId, { visibility: "followers" });
     // The Delete reaches the followers only; nothing for Zoe.
-    expect(publisher.sent).toHaveLength(1);
-    expect(publisher.sent[0]).toMatchObject({
+    expect(sentActivities()).toHaveLength(1);
+    expect(sentActivities()[0]).toMatchObject({
       kind: "withdraw",
       audience: "public",
       to: ["https://social.example/users/ben"],
     });
     publisher.sent.length = 0;
     await edit(device, planId, { title: "Still on" });
-    expect(publisher.sent).toHaveLength(1);
-    expect(publisher.sent[0]).toMatchObject({
+    expect(sentActivities()).toHaveLength(1);
+    expect(sentActivities()[0]).toMatchObject({
       kind: "participantsUpdate",
       localActor: INSTANCE_ACTOR,
       to: ["https://other.example/users/zoe"],
@@ -642,7 +649,7 @@ describe("what reaches remote participants (decision D42)", () => {
     later(1);
     await edit(device, planId, { title: "Changed" });
     await deletePlan(deps, { planId, deviceToken: device });
-    expect(publisher.sent).toEqual([]);
+    expect(sentActivities()).toEqual([]);
   });
 
   describe("every deletion path sends Delete to the participants, read before they go", () => {
@@ -704,7 +711,7 @@ describe("what reaches remote participants (decision D42)", () => {
       publisher.sent.length = 0;
       await remove(device, planId);
       expect(await deps.plans.findById(planId)).toBeUndefined();
-      expect(publisher.sent).toEqual([
+      expect(sentActivities()).toEqual([
         {
           kind: "participantsDelete",
           localActor: INSTANCE_ACTOR,
@@ -726,7 +733,7 @@ describe("what reaches remote participants (decision D42)", () => {
       await join(created.planId, remote("gil", "one.example"));
       publisher.sent.length = 0;
       await deleteMyData(deps, { deviceToken: created.newDeviceToken });
-      expect(publisher.sent).toEqual([
+      expect(sentActivities()).toEqual([
         {
           kind: "participantsDelete",
           localActor: INSTANCE_ACTOR,
@@ -743,7 +750,7 @@ describe("what reaches remote participants (decision D42)", () => {
       await edit(device, planId, { visibility: "link" });
       publisher.sent.length = 0;
       await deletePlan(deps, { planId, deviceToken: device });
-      expect(publisher.sent).toEqual([
+      expect(sentActivities()).toEqual([
         {
           kind: "participantsDelete",
           localActor: INSTANCE_ACTOR,
@@ -760,13 +767,13 @@ describe("what reaches remote participants (decision D42)", () => {
       await join(planId, remote("fox", "one.example"));
       publisher.sent.length = 0;
       await deletePlan(deps, { planId, deviceToken: device });
-      expect(publisher.sent).toHaveLength(2);
-      expect(publisher.sent[0]).toMatchObject({
+      expect(sentActivities()).toHaveLength(2);
+      expect(sentActivities()[0]).toMatchObject({
         kind: "withdraw",
         localActor: actor,
         to: ["https://social.example/users/ben"],
       });
-      expect(publisher.sent[1]).toMatchObject({
+      expect(sentActivities()[1]).toMatchObject({
         kind: "participantsDelete",
         localActor: actor,
         to: ["https://social.example/users/ben", "https://one.example/users/fox"],
@@ -788,7 +795,7 @@ describe("what reaches remote participants (decision D42)", () => {
       publisher.sent.length = 0;
       later(1);
       await edit(device, planId, { title: "Changed" });
-      expect(publisher.sent).toMatchObject([
+      expect(sentActivities()).toMatchObject([
         {
           kind: "participantsUpdate",
           to: ["https://social.example/users/max", "https://social.example/users/ned"],
@@ -796,7 +803,7 @@ describe("what reaches remote participants (decision D42)", () => {
       ]);
       publisher.sent.length = 0;
       await deletePlan(deps, { planId, deviceToken: device });
-      expect(publisher.sent).toMatchObject([
+      expect(sentActivities()).toMatchObject([
         {
           kind: "participantsDelete",
           to: [

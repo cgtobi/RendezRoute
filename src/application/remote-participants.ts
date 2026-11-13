@@ -9,38 +9,16 @@ import type { Plan } from "../domain/plan.ts";
 import type { ResponseChoice } from "../domain/requests.ts";
 import { isBlocked, type PlanResponse, type ResponseKind } from "../domain/response.ts";
 import { canRespond, validateDisplayName } from "../domain/responding.ts";
-import { planActor } from "./fediverse-profile.ts";
-import { inboxesOnOwnServer, INSTANCE_ACTOR } from "./following.ts";
+import { activePublisher, attributedActor } from "./attribution.ts";
+import { inboxesOnOwnServer } from "./following.ts";
 import { notifyHostOfArrival } from "./notify.ts";
 import type { PlanDeps } from "./plans.ts";
-import type { FederationPublisher, RemoteActor, RemoteJoin } from "./ports.ts";
+import { syncNoteOf, withdrawNote } from "./participant-notes.ts";
+import type { RemoteActor, RemoteJoin } from "./ports.ts";
 import { withdrawResponse } from "./responses.ts";
 
 /** Those a plan's changes concern: remote people still in, not the rejected or removed. */
 const STILL_IN: ReadonlySet<ResponseKind> = new Set(["interested", "requested", "joined"]);
-
-/** The publisher, while federation is on. */
-export function activePublisher(
-  deps: Pick<PlanDeps, "posterActors">,
-): FederationPublisher | undefined {
-  const actors = deps.posterActors;
-  return actors?.enabled === true ? actors.publisher : undefined;
-}
-
-/**
- * Who a plan is attributed to now: the poster's actor while it shares the plan, the instance
- * actor otherwise, also for a plan withdrawn from the fediverse (decisions D39, D42), as its
- * `Event` names it.
- */
-export async function attributedActor(
-  deps: Pick<PlanDeps, "posterActors" | "plans">,
-  plan: { id: string; federatedAt: Date | undefined },
-): Promise<string> {
-  const state = await deps.posterActors?.publications.find(plan.id);
-  if (state?.kind === "published") return state.localActor;
-  if (state?.kind === "withdrawn") return INSTANCE_ACTOR;
-  return (await planActor(deps, plan)) ?? INSTANCE_ACTOR;
-}
 
 /** The remote people a plan's `Update` reaches, read before the plan can be deleted. */
 export async function remoteReach(
@@ -129,7 +107,7 @@ export async function joinRemote(
   const answer = (kind: "accept" | "reject", responseId: string | undefined) =>
     publisher.answerJoin(
       kind,
-      { localActor: sender, planId: plan.id, responseId },
+      { localActor: sender, planId: plan.id, responseId, language: plan.posterLanguage },
       { actor: request.actor, join: request.join },
     );
 
@@ -152,6 +130,8 @@ export async function joinRemote(
       await deps.responses.updateRemote({ ...existing, join: request.join });
     }
     if (kind !== "requested") await answer("accept", existing.response.id);
+    // A joined participant accepted while federation was off has no Note yet.
+    await syncNoteOf(deps, plan, existing.response.id, undefined, kind);
     return "stored";
   }
   if (!canRespond(plan, now).ok) {
@@ -211,6 +191,10 @@ export async function joinRemote(
   }
   // Last: the answer is sent only once the response is stored.
   if (kind !== "requested") await answer("accept", responseId);
+  // The exact start and route go to those who joined, after the answer (decision D43).
+  if (responseId !== undefined) {
+    await syncNoteOf(deps, plan, responseId, existing?.response.kind, kind);
+  }
   return "stored";
 }
 
@@ -227,6 +211,7 @@ export async function leaveRemote(
   const plan = await deps.plans.findById(request.planId);
   if (found === undefined || plan === undefined || isBlocked(found.response.kind)) return false;
   if (request.joinId !== undefined && request.joinId !== found.join.id) return false;
+  await withdrawNote(deps, plan, found.response.id);
   await withdrawResponse(deps, plan, found.response);
   return true;
 }
@@ -236,7 +221,10 @@ export async function forgetRemoteParticipant(deps: PlanDeps, actorId: string): 
   const responses = await deps.responses.listByRemoteActor(actorId);
   for (const response of responses) {
     const plan = await deps.plans.findById(response.planId);
-    if (plan !== undefined) await withdrawResponse(deps, plan, response);
+    if (plan !== undefined) {
+      await withdrawNote(deps, plan, response.id);
+      await withdrawResponse(deps, plan, response);
+    }
   }
   return responses.length;
 }
@@ -257,7 +245,12 @@ export async function answerRemoteResponse(
   if (remote === undefined) return;
   await publisher.answerJoin(
     answer,
-    { localActor: await attributedActor(deps, plan), planId: plan.id, responseId: response.id },
+    {
+      localActor: await attributedActor(deps, plan),
+      planId: plan.id,
+      responseId: response.id,
+      language: plan.posterLanguage,
+    },
     remote,
   );
 }

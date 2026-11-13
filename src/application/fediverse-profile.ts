@@ -7,6 +7,7 @@ import type { ActivityType } from "../domain/activity.ts";
 import { suggestHandle, validateHandle } from "../domain/actor.ts";
 import type { AccountDeps } from "./accounts.ts";
 import { accountOf } from "./channel-links.ts";
+import { syncParticipantNotes, withdrawNotesOfActor } from "./participant-notes.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { IdentityRepository } from "./ports.ts";
 
@@ -78,7 +79,7 @@ export async function retireProfile(
   if (account === undefined || deps.posterActors === undefined) return UNAVAILABLE;
   return {
     kind: "retired",
-    plansNowLinkOnly: await retireAccountProfile(deps, account.identityId),
+    plansNowLinkOnly: await retireAccountProfile(deps, account.identityId, { notesAgain: true }),
   };
 }
 
@@ -90,7 +91,15 @@ export async function retireProfile(
  * while its keys still exist) and forgotten (D38). The plans come first and the profile last, so
  * a retry after a failure finishes the job. Returns how many plans became link-only.
  */
-export async function retireAccountProfile(deps: PlanDeps, identityId: string): Promise<number> {
+export async function retireAccountProfile(
+  deps: PlanDeps,
+  identityId: string,
+  /**
+   * Turning the profile off, not deleting the account: the plans stay, so their joined remote
+   * participants, whose Notes the profile withdrew, get new ones from the instance actor (D43).
+   */
+  { notesAgain = false }: { notesAgain?: boolean } = {},
+): Promise<number> {
   const actors = deps.posterActors;
   if (actors === undefined) return 0;
   const now = deps.clock.now();
@@ -111,6 +120,8 @@ export async function retireAccountProfile(deps: PlanDeps, identityId: string): 
   // Told while its keys still exist; retiring forgets them (D38), together with any follow
   // accepted after this list was made, which then learns from the gone actor itself.
   const profile = await actors.profiles.findActive(identityId);
+  // The Notes it sent to remote participants, who may not follow it, while it can still sign.
+  if (profile !== undefined) await withdrawNotesOfActor(deps, profile.id);
   const followers = profile === undefined ? [] : await actors.followers.list(profile.id);
   if (profile !== undefined && followers.length > 0) {
     await actors.publisher?.deleteActor(profile.id, followers);
@@ -118,6 +129,16 @@ export async function retireAccountProfile(deps: PlanDeps, identityId: string): 
   // The actor's `Delete` takes its plans with it; none is sent again (D39).
   if (profile !== undefined) await actors.publications.withdrawAllBy(profile.id, now);
   await actors.profiles.retire(identityId, now);
+  if (notesAgain) {
+    // Attributed to the instance actor now: a new Note (new identifier, new link) after the
+    // old one's `Delete`, for every plan people can still come to.
+    for (const { plan, role } of await deps.plans.findOwnedBy(identityId)) {
+      const current = role === "host" ? await deps.plans.findById(plan.id) : undefined;
+      if (current?.status === "active" && current.startsAt > now) {
+        await syncParticipantNotes(deps, current);
+      }
+    }
+  }
   return changed;
 }
 
@@ -183,20 +204,7 @@ export async function posterActorFor(deps: ActorDeps, handle: string): Promise<s
   return (await actors.profiles.findByHandle(handle.toLowerCase()))?.id;
 }
 
-/**
- * Who a plan is attributed to in the fediverse: its owner's actor once the plan was saved under
- * the fediverse wording and while the profile is active (D35, D37); otherwise none, and the
- * federation adapter names the instance actor.
- */
-export async function planActor(
-  deps: Pick<PlanDeps, "posterActors" | "plans">,
-  plan: { id: string; federatedAt: Date | undefined },
-): Promise<string | undefined> {
-  const actors = deps.posterActors;
-  if (actors?.enabled !== true || plan.federatedAt === undefined) return undefined;
-  const owner = await deps.plans.ownerOf(plan.id);
-  return owner === undefined ? undefined : (await actors.profiles.findActive(owner))?.id;
-}
+export { planActor } from "./attribution.ts";
 
 export interface ProfilePlan {
   planId: string;

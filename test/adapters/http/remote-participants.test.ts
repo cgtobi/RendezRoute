@@ -8,7 +8,14 @@ import { describe, expect, it } from "vite-plus/test";
 import { FakeOidcServer } from "../../fakes/oidc-server.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
-import { createPlanViaUi, editForm, hostActsOn } from "../../support/plans.ts";
+import { isNoteActivity } from "../../support/remote-people.ts";
+import { sampleGpx } from "../../support/gpx.ts";
+import {
+  createPlanViaUi,
+  createPlanWithRouteViaUi,
+  editForm,
+  hostActsOn,
+} from "../../support/plans.ts";
 
 const HOST = "runs.example.org";
 const INSTANCE = `https://${HOST}/actors/instance`;
@@ -153,12 +160,15 @@ const tentativeOf = (from: { id: string }, planId: string) => ({
   object: `https://${HOST}/p/${planId}`,
 });
 
+/** What the app delivered, but not the private Notes, which have their own tests (D43). */
 const delivered = (test: TestApp) =>
-  test.federationHttp.posts.map((sent) => ({
-    url: sent.url.href,
-    headers: sent.headers,
-    activity: JSON.parse(new TextDecoder().decode(sent.body)) as Record<string, unknown>,
-  }));
+  test.federationHttp.posts
+    .map((sent) => ({
+      url: sent.url.href,
+      headers: sent.headers,
+      activity: JSON.parse(new TextDecoder().decode(sent.body)) as Record<string, unknown>,
+    }))
+    .filter((sent) => !isNoteActivity(sent.activity));
 
 const rows = (test: TestApp, table: string) =>
   JSON.stringify(test.database.sqlite.prepare(`select * from ${table}`).all());
@@ -798,5 +808,150 @@ describe("limits on remote joins (spec 3.11, decision D42)", () => {
     expect(responseCount(test)).toBe(10);
     await test.runJobs();
     expect(delivered(test).every((sent) => !sent.url.includes("victim.example"))).toBe(true);
+  });
+});
+
+describe("when the profile that shared the plan is retired (decisions D36, D37, D42, D43)", () => {
+  /** A public plan of Anna's with a follower (Ben) and a participant who does not follow (Cleo). */
+  async function sharedPlan() {
+    const { test, oidc } = await appWithAccounts();
+    const { anna, actor } = await posterActor(test, oidc);
+    const ben = await remotePerson(test, "ben");
+    const cleo = await remotePerson(test, "cleo", "other.example");
+    await post(test, ben, { id: `${ben.id}#follow`, type: "Follow", object: actor });
+    const { planId } = await createPlanViaUi(anna, { visibility: "public", title: "Shared run" });
+    await post(test, cleo, joinOf(cleo, planId));
+    await test.runJobs();
+    test.federationHttp.posts.length = 0;
+    return { test, anna, actor, planId, ben, cleo };
+  }
+
+  const turnOff = async (anna: TestClient) =>
+    anna.postForm("/account/profile/off", {
+      _csrf: (await anna.hiddenFields("/account"))._csrf ?? "",
+    });
+  const deleteAccount = async (anna: TestClient) =>
+    anna.postForm(
+      "/account/delete",
+      hiddenFields(await (await anna.get("/account/delete")).text()),
+    );
+
+  it.each([
+    ["the profile is turned off", turnOff],
+    ["the account is deleted", deleteAccount],
+  ])("signs what is queued when %s, though its keys are gone by delivery", async (_how, retire) => {
+    const { test, anna, actor, cleo } = await sharedPlan();
+    await retire(anna);
+    // Delivered only now, after the keys are dropped.
+    await test.runJobs();
+    const sent = test.federationHttp.posts.map((post) => ({
+      url: post.url.href,
+      headers: post.headers,
+      text: new TextDecoder().decode(post.body),
+      activity: JSON.parse(new TextDecoder().decode(post.body)) as Record<string, unknown>,
+    }));
+    // Everything that goes out is signed by an actor that can still be verified: the retired one's
+    // key travels in its job, the instance's is in the key directory.
+    expect(sent.length).toBeGreaterThanOrEqual(2);
+    for (const item of sent) {
+      expect(item.headers.signature).toMatch(new RegExp(`keyId="(${actor}|${INSTANCE})#main-key"`));
+    }
+    // The actor's Delete reaches the follower's server, and Cleo, who does not follow, learns
+    // that the Note and the plan's Event are withdrawn.
+    expect(
+      sent.some((item) => item.activity.type === "Delete" && item.activity.object === actor),
+    ).toBe(true);
+    const toCleo = sent.filter((item) => item.url === "https://other.example/inbox");
+    expect(toCleo.map((item) => item.activity.type)).toContain("Delete");
+    expect(toCleo.every((item) => item.activity.to === cleo.id)).toBe(true);
+    expect(toCleo.some((item) => isNoteActivity(item.activity))).toBe(true);
+    // The key is in the encrypted payload only: not in the clear in the queue before delivery.
+    for (const item of sent) {
+      expect(item.text).not.toContain("PRIVATE KEY");
+      // Nor a private key as a JWK: its `d` member.
+      expect(item.text).not.toMatch(/"d"\s*:/);
+    }
+  });
+
+  it("sends the plan's own Delete to a participant who does not follow, from a key that can still sign, when the account is deleted", async () => {
+    const { test, anna, actor, planId, cleo } = await sharedPlan();
+    await deleteAccount(anna);
+    await test.runJobs();
+    const eventDeletes = test.federationHttp.posts
+      .map((post) => ({
+        url: post.url.href,
+        signature: post.headers.signature ?? "",
+        activity: JSON.parse(new TextDecoder().decode(post.body)) as Record<string, unknown>,
+      }))
+      .filter(
+        (item) =>
+          item.activity.type === "Delete" &&
+          (item.activity.object as { id?: string } | undefined)?.id ===
+            `https://${HOST}/p/${planId}`,
+      );
+    // Once, to Cleo only (the followers have the actor's own Delete), and not from the retired
+    // actor, whose job would reach a server with a key that is no longer published.
+    expect(eventDeletes.map((item) => item.url)).toEqual(["https://other.example/inbox"]);
+    expect(eventDeletes[0]?.activity.to).toBe(cleo.id);
+    expect(eventDeletes[0]?.signature).toContain(`keyId="${INSTANCE}#main-key"`);
+    expect(eventDeletes[0]?.signature).not.toContain(actor);
+  });
+
+  it("gives a joined participant a new Note from the instance, and its link, when the profile is turned off", async () => {
+    const { test, oidc } = await appWithAccounts();
+    const { anna, actor } = await posterActor(test, oidc);
+    const cleo = await remotePerson(test, "cleo", "other.example");
+    const { planId } = await createPlanWithRouteViaUi(
+      anna,
+      { visibility: "public", title: "Shared run" },
+      sampleGpx({ lat: 47.31313 }),
+    );
+    await post(test, cleo, joinOf(cleo, planId));
+    await test.runJobs();
+    const notesTo = (type: string) =>
+      test.federationHttp.posts
+        .map((post) => JSON.parse(new TextDecoder().decode(post.body)) as Record<string, unknown>)
+        .filter((activity) => activity.type === type && isNoteActivity(activity));
+    const link = (activity: Record<string, unknown> | undefined) =>
+      /\/federation\/notes\/([^/]+)\/route\.gpx/.exec(JSON.stringify(activity))?.[1] ?? "";
+    const oldCreate = notesTo("Create")[0];
+    const oldToken = link(oldCreate);
+    expect((await test.app.request(`/federation/notes/${oldToken}/route.gpx`)).status).toBe(200);
+    test.federationHttp.posts.length = 0;
+
+    await turnOff(anna);
+    await test.runJobs();
+    // The old Note is withdrawn by the profile, with its key carried; a new one comes from the
+    // instance, and the link in it works while the old link does not.
+    const [gone] = notesTo("Delete");
+    const [fresh] = notesTo("Create");
+    const noteId = (activity: Record<string, unknown> | undefined) =>
+      String((activity?.object as { id?: string } | undefined)?.id);
+    expect(JSON.stringify(gone)).toContain(noteId(oldCreate));
+    expect(gone).toMatchObject({ actor, to: cleo.id });
+    expect(fresh).toMatchObject({ actor: INSTANCE, to: cleo.id });
+    expect(noteId(fresh)).not.toBe(noteId(oldCreate));
+    const freshToken = link(fresh);
+    expect(freshToken).not.toBe("");
+    expect(freshToken).not.toBe(oldToken);
+    expect((await test.app.request(`/federation/notes/${oldToken}/route.gpx`)).status).toBe(404);
+    const served = await test.app.request(`/federation/notes/${freshToken}/route.gpx`);
+    expect(served.status).toBe(200);
+    expect(await served.text()).toContain('lat="47.31313"');
+  });
+
+  it("keeps the carried key out of the queue's plaintext", async () => {
+    const { test, anna } = await sharedPlan();
+    await turnOff(anna);
+    expect(rows(test, "job_queue")).not.toContain("PRIVATE KEY");
+    expect(rows(test, "job_queue")).not.toContain('"d"');
+    const queued = await test.jobs.due(test.clock.now(), 100);
+    // At least one job carries a key, in the encrypted payload that only the job runner reads.
+    expect(
+      queued.some((job) => (job.payload as { privateKey?: unknown }).privateKey !== undefined),
+    ).toBe(true);
+    expect(
+      JSON.stringify(test.database.sqlite.prepare("select last_error from job_queue").all()),
+    ).not.toContain('"d"');
   });
 });

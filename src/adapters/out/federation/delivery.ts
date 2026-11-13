@@ -6,7 +6,7 @@
 import { importJwk, signRequest } from "@fedify/fedify";
 import type { JobOutcome } from "../../../application/jobs.ts";
 import type { OutboundHttp } from "../../../application/ports.ts";
-import type { ActorSigningKeys, DeliveryPayload } from "./publisher.ts";
+import type { ActorSigningKeys, DeliveryPayload, NoteGuard } from "./publisher.ts";
 
 /**
  * Inboxes answer briefly, but a longer answer is still a delivery: refusing it would make the job
@@ -18,10 +18,13 @@ const TIMEOUT_MS = 15_000;
 export function federationDeliveryHandler(
   http: OutboundHttp,
   keysFor: ActorSigningKeys,
+  /** Whether a private Note's `Create` or `Update` may still be sent: the Note is still there. */
+  isCurrent: (guard: NoteGuard) => Promise<boolean> = () => Promise.resolve(true),
 ): (payload: unknown) => Promise<JobOutcome> {
   return async (payload) => {
     const delivery = asDelivery(payload);
     if (delivery === undefined) return "drop";
+    if (delivery.guard !== undefined && !(await isCurrent(delivery.guard))) return "drop";
     const privateKey =
       delivery.privateKey === undefined
         ? (await keysFor(delivery.localActor))?.[0]?.privateKey
@@ -53,7 +56,7 @@ export function federationDeliveryHandler(
 
 function asDelivery(payload: unknown): DeliveryPayload | undefined {
   if (typeof payload !== "object" || payload === null) return undefined;
-  const { localActor, inbox, body, keyId, privateKey } = payload as Partial<DeliveryPayload>;
+  const { localActor, inbox, body, keyId, privateKey, guard } = payload as Partial<DeliveryPayload>;
   if (
     typeof localActor !== "string" ||
     typeof body !== "string" ||
@@ -63,5 +66,9 @@ function asDelivery(payload: unknown): DeliveryPayload | undefined {
   ) {
     return undefined;
   }
-  return { localActor, inbox: inbox ?? "", body, keyId: keyId ?? "", privateKey };
+  // A guard that is there but not whole is a damaged job, not one without a guard.
+  const noteGuard =
+    typeof guard?.responseId === "string" && typeof guard.noteId === "string" ? guard : undefined;
+  if (guard !== undefined && noteGuard === undefined) return undefined;
+  return { localActor, inbox: inbox ?? "", body, keyId: keyId ?? "", privateKey, guard: noteGuard };
 }

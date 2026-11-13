@@ -314,6 +314,12 @@ export const fr: Messages = {
   "plan.when": "Quand",
   "preview.cancelled": "Annulée : {title}",
   "plan.timeZone": "fuseau {zone}",
+  "note.start": "Départ : {when}",
+  "note.place": "Point de rendez-vous : {place}",
+  "note.coordinates": "Coordonnées : {lat}, {lng}",
+  "note.route": "Le parcours est joint en fichier GPX.",
+  "note.plan": "Page de la sortie : {link}",
+  "note.copies": "Votre serveur peut conserver des copies de ce message.",
   "plan.where": "Zone de rendez-vous",
   "plan.distance": "Distance",
   "plan.elevation": "Dénivelé positif",
@@ -823,6 +829,8 @@ export const fr: Messages = {
   "layout.nearby": "À proximité",
   "privacy.federation":
     "Ce site participe au fédivers en tant que @{host}@{host}. D’autres serveurs peuvent récupérer les informations publiques d’une sortie par son adresse, comme toute personne ayant le lien peut les voir. Quand un serveur envoie un message à ce site, celui-ci récupère la clé publique de ce serveur pour vérifier la signature du message, et la conserve jusqu’à {days} jours. Tout le monde dans le fédivers peut s’abonner à ce site : l’adresse et les boîtes de réception d’une personne abonnée sont stockées chiffrées jusqu’à ce qu’elle se désabonne, que son compte soit supprimé ou que ce site cesse de participer au fédivers, et seul leur nombre est affiché. Le site lui-même ne partage aucune sortie : seuls les profils fédivers le font. Les personnes du fédivers peuvent rejoindre une sortie depuis leur propre serveur : l’adresse et les boîtes de réception d’une telle personne participante sont stockées chiffrées jusqu’à ce qu’elle parte, que son compte soit supprimé ou que la sortie soit supprimée ; pour une personne refusée ou retirée par l’organisateur ou l’organisatrice, elles restent comme blocage jusqu’à la suppression de la sortie ou de son compte. Le nom affiché vient de son profil, et l’organisateur ou l’organisatrice et les personnes acceptées peuvent le voir. Les modifications de la sortie sont envoyées à chaque personne séparément tant qu’elle est inscrite, et sa suppression à toutes celles qui ont rejoint, et leur serveur peut en garder des copies.",
+  "privacy.federationNotes":
+    "Quand une personne du fédivers rejoint une sortie et est acceptée, le point de départ exact et le parcours lui sont envoyés en message direct par l’acteur de ce site ou par le profil de l’organisateur ou de l’organisatrice, et à personne d’autre : le départ exact en texte, le parcours en fichier GPX derrière un lien privé que toute personne qui le détient peut ouvrir jusqu’au retrait du message. Le message est retiré quand la personne part, est retirée ou que la sortie est supprimée ; les modifications du départ exact, de l’heure ou du parcours lui sont renvoyées. Son serveur peut en garder des copies, que ce site ne peut pas supprimer.",
   "privacy.nearby":
     "« À proximité » n’utilise le lieu d’où vous cherchez que pour cette recherche. Un endroit choisi sur la carte ou votre position est arrondi à environ 2 km par votre navigateur avant d’être envoyé, puis à nouveau par le serveur. Un lieu saisi est recherché comme pour la recherche de lieux ci-dessus, et la recherche continue depuis son endroit arrondi ; sans JavaScript, le lieu saisi figure dans l’adresse de cette première requête. Rien n’en est enregistré ni écrit dans les journaux de ce site. L’endroit arrondi figure dans l’adresse de la page de résultats et peut donc rester dans l’historique de votre navigateur et dans le journal d’accès du serveur web placé devant ce site.",
   "field.range_invalid": "Le dernier jour précède le premier.",

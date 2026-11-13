@@ -1,4 +1,5 @@
 // Routes on the host page and GPX downloads (spec 5 feature 2, 3.6, decision D10).
+import { syncParticipantNotes } from "./participant-notes.ts";
 import { syncPublication } from "./publishing.ts";
 import { editScope, planToInput, validatePlanEdit } from "../domain/plan-edit.ts";
 import { applyRouteDefaults, type Route, routeStats } from "../domain/route.ts";
@@ -48,6 +49,8 @@ export async function setRoute(
   await notifyResponders(deps, updated, "changed");
   // A route may set the meeting point, and so move the public one the `Event` shows (D38).
   await syncPublication(deps, plan, updated);
+  // The route is in the private Notes of remote participants, under a new link (decision D43).
+  await syncParticipantNotes(deps, updated);
   return { kind: "saved" };
 }
 
@@ -61,6 +64,7 @@ export async function removeRoute(
   if (editScope(plan, deps.clock.now()) !== "all") return { kind: "not_allowed" };
   await deps.plans.deleteRoute(plan.id);
   await notifyResponders(deps, plan, "changed");
+  await syncParticipantNotes(deps, { ...plan, hasRoute: false });
   return { kind: "removed" };
 }
 

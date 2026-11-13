@@ -211,6 +211,18 @@ describe("FEDERATION_ENABLED=false", () => {
 });
 
 describe("privacy notice", () => {
+  it("says the exact start and route go to accepted remote participants, only while federation is on (decision D43)", async () => {
+    const text = (html: string) => html.replaceAll("&#39;", "'");
+    const on = await createTestApp();
+    expect(text(await (await on.app.request("/privacy")).text())).toContain(
+      en("privacy.federationNotes"),
+    );
+    const off = await createTestApp({ env: { FEDERATION_ENABLED: "false" } });
+    expect(text(await (await off.app.request("/privacy")).text())).not.toContain(
+      en("privacy.federationNotes"),
+    );
+  });
+
   it("says the instance takes part in the fediverse, only while it does", async () => {
     const text = (html: string) => html.replaceAll("&#39;", "'");
     const on = await createTestApp();

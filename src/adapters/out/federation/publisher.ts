@@ -27,6 +27,7 @@ import type {
   RemoteActor,
 } from "../../../application/ports.ts";
 import { actorUriOf, addressing, planEvent, planUriOf } from "./event.ts";
+import { copiesNotice, noteUriOf, participantNote } from "./note.ts";
 import type { SigningKeyPair } from "../crypto/federation-keys.ts";
 
 /**
@@ -44,6 +45,16 @@ export interface DeliveryPayload {
   keyId: string;
   /** Only for a retired actor's `Delete`: its RSA key as a JWK (Mastodon checks RSA signatures). */
   privateKey?: JsonWebKey | undefined;
+  /**
+   * Only for a private Note's `Create` or `Update`: sent only while that Note still exists, so
+   * one waiting to be tried again cannot arrive after the Note's `Delete` (decision D43).
+   */
+  guard?: NoteGuard | undefined;
+}
+
+export interface NoteGuard {
+  responseId: string;
+  noteId: string;
 }
 
 /** A local actor's signing keys, RSA first; undefined when it has none (not, or no longer, active). */
@@ -80,7 +91,13 @@ export function createFederationPublisher({
       carryKey = false,
       planId,
       responseId,
-    }: { carryKey?: boolean; planId?: string; responseId?: string | undefined } = {},
+      guard,
+    }: {
+      carryKey?: boolean;
+      planId?: string;
+      responseId?: string | undefined;
+      guard?: NoteGuard;
+    } = {},
   ): Promise<void> {
     const rsa = (await keysFor(localActor))?.[0];
     // Nothing can be signed for an actor without keys.
@@ -91,6 +108,7 @@ export function createFederationPublisher({
       body: JSON.stringify(await activity.toJsonLd({ format: "compact", contextLoader })),
       keyId: mainKeyId(baseUrl, localActor),
       privateKey: carryKey ? await exportJwk(rsa.privateKey) : undefined,
+      guard,
     };
     for (const inbox of inboxesOf(recipients)) {
       const payload: DeliveryPayload = { inbox, ...delivery };
@@ -163,7 +181,11 @@ export function createFederationPublisher({
       );
     },
 
-    async answerJoin(answer, { localActor, planId, responseId }, { actor: remote, join }) {
+    async answerJoin(
+      answer,
+      { localActor, planId, responseId, language },
+      { actor: remote, join },
+    ) {
       const actor = actorUri(localActor);
       const Answer = answer === "accept" ? Accept : Reject;
       // Wrapping what was received, as the remote server knows it by its identifier.
@@ -174,6 +196,8 @@ export function createFederationPublisher({
           id: new URL(`#${answer}-${ids.rowId()}`, actor),
           actor,
           to: new URL(remote.id),
+          // Told with the answer that their server may keep copies (decision D43).
+          ...(answer === "accept" ? { summary: copiesNotice(language) } : {}),
           object: new Received({
             id: new URL(join.id),
             actor: new URL(remote.id),
@@ -219,6 +243,45 @@ export function createFederationPublisher({
           [participant],
         );
       }
+    },
+
+    // The exact start and route, to one participant alone, from the plan's actor (decision D43).
+    async sendParticipantNote(activity, note, recipient) {
+      const actor = actorUri(note.localActor);
+      const Sent = activity === "create" ? Create : Update;
+      await enqueue(
+        note.localActor,
+        new Sent({
+          id: new URL(`#${activity}-${ids.rowId()}`, noteUriOf(baseUrl, note.noteId)),
+          actor,
+          object: participantNote(note, { baseUrl, recipient: new URL(recipient.id) }),
+          tos: [new URL(recipient.id)],
+        }),
+        [recipient],
+        // Goes with the plan or the response if undelivered, and is dropped if the Note has been
+        // withdrawn by then; the Delete below does neither.
+        {
+          planId: note.planId,
+          responseId: note.responseId,
+          guard: { responseId: note.responseId, noteId: note.noteId },
+        },
+      );
+    },
+
+    async withdrawParticipantNote(note, recipient, options = {}) {
+      const actor = actorUri(note.localActor);
+      await enqueue(
+        note.localActor,
+        new Delete({
+          id: new URL(`#delete-${ids.rowId()}`, noteUriOf(baseUrl, note.noteId)),
+          actor,
+          object: new Tombstone({ id: noteUriOf(baseUrl, note.noteId) }),
+          tos: [new URL(recipient.id)],
+        }),
+        [recipient],
+        // A profile being retired has no key by delivery (decision D36).
+        { carryKey: options.carryKey === true },
+      );
     },
 
     async withdrawPlan(publication, followers) {

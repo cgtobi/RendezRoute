@@ -381,3 +381,140 @@ describe("upgrading an existing database (migration 0029 adds remote participant
     ).toEqual(["remote-3"]);
   });
 });
+
+describe("upgrading an existing database (migration 0030 adds participant notes)", () => {
+  it("keeps one Note per remote response, its route token hashed and encrypted as a pair", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rendezroute-upgrade-"));
+    dirs.push(dir);
+    const path = join(dir, "rendezroute.db");
+
+    const old = new Kysely<unknown>({
+      dialect: new SqliteDialect({ database: new BetterSqlite3(path) }),
+    });
+    const upTo0029 = Object.fromEntries(
+      Object.entries(migrations).filter(([name]) => name < "0030"),
+    );
+    expect(
+      (
+        await new Migrator({
+          db: old,
+          provider: { getMigrations: () => Promise.resolve(upTo0029) },
+        }).migrateToLatest()
+      ).error,
+    ).toBeUndefined();
+    const t = "2026-06-01T08:00:00.000Z";
+    for (const id of ["plan-1", "plan-2"]) {
+      await sql`insert into plans (id, poster_name, poster_language, activity_type, title, starts_at, timezone, area_label,
+        drop_policy, recap_window, retention_days, delete_at, host_token_hash, created_at, updated_at, visibility)
+        values (${id}, 'Anna', 'en', 'run', 'Run', ${t}, 'UTC', 'Park', 'no_drop', '1w', 14, ${t}, ${`hash-${id}`}, ${t}, ${t}, 'link')`.execute(
+        old,
+      );
+    }
+    // A remote participant who joined plan-1 and one on plan-2.
+    await sql`insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language,
+      remote_actor_hmac, remote_actor_enc, created_at, updated_at)
+      values ('remote-1', 'plan-1', 'joined', 'enc', 'manage-remote-1', 'en', 'actor-hmac-1', 'enc', ${t}, ${t})`.execute(
+      old,
+    );
+    await sql`insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language,
+      remote_actor_hmac, remote_actor_enc, created_at, updated_at)
+      values ('remote-2', 'plan-1', 'joined', 'enc', 'manage-remote-2', 'en', 'actor-hmac-2', 'enc', ${t}, ${t})`.execute(
+      old,
+    );
+    await sql`insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language,
+      remote_actor_hmac, remote_actor_enc, created_at, updated_at)
+      values ('remote-3', 'plan-2', 'joined', 'enc', 'manage-remote-3', 'en', 'actor-hmac-3', 'enc', ${t}, ${t})`.execute(
+      old,
+    );
+    await old.destroy();
+
+    const upgraded = await openDatabase(path);
+    open.push(upgraded);
+    expect(upgraded.sqlite.prepare("select count(*) from responses").pluck().get()).toBe(3);
+
+    // A Note: its response, plan, random note id, route token hash and encrypted token, and the
+    // hash of what was sent. Both route token columns are set together, or neither is.
+    const insert = (
+      responseId: string,
+      planId: string,
+      noteId: string,
+      tokenHmac: string | null,
+      tokenEnc: string | null,
+    ) =>
+      upgraded.sqlite
+        .prepare(
+          `insert into participant_notes (response_id, plan_id, note_id, local_actor, route_token_hmac,
+            route_token_enc, content_hash, sent_at, updated_at)
+           values (?, ?, ?, 'instance', ?, ?, 'content-hash', ?, ?)`,
+        )
+        .run(responseId, planId, noteId, tokenHmac, tokenEnc, t, t);
+    expect(() =>
+      insert("remote-1", "plan-1", "note-1", "token-hmac-1", "token-enc-1"),
+    ).not.toThrow();
+    // One Note per response.
+    expect(() => insert("remote-1", "plan-1", "note-x", "token-hmac-x", "token-enc-x")).toThrow(
+      /UNIQUE constraint failed/,
+    );
+    // Note ids are unique.
+    expect(() => insert("remote-2", "plan-1", "note-1", "token-hmac-2", "token-enc-2")).toThrow(
+      /UNIQUE constraint failed/,
+    );
+    // Route token hashes are unique.
+    expect(() => insert("remote-2", "plan-1", "note-2", "token-hmac-1", "token-enc-2")).toThrow(
+      /UNIQUE constraint failed/,
+    );
+    // A token hash without its token, and a token without its hash.
+    expect(() => insert("remote-2", "plan-1", "note-2", "token-hmac-2", null)).toThrow(
+      /CHECK constraint failed/,
+    );
+    expect(() => insert("remote-2", "plan-1", "note-2", null, "token-enc-2")).toThrow(
+      /CHECK constraint failed/,
+    );
+    // Who sent it is never missing: later changes and the Delete come from the same actor.
+    expect(() =>
+      upgraded.sqlite
+        .prepare(
+          `insert into participant_notes (response_id, plan_id, note_id, local_actor, content_hash, sent_at, updated_at)
+           values ('remote-2', 'plan-1', 'note-n', null, 'h', 't', 't')`,
+        )
+        .run(),
+    ).toThrow(/NOT NULL constraint failed/);
+    // A plan without a route: neither token column.
+    expect(() => insert("remote-2", "plan-1", "note-2", null, null)).not.toThrow();
+    // The response and the plan must exist.
+    expect(() => insert("missing", "plan-1", "note-3", null, null)).toThrow(
+      /FOREIGN KEY constraint failed/,
+    );
+    expect(() => insert("remote-3", "missing", "note-4", null, null)).toThrow(
+      /FOREIGN KEY constraint failed/,
+    );
+    expect(() =>
+      insert("remote-3", "plan-2", "note-5", "token-hmac-3", "token-enc-3"),
+    ).not.toThrow();
+
+    expect(
+      upgraded.sqlite
+        .prepare(
+          "select name from sqlite_master where type = 'index' and tbl_name = 'participant_notes' and name not like 'sqlite_%' order by name",
+        )
+        .pluck()
+        .all(),
+    ).toEqual(["participant_notes_actor", "participant_notes_plan"]);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
+
+    const noteIds = () =>
+      upgraded.sqlite
+        .prepare("select note_id from participant_notes order by note_id")
+        .pluck()
+        .all();
+
+    // Deleting a response removes its Note, and only that one.
+    upgraded.sqlite.prepare("delete from responses where id = 'remote-2'").run();
+    expect(noteIds()).toEqual(["note-1", "note-5"]);
+
+    // Deleting a plan removes its Notes and responses, and leaves the other plan's.
+    upgraded.sqlite.prepare("delete from plans where id = 'plan-1'").run();
+    expect(noteIds()).toEqual(["note-5"]);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
+  });
+});

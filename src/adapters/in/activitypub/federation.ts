@@ -6,8 +6,10 @@
 // viewer read model (spec 3.6), so it can hold nothing a viewer may not see. Fedify's types stay
 // in the adapters (spec 2a).
 import { type Context, createFederation, type Federation, type KvStore } from "@fedify/fedify";
+import type { DocumentLoader } from "@fedify/fedify/runtime";
 import {
   Application,
+  Create,
   Delete,
   Endpoints,
   Event,
@@ -15,10 +17,13 @@ import {
   isActor,
   Join,
   Leave,
+  Link,
+  Note,
   Person,
   TentativeAccept,
   Tombstone,
   Undo,
+  Update,
 } from "@fedify/fedify/vocab";
 import { type PlanDeps, viewPlan } from "../../../application/plans.ts";
 import type { IdentityRepository, LookupHasher, OutboundHttp } from "../../../application/ports.ts";
@@ -37,13 +42,21 @@ import {
   unfollowActor,
 } from "../../../application/following.ts";
 import {
+  addRemoteContribution,
+  deleteRemoteContribution,
+  editRemoteContribution,
+  isJoinedAnywhere,
+} from "../../../application/remote-contributions.ts";
+import {
   forgetRemoteParticipant,
   joinRemote,
   leaveRemote,
 } from "../../../application/remote-participants.ts";
-import type { JoinLimits } from "../http/rate-limit.ts";
+import type { JoinLimits, ReplyLimits } from "../http/rate-limit.ts";
+import { replyContent } from "./reply-text.ts";
 import { resolveLanguage } from "../../i18n/i18n.ts";
 import { planEvent } from "../../out/federation/event.ts";
+import { noteIdOf } from "../../out/federation/note.ts";
 import {
   outboundContextLoader,
   outboundDocumentLoader,
@@ -67,6 +80,7 @@ export function createInstanceFederation({
   identities,
   hasher,
   joinLimits,
+  replyLimits,
 }: {
   settings: FederationSettings;
   kv: KvStore;
@@ -80,6 +94,8 @@ export function createInstanceFederation({
   hasher: LookupHasher;
   /** Limits on remote joins (decision D42, spec 3.11). */
   joinLimits: JoinLimits;
+  /** Limits on replies from remote participants (decision D45, spec 3.11). */
+  replyLimits: ReplyLimits;
 }): Federation<void> {
   const actorDeps = { ...planDeps, identities };
   const { baseUrl } = settings;
@@ -226,6 +242,84 @@ export function createInstanceFederation({
       });
     };
 
+  /**
+   * A remote participant's reply `Note` (`Create`), or its author's edit (`Update`), as a recap
+   * contribution (decisions D44, D45). Only a `Note` of the signer's own, a reply to one of our
+   * plans and addressed privately to our actors, is passed on; everything else is ignored
+   * silently. Content is reduced to plain text here; the application decides who may write.
+   */
+  const replyListener =
+    (kind: "create" | "update") =>
+    async (ctx: Context<void>, activity: Create | Update): Promise<void> => {
+      const actorId = activity.actorId;
+      if (actorId === null || activity.objectId === null) return;
+      // An embedded object is looked at without fetching anything: an `Update` of a profile or
+      // an `Event` is not ours to count.
+      const embedded = await activity.getObject({
+        documentLoader: neverFetches,
+        contextLoader: ctx.contextLoader,
+        suppressError: true,
+      });
+      if (embedded !== null && !(embedded instanceof Note)) return;
+      // Someone who has joined nothing is not for us: no quota spent, nothing fetched.
+      if (!(await isJoinedAnywhere(planDeps, actorId.href))) return;
+      // The server's own quota, taken when the reply is plausible (the application asks once it
+      // is about to change something), so notes that are not for us cannot lock out its real
+      // replies. A Note only named must be fetched first, which costs: that takes it up front.
+      // Over the limit the listener fails, so Fedify answers with an error and the server tries
+      // again later.
+      const take = () => replyLimits.origin.take(actorId.origin).ok;
+      const paid = embedded === null;
+      if (paid && !take()) throw new RepliesLimited();
+      const note = embedded ?? (await activity.getObject(ctx));
+      // The signer's own Note: on its own server, and not attributed to anyone else.
+      if (!(note instanceof Note) || note.id === null || note.id.origin !== actorId.origin) return;
+      const authors = note.attributionIds;
+      if (authors.length > 1 || (authors[0] !== undefined && authors[0].href !== actorId.href)) {
+        return;
+      }
+      // A reply to exactly one thing: one of our plans' Events, or one of our Notes.
+      const [replyTarget, ...others] = note.replyTargetIds;
+      if (replyTarget === undefined || others.length > 0) return;
+      const planId = planOf(ctx, replyTarget);
+      const ourNoteId = noteIdOf(baseUrl, replyTarget);
+      const target =
+        planId !== undefined ? { planId } : ourNoteId !== undefined ? { ourNoteId } : undefined;
+      if (target === undefined) return;
+      const addressedTo = privateAddressees(ctx, note, activity);
+      if (addressedTo === undefined) return;
+      const links: string[] = [];
+      let looked = 0;
+      for await (const attachment of note.getAttachments({
+        documentLoader: neverFetches,
+        contextLoader: ctx.contextLoader,
+        suppressError: true,
+      })) {
+        looked += 1;
+        if (attachment instanceof Link && attachment.href !== null) {
+          links.push(attachment.href.href);
+          // The first web address is the one that counts: no need to look further.
+          if (/^https?:$/.test(attachment.href.protocol)) break;
+        }
+        if (looked >= MAX_ATTACHMENTS) break;
+      }
+      const content = replyContent(note.content === null ? "" : note.content.toString(), links);
+      if (content === undefined) return;
+      const request = {
+        ...target,
+        actorId: actorId.href,
+        noteId: note.id.href,
+        addressedTo,
+        body: content.body,
+        linkUrl: content.link ?? "",
+        admit: () => paid || take(),
+      };
+      const result = await (kind === "create"
+        ? addRemoteContribution(planDeps, request)
+        : editRemoteContribution(planDeps, request));
+      if (result === "limited") throw new RepliesLimited();
+    };
+
   const forgetActor = async (actor: URL) => {
     await forgetRemoteActor(planDeps, actor.href);
     await forgetRemoteParticipant(planDeps, actor.href);
@@ -286,10 +380,22 @@ export function createInstanceFederation({
         remoteActorId: undo.actorId.href,
       });
     })
+    .on(Create, replyListener("create"))
+    .on(Update, replyListener("update"))
     .on(Delete, async (_ctx, deleted) => {
       // An actor deleting itself: it follows nobody and takes part in nothing any more (spec 3.7).
       const self = deletedSelf(deleted);
-      if (self !== undefined) await forgetActor(self);
+      if (self !== undefined) {
+        await forgetActor(self);
+        return;
+      }
+      // An author deleting a reply of theirs: only their own Notes are found (decision D44).
+      if (deleted.actorId !== null && deleted.objectId !== null) {
+        await deleteRemoteContribution(planDeps, {
+          actorId: deleted.actorId.href,
+          noteId: deleted.objectId.href,
+        });
+      }
     })
     // Processed activities are noted under a keyed hash, so no actor or activity address is stored.
     .withIdempotency((ctx, activity) =>
@@ -308,11 +414,50 @@ export function createInstanceFederation({
   return federation;
 }
 
+/** No more attachments than this are looked at: only one web link is ever used. */
+const MAX_ATTACHMENTS = 20;
+
 /** A server joined more than its limit allows: to be tried again later. */
 class JoinsLimited extends Error {
   constructor() {
     super("too many joins from this server");
   }
+}
+
+/** A server sent more replies than its limit allows: to be tried again later. */
+class RepliesLimited extends Error {
+  constructor() {
+    super("too many replies from this server");
+  }
+}
+
+/** Looks at what an activity embeds, never at what it only names. */
+const neverFetches: DocumentLoader = () => Promise.reject(new Error("not fetched"));
+
+/**
+ * The local actors a reply is addressed to, by identifier, on the Note and on its activity alike;
+ * undefined unless it is addressed to nothing but our actors: anything public, a followers
+ * collection, another person or server, or no one at all is not private.
+ */
+function privateAddressees(
+  ctx: Context<void>,
+  note: Note,
+  activity: Create | Update,
+): string[] | undefined {
+  const addressed = [note, activity].flatMap((object) => [
+    ...object.toIds,
+    ...object.ccIds,
+    ...object.btoIds,
+    ...object.bccIds,
+    ...object.audienceIds,
+  ]);
+  const identifiers: string[] = [];
+  for (const address of addressed) {
+    const parsed = ctx.parseUri(address);
+    if (parsed?.type !== "actor") return undefined;
+    identifiers.push(parsed.identifier);
+  }
+  return identifiers.length === 0 ? undefined : [...new Set(identifiers)];
 }
 
 /** The actor of a `Delete` of itself; undefined for any other `Delete`. */

@@ -110,6 +110,22 @@ export function createJoinLimits(now: () => number): JoinLimits {
   };
 }
 
+/** Limits on replies from remote participants (decision D45, spec 3.11); kept in memory only. */
+export interface ReplyLimits {
+  /**
+   * Per remote server, keyed by the signer's origin, as strict as joins: burst 10, then 30 an
+   * hour. A `Create` or `Update` of a `Note` takes a token only when it could count: its sender
+   * has joined, it answers one of our plans or Notes and everything else checked passes, so
+   * notes that are not for us cannot lock out a server's real replies. A `Note` that is only
+   * named takes its token before it is fetched, so a joined actor cannot spend our fetches.
+   */
+  origin: RateLimiter;
+}
+
+export function createReplyLimits(now: () => number): ReplyLimits {
+  return { origin: createRateLimiter({ capacity: 10, perHour: 30, now }) };
+}
+
 interface Bucket {
   tokens: number;
   updatedAt: number;

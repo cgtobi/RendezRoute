@@ -9,8 +9,14 @@ export type Remote = { id: string; keys: Awaited<ReturnType<typeof generateCrypt
 export const HOST = "runs.example.org";
 export const INSTANCE = `https://${HOST}/actors/instance`;
 
-export async function remotePerson(test: TestApp, name: string, server = "social.example") {
-  const keys = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+export async function remotePerson(
+  test: TestApp,
+  name: string,
+  server = "social.example",
+  /** Keys made before, for suites with many people, where generating them is slow. */
+  sharedKeys?: Remote["keys"],
+) {
+  const keys = sharedKeys ?? (await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"));
   const id = `https://${server}/users/${name}`;
   const der = Buffer.from(await crypto.subtle.exportKey("spki", keys.publicKey));
   const pem = `-----BEGIN PUBLIC KEY-----\n${(der.toString("base64").match(/.{1,64}/g) ?? []).join("\n")}\n-----END PUBLIC KEY-----\n`;

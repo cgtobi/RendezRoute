@@ -13,6 +13,12 @@ import type { Plan } from "../domain/plan.ts";
 import { audienceFor, canSee } from "../domain/visibility.ts";
 import { resolveDevice } from "./devices.ts";
 import { asHost, type Denied, isDenied } from "./host.ts";
+import {
+  publishContribution,
+  syncContributionNotes,
+  withdrawNotesOfContribution,
+  withdrawNotesOfPlanContributions,
+} from "./contribution-notes.ts";
 import { notifyResponse, responsesStillIn } from "./notify.ts";
 import type { PlanDeps } from "./plans.ts";
 
@@ -64,8 +70,9 @@ export async function addContribution(
   }
   const checked = validateContribution(request);
   if (!checked.ok) return { kind: "invalid", errors: checked.errors };
+  const id = deps.ids.rowId();
   await deps.recap.create({
-    id: deps.ids.rowId(),
+    id,
     planId: plan.id,
     responseId,
     ...checked.value,
@@ -73,6 +80,8 @@ export async function addContribution(
     createdAt: now,
     updatedAt: now,
   });
+  // Last: remote participants get it once it is stored (decision D44).
+  await publishContribution(deps, plan, id);
   return { kind: "added" };
 }
 
@@ -80,7 +89,7 @@ export async function addContribution(
 async function ownContribution(
   deps: PlanDeps,
   request: { planId: string; contributionId: string; deviceToken: string | undefined },
-): Promise<{ contribution: RecapContribution } | Denied> {
+): Promise<{ plan: Plan; contribution: RecapContribution } | Denied> {
   const found = await authorOf(deps, request);
   if (isDenied(found)) return found;
   const contribution = await deps.recap.findById(request.contributionId);
@@ -88,7 +97,7 @@ async function ownContribution(
     return { kind: "not_found" };
   }
   if (contribution.responseId !== responseIdOf(found.author)) return { kind: "forbidden" };
-  return { contribution };
+  return { plan: found.plan, contribution };
 }
 
 export async function viewOwnContribution(
@@ -118,6 +127,8 @@ export async function editContribution(
     ...checked.value,
     updatedAt: deps.clock.now(),
   });
+  // An `Update` of the Notes, only where what they show changed (decision D44).
+  await syncContributionNotes(deps, found.plan);
   return { kind: "updated" };
 }
 
@@ -127,6 +138,8 @@ export async function deleteContribution(
 ): Promise<{ kind: "deleted" } | Denied> {
   const found = await ownContribution(deps, request);
   if (isDenied(found)) return found;
+  // The Notes' `Delete` is queued before the contribution and its rows go (decision D44).
+  await withdrawNotesOfContribution(deps, found.contribution.id);
   await deps.recap.delete(found.contribution.id);
   return { kind: "deleted" };
 }
@@ -147,7 +160,12 @@ export async function setContributionHidden(
   if (contribution === undefined || contribution.planId !== plan.id) {
     return { kind: "not_found" };
   }
+  // The flag first, so a publish in between finds it and sends nothing; then, hidden, the
+  // contribution is withdrawn from remote participants, as the web hides it from the others.
   await deps.recap.update({ ...contribution, hiddenByHost: request.hidden });
+  if (request.hidden) await withdrawNotesOfContribution(deps, contribution.id);
+  // Shown again: a new Note, last (decision D45).
+  if (!request.hidden) await publishContribution(deps, plan, contribution.id);
   return { kind: "updated" };
 }
 
@@ -158,6 +176,7 @@ export async function deleteRecap(
 ): Promise<{ kind: "deleted"; count: number } | Denied> {
   const plan = await asHost(deps, request.planId, request.deviceToken);
   if (isDenied(plan)) return plan;
+  await withdrawNotesOfPlanContributions(deps, plan);
   const count = await deps.recap.deleteForPlan(plan.id);
   if (count > 0) {
     for (const response of await responsesStillIn(deps, plan, new Set(["joined"]))) {

@@ -64,6 +64,15 @@ export function createParticipantNoteRepository(
       return row === undefined ? undefined : fromRow(row);
     },
 
+    async findByNoteId(noteId) {
+      const row = await db
+        .selectFrom("participant_notes")
+        .selectAll()
+        .where("note_id", "=", noteId)
+        .executeTakeFirst();
+      return row === undefined ? undefined : fromRow(row);
+    },
+
     async listByPlan(planId) {
       const rows = await db
         .selectFrom("participant_notes")

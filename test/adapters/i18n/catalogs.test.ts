@@ -37,6 +37,8 @@ const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
     "host.route",
     "privacy.cookiesHeading",
     "recap.link",
+    // "Link: {link}" is the same word in German (decision D44).
+    "recapNote.link",
     // The service's name (decision D34).
     "telegram.label",
     // The service's name (decision D41).

@@ -11,6 +11,7 @@ import type { Plan } from "../domain/plan.ts";
 import { planActor } from "./fediverse-profile.ts";
 import { eventViewOf } from "./plan-views.ts";
 import { attributedActor } from "./attribution.ts";
+import { withdrawNotesOfPlanContributions } from "./contribution-notes.ts";
 import { withdrawNotesOfPlan } from "./participant-notes.ts";
 import { remoteAudience, remoteReach } from "./remote-participants.ts";
 import type { PlanDeps } from "./plans.ts";
@@ -23,7 +24,7 @@ import type {
 
 type PublishDeps = Pick<
   PlanDeps,
-  "posterActors" | "plans" | "clock" | "responses" | "ids" | "tokens"
+  "posterActors" | "plans" | "clock" | "responses" | "recap" | "ids" | "tokens"
 >;
 
 /** Where the plan should be in the fediverse now: by whom, to whom; undefined for nowhere. */
@@ -152,6 +153,8 @@ export async function withdrawDeletedPlans(
     }
     // Their private Notes, read before the plan and the responses go (decision D43).
     await withdrawNotesOfPlan(deps, plan);
+    // And of its contributions, which the plan takes along (decision D44).
+    await withdrawNotesOfPlanContributions(deps, plan);
     if (participants.length > 0) {
       await publisher.deleteForParticipants(
         {

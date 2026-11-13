@@ -1,5 +1,9 @@
 import type {
   ActorKeyFactory,
+  ContributionNote,
+  ContributionNoteFacts,
+  ContributionNoteRepository,
+  RemoteContributionRepository,
   FederationPublisher,
   FediverseProfile,
   FediverseProfileRepository,
@@ -193,6 +197,11 @@ export class FakeParticipantNotes implements ParticipantNoteRepository {
     return Promise.resolve(note === undefined ? undefined : { ...note });
   }
 
+  findByNoteId(noteId: string) {
+    const note = [...this.notes.values()].find((candidate) => candidate.noteId === noteId);
+    return Promise.resolve(note === undefined ? undefined : { ...note });
+  }
+
   listByPlan(planId: string) {
     return Promise.resolve(
       [...this.notes.values()].filter((note) => note.planId === planId).map((n) => ({ ...n })),
@@ -225,6 +234,99 @@ export class FakeParticipantNotes implements ParticipantNoteRepository {
 
   fingerprint(content: string) {
     return `fp(${content})`;
+  }
+}
+
+/** Contribution Notes sent to remote participants in memory (decision D44), by note id. */
+export class FakeContributionNotes implements ContributionNoteRepository {
+  readonly notes = new Map<string, ContributionNote>();
+
+  create(note: Omit<ContributionNote, "sentAt">, now: Date) {
+    // One Note per contribution and recipient: a second attempt stores nothing, as the database does.
+    if (
+      [...this.notes.values()].some(
+        (other) =>
+          other.contributionId === note.contributionId && other.responseId === note.responseId,
+      )
+    ) {
+      return Promise.resolve(false);
+    }
+    if (this.notes.has(note.noteId)) return Promise.reject(new Error("duplicate key"));
+    this.notes.set(note.noteId, { ...note, sentAt: now });
+    return Promise.resolve(true);
+  }
+
+  find(contributionId: string, responseId: string) {
+    return Promise.resolve(
+      this.#where((n) => n.contributionId === contributionId && n.responseId === responseId)[0],
+    );
+  }
+
+  findByNoteId(noteId: string) {
+    const note = this.notes.get(noteId);
+    return Promise.resolve(note === undefined ? undefined : { ...note });
+  }
+
+  listByContribution(contributionId: string) {
+    return Promise.resolve(this.#where((n) => n.contributionId === contributionId));
+  }
+
+  listByRecipient(responseId: string) {
+    return Promise.resolve(this.#where((n) => n.responseId === responseId));
+  }
+
+  listByPlan(planId: string) {
+    return Promise.resolve(this.#where((n) => n.planId === planId));
+  }
+
+  listByActor(localActor: string) {
+    return Promise.resolve(this.#where((n) => n.localActor === localActor));
+  }
+
+  update(note: Pick<ContributionNote, "noteId" | "localActor" | "contentHash">) {
+    const before = this.notes.get(note.noteId);
+    if (before !== undefined) {
+      this.notes.set(note.noteId, {
+        ...before,
+        localActor: note.localActor,
+        contentHash: note.contentHash,
+      });
+    }
+    return Promise.resolve();
+  }
+
+  delete(noteId: string) {
+    this.notes.delete(noteId);
+    return Promise.resolve();
+  }
+
+  fingerprint(content: string) {
+    return `fp(${content})`;
+  }
+
+  #where(matches: (note: ContributionNote) => boolean): ContributionNote[] {
+    return [...this.notes.values()].filter(matches).map((note) => ({ ...note }));
+  }
+}
+
+/** Reply Notes mapped to their contributions in memory (decision D44); the Note id in the clear. */
+export class FakeRemoteContributions implements RemoteContributionRepository {
+  readonly mappings = new Map<string, { contributionId: string; planId: string }>();
+
+  create(mapping: {
+    contributionId: string;
+    responseId: string;
+    planId: string;
+    remoteNoteId: string;
+  }) {
+    const key = `${mapping.responseId}|${mapping.remoteNoteId}`;
+    if (this.mappings.has(key)) return Promise.resolve(false);
+    this.mappings.set(key, { contributionId: mapping.contributionId, planId: mapping.planId });
+    return Promise.resolve(true);
+  }
+
+  findContribution(responseId: string, remoteNoteId: string) {
+    return Promise.resolve(this.mappings.get(`${responseId}|${remoteNoteId}`)?.contributionId);
   }
 }
 
@@ -262,6 +364,22 @@ export class FakePublisher implements FederationPublisher {
         localActor: string;
         to: string;
         /** Whether the actor's key goes in the job, for a profile being retired. */
+        carryKey: boolean;
+      }
+    /** A recap contribution as a direct Note to one participant (decision D44). */
+    | {
+        kind: "contributionNote";
+        activity: "create" | "update";
+        localActor: string;
+        note: ContributionNoteFacts;
+        to: string;
+      }
+    | {
+        kind: "contributionNoteDelete";
+        noteId: string;
+        planId: string;
+        localActor: string;
+        to: string;
         carryKey: boolean;
       }
     /** To remote participants only (decision D42). */
@@ -343,6 +461,35 @@ export class FakePublisher implements FederationPublisher {
   ) {
     this.sent.push({
       kind: "noteDelete",
+      ...note,
+      to: recipient.id,
+      carryKey: options.carryKey === true,
+    });
+    return Promise.resolve();
+  }
+
+  sendContributionNote(
+    activity: "create" | "update",
+    note: ContributionNoteFacts,
+    recipient: RemoteActor,
+  ) {
+    this.sent.push({
+      kind: "contributionNote",
+      activity,
+      localActor: note.localActor,
+      note: { ...note },
+      to: recipient.id,
+    });
+    return Promise.resolve();
+  }
+
+  withdrawContributionNote(
+    note: { noteId: string; planId: string; localActor: string },
+    recipient: RemoteActor,
+    options: { carryKey?: boolean } = {},
+  ) {
+    this.sent.push({
+      kind: "contributionNoteDelete",
       ...note,
       to: recipient.id,
       carryKey: options.carryKey === true,

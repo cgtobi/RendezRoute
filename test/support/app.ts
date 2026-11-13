@@ -1,7 +1,9 @@
 import { actorKeyFactory } from "../../src/adapters/out/crypto/federation-keys.ts";
 import { createFederationOutbound } from "../../src/adapters/out/federation/outbound.ts";
 import { createFollowerRepository } from "../../src/adapters/out/sqlite/followers.ts";
+import { createContributionNoteRepository } from "../../src/adapters/out/sqlite/contribution-notes.ts";
 import { createParticipantNoteRepository } from "../../src/adapters/out/sqlite/participant-notes.ts";
+import { createRemoteContributionRepository } from "../../src/adapters/out/sqlite/remote-contributions.ts";
 import { createPublicationRepository } from "../../src/adapters/out/sqlite/publications.ts";
 import { createFediverseProfileRepository } from "../../src/adapters/out/sqlite/fediverse-profiles.ts";
 import { FakeOutboundHttp } from "../fakes/outbound-http.ts";
@@ -12,7 +14,11 @@ import { randomBytes } from "node:crypto";
 import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts";
 import { createApp } from "../../src/adapters/in/http/app.tsx";
 import { createTokenAdminAuth } from "../../src/adapters/out/admin/token-admin-auth.ts";
-import { createJoinLimits, createRateLimits } from "../../src/adapters/in/http/rate-limit.ts";
+import {
+  createJoinLimits,
+  createRateLimits,
+  createReplyLimits,
+} from "../../src/adapters/in/http/rate-limit.ts";
 import { generateVapidKeys } from "../../src/adapters/out/crypto/vapid-keys.ts";
 import { createCalendarFeedRepository } from "../../src/adapters/out/sqlite/calendar-feeds.ts";
 import { createChannelRepository } from "../../src/adapters/out/sqlite/channels.ts";
@@ -128,6 +134,7 @@ export async function createTestApp({
   );
   const lookupHasher = createLookupHasher(randomBytes(32));
   const participantNotes = createParticipantNoteRepository(database, cipher, lookupHasher);
+  const contributionNotes = createContributionNoteRepository(database, lookupHasher);
   const federationOutbound =
     federationKeys === undefined
       ? undefined
@@ -139,6 +146,7 @@ export async function createTestApp({
           instanceKeys: federationKeys,
           profiles,
           notes: participantNotes,
+          contributionNotes,
           http: federationHttp,
         });
   const channelLinks = createChannelLinks(randomBytes(32));
@@ -206,6 +214,8 @@ export async function createTestApp({
       followers: createFollowerRepository(database, cipher, lookupHasher, ids),
       publications: createPublicationRepository(database),
       notes: participantNotes,
+      contributionNotes,
+      remoteContributions: createRemoteContributionRepository(database, lookupHasher),
       publisher: federationOutbound?.publisher,
       enabled: config.federationEnabled,
     },
@@ -257,6 +267,7 @@ export async function createTestApp({
           planDeps,
           hasher: lookupHasher,
           joinLimits: createJoinLimits(() => clock.now().getTime()),
+          replyLimits: createReplyLimits(() => clock.now().getTime()),
         });
 
   const app = createApp({

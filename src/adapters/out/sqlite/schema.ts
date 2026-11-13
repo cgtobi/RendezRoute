@@ -260,6 +260,33 @@ export interface ParticipantNotesTable {
   updated_at: string;
 }
 
+/** Direct Notes sent with recap contributions to joined participants (D44, migration 0031). */
+export interface ContributionNotesTable {
+  /** Random id in the Note's URI; unique across this table and participant_notes (UUIDs). */
+  note_id: string;
+  contribution_id: string;
+  /** The recipient's remote response: one Note per contribution and response. */
+  response_id: string;
+  plan_id: string;
+  /** Who sent it: "instance" or a poster actor's identifier; sends its Updates and Delete too. */
+  local_actor: string;
+  /** Keyed hash of the author's name, text and link last sent. */
+  content_hash: string;
+  sent_at: string;
+  updated_at: string;
+}
+
+/** A remote participant's reply Note, mapped to the contribution made from it (D44, 0031). */
+export interface RemoteContributionsTable {
+  contribution_id: string;
+  /** The remote author's response. */
+  response_id: string;
+  plan_id: string;
+  /** Keyed hash (identity lookup key) of the remote Note's id; the id itself is not stored. */
+  remote_note_hmac: string;
+  created_at: string;
+}
+
 export interface DatabaseSchema {
   /** Instance-level values, e.g. the encryption key fingerprint (spec 3.11). */
   instance_meta: InstanceMetaTable;
@@ -285,6 +312,9 @@ export interface DatabaseSchema {
   sent_reminders: SentRemindersTable;
   calendar_feeds: CalendarFeedsTable;
   recap_contributions: RecapContributionsTable;
+  /** Recap over federation (decision D44). */
+  contribution_notes: ContributionNotesTable;
+  remote_contributions: RemoteContributionsTable;
   plan_templates: PlanTemplatesTable;
   used_form_nonces: UsedFormNoncesTable;
   plan_ratings: PlanRatingsTable;

@@ -16,6 +16,15 @@ const translate = (language: string) =>
 export const noteUriOf = (baseUrl: URL, noteId: string): URL =>
   new URL(`/notes/${noteId}`, baseUrl);
 
+/** The identifier in the address of one of our Notes; undefined for any other address. */
+export function noteIdOf(baseUrl: URL, address: URL): string | undefined {
+  const [, kind, id, ...rest] = address.pathname.split("/");
+  if (address.origin !== baseUrl.origin || kind !== "notes" || rest.length > 0) return undefined;
+  const found = id === undefined || id === "" ? undefined : id;
+  // Only what `noteUriOf` writes: the same address again names the same Note.
+  return found !== undefined && noteUriOf(baseUrl, found).href === address.href ? found : undefined;
+}
+
 /** The secret link of a Note's GPX; the token is the only thing that opens it. */
 export const routeLinkOf = (baseUrl: URL, token: string): URL =>
   new URL(`/federation/notes/${token}/route.gpx`, baseUrl);

@@ -91,6 +91,26 @@ describe("recap contributions (spec 6 feature 5)", () => {
     expect(await recap().findById("c-1")).toBeUndefined();
   });
 
+  it("are stored within a cap counted in the same step, also for attempts at once", async () => {
+    expect(await recap().createWithinLimit(contribution("c-1", { body: "One" }), 2)).toBe(true);
+    const together = await Promise.all(
+      ["c-2", "c-3", "c-4", "c-5"].map((id) => recap().createWithinLimit(contribution(id), 2)),
+    );
+    expect(together.filter(Boolean)).toHaveLength(1);
+    expect(await recap().countByAuthor("plan-1", "response-1")).toBe(2);
+    // The cap is per author: the host (no response) has room, and the stored text is encrypted.
+    expect(await recap().createWithinLimit(contribution("c-6", { responseId: undefined }), 1)).toBe(
+      true,
+    );
+    expect(await recap().createWithinLimit(contribution("c-7", { responseId: undefined }), 1)).toBe(
+      false,
+    );
+    expect(await recap().findById("c-1")).toEqual(contribution("c-1", { body: "One" }));
+    expect(
+      JSON.stringify(database.sqlite.prepare("select * from recap_contributions").all()),
+    ).not.toContain("SENTINEL");
+  });
+
   it("are deleted per person, per plan, and with their response or plan", async () => {
     await recap().create(contribution("c-1"));
     await recap().create(contribution("c-2", { responseId: undefined }));

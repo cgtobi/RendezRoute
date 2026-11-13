@@ -112,6 +112,38 @@ describe("delivering an activity (decision D38)", () => {
     ).toBe("done");
   });
 
+  it("drops a contribution Note's Create or Update that is no longer current, whole guards only", async () => {
+    const guard = { kind: "contribution", contributionId: "contribution-1", noteId: "note-1" };
+    const seen: unknown[] = [];
+    const guarded = (current: boolean, http: FakeOutboundHttp, value: unknown = guard) =>
+      federationDeliveryHandler(
+        http,
+        () => Promise.resolve([keys]),
+        (asked) => {
+          seen.push(asked);
+          return Promise.resolve(current);
+        },
+      )({ ...payload, guard: value });
+    const stale = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+    expect(await guarded(false, stale)).toBe("drop");
+    expect(stale.posts).toEqual([]);
+    const current = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+    expect(await guarded(true, current)).toBe("done");
+    expect(current.posts).toHaveLength(1);
+    // The guard reaches the check whole, so it can tell the kind of Note.
+    expect(seen).toEqual([guard, guard]);
+    for (const broken of [
+      { kind: "contribution", noteId: "note-1" },
+      { kind: "contribution", contributionId: "contribution-1" },
+      { kind: "contribution", contributionId: 1, noteId: "note-1" },
+      { kind: "other", contributionId: "contribution-1", noteId: "note-1" },
+    ]) {
+      const damaged = new FakeOutboundHttp().respond(INBOX, { status: 202 });
+      expect(await guarded(true, damaged, broken)).toBe("drop");
+      expect(damaged.posts).toEqual([]);
+    }
+  });
+
   it("drops a payload that is not a delivery", async () => {
     const http = new FakeOutboundHttp();
     expect(await deliver(http, { inbox: INBOX })).toBe("drop");

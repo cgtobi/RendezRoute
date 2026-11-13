@@ -386,6 +386,8 @@ export interface ParticipantNoteRepository {
   /** False, storing nothing, when the response already has a Note (two attempts at once). */
   create(note: Omit<ParticipantNote, "sentAt">, now: Date): Promise<boolean>;
   find(responseId: string): Promise<ParticipantNote | undefined>;
+  /** The Note with this identifier (a reply to it names it), if it still exists. */
+  findByNoteId(noteId: string): Promise<ParticipantNote | undefined>;
   listByPlan(planId: string): Promise<ParticipantNote[]>;
   /** Every Note an actor sent, for when it is retired and can no longer sign. */
   listByActor(localActor: string): Promise<ParticipantNote[]>;
@@ -410,6 +412,79 @@ export interface ParticipantNoteFacts {
   timeZone: string;
   exactStart: ExactStart | undefined;
   routeToken: string | undefined;
+  /** For receivers to order what they get: first sent, and last changed (undefined at `Create`). */
+  publishedAt: Date;
+  updatedAt: Date | undefined;
+}
+
+/**
+ * A direct `Note` carrying one recap contribution to one joined remote participant (decisions D44,
+ * D45). One per contribution and recipient; its `Update`s and `Delete` come from `localActor`.
+ */
+export interface ContributionNote {
+  /** The random identifier in the Note's address (shared with participant Notes: UUIDs). */
+  noteId: string;
+  contributionId: string;
+  /** The recipient's remote response. */
+  responseId: string;
+  planId: string;
+  /** Who sent it: its later `Update`s and its `Delete` come from the same actor (D43, D44). */
+  localActor: string;
+  sentAt: Date;
+  /** Keyed fingerprint of what was sent (author's name, text, link, language). */
+  contentHash: string;
+}
+
+/** Contribution Notes sent to remote participants (decision D44); rows go with their contribution. */
+export interface ContributionNoteRepository {
+  /** False, storing nothing, when this recipient already has a Note for the contribution. */
+  create(note: Omit<ContributionNote, "sentAt">, now: Date): Promise<boolean>;
+  find(contributionId: string, responseId: string): Promise<ContributionNote | undefined>;
+  /** For the delivery guard: whether a Note with this identifier still exists. */
+  findByNoteId(noteId: string): Promise<ContributionNote | undefined>;
+  listByContribution(contributionId: string): Promise<ContributionNote[]>;
+  /** Everything sent to one recipient, for when they stop being joined. */
+  listByRecipient(responseId: string): Promise<ContributionNote[]>;
+  listByPlan(planId: string): Promise<ContributionNote[]>;
+  /** Every Note an actor sent, for when it is retired and can no longer sign. */
+  listByActor(localActor: string): Promise<ContributionNote[]>;
+  /** After an `Update`: the new hash, and the sender if it changed to the instance actor. */
+  update(
+    note: Pick<ContributionNote, "noteId" | "localActor" | "contentHash">,
+    now: Date,
+  ): Promise<void>;
+  delete(noteId: string): Promise<void>;
+  /** A keyed fingerprint (a comment is private and low-entropy). */
+  fingerprint(content: string): string;
+}
+
+/**
+ * Which contribution a remote participant's reply `Note` became (decision D44), so the author's
+ * own `Update` and `Delete` of that Note find it. The Note's address is kept only as a keyed hash.
+ */
+export interface RemoteContributionRepository {
+  /** False, storing nothing, when this author's Note already has a contribution. */
+  create(
+    mapping: { contributionId: string; responseId: string; planId: string; remoteNoteId: string },
+    now: Date,
+  ): Promise<boolean>;
+  /** The contribution made from this author's Note, if any. */
+  findContribution(responseId: string, remoteNoteId: string): Promise<string | undefined>;
+}
+
+/** What a contribution Note is made of (decision D44): the adapter writes the text in the plan's language. */
+export interface ContributionNoteFacts {
+  noteId: string;
+  planId: string;
+  contributionId: string;
+  /** The recipient's response. */
+  responseId: string;
+  localActor: string;
+  language: string;
+  /** The author's name as web participants see it. */
+  authorName: string;
+  body: string | undefined;
+  linkUrl: string | undefined;
   /** For receivers to order what they get: first sent, and last changed (undefined at `Create`). */
   publishedAt: Date;
   updatedAt: Date | undefined;
@@ -461,6 +536,22 @@ export interface FederationPublisher {
     note: { noteId: string; planId: string; localActor: string },
     recipient: RemoteActor,
     /** For a profile being retired: its key goes in the job, as it is gone by delivery (D36). */
+    options?: { carryKey?: boolean },
+  ): Promise<void>;
+  /**
+   * A recap contribution as a direct `Note` `inReplyTo` the plan's `Event` to one joined
+   * participant, addressed to them alone (decision D44); `Create` or `Update` of the same Note.
+   * Jobs go with the plan and are dropped once the Note is withdrawn.
+   */
+  sendContributionNote(
+    activity: "create" | "update",
+    note: ContributionNoteFacts,
+    recipient: RemoteActor,
+  ): Promise<void>;
+  /** `Delete` for a contribution Note; outlives the plan and the contribution (decision D44). */
+  withdrawContributionNote(
+    note: { noteId: string; planId: string; localActor: string },
+    recipient: RemoteActor,
     options?: { carryKey?: boolean },
   ): Promise<void>;
   /**
@@ -1020,6 +1111,11 @@ export interface WeatherProvider {
 /** Recap contributions (spec 6 feature 5); comment and link encrypted at rest. */
 export interface RecapRepository {
   create(contribution: RecapContribution): Promise<void>;
+  /**
+   * Stores it only if its author has fewer than `max` contributions on the plan, counted in the
+   * same step, so concurrent attempts cannot exceed the cap; false, storing nothing, otherwise.
+   */
+  createWithinLimit(contribution: RecapContribution, max: number): Promise<boolean>;
   /** Stores comment, link, hidden flag and update time. */
   update(contribution: RecapContribution): Promise<void>;
   findById(id: string): Promise<RecapContribution | undefined>;

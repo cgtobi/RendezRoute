@@ -868,6 +868,14 @@ export function createFakeRepositories(): {
       async create(c) {
         contributions.set(c.id, structuredClone(c));
       },
+      async createWithinLimit(c, max) {
+        const count = [...contributions.values()].filter(
+          (other) => other.planId === c.planId && other.responseId === c.responseId,
+        ).length;
+        if (count >= max) return false;
+        contributions.set(c.id, structuredClone(c));
+        return true;
+      },
       async update(c) {
         const existing = contributions.get(c.id);
         if (existing !== undefined) contributions.set(c.id, { ...existing, ...structuredClone(c) });

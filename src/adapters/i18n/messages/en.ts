@@ -310,6 +310,10 @@ export const en = {
   "note.route": "The route is attached as a GPX file.",
   "note.plan": "Plan page: {link}",
   "note.copies": "Your server may keep copies of this message.",
+  "recapNote.intro": "{author} wrote in the recap:",
+  "recapNote.link": "Link: {link}",
+  "recapNote.plan": "Plan page: {link}",
+  "recapNote.copies": "Your server may keep copies of this message.",
   "plan.where": "Meeting area",
   "plan.distance": "Distance",
   "plan.elevation": "Elevation gain",
@@ -800,6 +804,8 @@ export const en = {
     "This site takes part in the fediverse as @{host}@{host}. Other servers can fetch a plan’s public details by its address, as anyone with the link can see them. When a server sends this site a message, this site fetches that server’s public key to check the message’s signature, and keeps the key for up to {days} days. Anyone in the fediverse can follow this site: a follower’s address and inboxes are stored encrypted until they unfollow, their account is deleted or this site stops taking part in the fediverse, and only how many there are is shown. The site itself shares no plans: only fediverse profiles do. People in the fediverse can join a plan from their own server: the address and inboxes of such a participant are stored encrypted until they leave, their account is deleted or the plan is deleted; for someone the host rejected or removed they stay as a block until the plan is deleted or their account is. The name shown comes from their profile, and the host and the accepted participants can see it. The plan’s changes are sent to each participant separately while they are in, and its deletion to everyone who joined, and their server may keep copies.",
   "privacy.federationNotes":
     "When someone in the fediverse joins a plan and is accepted, the exact start and the route are sent to them as a direct message from this site’s actor, or from the poster’s profile, and to no one else: the exact start as text, the route as a GPX file behind a private link that anyone holding it can open until the message is withdrawn. The message is withdrawn when they leave, are removed or the plan is deleted, and changes to the exact start, the time or the route are sent to them again. Their server may keep copies, which this site cannot delete.",
+  "privacy.federationRecap":
+    "When people in the fediverse have joined a plan, each comment or link added to its recap is sent to them as a direct message from this site’s actor, or from the poster’s profile, under the author’s name as the people who joined see it, and to no one else; its author does not get their own back. Someone who joined from the fediverse can answer such a message privately: the reply becomes a comment in the recap, shown to the host and the people who joined under the name shown for their account, and sent on to the other participants from the fediverse the same way. Edits are sent again, and a message is withdrawn when its comment is deleted or hidden, when its author or the person it was sent to leaves or is removed, or when the plan is cancelled or deleted; a participant who joins late is sent the latest 50 comments. Their server may keep copies, which this site cannot delete. Remote participants are not part of an account’s data export, which is unchanged.",
   "privacy.nearby":
     "Nearby uses the place you search from only for that search. A spot from the map or your location is rounded to about 2 km by your browser before it is sent, and again by the server. A typed place is looked up like place search above, and the search continues from its rounded spot; without JavaScript the typed place is in the address of that first request. Nothing of it is stored or written to this site’s logs. The rounded spot is in the address of the results page, so it can stay in your browser history and in the access log of a web server in front of this site.",
   "field.range_invalid": "The last day comes before the first.",

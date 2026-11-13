@@ -23,3 +23,11 @@ export function cleanText(
   if (Array.from(normalized).length > max) return err("too_long");
   return ok(normalized);
 }
+
+/** Characters that reorder or isolate text (embeddings, overrides, isolates, direction marks). */
+const BIDI_CONTROLS = /[‪-‮⁦-⁩‎‏؜]/gu;
+
+/** Text without the characters that make it display in another order than it is written. */
+export function stripBidiControls(text: string): string {
+  return text.replace(BIDI_CONTROLS, "");
+}

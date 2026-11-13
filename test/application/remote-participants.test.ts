@@ -36,7 +36,9 @@ import {
   FakeActorKeys,
   FakeFediverseProfiles,
   FakeFollowers,
+  FakeContributionNotes,
   FakeParticipantNotes,
+  FakeRemoteContributions,
   FakePublications,
   FakePublisher,
 } from "../fakes/fediverse-profiles.ts";
@@ -82,6 +84,8 @@ beforeEach(() => {
       followers,
       publications: new FakePublications(),
       notes: new FakeParticipantNotes(),
+      contributionNotes: new FakeContributionNotes(),
+      remoteContributions: new FakeRemoteContributions(),
       publisher,
       enabled: true,
     },

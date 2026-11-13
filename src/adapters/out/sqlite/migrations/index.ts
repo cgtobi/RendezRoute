@@ -29,6 +29,7 @@ import * as m0027 from "./0027-plan-publications.ts";
 import * as m0028 from "./0028-share-buttons.ts";
 import * as m0029 from "./0029-remote-participants.ts";
 import * as m0030 from "./0030-participant-notes.ts";
+import * as m0031 from "./0031-contribution-notes.ts";
 
 /** Statically imported so migrations work identically from src/ and dist/. Keys sort in order. */
 export const migrations: Readonly<Record<string, Migration>> = {
@@ -62,4 +63,5 @@ export const migrations: Readonly<Record<string, Migration>> = {
   "0028-share-buttons": m0028,
   "0029-remote-participants": m0029,
   "0030-participant-notes": m0030,
+  "0031-contribution-notes": m0031,
 };

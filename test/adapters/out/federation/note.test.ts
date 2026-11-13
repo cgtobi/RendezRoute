@@ -5,6 +5,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { translator } from "../../../../src/adapters/i18n/i18n.ts";
 import {
   copiesNotice,
+  noteIdOf,
   noteUriOf,
   participantNote,
   participantNoteText,
@@ -130,6 +131,18 @@ describe("the Note", () => {
 
   it("has addresses built in one place", () => {
     expect(noteUriOf(BASE, "n1").href).toBe("https://runs.example.org/notes/n1");
+    // And back: only an address written that way names one of our Notes.
+    expect(noteIdOf(BASE, noteUriOf(BASE, "n1"))).toBe("n1");
+    const others = [
+      "https://other.example/notes/n1",
+      "https://runs.example.org/notes/",
+      "https://runs.example.org/notes/n1/extra",
+      "https://runs.example.org/p/n1",
+      "https://runs.example.org/notes/n1?x=1",
+    ];
+    expect(others.map((address) => noteIdOf(BASE, new URL(address)))).toEqual(
+      others.map(() => undefined),
+    );
     expect(routeLinkOf(BASE, "t1").href).toBe(
       "https://runs.example.org/federation/notes/t1/route.gpx",
     );

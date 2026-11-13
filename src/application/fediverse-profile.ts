@@ -5,8 +5,10 @@
 // for good.
 import type { ActivityType } from "../domain/activity.ts";
 import { suggestHandle, validateHandle } from "../domain/actor.ts";
+import { hasRecap } from "../domain/recap.ts";
 import type { AccountDeps } from "./accounts.ts";
 import { accountOf } from "./channel-links.ts";
+import { resendContributionNotes, withdrawContributionNotesOfActor } from "./contribution-notes.ts";
 import { syncParticipantNotes, withdrawNotesOfActor } from "./participant-notes.ts";
 import type { PlanDeps } from "./plans.ts";
 import type { IdentityRepository } from "./ports.ts";
@@ -121,7 +123,11 @@ export async function retireAccountProfile(
   // accepted after this list was made, which then learns from the gone actor itself.
   const profile = await actors.profiles.findActive(identityId);
   // The Notes it sent to remote participants, who may not follow it, while it can still sign.
-  if (profile !== undefined) await withdrawNotesOfActor(deps, profile.id);
+  if (profile !== undefined) {
+    await withdrawNotesOfActor(deps, profile.id);
+    // And the contributions it sent them, the same way (decision D44).
+    await withdrawContributionNotesOfActor(deps, profile.id);
+  }
   const followers = profile === undefined ? [] : await actors.followers.list(profile.id);
   if (profile !== undefined && followers.length > 0) {
     await actors.publisher?.deleteActor(profile.id, followers);
@@ -137,6 +143,9 @@ export async function retireAccountProfile(
       if (current?.status === "active" && current.startsAt > now) {
         await syncParticipantNotes(deps, current);
       }
+      // The contributions of a plan under way, from the instance actor now (decision D44).
+      if (current !== undefined && hasRecap(current, now))
+        await resendContributionNotes(deps, current);
     }
   }
   return changed;

@@ -6,6 +6,7 @@ import type {
   Clock,
   FederationPublisher,
   FediverseProfileRepository,
+  ContributionNoteRepository,
   IdGenerator,
   JobQueue,
   OutboundHttp,
@@ -30,6 +31,7 @@ export function createFederationOutbound({
   instanceKeys,
   profiles,
   notes,
+  contributionNotes,
   http,
 }: {
   jobs: JobQueue;
@@ -40,6 +42,8 @@ export function createFederationOutbound({
   profiles: Pick<FediverseProfileRepository, "findActor">;
   /** Whether a private Note still exists, for its `Create` and `Update` waiting to be tried again. */
   notes: Pick<ParticipantNoteRepository, "find">;
+  /** And a contribution Note, for the same (decision D44). */
+  contributionNotes: Pick<ContributionNoteRepository, "findByNoteId">;
   http: OutboundHttp;
 }): FederationOutbound {
   const keysFor = actorSigningKeys(instanceKeys, profiles);
@@ -52,10 +56,11 @@ export function createFederationOutbound({
       keysFor,
       contextLoader: outboundContextLoader(http),
     }),
-    deliver: federationDeliveryHandler(
-      http,
-      keysFor,
-      async (guard) => (await notes.find(guard.responseId))?.noteId === guard.noteId,
+    deliver: federationDeliveryHandler(http, keysFor, async (guard) =>
+      "kind" in guard
+        ? (await contributionNotes.findByNoteId(guard.noteId))?.contributionId ===
+          guard.contributionId
+        : (await notes.find(guard.responseId))?.noteId === guard.noteId,
     ),
   };
 }

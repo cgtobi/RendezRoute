@@ -223,6 +223,34 @@ describe("privacy notice", () => {
     );
   });
 
+  it("says contributions go as direct messages to joined remote participants, in every language, only while federation is on (decision D44)", async () => {
+    const text = (html: string) => html.replaceAll("&#39;", "'");
+    const on = await createTestApp();
+    for (const language of ["en", "de", "fr"] as const) {
+      const page = text(
+        await (
+          await on.app.request("/privacy", { headers: { "accept-language": language } })
+        ).text(),
+      );
+      expect(page).toContain(translator(language)("privacy.federationRecap"));
+    }
+    // What it promises: direct messages, copies kept elsewhere, replies counted, withdrawal.
+    const notice = en("privacy.federationRecap");
+    for (const phrase of [
+      "direct message",
+      "keep copies",
+      "becomes a comment in the recap",
+      "withdrawn",
+      "account\u2019s data export, which is unchanged",
+    ]) {
+      expect(notice).toContain(phrase);
+    }
+    const off = await createTestApp({ env: { FEDERATION_ENABLED: "false" } });
+    expect(text(await (await off.app.request("/privacy")).text())).not.toContain(
+      en("privacy.federationRecap"),
+    );
+  });
+
   it("says the instance takes part in the fediverse, only while it does", async () => {
     const text = (html: string) => html.replaceAll("&#39;", "'");
     const on = await createTestApp();

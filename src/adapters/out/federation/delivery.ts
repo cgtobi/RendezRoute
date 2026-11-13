@@ -67,8 +67,20 @@ function asDelivery(payload: unknown): DeliveryPayload | undefined {
     return undefined;
   }
   // A guard that is there but not whole is a damaged job, not one without a guard.
-  const noteGuard =
-    typeof guard?.responseId === "string" && typeof guard.noteId === "string" ? guard : undefined;
+  const noteGuard = asGuard(guard);
   if (guard !== undefined && noteGuard === undefined) return undefined;
   return { localActor, inbox: inbox ?? "", body, keyId: keyId ?? "", privateKey, guard: noteGuard };
+}
+
+/** A participant Note's guard (response, Note) or a contribution Note's (contribution, Note). */
+function asGuard(guard: unknown): NoteGuard | undefined {
+  if (typeof guard !== "object" || guard === null) return undefined;
+  const { kind, responseId, contributionId, noteId } = guard as Record<string, unknown>;
+  if (typeof noteId !== "string") return undefined;
+  if (kind === undefined) {
+    return typeof responseId === "string" ? { responseId, noteId } : undefined;
+  }
+  return kind === "contribution" && typeof contributionId === "string"
+    ? { kind, contributionId, noteId }
+    : undefined;
 }

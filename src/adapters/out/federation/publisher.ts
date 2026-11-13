@@ -27,6 +27,7 @@ import type {
   RemoteActor,
 } from "../../../application/ports.ts";
 import { actorUriOf, addressing, planEvent, planUriOf } from "./event.ts";
+import { contributionNote } from "./contribution-note.ts";
 import { copiesNotice, noteUriOf, participantNote } from "./note.ts";
 import type { SigningKeyPair } from "../crypto/federation-keys.ts";
 
@@ -52,10 +53,13 @@ export interface DeliveryPayload {
   guard?: NoteGuard | undefined;
 }
 
-export interface NoteGuard {
-  responseId: string;
-  noteId: string;
-}
+/**
+ * What a guarded `Create` or `Update` waits on: a participant's private Note (by its response), or
+ * a contribution Note (by its contribution), still existing with that identifier.
+ */
+export type NoteGuard =
+  | { responseId: string; noteId: string }
+  | { kind: "contribution"; contributionId: string; noteId: string };
 
 /** A local actor's signing keys, RSA first; undefined when it has none (not, or no longer, active). */
 export type ActorSigningKeys = (
@@ -123,6 +127,27 @@ export function createFederationPublisher({
         expiresAt: new Date(now.getTime() + DELIVERY_HOURS * 60 * 60 * 1000),
       });
     }
+  }
+
+  /** `Delete` with a `Tombstone` for a Note, to its one recipient; outlives its plan and rows. */
+  async function withdrawNote(
+    note: { noteId: string; localActor: string },
+    recipient: RemoteActor,
+    options: { carryKey?: boolean },
+  ): Promise<void> {
+    const actor = actorUri(note.localActor);
+    await enqueue(
+      note.localActor,
+      new Delete({
+        id: new URL(`#delete-${ids.rowId()}`, noteUriOf(baseUrl, note.noteId)),
+        actor,
+        object: new Tombstone({ id: noteUriOf(baseUrl, note.noteId) }),
+        tos: [new URL(recipient.id)],
+      }),
+      [recipient],
+      // A profile being retired has no key by delivery (decision D36).
+      { carryKey: options.carryKey === true },
+    );
   }
 
   return {
@@ -269,19 +294,34 @@ export function createFederationPublisher({
     },
 
     async withdrawParticipantNote(note, recipient, options = {}) {
+      await withdrawNote(note, recipient, options);
+    },
+
+    // A recap contribution to one participant alone, `inReplyTo` the plan's `Event` (D44).
+    async sendContributionNote(activity, note, recipient) {
       const actor = actorUri(note.localActor);
+      const Sent = activity === "create" ? Create : Update;
       await enqueue(
         note.localActor,
-        new Delete({
-          id: new URL(`#delete-${ids.rowId()}`, noteUriOf(baseUrl, note.noteId)),
+        new Sent({
+          id: new URL(`#${activity}-${ids.rowId()}`, noteUriOf(baseUrl, note.noteId)),
           actor,
-          object: new Tombstone({ id: noteUriOf(baseUrl, note.noteId) }),
+          object: contributionNote(note, { baseUrl, recipient: new URL(recipient.id) }),
           tos: [new URL(recipient.id)],
         }),
         [recipient],
-        // A profile being retired has no key by delivery (decision D36).
-        { carryKey: options.carryKey === true },
+        // Goes with the plan or the recipient if undelivered, and is dropped if the Note has been
+        // withdrawn by then; the Delete below does neither.
+        {
+          planId: note.planId,
+          responseId: note.responseId,
+          guard: { kind: "contribution", contributionId: note.contributionId, noteId: note.noteId },
+        },
       );
+    },
+
+    async withdrawContributionNote(note, recipient, options = {}) {
+      await withdrawNote(note, recipient, options);
     },
 
     async withdrawPlan(publication, followers) {

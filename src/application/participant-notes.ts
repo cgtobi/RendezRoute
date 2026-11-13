@@ -11,12 +11,15 @@
 import type { Plan } from "../domain/plan.ts";
 import type { ResponseKind } from "../domain/response.ts";
 import type { Route } from "../domain/route.ts";
-import { activePublisher, attributedActor } from "./attribution.ts";
+import { activePublisher, attributedActor, senderOf } from "./attribution.ts";
 import type { PlanDeps } from "./plans.ts";
-import { INSTANCE_ACTOR } from "./following.ts";
-import type { ParticipantNote, ParticipantNoteFacts } from "./ports.ts";
+import { backfillContributions, withdrawNotesSentTo } from "./contribution-notes.ts";
+import type { ParticipantNoteFacts } from "./ports.ts";
 
-type NoteDeps = Pick<PlanDeps, "posterActors" | "plans" | "responses" | "ids" | "tokens" | "clock">;
+type NoteDeps = Pick<
+  PlanDeps,
+  "posterActors" | "plans" | "responses" | "recap" | "ids" | "tokens" | "clock"
+>;
 
 /** Keyed fingerprints of the route and of the rest, joined as "route\nrest". */
 function fingerprints(deps: NoteDeps, plan: Plan, route: Route | undefined) {
@@ -39,13 +42,6 @@ const parts = (hash: string) => {
   const [route = "", rest = ""] = hash.split("\n");
   return { route, rest };
 };
-
-/** Who sends for a Note: the actor that sent it, while it can sign; else the instance actor. */
-async function senderOf(deps: NoteDeps, note: ParticipantNote): Promise<string> {
-  if (note.localActor === INSTANCE_ACTOR) return INSTANCE_ACTOR;
-  const actor = await deps.posterActors?.profiles.findActor(note.localActor);
-  return actor?.kind === "active" ? note.localActor : INSTANCE_ACTOR;
-}
 
 function factsOf(
   plan: Plan,
@@ -135,8 +131,15 @@ export async function syncNoteOf(
   now: ResponseKind,
 ): Promise<void> {
   if (was === now) return;
-  if (now === "joined") await createNote(deps, plan, responseId);
-  else if (was === "joined") await withdrawNote(deps, plan, responseId);
+  if (now === "joined") {
+    await createNote(deps, plan, responseId);
+    // The existing contributions go after the exact start and route (decision D45).
+    await backfillContributions(deps, plan, responseId);
+  } else if (was === "joined") {
+    await withdrawNote(deps, plan, responseId);
+    // No longer joined: nothing more is received, and what was is withdrawn (decision D44).
+    await withdrawNotesSentTo(deps, responseId);
+  }
 }
 
 /**

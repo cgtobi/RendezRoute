@@ -11,7 +11,9 @@ import {
 } from "./adapters/out/federation/outbound.ts";
 import { createFediverseProfileRepository } from "./adapters/out/sqlite/fediverse-profiles.ts";
 import { createFollowerRepository } from "./adapters/out/sqlite/followers.ts";
+import { createContributionNoteRepository } from "./adapters/out/sqlite/contribution-notes.ts";
 import { createParticipantNoteRepository } from "./adapters/out/sqlite/participant-notes.ts";
+import { createRemoteContributionRepository } from "./adapters/out/sqlite/remote-contributions.ts";
 import { createPublicationRepository } from "./adapters/out/sqlite/publications.ts";
 import { createFedifyKvStore } from "./adapters/out/sqlite/fedify-kv.ts";
 import { existsSync, mkdirSync } from "node:fs";
@@ -30,7 +32,11 @@ import { runReminders } from "./application/reminders.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
 import { type AccountWiring, createApp } from "./adapters/in/http/app.tsx";
 import { createTokenAdminAuth } from "./adapters/out/admin/token-admin-auth.ts";
-import { createJoinLimits, createRateLimits } from "./adapters/in/http/rate-limit.ts";
+import {
+  createJoinLimits,
+  createRateLimits,
+  createReplyLimits,
+} from "./adapters/in/http/rate-limit.ts";
 import {
   SERVICE_CACHE_MS,
   WEATHER_CACHE_MS,
@@ -298,6 +304,7 @@ async function openInstance(
     keys.cipher,
     keys.identityLookup,
   );
+  const contributionNotes = createContributionNoteRepository(database, keys.identityLookup);
   const jobs = createJobQueue(database, keys.cipher, ids);
   const federation = config.federationEnabled
     ? await (async () => {
@@ -311,6 +318,7 @@ async function openInstance(
           instanceKeys,
           profiles,
           notes: participantNotes,
+          contributionNotes,
           http,
         });
         return { instanceKeys, http, outbound };
@@ -341,6 +349,8 @@ async function openInstance(
       followers: createFollowerRepository(database, keys.cipher, keys.identityLookup, ids),
       publications: createPublicationRepository(database),
       notes: participantNotes,
+      contributionNotes,
+      remoteContributions: createRemoteContributionRepository(database, keys.identityLookup),
       // Deliveries go through the job queue (decision D38).
       publisher: federation?.outbound.publisher,
       enabled: config.federationEnabled,
@@ -475,6 +485,7 @@ export async function startServer(
           identities: accounts.identities,
           hasher: keys.identityLookup,
           joinLimits: createJoinLimits(() => planDeps.clock.now().getTime()),
+          replyLimits: createReplyLimits(() => planDeps.clock.now().getTime()),
         });
 
   // The first sweep finishes before the server listens, so plans past their deletion

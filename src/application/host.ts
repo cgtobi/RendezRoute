@@ -29,6 +29,7 @@ import { isPosterName } from "../domain/responding.ts";
 import type { PlanResponse } from "../domain/response.ts";
 import type { Result } from "../domain/result.ts";
 import { resolveDevice } from "./devices.ts";
+import { withdrawNotesOfAuthor, withdrawNotesOfPlanContributions } from "./contribution-notes.ts";
 import { deletionNotices, notifyResponders, notifyResponse } from "./notify.ts";
 import { syncNoteOf, syncParticipantNotes } from "./participant-notes.ts";
 import { answerRemoteResponse } from "./remote-participants.ts";
@@ -255,6 +256,8 @@ export async function cancelPlan(
   if (!allowed.ok) return { kind: "not_allowed", reason: allowed.error };
   const cancelled: Plan = { ...plan, status: "cancelled", updatedAt: now };
   await deps.plans.update(cancelled);
+  // The web hides the recap of a cancelled plan, so its contributions' Notes are withdrawn too.
+  await withdrawNotesOfPlanContributions(deps, cancelled);
   await notifyResponders(deps, cancelled, "cancelled");
   // Said in the fediverse too, as an `Update` (spec 7), once people here were told.
   await syncPublication(deps, plan, cancelled);
@@ -310,6 +313,8 @@ function personAction<Done extends string>(
     await freezeRatingTally(deps, plan);
     await deps.responses.update(changed.value);
     if (deletesContributions) {
+      // What they wrote goes from remote participants too, before it is deleted (decision D44).
+      await withdrawNotesOfAuthor(deps, plan, response.id);
       await deps.recap.deleteForResponse(response.id);
       await deps.ratings.deleteForResponse(response.id);
     }

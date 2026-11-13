@@ -9,6 +9,11 @@ import {
   validateRequestNote,
 } from "../domain/requests.ts";
 import { canChangeResponse, canRespond, validateDisplayName } from "../domain/responding.ts";
+import {
+  syncContributionNotes,
+  withdrawNotesOfAuthor,
+  withdrawNotesSentTo,
+} from "./contribution-notes.ts";
 import { ensureDevice, resolveDevice } from "./devices.ts";
 import { notifyHost, notifyHostOfArrival } from "./notify.ts";
 import { type OwnResponseView, ownResponse as ownResponseView } from "./plan-views.ts";
@@ -225,6 +230,8 @@ export async function updateMyResponse(
     updatedAt: now,
   });
   if (notifiedHost) await notifyHostOfArrival(deps, plan, request.choice);
+  // A new name is a new author's name on their contributions' Notes (decision D44).
+  if (name.value !== response.displayName) await syncContributionNotes(deps, plan);
   return { kind: "updated", notifiedHost };
 }
 
@@ -250,6 +257,10 @@ export async function withdrawResponse(
 ): Promise<void> {
   // A participant leaving after the close must not change the host's counts (decision D20).
   await freezeRatingTally(deps, plan);
+  // The response takes its contributions along, and a remote one's Notes: their `Delete` is
+  // queued before the rows go (decision D44).
+  await withdrawNotesOfAuthor(deps, plan, response.id);
+  await withdrawNotesSentTo(deps, response.id);
   await deps.responses.delete(response.id);
   if (!isBlocked(response.kind)) await notifyHost(deps, plan, "withdrawn");
 }

@@ -70,8 +70,10 @@ import type {
   FederationPublisher,
   FediverseProfileRepository,
   FollowerRepository,
+  ContributionNoteRepository,
   ParticipantNoteRepository,
   PublicationRepository,
+  RemoteContributionRepository,
 } from "./ports.ts";
 
 export interface PlanDeps extends DeviceDeps {
@@ -117,6 +119,9 @@ export interface PlanDeps extends DeviceDeps {
         publications: PublicationRepository;
         /** Private Notes with the exact start and route, sent to remote participants (D43). */
         notes: ParticipantNoteRepository;
+        /** Recap contributions sent as Notes, and replies received as contributions (D44). */
+        contributionNotes: ContributionNoteRepository;
+        remoteContributions: RemoteContributionRepository;
         /** Undefined while federation is off: nothing is sent. */
         publisher: FederationPublisher | undefined;
         enabled: boolean;

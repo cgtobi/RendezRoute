@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
-import { clientKey, createRateLimiter } from "../../../src/adapters/in/http/rate-limit.ts";
+import {
+  clientKey,
+  createRateLimiter,
+  createReplyLimits,
+} from "../../../src/adapters/in/http/rate-limit.ts";
 
 function limiter(maxKeys = 100) {
   let now = 0;
@@ -97,5 +101,20 @@ describe("clientKey (decision I32)", () => {
 
   it("keeps anything else as one key", () => {
     expect(clientKey("unknown")).toBe("unknown");
+  });
+});
+
+describe("reply limits (decision D45)", () => {
+  it("allow a burst of 10 `Create`s from one server, then 30 an hour, and keep servers apart", () => {
+    let now = 0;
+    const { origin } = createReplyLimits(() => now);
+    const burst = Array.from({ length: 10 }, () => origin.take("https://one.example").ok);
+    expect(burst).toEqual(Array.from({ length: 10 }, () => true));
+    // 30 an hour: one token every 120 s.
+    expect(origin.take("https://one.example")).toEqual({ ok: false, retryAfterSeconds: 120 });
+    expect(origin.take("https://two.example").ok).toBe(true);
+    now += 120_000;
+    expect(origin.take("https://one.example").ok).toBe(true);
+    expect(origin.take("https://one.example").ok).toBe(false);
   });
 });

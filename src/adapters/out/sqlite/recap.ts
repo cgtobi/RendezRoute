@@ -1,5 +1,6 @@
 // Recap contributions (spec 6 feature 5): comment and link encrypted (spec 3.11); deletions are
 // physical (spec 3.10).
+import { sql } from "kysely";
 import type { FieldCipher, RecapRepository } from "../../../application/ports.ts";
 import type { RecapContribution } from "../../../domain/recap.ts";
 import { checkpoint, type Database } from "./database.ts";
@@ -48,6 +49,21 @@ export function createRecapRepository(database: Database, cipher: FieldCipher): 
           ...content(c),
         })
         .execute();
+    },
+
+    async createWithinLimit(c, max) {
+      const { body_enc, link_url_enc, hidden_by_poster, updated_at } = content(c);
+      // One statement: the count and the insert cannot be split by another attempt.
+      const result = await sql`
+        insert into recap_contributions
+          (id, plan_id, response_id, created_at, body_enc, link_url_enc, hidden_by_poster, updated_at)
+        select ${c.id}, ${c.planId}, ${c.responseId ?? null}, ${c.createdAt.toISOString()},
+          ${body_enc}, ${link_url_enc}, ${hidden_by_poster}, ${updated_at}
+        where (
+          select count(*) from recap_contributions
+          where plan_id = ${c.planId} and response_id is ${c.responseId ?? null}
+        ) < ${max}`.execute(database.db);
+      return Number(result.numAffectedRows ?? 0) > 0;
     },
 
     async update(c) {

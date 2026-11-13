@@ -518,3 +518,207 @@ describe("upgrading an existing database (migration 0030 adds participant notes)
     expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
   });
 });
+
+describe("upgrading an existing database (migration 0031 adds contribution notes)", () => {
+  it("keeps one Note per contribution and recipient, and maps each remote reply to its contribution", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rendezroute-upgrade-"));
+    dirs.push(dir);
+    const path = join(dir, "rendezroute.db");
+
+    const old = new Kysely<unknown>({
+      dialect: new SqliteDialect({ database: new BetterSqlite3(path) }),
+    });
+    const upTo0030 = Object.fromEntries(
+      Object.entries(migrations).filter(([name]) => name < "0031"),
+    );
+    expect(
+      (
+        await new Migrator({
+          db: old,
+          provider: { getMigrations: () => Promise.resolve(upTo0030) },
+        }).migrateToLatest()
+      ).error,
+    ).toBeUndefined();
+    const t = "2026-06-01T08:00:00.000Z";
+    for (const id of ["plan-1", "plan-2"]) {
+      await sql`insert into plans (id, poster_name, poster_language, activity_type, title, starts_at, timezone, area_label,
+        drop_policy, recap_window, retention_days, delete_at, host_token_hash, created_at, updated_at, visibility)
+        values (${id}, 'Anna', 'en', 'run', 'Run', ${t}, 'UTC', 'Park', 'no_drop', '1w', 14, ${t}, ${`hash-${id}`}, ${t}, ${t}, 'link')`.execute(
+        old,
+      );
+    }
+    // Remote participants who joined: remote-1 to remote-3 on plan-1, remote-4 and -5 on plan-2.
+    const remotes = [
+      ["remote-1", "plan-1"],
+      ["remote-2", "plan-1"],
+      ["remote-3", "plan-1"],
+      ["remote-4", "plan-2"],
+      ["remote-5", "plan-2"],
+    ] as const;
+    for (const [id, planId] of remotes) {
+      await sql`insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language,
+        remote_actor_hmac, remote_actor_enc, created_at, updated_at)
+        values (${id}, ${planId}, 'joined', 'enc', ${`manage-${id}`}, 'en', ${`actor-hmac-${id}`}, 'enc', ${t}, ${t})`.execute(
+        old,
+      );
+    }
+    // Contributions: remote-1's two on plan-1, the host's on plan-1, remote-4's on plan-2.
+    await sql`insert into recap_contributions (id, plan_id, response_id, body_enc, created_at, updated_at)
+      values ('c-1', 'plan-1', 'remote-1', 'enc', ${t}, ${t}),
+        ('c-2', 'plan-1', null, 'enc', ${t}, ${t}),
+        ('c-3', 'plan-2', 'remote-4', 'enc', ${t}, ${t}),
+        ('c-4', 'plan-1', 'remote-1', 'enc', ${t}, ${t})`.execute(old);
+    await old.destroy();
+
+    const upgraded = await openDatabase(path);
+    open.push(upgraded);
+    expect(upgraded.sqlite.prepare("select count(*) from recap_contributions").pluck().get()).toBe(
+      4,
+    );
+
+    // A Note: the contribution, the recipient's response and plan, the random note id, who sent
+    // it, and the hash of what was sent.
+    const insertNote = (
+      noteId: string,
+      contributionId: string,
+      responseId: string,
+      planId: string,
+    ) =>
+      upgraded.sqlite
+        .prepare(
+          `insert into contribution_notes (note_id, contribution_id, response_id, plan_id, local_actor,
+            content_hash, sent_at, updated_at)
+           values (?, ?, ?, ?, 'instance', 'content-hash', ?, ?)`,
+        )
+        .run(noteId, contributionId, responseId, planId, t, t);
+    // A contribution sent to a remote participant, and the same one sent to another.
+    expect(() => insertNote("note-1", "c-1", "remote-2", "plan-1")).not.toThrow();
+    expect(() => insertNote("note-2", "c-1", "remote-3", "plan-1")).not.toThrow();
+    // One Note per contribution and recipient.
+    expect(() => insertNote("note-3", "c-1", "remote-2", "plan-1")).toThrow(
+      /UNIQUE constraint failed/,
+    );
+    // Note ids are unique.
+    expect(() => insertNote("note-1", "c-2", "remote-2", "plan-1")).toThrow(
+      /UNIQUE constraint failed/,
+    );
+    // The host's contribution to a remote participant, and one on plan-2.
+    expect(() => insertNote("note-4", "c-2", "remote-2", "plan-1")).not.toThrow();
+    expect(() => insertNote("note-5", "c-3", "remote-5", "plan-2")).not.toThrow();
+    // The contribution, the response and the plan must exist.
+    expect(() => insertNote("note-6", "missing", "remote-2", "plan-1")).toThrow(
+      /FOREIGN KEY constraint failed/,
+    );
+    expect(() => insertNote("note-6", "c-2", "missing", "plan-1")).toThrow(
+      /FOREIGN KEY constraint failed/,
+    );
+    expect(() => insertNote("note-6", "c-2", "remote-3", "missing")).toThrow(
+      /FOREIGN KEY constraint failed/,
+    );
+    // Who sent it is never missing.
+    expect(() =>
+      upgraded.sqlite
+        .prepare(
+          `insert into contribution_notes (note_id, contribution_id, response_id, plan_id, local_actor,
+            content_hash, sent_at, updated_at)
+           values ('note-7', 'c-2', 'remote-3', 'plan-1', null, 'h', 't', 't')`,
+        )
+        .run(),
+    ).toThrow(/NOT NULL constraint failed/);
+
+    // A mapping: the contribution made from a remote participant's reply Note, its author's
+    // response, the plan and the keyed hash of the Note's id.
+    const insertRemote = (
+      contributionId: string,
+      responseId: string,
+      planId: string,
+      hmac: string,
+    ) =>
+      upgraded.sqlite
+        .prepare(
+          `insert into remote_contributions (contribution_id, response_id, plan_id, remote_note_hmac, created_at)
+           values (?, ?, ?, ?, ?)`,
+        )
+        .run(contributionId, responseId, planId, hmac, t);
+    expect(() => insertRemote("c-1", "remote-1", "plan-1", "hmac-1")).not.toThrow();
+    // One mapping per contribution.
+    expect(() => insertRemote("c-1", "remote-1", "plan-1", "hmac-2")).toThrow(
+      /UNIQUE constraint failed/,
+    );
+    // One contribution per remote Note and author.
+    expect(() => insertRemote("c-4", "remote-1", "plan-1", "hmac-1")).toThrow(
+      /UNIQUE constraint failed/,
+    );
+    expect(() => insertRemote("c-4", "remote-1", "plan-1", "hmac-2")).not.toThrow();
+    // Another author's Note may have the same hash.
+    expect(() => insertRemote("c-3", "remote-4", "plan-2", "hmac-1")).not.toThrow();
+    // The contribution, the author's response and the plan must exist.
+    expect(() => insertRemote("missing", "remote-2", "plan-1", "hmac-3")).toThrow(
+      /FOREIGN KEY constraint failed/,
+    );
+    expect(() => insertRemote("c-2", "missing", "plan-1", "hmac-3")).toThrow(
+      /FOREIGN KEY constraint failed/,
+    );
+    expect(() => insertRemote("c-2", "remote-2", "missing", "hmac-3")).toThrow(
+      /FOREIGN KEY constraint failed/,
+    );
+
+    const indexes = (table: string) =>
+      upgraded.sqlite
+        .prepare(
+          "select name from sqlite_master where type = 'index' and tbl_name = ? and name not like 'sqlite_%' order by name",
+        )
+        .pluck()
+        .all(table);
+    expect(indexes("contribution_notes")).toEqual([
+      "contribution_notes_actor",
+      "contribution_notes_plan",
+      "contribution_notes_response",
+    ]);
+    expect(indexes("remote_contributions")).toEqual(["remote_contributions_plan"]);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
+
+    const noteIds = () =>
+      upgraded.sqlite
+        .prepare("select note_id from contribution_notes order by note_id")
+        .pluck()
+        .all();
+    const mappedIds = () =>
+      upgraded.sqlite
+        .prepare("select contribution_id from remote_contributions order by contribution_id")
+        .pluck()
+        .all();
+    const contributionIds = () =>
+      upgraded.sqlite.prepare("select id from recap_contributions order by id").pluck().all();
+    expect(noteIds()).toEqual(["note-1", "note-2", "note-4", "note-5"]);
+    expect(mappedIds()).toEqual(["c-1", "c-3", "c-4"]);
+
+    // Deleting a recipient's response removes the Notes sent to it, and only those.
+    upgraded.sqlite.prepare("delete from responses where id = 'remote-3'").run();
+    expect(noteIds()).toEqual(["note-1", "note-4", "note-5"]);
+    expect(mappedIds()).toEqual(["c-1", "c-3", "c-4"]);
+
+    // Deleting a contribution removes its Notes and its mapping, and nothing else.
+    upgraded.sqlite.prepare("delete from recap_contributions where id = 'c-1'").run();
+    expect(noteIds()).toEqual(["note-4", "note-5"]);
+    expect(mappedIds()).toEqual(["c-3", "c-4"]);
+
+    // Deleting an author's response removes its contributions and their mappings.
+    upgraded.sqlite.prepare("delete from responses where id = 'remote-1'").run();
+    expect(contributionIds()).toEqual(["c-2", "c-3"]);
+    expect(mappedIds()).toEqual(["c-3"]);
+    expect(noteIds()).toEqual(["note-4", "note-5"]);
+
+    // Deleting a plan removes its Notes, mappings and contributions, and leaves the other plan's.
+    upgraded.sqlite.prepare("delete from plans where id = 'plan-1'").run();
+    expect(contributionIds()).toEqual(["c-3"]);
+    expect(noteIds()).toEqual(["note-5"]);
+    expect(mappedIds()).toEqual(["c-3"]);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
+
+    upgraded.sqlite.prepare("delete from plans where id = 'plan-2'").run();
+    expect(noteIds()).toEqual([]);
+    expect(mappedIds()).toEqual([]);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
+  });
+});

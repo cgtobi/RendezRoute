@@ -302,6 +302,32 @@ describe("recap contributions (spec 3.6, acceptance criterion v0.5)", () => {
     }
   });
 
+  it("are not in the Event any audience fetches as ActivityPub, nor in a poster's calendar (decision D44)", async () => {
+    const setup = await audiences();
+    setup.clock.set(AFTER_START);
+    await contribute(setup.joined, setup.planId, RECAP_BODY, RECAP_LINK);
+    await contribute(setup.host, setup.planId, "SENTINEL-host-recap");
+    for (const client of [
+      setup.viewer,
+      setup.interested,
+      setup.pending,
+      setup.rejected,
+      setup.removed,
+      setup.joined,
+      setup.host,
+    ]) {
+      const body = await (
+        await client.request(`/p/${setup.planId}`, {
+          headers: { accept: "application/activity+json" },
+        })
+      ).text();
+      expect(body).toContain('"type":"Event"');
+      expect(body).not.toContain("SENTINEL-recap");
+      expect(body).not.toContain("SENTINEL-host-recap");
+      expect(body).not.toContain("SENTINEL-recap-link");
+    }
+  });
+
   it("are exported only to their own author (user decision 2026-11-09)", async () => {
     const setup = await audiences();
     setup.clock.set(AFTER_START);

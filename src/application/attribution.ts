@@ -41,3 +41,17 @@ export async function attributedActor(
   if (state?.kind === "withdrawn") return INSTANCE_ACTOR;
   return (await planActor(deps, plan)) ?? INSTANCE_ACTOR;
 }
+
+/**
+ * Who sends for a Note already sent: the actor that sent it, while it can sign (decisions D43,
+ * D44: a server ignores a `Delete` from another actor than the `Create`'s); else the instance
+ * actor.
+ */
+export async function senderOf(
+  deps: Pick<PlanDeps, "posterActors">,
+  note: { localActor: string },
+): Promise<string> {
+  if (note.localActor === INSTANCE_ACTOR) return INSTANCE_ACTOR;
+  const actor = await deps.posterActors?.profiles.findActor(note.localActor);
+  return actor?.kind === "active" ? note.localActor : INSTANCE_ACTOR;
+}

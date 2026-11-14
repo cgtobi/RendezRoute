@@ -8,6 +8,8 @@
   optional configuration options**.
 - The form no longer checks the email and link syntax of these fields; the app does at start and
   names the setting in the log (for example CONTACT_EMAIL). An empty field means "not set".
+- Date and time inputs on the create form no longer overflow the screen on phones.
+- The footer menu's language and unit rows stay on one line on phones.
 
 ## 0.10.0
 

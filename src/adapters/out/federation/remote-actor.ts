@@ -77,9 +77,72 @@ export function createRemoteActorLookup({
     }
   }
 
+  const notFound = { kind: "not_found" } as const;
+
+  /** Looks the address up at one origin; the checks are the same for https and for dev http. */
+  async function resolveAt(
+    origin: URL,
+    name: string,
+  ): Promise<Awaited<ReturnType<RemoteActorLookup["resolve"]>>> {
+    const address = fediverseAddress(name, origin.host).slice(1);
+
+    const finger = new URL("/.well-known/webfinger", origin);
+    finger.searchParams.set("resource", `acct:${address}`);
+    const found = await fetchJson(finger, "application/jrd+json, application/json");
+    if (found.kind !== "document") return found;
+    // A redirect may only have stayed on the address's own host.
+    if (found.url.host !== origin.host) return notFound;
+    // The answer must be about the address asked for: a server that answers for another
+    // account is not believed. Servers write the subject with the address as they know it.
+    const { subject } = found.document;
+    if (typeof subject !== "string" || subject.toLowerCase() !== `acct:${address}`.toLowerCase()) {
+      return notFound;
+    }
+
+    const links = Array.isArray(found.document.links) ? found.document.links : [];
+    const self = (links.slice(0, MAX_LINKS) as unknown[]).find(
+      (link): link is { href: unknown; type: unknown } =>
+        typeof link === "object" &&
+        link !== null &&
+        (link as { rel?: unknown }).rel === "self" &&
+        isActivityType((link as { type?: unknown }).type),
+    );
+    const actorUrl = typeof self?.href === "string" ? URL.parse(self.href) : null;
+    if (
+      actorUrl === null ||
+      hasCredentials(actorUrl) ||
+      !schemes.includes(actorUrl.protocol) ||
+      actorUrl.host !== origin.host
+    ) {
+      return notFound;
+    }
+
+    const actor = await fetchJson(actorUrl, ACCEPT_ACTOR);
+    if (actor.kind !== "document") return actor;
+    const { id, inbox, preferredUsername } = actor.document;
+    const inboxUrl = typeof inbox === "string" ? URL.parse(inbox) : null;
+    if (
+      actor.url.host !== origin.host ||
+      typeof id !== "string" ||
+      URL.parse(id)?.href !== actorUrl.href ||
+      typeof preferredUsername !== "string" ||
+      preferredUsername.toLowerCase() !== name.toLowerCase() ||
+      inboxUrl === null ||
+      hasCredentials(inboxUrl) ||
+      !schemes.includes(inboxUrl.protocol) ||
+      inboxUrl.host !== actorUrl.host
+    ) {
+      return notFound;
+    }
+    // The actor's own inbox, never a shared one: the message is for this person alone.
+    return {
+      kind: "found",
+      actor: { id: actorUrl.href, inbox: inboxUrl.href, sharedInbox: undefined },
+    };
+  }
+
   return {
     async resolve(handle) {
-      const notFound = { kind: "not_found" } as const;
       // @name@host: both parts are checked before any request goes out.
       const text = handle.startsWith("@") ? handle.slice(1) : handle;
       const at = text.indexOf("@");
@@ -91,64 +154,16 @@ export function createRemoteActorLookup({
       const origin = new URL(server.value);
       // Only a host: a path or a port the address does not name is not part of it.
       if (origin.host !== (typed.endsWith(".") ? typed.slice(0, -1) : typed)) return notFound;
-      const address = fediverseAddress(name, origin.host).slice(1);
-
-      const finger = new URL("/.well-known/webfinger", origin);
-      finger.searchParams.set("resource", `acct:${address}`);
-      const found = await fetchJson(finger, "application/jrd+json, application/json");
-      if (found.kind !== "document") return found;
-      // A redirect may only have stayed on the address's own host.
-      if (found.url.host !== origin.host) return notFound;
-      // The answer must be about the address asked for: a server that answers for another
-      // account is not believed. Servers write the subject with the address as they know it.
-      const { subject } = found.document;
-      if (
-        typeof subject !== "string" ||
-        subject.toLowerCase() !== `acct:${address}`.toLowerCase()
-      ) {
-        return notFound;
+      const answer = await resolveAt(origin, name);
+      // Development only: a local fake server with a port (@name@fakes:8080) speaks plain http,
+      // which the typed host cannot say. https is tried first; http whenever that attempt was
+      // `unavailable` (connection or TLS failure, 408, 429, 5xx, or an actor fetch failing after
+      // WebFinger worked).
+      // Without ALLOW_INSECURE_DEV, or without a port in the address, it is https and nothing else.
+      if (answer.kind === "unavailable" && allowInsecure && origin.port !== "") {
+        return resolveAt(new URL(`http://${origin.host}`), name);
       }
-
-      const links = Array.isArray(found.document.links) ? found.document.links : [];
-      const self = (links.slice(0, MAX_LINKS) as unknown[]).find(
-        (link): link is { href: unknown; type: unknown } =>
-          typeof link === "object" &&
-          link !== null &&
-          (link as { rel?: unknown }).rel === "self" &&
-          isActivityType((link as { type?: unknown }).type),
-      );
-      const actorUrl = typeof self?.href === "string" ? URL.parse(self.href) : null;
-      if (
-        actorUrl === null ||
-        hasCredentials(actorUrl) ||
-        !schemes.includes(actorUrl.protocol) ||
-        actorUrl.host !== origin.host
-      ) {
-        return notFound;
-      }
-
-      const actor = await fetchJson(actorUrl, ACCEPT_ACTOR);
-      if (actor.kind !== "document") return actor;
-      const { id, inbox, preferredUsername } = actor.document;
-      const inboxUrl = typeof inbox === "string" ? URL.parse(inbox) : null;
-      if (
-        actor.url.host !== origin.host ||
-        typeof id !== "string" ||
-        URL.parse(id)?.href !== actorUrl.href ||
-        typeof preferredUsername !== "string" ||
-        preferredUsername.toLowerCase() !== name.toLowerCase() ||
-        inboxUrl === null ||
-        hasCredentials(inboxUrl) ||
-        !schemes.includes(inboxUrl.protocol) ||
-        inboxUrl.host !== actorUrl.host
-      ) {
-        return notFound;
-      }
-      // The actor's own inbox, never a shared one: the message is for this person alone.
-      return {
-        kind: "found",
-        actor: { id: actorUrl.href, inbox: inboxUrl.href, sharedInbox: undefined },
-      };
+      return answer;
     },
   };
 }

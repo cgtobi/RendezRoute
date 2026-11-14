@@ -252,6 +252,106 @@ describe("looking an account up by WebFinger", () => {
     });
   });
 
+  describe("a host with a port in development (the e2e fake serves plain http)", () => {
+    const PORT_HANDLE = "@name@fakes:8080";
+    /** A fake account that answers on the given scheme only; the other scheme is unreachable. */
+    function fake(
+      scheme: "http" | "https",
+      { subject = "acct:name@fakes:8080", host = "fakes:8080" } = {},
+    ) {
+      const actor = `${scheme}://${host}/users/name`;
+      return new FakeOutboundHttp()
+        .respond(`${scheme}://fakes:8080/.well-known/webfinger`, {
+          body: JSON.stringify({
+            subject,
+            links: [{ rel: "self", type: "application/activity+json", href: actor }],
+          }),
+        })
+        .respond(`${scheme}://${host}/users/name`, {
+          body: JSON.stringify({
+            id: actor,
+            preferredUsername: "name",
+            inbox: `${actor}/inbox`,
+          }),
+        });
+    }
+    const found = (scheme: string) => ({
+      kind: "found",
+      actor: {
+        id: `${scheme}://fakes:8080/users/name`,
+        inbox: `${scheme}://fakes:8080/users/name/inbox`,
+        sharedInbox: undefined,
+      },
+    });
+    const plain = (http: FakeOutboundHttp) => http.requests.filter((u) => u.protocol === "http:");
+
+    it("is found over http when only http answers", async () => {
+      const http = fake("http");
+      expect(
+        await createRemoteActorLookup({ http, allowInsecure: true }).resolve(PORT_HANDLE),
+      ).toEqual(found("http"));
+    });
+
+    // The parser refuses a port without ALLOW_INSECURE_DEV; the flag check in resolve is a second
+    // safeguard.
+    it("is not found and asks no http when insecure is not allowed (a parser guarantee)", async () => {
+      const http = fake("http");
+      expect(await createRemoteActorLookup({ http }).resolve(PORT_HANDLE)).toEqual({
+        kind: "not_found",
+      });
+      expect(plain(http)).toEqual([]);
+    });
+
+    it.each([
+      ["answers 404", { status: 404 }],
+      ["names another subject", { body: JSON.stringify({ subject: "acct:mallory@fakes:8080" }) }],
+    ])("asks no http when https %s", async (_, answer) => {
+      const http = fake("http").respond("https://fakes:8080/.well-known/webfinger", answer);
+      expect(
+        await createRemoteActorLookup({ http, allowInsecure: true }).resolve(PORT_HANDLE),
+      ).toEqual({ kind: "not_found" });
+      expect(plain(http)).toEqual([]);
+    });
+
+    it("falls back to http when https answers 503", async () => {
+      const http = fake("http").respond("https://fakes:8080/.well-known/webfinger", {
+        status: 503,
+      });
+      expect(
+        await createRemoteActorLookup({ http, allowInsecure: true }).resolve(PORT_HANDLE),
+      ).toEqual(found("http"));
+    });
+
+    it("asks no http for a host without a port", async () => {
+      const http = new FakeOutboundHttp().respond("http://dev.test/", { body: "{}" });
+      expect(
+        await createRemoteActorLookup({ http, allowInsecure: true }).resolve("@a@dev.test"),
+      ).toEqual({ kind: "unavailable" });
+      expect(plain(http)).toEqual([]);
+    });
+
+    it("uses https when it works", async () => {
+      const http = fake("https");
+      expect(
+        await createRemoteActorLookup({ http, allowInsecure: true }).resolve(PORT_HANDLE),
+      ).toEqual(found("https"));
+      expect(plain(http)).toEqual([]);
+    });
+
+    it("still refuses a wrong subject, another host or another port on the http path", async () => {
+      const lookup = (http: FakeOutboundHttp) =>
+        createRemoteActorLookup({ http, allowInsecure: true }).resolve(PORT_HANDLE);
+      expect(await lookup(fake("http", { subject: "acct:mallory@fakes:8080" }))).toEqual({
+        kind: "not_found",
+      });
+      expect(await lookup(fake("http", { subject: "acct:name@evil.example" }))).toEqual({
+        kind: "not_found",
+      });
+      expect(await lookup(fake("http", { host: "evil.example" }))).toEqual({ kind: "not_found" });
+      expect(await lookup(fake("http", { host: "fakes:9090" }))).toEqual({ kind: "not_found" });
+    });
+  });
+
   it("is refused by the real SSRF guard for a host that resolves to a private address, without connecting", async () => {
     const http = createOutboundHttp({
       userAgent: "RendezRoute/test",

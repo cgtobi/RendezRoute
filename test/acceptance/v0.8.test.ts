@@ -13,6 +13,7 @@ import { createTestApp } from "../support/app.ts";
 import { hiddenFields, TestClient } from "../support/client.ts";
 import { escaped } from "../support/html.ts";
 import { createPlanViaUi, editForm, respondViaUi } from "../support/plans.ts";
+import { hasStandalone } from "../support/raw-scan.ts";
 
 const en = translator("en");
 const BASE = "https://runs.example.org";
@@ -222,9 +223,15 @@ describe("v0.8 acceptance criteria (spec 7)", () => {
         }
       })
       .join("");
-    for (const trace of ["48.16789", "11.61234", "Flaucher", "48.12", "11.56"]) {
+    const logs = test.logs.join("\n");
+    for (const trace of ["48.16789", "11.61234", "Flaucher"]) {
       expect(raw).not.toContain(trace);
-      expect(test.logs.join("\n")).not.toContain(trace);
+      expect(logs).not.toContain(trace);
+    }
+    // The rounded points are short: in the file and in the logs (`"time":"…:48.126Z"`), a timestamp must not match.
+    for (const rounded of ["48.12", "11.56"]) {
+      expect(hasStandalone(raw, rounded)).toBe(false);
+      expect(hasStandalone(logs, rounded)).toBe(false);
     }
     await test.database.close();
 

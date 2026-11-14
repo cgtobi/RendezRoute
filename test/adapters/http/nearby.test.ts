@@ -10,6 +10,7 @@ import { createTestApp } from "../../support/app.ts";
 import { TestClient } from "../../support/client.ts";
 import { escaped } from "../../support/html.ts";
 import { createPlanViaUi, planForm, respondViaUi } from "../../support/plans.ts";
+import { hasStandalone } from "../../support/raw-scan.ts";
 
 const en = translator("en");
 const PUBLIC = { PUBLIC_REQUIRES_LOGIN: "false" };
@@ -215,9 +216,15 @@ describe("the viewer's place (decision D35)", () => {
         }
       })
       .join("");
-    for (const trace of ["48.23456", "11.67891", "48.24", "11.68", "Flaucher", "48.12", "11.56"]) {
+    const logText = logs.join("\n");
+    for (const trace of ["48.23456", "11.67891", "Flaucher"]) {
       expect(raw).not.toContain(trace);
-      expect(logs.join("\n")).not.toContain(trace);
+      expect(logText).not.toContain(trace);
+    }
+    // The rounded points are short: in the file and in the logs (`"time":"…:48.126Z"`), a timestamp must not match.
+    for (const rounded of ["48.24", "11.68", "48.12", "11.56"]) {
+      expect(hasStandalone(raw, rounded)).toBe(false);
+      expect(hasStandalone(logText, rounded)).toBe(false);
     }
     await database.close();
   });

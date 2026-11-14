@@ -1,11 +1,15 @@
 // Loads and validates configuration (spec section 2 "Configuration", section 10).
 // Takes a plain key/value record so sources other than process.env (e.g. a
 // Home Assistant options file, spec section 8) can be mapped onto it later.
+import { isIP } from "node:net";
 import { isAbsolute } from "node:path";
 import { parseEmailAddress } from "./domain/email.ts";
 import { parseFediverseServer } from "./domain/fediverse.ts";
 import { POSTING_MODES, type PostingMode } from "./domain/invite.ts";
 import { validateTimeZone } from "./domain/timezone.ts";
+
+/** The public listener's port inside the container; the admin listener must use another. */
+export const DEFAULT_PORT = 3000;
 
 /** Raw key/value configuration, e.g. process.env or a mapped Home Assistant options file. */
 export type ConfigSource = Readonly<Record<string, string | undefined>>;
@@ -39,6 +43,12 @@ export interface Config {
   allowInsecureDev: boolean;
   /** The instance admin's login secret (spec 7 Moderation); admin pages exist only when set. */
   adminToken: string | undefined;
+  /**
+   * The optional admin listener (decision D55); undefined: the admin pages are on the public
+   * listener as before. `url` is where browsers reach it, for the report alert email and the
+   * CSRF origin check.
+   */
+  admin: { port: number; bind: string; url: URL | undefined } | undefined;
   /** Who may create plans (spec 7 Moderation). */
   postingMode: PostingMode;
   /** Only plans that belong to an account may be public (spec 7 Visibility and Nearby plans). */
@@ -82,6 +92,13 @@ export interface OidcConfig {
   name: string;
 }
 
+/**
+ * Where the report alert email sends the operator (decision D55): the admin pages on the public
+ * origin, on ADMIN_URL's when the admin listener has its own address, or nowhere known (undefined).
+ */
+export const adminPagesOrigin = (config: Config): URL | undefined =>
+  config.admin === undefined ? config.baseUrl : config.admin.url;
+
 /** Whether any way to log in is configured (spec 7 Identity). */
 export const loginConfigured = (config: Config): boolean =>
   config.oidc !== undefined || config.fediverseLogin !== undefined;
@@ -106,6 +123,26 @@ const DEFAULTS = {
 const MAX_INSTANCE_NAME_LENGTH = 60;
 const MIN_ADMIN_TOKEN_LENGTH = 32;
 const MAX_OIDC_NAME_LENGTH = 40;
+
+/**
+ * Where http is fine for ADMIN_URL (no certificate to be had): localhost, loopback addresses
+ * (127.0.0.0/8, ::1) and private-network IP literals (10/8, 172.16/12, 192.168/16, fc00::/7, and
+ * link-local 169.254/16). `hostname` is a URL's, so IP literals are already normalised.
+ */
+function isLocalOrPrivateHost(hostname: string): boolean {
+  if (hostname === "localhost") return true;
+  const v6 = /^\[(.+)\]$/.exec(hostname)?.[1];
+  if (v6 !== undefined) return isIP(v6) === 6 && (v6 === "::1" || /^f[cd][0-9a-f]{2}:/.test(v6));
+  if (isIP(hostname) !== 4) return false;
+  const [a = -1, b = -1] = hostname.split(".").map(Number);
+  return (
+    a === 127 ||
+    a === 10 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254)
+  );
+}
 
 export function loadConfig(env: ConfigSource): ConfigResult {
   const errors: string[] = [];
@@ -297,6 +334,57 @@ export function loadConfig(env: ConfigSource): ConfigResult {
   if (adminToken !== undefined && adminToken.length < MIN_ADMIN_TOKEN_LENGTH) {
     errors.push(`ADMIN_TOKEN must be at least ${MIN_ADMIN_TOKEN_LENGTH} characters.`);
   }
+
+  // ADMIN_PORT, ADMIN_BIND, ADMIN_URL: the admin pages on a second listener (decision D55). Without
+  // ADMIN_PORT the other two are a mistake, not a no-op: they would suggest a listener that is not
+  // there.
+  const admin = ((): Config["admin"] => {
+    const portSetting = read("ADMIN_PORT") || undefined;
+    const bindSetting = read("ADMIN_BIND") || undefined;
+    const urlSetting = read("ADMIN_URL") || undefined;
+    if (portSetting === undefined) {
+      if (bindSetting !== undefined) errors.push("ADMIN_BIND needs ADMIN_PORT.");
+      if (urlSetting !== undefined) errors.push("ADMIN_URL needs ADMIN_PORT.");
+      return undefined;
+    }
+    const port = /^\d+$/.test(portSetting) ? Number(portSetting) : Number.NaN;
+    if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+      errors.push(`ADMIN_PORT must be a port number from 1 to 65535, got "${portSetting}".`);
+    } else if (port === DEFAULT_PORT) {
+      errors.push(`ADMIN_PORT must differ from the public port ${DEFAULT_PORT}.`);
+    }
+    // Until Home Assistant Ingress is another way in (decision D54).
+    if (adminToken === undefined) {
+      errors.push("ADMIN_PORT needs ADMIN_TOKEN: the admin pages need a way to log in.");
+    }
+    const bracketed = /^\[(.+)\]$/.exec(bindSetting ?? "")?.[1];
+    const bind = bracketed !== undefined && isIP(bracketed) === 6 ? bracketed : bindSetting;
+    const hostName =
+      /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
+    if (bind !== undefined && isIP(bind) === 0 && (!hostName.test(bind) || /^[\d.]+$/.test(bind))) {
+      errors.push(`ADMIN_BIND must be an IP address or a host name, got "${bindSetting}".`);
+    }
+    let url: URL | undefined;
+    if (urlSetting !== undefined) {
+      const parsed = httpUrl("ADMIN_URL", urlSetting);
+      if (parsed !== undefined) {
+        const insecureOk = isLocalOrPrivateHost(parsed.hostname);
+        if (parsed.pathname !== "/" || parsed.search !== "" || parsed.hash !== "") {
+          errors.push(
+            `ADMIN_URL must be an origin without path, query or fragment, got "${urlSetting}".`,
+          );
+        } else if (rejectCredentials("ADMIN_URL", parsed)) {
+          if (parsed.protocol === "https:" || allowInsecureDev || insecureOk) url = parsed;
+          else {
+            errors.push(
+              "ADMIN_URL must use HTTPS unless it is localhost, a loopback or private-network IP address, or ALLOW_INSECURE_DEV=true (development only).",
+            );
+          }
+        }
+      }
+    }
+    return { port, bind: bind ?? "127.0.0.1", url };
+  })();
 
   // OIDC_*: issuer and client ID together; the issuer is trusted configuration (decision D23).
   const oidc = ((): OidcConfig | undefined => {
@@ -495,6 +583,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
       weather: { enabled: weatherEnabled, url: weatherUrl },
       allowInsecureDev,
       adminToken,
+      admin,
       postingMode,
       publicRequiresLogin,
       nearbyEnabled,

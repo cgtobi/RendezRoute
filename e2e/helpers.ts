@@ -12,7 +12,14 @@ import {
 export const inFiveDays = () =>
   new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-const ALLOWED_HOSTS = new Set(["localhost:3101", "localhost:3102", "localhost:3103", "fakes:8080"]);
+const ALLOWED_HOSTS = new Set([
+  "localhost:3101",
+  "localhost:3102",
+  "localhost:3103",
+  "localhost:3104",
+  "localhost:3105",
+  "fakes:8080",
+]);
 
 /** Counts people in this worker, for their addresses. */
 let people = 0;

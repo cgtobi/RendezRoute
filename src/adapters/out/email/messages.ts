@@ -167,8 +167,14 @@ export function newLinkEmail(
 }
 
 /** To CONTACT_EMAIL for each new report, without anything of it (spec 7 Moderation). */
-export function reportAlertEmail(instance: MessageInstance): ComposedEmail {
-  const language = negotiateLanguage(undefined);
+export function reportAlertEmail(
+  instance: MessageInstance,
+  /** Where the admin pages are; undefined: not known, the email then names no link (decision D55). */
+  adminUrl: URL | undefined,
+  /** The operator's language is not configured; the default unless a test says otherwise. */
+  recipientLanguage?: string,
+): ComposedEmail {
+  const language = negotiateLanguage(recipientLanguage);
   const t = translator(language);
   const heading = t("email.reportSubject", { instance: instance.instanceName });
   return {
@@ -177,9 +183,12 @@ export function reportAlertEmail(instance: MessageInstance): ComposedEmail {
       language,
       instanceName: instance.instanceName,
       heading,
-      body: [t("email.reportBody")],
+      body: [t(adminUrl === undefined ? "email.reportBodyNoLink" : "email.reportBody")],
       facts: [],
-      action: { label: t("email.reportAction"), url: new URL("/admin/", instance.baseUrl).href },
+      action:
+        adminUrl === undefined
+          ? undefined
+          : { label: t("email.reportAction"), url: new URL("/admin/", adminUrl).href },
       footer: t("email.reportWhy", { instance: instance.instanceName }),
       footerLink: undefined,
     }),

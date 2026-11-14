@@ -1,6 +1,7 @@
 // The emails' look and content (design note "Emails (step 6)", decision D31): a plain-text and a
 // simple HTML part, one main link, every link written out, nothing loaded from elsewhere.
 import { describe, expect, it } from "vite-plus/test";
+import { translator } from "../../../../src/adapters/i18n/i18n.ts";
 import {
   accountExpiryEmail,
   confirmationEmail,
@@ -129,13 +130,36 @@ describe("the confirmation email", () => {
 });
 
 describe("the report alert (spec 7 Moderation)", () => {
-  const email = reportAlertEmail(instance);
+  const email = reportAlertEmail(instance, instance.baseUrl);
 
   it("points to the admin page and says nothing about the report", () => {
     expect(email.subject).toBe("New report on Isar Runs");
     expect(email.text).toContain("https://runs.example.org/admin/");
     expect(email.html).toContain('href="https://runs.example.org/admin/"');
   });
+
+  it("links to ADMIN_URL's admin pages when the admin listener has its own address (decision D55)", () => {
+    const split = reportAlertEmail(instance, new URL("/admin/", "https://admin.example.org:8443"));
+    expect(split.text).toContain("https://admin.example.org:8443/admin/");
+    expect(split.html).toContain('href="https://admin.example.org:8443/admin/"');
+    expect(split.text).not.toContain("https://runs.example.org");
+  });
+
+  it.each([
+    ["en", "Open the admin pages", /Open the admin pages/],
+    ["de", "Admin-Seiten", /Admin-Seiten/],
+    ["fr", "pages d’administration", /pages d’administration/],
+  ] as const)(
+    "carries no link when the admin listener has no known address, in %s",
+    (language, _sentence, pattern) => {
+      const none = reportAlertEmail(instance, undefined, language);
+      expect(none.text).not.toMatch(/https?:\/\//);
+      expect(none.html).not.toContain("href=");
+      expect(none.text).toMatch(pattern);
+      expect(none.html).not.toContain("<a ");
+      expect(none.text).toContain(translator(language)("email.reportBodyNoLink"));
+    },
+  );
 });
 
 describe("account emails (decision D31, I52)", () => {

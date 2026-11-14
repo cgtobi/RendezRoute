@@ -50,11 +50,14 @@ export function createEmailOutbox({
   links,
   contactEmail,
   timeZone,
+  adminUrl,
   ...instance
 }: MessageInstance & {
   mailer: Mailer;
   links: ChannelLinks;
   contactEmail: string | undefined;
+  /** The origin of the admin pages for the report alert; undefined: no link (decision D55). */
+  adminUrl: URL | undefined;
   /** Dates that belong to no plan, such as an account's deletion: DEFAULT_TIMEZONE. */
   timeZone: string;
 }): EmailOutbox {
@@ -71,7 +74,7 @@ export function createEmailOutbox({
     reportAlert: () =>
       contactEmail === undefined
         ? Promise.resolve("failed")
-        : mailer.send({ to: contactEmail, ...reportAlertEmail(instance) }),
+        : mailer.send({ to: contactEmail, ...reportAlertEmail(instance, adminUrl) }),
     accountExpiry: (to, deleteAt) =>
       mailer.send({
         to: to.address,
@@ -92,6 +95,7 @@ export function createEmail(
     links: ChannelLinks;
     contactEmail: string | undefined;
     timeZone: string;
+    adminUrl: URL | undefined;
   },
 ): { outbox: EmailOutbox; delivery: EmailDelivery } {
   return { outbox: createEmailOutbox(settings), delivery: createEmailDelivery(settings) };

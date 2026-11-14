@@ -16,6 +16,8 @@ const MOUNTINFO = "/proc/self/mountinfo";
 export interface InstanceKeys {
   cipher: FieldCipher;
   csrfKey: Buffer;
+  /** The admin listener's own CSRF key (decision D55), so a public form's token is invalid there. */
+  adminCsrfKey: Buffer;
   /** Finds accounts by a keyed hash of their encrypted subject (spec 4 identities). */
   identityLookup: LookupHasher;
   /** Signs the links in emails (decision D31). */
@@ -48,6 +50,7 @@ export async function openInstanceKeys(
   return {
     cipher: createFieldCipher(opened.keyring),
     csrfKey: deriveKey(opened.keyring, "csrf"),
+    adminCsrfKey: deriveKey(opened.keyring, "csrf-admin"),
     identityLookup: createLookupHasher(deriveKey(opened.keyring, "identity-lookup")),
     channelLinks: createChannelLinks(deriveKey(opened.keyring, "channel-links")),
     warning: location.warning,

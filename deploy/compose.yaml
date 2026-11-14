@@ -10,8 +10,19 @@ services:
       INSTANCE_NAME: RendezRoute
       # Caddy is the only proxy in front of the app. Without this, every visitor would share the
       # proxy's address and so one rate limit; with it, the app uses the address Caddy appends to
-      # X-Forwarded-For. Never set it when the app is reachable without the proxy.
+      # X-Forwarded-For. Never set it when the app is reachable without the proxy (the admin port is
+      # the documented exception, see README ADMIN_PORT).
       TRUST_PROXY: "true"
+      # Optional: the admin pages on a second port instead of behind the Caddy rule (README,
+      # ADMIN_PORT). Needs ADMIN_TOKEN. Inside the container it must listen on all addresses
+      # (ADMIN_BIND) for Docker to reach it; publish it on 127.0.0.1 of the host only (`ports`
+      # below) and reach it through an SSH tunnel, or give it a Caddy site block of its own and set
+      # ADMIN_URL. Never publish it to the internet. Set ADMIN_URL whenever you can: it also blocks
+      # DNS rebinding, and the report alert email links to it.
+      # ADMIN_TOKEN: <at least 32 characters, e.g. from `openssl rand -base64 32`>
+      # ADMIN_PORT: "3001"
+      # ADMIN_BIND: 0.0.0.0
+      # ADMIN_URL: https://admin.example.org  # or http://localhost:3001 for the tunnel
     volumes:
       - data:/data
       # The encryption key on its own volume, so backups of the data volume do not include it
@@ -26,6 +37,10 @@ services:
       - no-new-privileges:true
     expose:
       - "3000"
+    # The admin port, on this machine only (never "3001:3001", which publishes it to everyone);
+    # then: ssh -L 3001:localhost:3001 yourserver, and open http://localhost:3001/admin/
+    # ports:
+    #   - "127.0.0.1:3001:3001"
 
   caddy:
     image: caddy:2

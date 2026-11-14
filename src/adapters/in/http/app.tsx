@@ -1,13 +1,9 @@
 import type { Federation } from "@fedify/fedify";
 import { federation as federationMiddleware } from "@fedify/hono";
 import { readFile } from "node:fs/promises";
-import { join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
-import { type Context, Hono } from "hono";
-import { serveStatic } from "@hono/node-server/serve-static";
-import { bodyLimit } from "hono/body-limit";
+import { join } from "node:path";
+import { Hono } from "hono";
 import type { Child } from "hono/jsx";
-import { jsxRenderer } from "hono/jsx-renderer";
 import type { AccountDeps } from "../../../application/accounts.ts";
 import { routeForNoteLink } from "../../../application/participant-notes.ts";
 import type { PlanDeps } from "../../../application/plans.ts";
@@ -19,14 +15,12 @@ import type {
   WeatherProvider,
 } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
-import { isUnits, type Units } from "../../../domain/units.ts";
-import { type Language, resolveLanguage, type Translate, translator } from "../../i18n/i18n.ts";
+import type { Units } from "../../../domain/units.ts";
+import type { Language, Translate } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
 import { toGpx } from "../../out/gpx/write-gpx.ts";
-import { clientIp } from "./client-ip.ts";
-import { csrf } from "./csrf.ts";
+import { composeCommonStack, STATIC_ROOT } from "./app-common.tsx";
 import { readDeviceToken } from "./device-cookie.ts";
-import { readPreference } from "./preference-cookies.ts";
 import { clientKey, type RateLimits } from "./rate-limit.ts";
 import { registerCalendarRoutes } from "./routes/calendar.tsx";
 import { registerHostRoutes } from "./routes/host.tsx";
@@ -47,25 +41,11 @@ import { registerResponseRoutes } from "./routes/responses.tsx";
 import { registerAccountRoutes } from "./routes/account.tsx";
 import type { LoginOption } from "./views/account.tsx";
 import { registerInviteRoutes } from "./routes/invites.tsx";
-import { isSecretLinkPath, registerSecretLinkRoutes } from "./routes/secret-links.tsx";
+import { registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { CHANNEL_LINK_PATH, registerChannelLinkRoutes } from "./routes/channel-links.tsx";
-import { Layout } from "./layout.tsx";
 import { PrivacyPage } from "./views/privacy-page.tsx";
 import { TemplateList } from "./views/templates.tsx";
-import { messagePage } from "./routes/shared.tsx";
-import { requestLogger } from "./request-logger.ts";
-import { securityHeaders } from "./security-headers.ts";
 
-/** Bundled assets, relative to the working directory as serveStatic expects (same from src/ and dist/). */
-const STATIC_ROOT = relative(
-  process.cwd(),
-  fileURLToPath(new URL("../../../../public", import.meta.url)),
-);
-
-/** Form posts; generous for the largest text fields (note: 2,000 characters). */
-const MAX_BODY_BYTES = 100 * 1024;
-/** GPX uploads: the 5 MB file limit plus the form fields and multipart overhead. */
-const MAX_UPLOAD_BODY_BYTES = 5.5 * 1024 * 1024;
 const isUploadRoute = (method: string, path: string) =>
   method === "POST" && (path === "/new" || /^\/p\/[^/]+\/host\/route$/.test(path));
 
@@ -153,116 +133,36 @@ export function createApp({
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
-  /** The language cookie, else the browser's languages (decision D15). */
-  const requestLanguage = (c: Context): Language =>
-    resolveLanguage({
-      cookie: readPreference(c, config, "lang"),
-      acceptLanguage: c.req.header("accept-language"),
-    });
-  /** Works even before the language middleware ran, e.g. for early errors. */
-  const translate = (c: Context): Translate => translator(requestLanguage(c));
-
-  app.use(requestLogger(logger));
-  app.use(securityHeaders(config));
-  app.use(clientIp({ trustProxy: config.trustProxy }));
-
-  app.use(async (c, next) => {
-    const language = requestLanguage(c);
-    c.set("language", language);
-    c.set("t", translator(language));
-    const units = readPreference(c, config, "units");
-    c.set("units", isUnits(units) ? units : "metric");
-    await next();
-    // Pages and plain-text errors are in the request's language; images, scripts and feeds are not.
-    if (/^text\/(html|plain)/.test(c.res.headers.get("content-type") ?? "")) {
-      c.res.headers.set("content-language", language);
-      c.res.headers.append("vary", "Accept-Language, Cookie");
-      // A plan's address also answers ActivityPub clients: caches keep the two apart.
-      if (federation !== undefined && PLAN_PAGE.test(c.req.path)) {
-        c.res.headers.append("vary", "Accept");
-      }
-    }
-  });
-
-  // Before the body limit and CSRF, so that their answers are pages of the site too (decision D29).
-  app.use(
-    jsxRenderer(
-      ({ children, title, head, pathBase, wide, plain, returnTo }, c: Context<AppEnv>) => (
-        <Layout
-          config={config}
-          language={c.get("language")}
-          t={c.get("t")}
-          title={title}
-          head={head}
-          units={c.get("units")}
-          languageSwitch={
-            // Pages answering a form post (e.g. links shown once) cannot be loaded again; admin
-            // pages keep only relative links, and the switch posts to absolute paths.
-            c.req.method === "GET" && pathBase === undefined && plain !== true
-              ? { csrfToken: c.get("csrfToken")(), returnTo: returnTo ?? localPath(c.req.url) }
-              : undefined
+  composeCommonStack(app, {
+    config,
+    logger,
+    isUploadRoute,
+    // A plan's address also answers ActivityPub clients: caches keep the two apart.
+    variesByAccept: (path) => federation !== undefined && PLAN_PAGE.test(path),
+    // ActivityPub (spec 7): after the body limit, which bounds inbox posts too, and before CSRF,
+    // since remote servers sign their posts instead of sending a form token. Anything not for
+    // ActivityPub clients (the plan page in a browser) passes on to the routes below.
+    beforeCsrf: (stack) => {
+      if (federation === undefined) return;
+      // Inbox posts are rate limited per client (spec 3.11): each may make the instance fetch the
+      // sender's key.
+      stack.use(async (c, next) => {
+        if (c.req.method === "POST" && INBOX_PATH.test(c.req.path)) {
+          const allowed = rateLimits.inbox.take(clientKey(c.get("clientIp")));
+          if (!allowed.ok) {
+            c.header("retry-after", String(allowed.retryAfterSeconds));
+            return c.text("Too many requests", 429);
           }
-          pathBase={pathBase}
-          wide={wide}
-        >
-          {children}
-        </Layout>
-      ),
-      { docType: true },
-    ),
-  );
-
-  // Before CSRF, which parses form bodies. Only the GPX upload routes accept more (spec 3.8).
-  const tooLarge = (c: Context) => messagePage(c, 413, translate(c)("error.tooLarge"));
-  const formLimit = bodyLimit({ maxSize: MAX_BODY_BYTES, onError: tooLarge });
-  const uploadLimit = bodyLimit({ maxSize: MAX_UPLOAD_BODY_BYTES, onError: tooLarge });
-  app.use((c, next) =>
-    isUploadRoute(c.req.method, c.req.path) ? uploadLimit(c, next) : formLimit(c, next),
-  );
-
-  // ActivityPub (spec 7): after the body limit, which bounds inbox posts too, and before CSRF,
-  // since remote servers sign their posts instead of sending a form token. Anything not for
-  // ActivityPub clients (the plan page in a browser) passes on to the routes below.
-  if (federation !== undefined) {
-    // Inbox posts are rate limited per client (spec 3.11): each may make the instance fetch the
-    // sender's key.
-    app.use(async (c, next) => {
-      if (c.req.method === "POST" && INBOX_PATH.test(c.req.path)) {
-        const allowed = rateLimits.inbox.take(clientKey(c.get("clientIp")));
-        if (!allowed.ok) {
-          c.header("retry-after", String(allowed.retryAfterSeconds));
-          return c.text("Too many requests", 429);
         }
-      }
-      return next();
-    });
-    app.use(federationMiddleware(federation, () => undefined));
-  }
-
-  app.use(
-    csrf({
+        return next();
+      });
+      stack.use(federationMiddleware(federation, () => undefined));
+    },
+    csrf: {
       key: csrfKey,
-      config,
       exempt: (method, path) => method === "POST" && CHANNEL_LINK_PATH.test(path),
-      onReject: (c) => messagePage(c, 403, translate(c)("error.csrf")),
-    }),
-  );
-
-  app.onError(async (error, c) => {
-    // Error class only: messages may contain user input.
-    logger.error("unhandled_error", { name: error.name });
-    const message = translate(c)("error.internal");
-    try {
-      return await messagePage(c, 500, message);
-    } catch {
-      // The page itself failed: the message alone.
-      return c.text(message, 500);
-    }
+    },
   });
-
-  app.notFound((c) => messagePage(c, 404, translate(c)("error.notFound")));
-
-  app.get("/healthz", (c) => c.text("ok"));
 
   // The GPX of a private Note to a remote participant (decision D43): public by its secret token,
   // so every try is counted, and every failure (unknown, withdrawn, no route, federation off) is
@@ -283,15 +183,6 @@ export function createApp({
     c.header("referrer-policy", "no-referrer");
     return c.body(toGpx(found.route, found.title));
   });
-
-  app.use(
-    "/static/*",
-    async (c, next) => {
-      await next();
-      if (c.res.ok) c.res.headers.set("cache-control", "public, max-age=3600");
-    },
-    serveStatic({ root: STATIC_ROOT, rewriteRequestPath: (path) => path.replace(/^\/static/, "") }),
-  );
 
   app.get("/", async (c) => {
     const t = c.get("t");
@@ -394,14 +285,16 @@ export function createApp({
   if (config.postingMode === "invite") registerInviteRoutes(app, deps);
   if (adminAuth !== undefined) {
     registerReportRoutes(app, deps);
-    registerAdminRoutes(app, { config, adminDeps: { ...planDeps, adminAuth }, limits: rateLimits });
+    // With ADMIN_PORT the admin pages are on the admin listener only; here /admin is any other
+    // unknown path (decision D55).
+    if (config.admin === undefined) {
+      registerAdminRoutes(app, {
+        config,
+        adminDeps: { ...planDeps, adminAuth },
+        limits: rateLimits,
+      });
+    }
   }
 
   return app;
 }
-
-/** Path and query of a request URL, for returning to the same page; never a secret link (spec 3.2). */
-const localPath = (url: string) => {
-  const { pathname, search } = new URL(url);
-  return isSecretLinkPath(pathname) ? "/" : pathname + search;
-};

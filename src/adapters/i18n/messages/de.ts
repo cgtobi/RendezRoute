@@ -610,6 +610,8 @@ export const de: Messages = {
     "Du bekommst diese E-Mail, weil diese Adresse auf {instance} eingegeben wurde.",
   "email.reportSubject": "Neue Meldung auf {instance}",
   "email.reportBody": "Jemand hat ein Treffen gemeldet. Die Admin-Seite zeigt die Meldung.",
+  "email.reportBodyNoLink":
+    "Jemand hat ein Treffen gemeldet. Öffne die Admin-Seiten, um die Meldung zu sehen.",
   "email.reportAction": "Admin-Seite öffnen",
   "email.reportWhy":
     "Du bekommst diese E-Mail, weil diese Adresse die Kontaktadresse von {instance} ist.",

@@ -13,23 +13,37 @@ const ALLOWED_FETCH_SITES = new Set(["same-origin", "none"]);
 const COOKIE_VALUE = /^[A-Za-z0-9_-]{43}$/;
 export const CSRF_FIELD = "_csrf";
 
-export function csrf({
-  key,
-  config,
-  exempt = () => false,
-  onReject = (c) => c.body(null, 403),
-}: {
+export interface CsrfOptions {
   key: Buffer;
   config: Config;
   /**
    * Posts that carry their own secret and no cookie: one-click unsubscribe from the mail app
    * (decision D31), later the signature-verified ActivityPub inbox.
    */
-  exempt?: (method: string, path: string) => boolean;
+  exempt?: ((method: string, path: string) => boolean) | undefined;
   /** Renders the 403 response; the app supplies a translated page. */
-  onReject?: (c: Context) => Response | Promise<Response>;
-}): MiddlewareHandler<CsrfEnv> {
-  const cookieName = config.allowInsecureDev ? "rr-csrf" : "__Host-rr-csrf";
+  onReject?: ((c: Context) => Response | Promise<Response>) | undefined;
+  /** The token cookie; the admin listener has its own (decision D55). */
+  cookie?:
+    | { name: string; sameSite: "Lax" | "Strict"; secure: (c: Context) => boolean }
+    | undefined;
+  /** Whether an `Origin` header (other than "null") names this app; default: BASE_URL's origin. */
+  isOwnOrigin?: ((c: Context, origin: string) => boolean) | undefined;
+}
+
+export function csrf({
+  key,
+  config,
+  exempt = () => false,
+  onReject = (c) => c.body(null, 403),
+  cookie = {
+    name: config.allowInsecureDev ? "rr-csrf" : "__Host-rr-csrf",
+    sameSite: "Lax",
+    secure: () => !config.allowInsecureDev,
+  },
+  isOwnOrigin = (_c, origin) => origin === config.baseUrl.origin,
+}: CsrfOptions): MiddlewareHandler<CsrfEnv> {
+  const cookieName = cookie.name;
   const sign = (value: string) => createHmac("sha256", key).update(value).digest("base64url");
 
   return async (c, next) => {
@@ -41,8 +55,8 @@ export function csrf({
         value = randomBytes(32).toString("base64url");
         setCookie(c, cookieName, value, {
           httpOnly: true,
-          secure: !config.allowInsecureDev,
-          sameSite: "Lax",
+          secure: cookie.secure(c),
+          sameSite: cookie.sameSite,
           path: "/",
         });
       }
@@ -63,7 +77,7 @@ export function csrf({
           // browsers, stripping extensions) a null origin stays refused (decision I53).
           fetchSite === "same-origin"
         : origin !== undefined
-          ? origin === config.baseUrl.origin
+          ? isOwnOrigin(c, origin)
           : fetchSite === undefined || ALLOWED_FETCH_SITES.has(fetchSite);
     if (!fromHere) return forbidden();
 

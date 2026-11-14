@@ -27,6 +27,11 @@ interface LayoutProps {
    * which must work under any path prefix (spec 3.8, Home Assistant Ingress later).
    */
   pathBase?: string | undefined;
+  /**
+   * The page belongs to the admin-only listener (decision D55): no public footer links, no
+   * language form, and the logo leads to the admin home.
+   */
+  adminListener?: boolean | undefined;
   /** A page that uses the full width on large screens (the plan page's two columns). */
   wide?: boolean | undefined;
   children?: Child;
@@ -41,6 +46,7 @@ export function Layout({
   units,
   languageSwitch,
   pathBase = "/",
+  adminListener = false,
   wide = false,
   children,
 }: LayoutProps) {
@@ -74,7 +80,7 @@ export function Layout({
           </p>
         )}
         <header class={widened("site-header")}>
-          <a href={pathBase}>
+          <a href={adminListener ? `${pathBase}admin/` : pathBase}>
             <span class="logo" aria-hidden="true"></span>
             {config.instanceName}
           </a>
@@ -85,62 +91,68 @@ export function Layout({
             <p class="powered-by">{t("layout.poweredBy", { name: SOFTWARE_NAME })}</p>
           )}
           {/* Legal notices stay visible (German law asks for an imprint that is easy to find). */}
-          <p class="legal-links">
-            {config.privacyUrl === undefined ? (
-              <a href={`${pathBase}privacy`}>{t("layout.privacy")}</a>
-            ) : (
-              <a href={config.privacyUrl.href} rel="noopener noreferrer">
-                {t("layout.privacy")}
-              </a>
-            )}
-            {config.imprintUrl !== undefined && (
-              <a href={config.imprintUrl.href} rel="noopener noreferrer">
-                {t("layout.imprint")}
-              </a>
-            )}
-          </p>
-          {/* A menu without JavaScript: the settings and own-data links one tap away (decision D27). */}
-          <details class="footer-menu">
-            <summary>
-              <span class="icon icon-menu" aria-hidden="true"></span>
-              {t("layout.menu")}
-            </summary>
-            <div class="footer-menu-body">
-              {languageSwitch !== undefined && (
-                <>
-                  <PreferenceForm
-                    t={t}
-                    {...languageSwitch}
-                    action="/language"
-                    field="language"
-                    label={t("layout.language")}
-                    options={SUPPORTED_LANGUAGES.map((value) => ({
-                      value,
-                      label: LANGUAGE_NAMES[value],
-                      lang: value,
-                    }))}
-                    selected={language}
-                  />
-                  <PreferenceForm
-                    t={t}
-                    {...languageSwitch}
-                    action="/units"
-                    field="units"
-                    label={t("layout.units")}
-                    options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
-                    selected={units}
-                  />
-                </>
+          {(config.privacyUrl !== undefined ||
+            !adminListener ||
+            config.imprintUrl !== undefined) && (
+            <p class="legal-links">
+              {config.privacyUrl === undefined ? (
+                !adminListener && <a href={`${pathBase}privacy`}>{t("layout.privacy")}</a>
+              ) : (
+                <a href={config.privacyUrl.href} rel="noopener noreferrer">
+                  {t("layout.privacy")}
+                </a>
               )}
-              <p class="footer-links">
-                {config.nearbyEnabled && <a href={`${pathBase}nearby`}>{t("layout.nearby")}</a>}
-                <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
-                {loginConfigured(config) && (
-                  <a href={`${pathBase}account`}>{t("layout.account")}</a>
+              {config.imprintUrl !== undefined && (
+                <a href={config.imprintUrl.href} rel="noopener noreferrer">
+                  {t("layout.imprint")}
+                </a>
+              )}
+            </p>
+          )}
+          {/* A menu without JavaScript: the settings and own-data links one tap away (decision D27). */}
+          {!adminListener && (
+            <details class="footer-menu">
+              <summary>
+                <span class="icon icon-menu" aria-hidden="true"></span>
+                {t("layout.menu")}
+              </summary>
+              <div class="footer-menu-body">
+                {languageSwitch !== undefined && (
+                  <>
+                    <PreferenceForm
+                      t={t}
+                      {...languageSwitch}
+                      action="/language"
+                      field="language"
+                      label={t("layout.language")}
+                      options={SUPPORTED_LANGUAGES.map((value) => ({
+                        value,
+                        label: LANGUAGE_NAMES[value],
+                        lang: value,
+                      }))}
+                      selected={language}
+                    />
+                    <PreferenceForm
+                      t={t}
+                      {...languageSwitch}
+                      action="/units"
+                      field="units"
+                      label={t("layout.units")}
+                      options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
+                      selected={units}
+                    />
+                  </>
                 )}
-              </p>
-            </div>
-          </details>
+                <p class="footer-links">
+                  {config.nearbyEnabled && <a href={`${pathBase}nearby`}>{t("layout.nearby")}</a>}
+                  <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
+                  {loginConfigured(config) && (
+                    <a href={`${pathBase}account`}>{t("layout.account")}</a>
+                  )}
+                </p>
+              </div>
+            </details>
+          )}
         </footer>
       </body>
     </html>

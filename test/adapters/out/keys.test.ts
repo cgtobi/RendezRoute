@@ -177,6 +177,11 @@ describe("deriveKey", () => {
     expect(deriveKey(keyring, "csrf").equals(csrf)).toBe(true);
     expect(deriveKey(keyring, "identity-lookup").equals(csrf)).toBe(false);
     expect(deriveKey(keyring, "channel-links").equals(csrf)).toBe(false);
+    // The admin listener's own CSRF key (decision D55): a public form's token is no token there.
+    const adminCsrf = deriveKey(keyring, "csrf-admin");
+    expect(adminCsrf).toHaveLength(32);
+    expect(adminCsrf.equals(csrf)).toBe(false);
+    expect(deriveKey(keyring, "csrf-admin").equals(adminCsrf)).toBe(true);
     expect(deriveKey(keyring, "channel-links").equals(deriveKey(keyring, "identity-lookup"))).toBe(
       false,
     );
@@ -195,6 +200,7 @@ describe("deriveKey across key versions (spec 3.11 key rotation)", () => {
       true,
     );
     expect(deriveKey(after, "csrf").equals(deriveKey(before, "csrf"))).toBe(false);
+    expect(deriveKey(after, "csrf-admin").equals(deriveKey(before, "csrf-admin"))).toBe(false);
   });
 
   it("keeps the email link key too, so links in sent emails keep working (decision D31)", () => {

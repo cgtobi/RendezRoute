@@ -8,9 +8,17 @@ import type { AdminAuth } from "../../../application/ports.ts";
 const digest = (value: string) => createHash("sha256").update(value, "utf8").digest();
 const SESSION = /^(\d{13})\.([A-Za-z0-9_-]{43})$/;
 
-export function createTokenAdminAuth(adminToken: string): AdminAuth {
+/**
+ * `split`: the admin listener (decision D55) signs its sessions with another key, so a session
+ * cookie value issued by the admin pages on the public listener (same token, other deployment
+ * mode) is not valid there, and switching the mode ends every session.
+ */
+export function createTokenAdminAuth(
+  adminToken: string,
+  { split = false }: { split?: boolean } = {},
+): AdminAuth {
   const expected = digest(adminToken);
-  const sessionKey = digest(`rendezroute-admin|${adminToken}`);
+  const sessionKey = digest(`rendezroute-admin${split ? "-split" : ""}|${adminToken}`);
   const sign = (expiresAt: string) =>
     createHmac("sha256", sessionKey).update(expiresAt).digest("base64url");
   return {

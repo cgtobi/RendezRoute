@@ -23,6 +23,7 @@ import { createGpxRouteParser } from "./adapters/out/gpx/route-parser.ts";
 import type { AddressInfo } from "node:net";
 import { isAbsolute, join } from "node:path";
 import { serve } from "@hono/node-server";
+import type { Server } from "node:http";
 import {
   applyRetentionMax,
   runHousekeeping,
@@ -32,6 +33,7 @@ import { runDueJobs } from "./application/jobs.ts";
 import type { PlanDeps } from "./application/plans.ts";
 import { runReminders } from "./application/reminders.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
+import { createAdminApp } from "./adapters/in/http/admin-app.tsx";
 import { type AccountWiring, createApp } from "./adapters/in/http/app.tsx";
 import { createTokenAdminAuth } from "./adapters/out/admin/token-admin-auth.ts";
 import {
@@ -101,10 +103,16 @@ import { createTrustedFetch } from "./adapters/out/http/trusted-fetch.ts";
 import { createResponseRepository } from "./adapters/out/sqlite/responses.ts";
 import { systemClock } from "./adapters/out/system-clock.ts";
 import { createTokenService } from "./adapters/out/tokens.ts";
-import { type Config, type ConfigSource, loadConfig } from "./config.ts";
+import {
+  adminPagesOrigin,
+  type Config,
+  type ConfigSource,
+  DEFAULT_PORT,
+  loadConfig,
+} from "./config.ts";
 
 /** Port inside the container; publish it or put a reverse proxy in front. */
-export const DEFAULT_PORT = 3000;
+export { DEFAULT_PORT };
 
 const MINUTE_MS = 60 * 1000;
 /** How often due background jobs run; short, so notifications arrive promptly. */
@@ -182,12 +190,16 @@ function createRenderer(config: Config): PreviewRenderer {
 
 export interface RunningServer {
   url: URL;
+  /** Where the admin listener answers (decision D55); undefined without ADMIN_PORT. */
+  adminUrl: URL | undefined;
+  /** What the admin listener is bound to, "host:port", for the start-up message. */
+  adminAddress: string | undefined;
   close(): Promise<void>;
 }
 
 export type StartResult =
   | { ok: true; server: RunningServer; warnings: string[] }
-  | { ok: false; errors: string[] };
+  | { ok: false; errors: string[]; kind?: "listen" };
 
 interface Instance {
   /** Notifications by email and ntfy; each undefined while its service is not configured. */
@@ -250,6 +262,7 @@ async function openInstance(
           instanceName: config.instanceName,
           contactEmail: config.contactEmail,
           timeZone: config.defaultTimezone,
+          adminUrl: adminPagesOrigin(config),
         });
   // Telegram (decision D34): the Bot API is trusted configuration; a long poll may take its wait
   // and some more before the request gives up.
@@ -422,11 +435,22 @@ async function openInstance(
 
 export async function startServer(
   env: ConfigSource,
-  { port = DEFAULT_PORT, logger = createLogger() }: { port?: number; logger?: Logger } = {},
+  {
+    port = DEFAULT_PORT,
+    logger = createLogger(),
+    hostname,
+  }: { port?: number; logger?: Logger; hostname?: string } = {},
 ): Promise<StartResult> {
   const opened = await openInstance(env);
   if (!opened.ok) return opened;
   const { config, database, keys, planDeps, warnings } = opened.instance;
+  if (config.admin?.port === port) {
+    await database.close();
+    return {
+      ok: false,
+      errors: [`ADMIN_PORT must differ from the public port ${port}.`],
+    };
+  }
 
   const rateLimits = createRateLimits(() => planDeps.clock.now().getTime());
 
@@ -573,6 +597,10 @@ export async function startServer(
         });
   if (bot !== undefined && poller !== undefined) bot.name.current = () => poller.botName();
 
+  const adminAuth =
+    config.adminToken === undefined
+      ? undefined
+      : createTokenAdminAuth(config.adminToken, { split: config.admin !== undefined });
   const app = createApp({
     config,
     csrfKey: keys.csrfKey,
@@ -583,31 +611,146 @@ export async function startServer(
     weather: createWeather(config, logger),
     rateLimits,
     vapidPublicKey: vapid.publicKey,
-    adminAuth:
-      config.adminToken === undefined ? undefined : createTokenAdminAuth(config.adminToken),
+    adminAuth,
     accounts,
     federation,
   });
-  const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
-    const instance = serve({ fetch: app.fetch, port }, () => resolve(instance));
-  });
-  const address = server.address() as AddressInfo;
+  // The admin pages on their own listener (decision D55): its own CSRF key, the same limits.
+  const adminApp =
+    config.admin === undefined || adminAuth === undefined
+      ? undefined
+      : createAdminApp({
+          config,
+          csrfKey: keys.adminCsrfKey,
+          logger,
+          planDeps,
+          rateLimits,
+          adminAuth,
+        });
+
+  /** Stops everything started so far, for a start that fails after the scheduler began. */
+  const stopBackground = async () => {
+    await poller?.stop();
+    await scheduler.stop();
+    await database.close();
+  };
+  const listeners: Server[] = [];
+  const closeListeners = () =>
+    Promise.all(
+      listeners.map(
+        (listener) =>
+          new Promise<void>((resolve, reject) =>
+            listener.close((error) => (error ? reject(error) : resolve())),
+          ),
+      ),
+    );
+  let server: Server;
+  try {
+    server = await listen({
+      fetch: app.fetch,
+      port,
+      ...(hostname === undefined ? {} : { hostname }),
+    });
+  } catch (error) {
+    await stopBackground();
+    return {
+      ok: false,
+      kind: "listen",
+      errors: [listenError("the public port", port, undefined, error)],
+    };
+  }
+  listeners.push(server);
+  let adminServer: Server | undefined;
+  if (adminApp !== undefined && config.admin !== undefined) {
+    try {
+      adminServer = await listen({
+        fetch: adminApp.fetch,
+        port: config.admin.port,
+        hostname: config.admin.bind,
+      });
+    } catch (error) {
+      // Never half started: the public listener goes down with the failed admin one.
+      await closeListeners();
+      await stopBackground();
+      return {
+        ok: false,
+        kind: "listen",
+        errors: [listenError("ADMIN_PORT", config.admin.port, config.admin.bind, error)],
+      };
+    }
+    listeners.push(adminServer);
+  }
 
   return {
     ok: true,
     warnings,
     server: {
-      url: new URL(`http://127.0.0.1:${address.port}`),
+      url: localUrl(server),
+      adminUrl: adminServer === undefined ? undefined : localUrl(adminServer),
+      adminAddress: adminServer === undefined ? undefined : boundAddress(adminServer),
       close: async () => {
         await poller?.stop();
         await scheduler.stop();
-        await new Promise<void>((resolve, reject) =>
-          server.close((error) => (error ? reject(error) : resolve())),
-        );
+        await closeListeners();
         await database.close();
       },
     },
   };
+}
+
+/** Listens, resolving once bound and rejecting when the address cannot be used. */
+function listen(options: Parameters<typeof serve>[0]): Promise<Server> {
+  return new Promise((resolve, reject) => {
+    const instance = serve(options, () => {
+      instance.off("error", reject);
+      resolve(instance as Server);
+    });
+    instance.once("error", reject);
+  });
+}
+
+/** A start-up error that says which setting to change. */
+function listenError(what: string, port: number, bind: string | undefined, error: unknown): string {
+  const code = (error as NodeJS.ErrnoException).code;
+  const where = bind === undefined ? `port ${port}` : `${bind}:${port}`;
+  const reason =
+    code === "ENOTFOUND" || code === "EAI_AGAIN"
+      ? "the host name does not resolve to an address (a host name binds only its first address; an IP address is clearer)"
+      : code === "EADDRINUSE"
+        ? "it is already in use"
+        : code === "EACCES"
+          ? "the port is not allowed for this user"
+          : code === "EADDRNOTAVAIL"
+            ? "the address does not belong to this machine"
+            : error instanceof Error
+              ? error.name
+              : "unknown error";
+  const setting = what === "ADMIN_PORT" && bind !== undefined ? "ADMIN_BIND" : what;
+  return `Cannot listen on ${where} (${what}): ${reason}.${
+    code === "ENOTFOUND" ||
+    code === "EAI_AGAIN" ||
+    (code === "EADDRNOTAVAIL" && setting === "ADMIN_BIND")
+      ? ` Check ${setting}.`
+      : ""
+  }`;
+}
+
+/** "host:port" as bound, with brackets around IPv6. */
+function boundAddress(server: Server): string {
+  const { address, port } = server.address() as AddressInfo;
+  return `${address.includes(":") ? `[${address}]` : address}:${port}`;
+}
+
+/** The address to reach a listener from this machine, whatever it is bound to. */
+function localUrl(server: Server): URL {
+  const { address, port } = server.address() as AddressInfo;
+  const host =
+    address === "0.0.0.0" || address === "::"
+      ? "127.0.0.1"
+      : address.includes(":")
+        ? `[${address}]`
+        : address;
+  return new URL(`http://${host}:${port}`);
 }
 
 /** CLI `apply-retention-max` (spec 3.10): applies the configured maximum to existing plans. */

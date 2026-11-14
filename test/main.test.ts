@@ -1,5 +1,6 @@
 import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { createServer, createConnection } from "node:net";
+import { networkInterfaces, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import BetterSqlite3 from "better-sqlite3";
@@ -31,7 +32,7 @@ function keyDir(): string {
 }
 
 async function start(vars: Record<string, string>) {
-  const result = await startServer(vars, { port: 0 });
+  const result = await startServer(vars, { port: 0, hostname: "127.0.0.1" });
   if (result.ok) running.push(result.server);
   return result;
 }
@@ -185,6 +186,238 @@ describe("backup (spec 11: the database via SQLite's online backup API)", () => 
     expect(await runBackup(vars, "relative/dir")).toEqual({
       ok: false,
       errors: [expect.stringContaining("absolute")],
+    });
+  });
+});
+
+/** A port nobody listens on right now. */
+async function freePort(): Promise<number> {
+  const probe = createServer();
+  await new Promise<void>((resolve) => probe.listen(0, "127.0.0.1", resolve));
+  const address = probe.address();
+  await new Promise<void>((resolve) => probe.close(() => resolve()));
+  if (address === null || typeof address === "string") throw new Error("no port");
+  return address.port;
+}
+
+/** Whether something accepts connections at this address. */
+const accepts = (host: string, port: number) =>
+  new Promise<boolean>((resolve) => {
+    const socket = createConnection({ host, port });
+    socket.once("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once("error", () => resolve(false));
+  });
+
+/** An address of this machine that is not loopback, if it has one. */
+const lanAddress = () =>
+  Object.values(networkInterfaces())
+    .flat()
+    .find((entry) => entry?.family === "IPv4" && !entry.internal)?.address;
+
+const ADMIN_TOKEN = "admin-token-for-tests-0123456789abcdef";
+
+describe("the public listener's hostname option", () => {
+  it("binds only that address when given, and every address otherwise", async () => {
+    const lan = lanAddress();
+    const bound = await start(env());
+    if (!bound.ok) throw new Error(bound.errors.join("; "));
+    const boundPort = Number(bound.server.url.port);
+    expect((await fetch(new URL("/healthz", bound.server.url))).status).toBe(200);
+    expect(await accepts("127.0.0.1", boundPort)).toBe(true);
+    expect(lan === undefined ? false : await accepts(lan, boundPort)).toBe(false);
+    expect(await accepts("::1", boundPort)).toBe(false);
+    await running.pop()?.close();
+
+    // Production passes no hostname: the wildcard answers on every address of the machine.
+    const port = await freePort();
+    const wide = await startServer(env(), { port });
+    if (!wide.ok) throw new Error(wide.errors.join("; "));
+    running.push(wide.server);
+    expect(await accepts("127.0.0.1", port)).toBe(true);
+    expect(lan === undefined ? true : await accepts(lan, port)).toBe(true);
+  });
+});
+
+describe("the admin listener (decision D55)", () => {
+  async function startSplit(extra: Record<string, string> = {}, options: { port?: number } = {}) {
+    const adminPort = await freePort();
+    const result = await startServer(
+      env({ ADMIN_TOKEN, ADMIN_PORT: String(adminPort), ...extra }),
+      { port: options.port ?? 0, hostname: "127.0.0.1" },
+    );
+    if (result.ok) running.push(result.server);
+    return { result, adminPort };
+  }
+
+  it("has no second listener without ADMIN_PORT", async () => {
+    const result = await start(env({ ADMIN_TOKEN }));
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    expect(result.server.adminUrl).toBeUndefined();
+    expect(result.server.adminAddress).toBeUndefined();
+    expect((await fetch(new URL("/admin/login", result.server.url))).status).toBe(200);
+  });
+
+  it("serves the admin pages on the second port and answers 404 on /admin on the first", async () => {
+    const { result, adminPort } = await startSplit();
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    const adminUrl = result.server.adminUrl;
+    expect(adminUrl?.href).toBe(`http://127.0.0.1:${adminPort}/`);
+    expect(result.server.adminAddress).toBe(`127.0.0.1:${adminPort}`);
+    expect((await fetch(new URL("/admin/login", result.server.url))).status).toBe(404);
+    expect((await fetch(new URL("/admin/login", adminUrl))).status).toBe(200);
+    expect((await fetch(new URL("/healthz", adminUrl))).status).toBe(200);
+    expect((await fetch(new URL("/healthz", result.server.url))).status).toBe(200);
+    // The listener's root leads to the admin home (relative, so Ingress can open it).
+    const root = await fetch(new URL("/", adminUrl), { redirect: "manual" });
+    expect(root.status).toBe(303);
+    expect(root.headers.get("location")).toBe("admin/");
+    expect((await fetch(new URL("/nearby", adminUrl))).status).toBe(404);
+  });
+
+  it("binds ADMIN_BIND: loopback by default, other addresses only when asked", async () => {
+    const lan = lanAddress();
+    const closed = await startSplit();
+    if (!closed.result.ok) throw new Error(closed.result.errors.join("; "));
+    expect(await accepts("127.0.0.1", closed.adminPort)).toBe(true);
+    expect(lan === undefined ? false : await accepts(lan, closed.adminPort)).toBe(false);
+    await running.pop()?.close();
+
+    const open = await startSplit({ ADMIN_BIND: "0.0.0.0" });
+    if (!open.result.ok) throw new Error(open.result.errors.join("; "));
+    expect(open.result.server.adminUrl?.hostname).toBe("127.0.0.1");
+    expect(await accepts("127.0.0.1", open.adminPort)).toBe(true);
+    expect(lan === undefined ? true : await accepts(lan, open.adminPort)).toBe(true);
+  });
+
+  it("keeps the CSRF keys of the two listeners apart (real keys from the keyring)", async () => {
+    const { result, adminPort } = await startSplit();
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    const adminOrigin = `http://127.0.0.1:${adminPort}`;
+
+    /** The CSRF cookie (name and value) and form token a page issued. */
+    const issued = async (url: URL) => {
+      const response = await fetch(url);
+      const cookie = /^([^=]+)=([^;]+)/.exec(response.headers.getSetCookie()[0] ?? "");
+      const token = /name="_csrf" value="([^"]+)"/.exec(await response.text())?.[1];
+      if (cookie?.[1] === undefined || cookie[2] === undefined || token === undefined) {
+        throw new Error(`no CSRF token from ${url.href}`);
+      }
+      return { name: cookie[1], value: cookie[2], token };
+    };
+    const login = (cookie: string, token: string) =>
+      fetch(new URL("/admin/login", adminOrigin), {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          origin: adminOrigin,
+          cookie,
+        },
+        body: new URLSearchParams({ _csrf: token, token: ADMIN_TOKEN }).toString(),
+      });
+
+    // A public page's cookie and token, offered to the admin listener under both cookie names.
+    const publicPage = await issued(new URL("/privacy", result.server.url));
+    expect(publicPage.name).toBe("__Host-rr-csrf");
+    for (const name of ["rr-admin-csrf", publicPage.name]) {
+      const response = await login(
+        `${name}=${publicPage.value}; ${publicPage.name}=${publicPage.value}`,
+        publicPage.token,
+      );
+      expect([name, response.status]).toEqual([name, 403]);
+    }
+
+    // Control: the admin listener's own cookie and token reach the login handler.
+    const own = await issued(new URL("/admin/login", adminOrigin));
+    expect(own.name).toBe("rr-admin-csrf");
+    const accepted = await login(`${own.name}=${own.value}`, own.token);
+    expect(accepted.status).toBe(303);
+    expect(accepted.headers.get("location")).toBe("../admin/");
+  });
+
+  it("closes both listeners together", async () => {
+    const { result, adminPort } = await startSplit();
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    const publicPort = Number(result.server.url.port);
+    expect(await accepts("127.0.0.1", publicPort)).toBe(true);
+    expect(await accepts("127.0.0.1", adminPort)).toBe(true);
+    await running.pop()?.close();
+    expect(await accepts("127.0.0.1", publicPort)).toBe(false);
+    expect(await accepts("127.0.0.1", adminPort)).toBe(false);
+  });
+
+  it("fails cleanly when the admin port is in use, without leaving the public listener up", async () => {
+    const publicPort = await freePort();
+    const taken = createServer();
+    await new Promise<void>((resolve) => taken.listen(0, "127.0.0.1", resolve));
+    const address = taken.address();
+    if (address === null || typeof address === "string") throw new Error("no port");
+    try {
+      const result = await startServer(env({ ADMIN_TOKEN, ADMIN_PORT: String(address.port) }), {
+        port: publicPort,
+        hostname: "127.0.0.1",
+      });
+      if (result.ok) running.push(result.server);
+      expect(result).toEqual({
+        ok: false,
+        kind: "listen",
+        errors: [expect.stringContaining("ADMIN_PORT")],
+      });
+      expect(result.ok ? "" : (result.errors[0] ?? "")).toContain("in use");
+      expect(await accepts("127.0.0.1", publicPort)).toBe(false);
+    } finally {
+      await new Promise<void>((resolve) => taken.close(() => resolve()));
+    }
+  });
+
+  it("says so when the ADMIN_BIND host name does not resolve", async () => {
+    const publicPort = await freePort();
+    const result = await startServer(
+      env({
+        ADMIN_TOKEN,
+        ADMIN_PORT: String(await freePort()),
+        ADMIN_BIND: "no-such-host.invalid",
+      }),
+      { port: publicPort, hostname: "127.0.0.1" },
+    );
+    if (result.ok) running.push(result.server);
+    expect(result.ok).toBe(false);
+    const message = result.ok ? "" : (result.errors[0] ?? "");
+    expect(message).toContain("no-such-host.invalid");
+    expect(message).toContain("ADMIN_BIND");
+    expect(message).toContain("does not resolve");
+    expect(message).toContain("only its first address");
+    expect(await accepts("127.0.0.1", publicPort)).toBe(false);
+  });
+
+  it("says to check ADMIN_BIND when its address does not belong to this machine", async () => {
+    const publicPort = await freePort();
+    const result = await startServer(
+      env({ ADMIN_TOKEN, ADMIN_PORT: String(await freePort()), ADMIN_BIND: "203.0.113.1" }),
+      { port: publicPort, hostname: "127.0.0.1" },
+    );
+    if (result.ok) running.push(result.server);
+    expect(result.ok).toBe(false);
+    const message = result.ok ? "" : (result.errors[0] ?? "");
+    expect(message).toContain("203.0.113.1");
+    expect(message).toContain("does not belong to this machine");
+    expect(message).toContain("Check ADMIN_BIND.");
+    expect(await accepts("127.0.0.1", publicPort)).toBe(false);
+  });
+
+  it("refuses an admin port equal to the public port", async () => {
+    const port = await freePort();
+    const result = await startServer(env({ ADMIN_TOKEN, ADMIN_PORT: String(port) }), {
+      port,
+      hostname: "127.0.0.1",
+    });
+    if (result.ok) running.push(result.server);
+    expect(result).toEqual({
+      ok: false,
+      errors: [expect.stringContaining("ADMIN_PORT must differ from the public port")],
     });
   });
 });

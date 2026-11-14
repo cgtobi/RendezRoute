@@ -68,6 +68,7 @@ describe("email outbox (decision D31, spec 7 Moderation)", () => {
       links: new FakeChannelLinks(),
       contactEmail: "owner@example.org",
       timeZone: "Europe/Berlin",
+      adminUrl: instance.baseUrl,
       ...instance,
     });
     expect(
@@ -87,10 +88,12 @@ describe("email outbox (decision D31, spec 7 Moderation)", () => {
         links: new FakeChannelLinks(),
         contactEmail,
         timeZone: "Europe/Berlin",
+        adminUrl: instance.baseUrl,
         ...instance,
       });
     expect(await outbox("owner@example.org").reportAlert()).toBe("sent");
     expect(mailer.sent.map((mail) => mail.to)).toEqual(["owner@example.org"]);
+    expect(mailer.sent[0]?.text).toContain("https://runs.example.org/admin/");
     expect(await outbox(undefined).reportAlert()).toBe("failed");
     expect(mailer.sent).toHaveLength(1);
   });

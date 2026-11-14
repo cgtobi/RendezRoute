@@ -15,6 +15,7 @@ import { createFedifyKvStore } from "../../src/adapters/out/sqlite/fedify-kv.ts"
 import { randomBytes } from "node:crypto";
 import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts";
 import { createApp } from "../../src/adapters/in/http/app.tsx";
+import { createAdminApp } from "../../src/adapters/in/http/admin-app.tsx";
 import { createTokenAdminAuth } from "../../src/adapters/out/admin/token-admin-auth.ts";
 import {
   createFlagLimits,
@@ -29,7 +30,7 @@ import { createJobQueue } from "../../src/adapters/out/sqlite/jobs.ts";
 import { createSentReminderRepository } from "../../src/adapters/out/sqlite/reminders.ts";
 import { createLogger } from "../../src/adapters/logging.ts";
 import { createFieldCipher } from "../../src/adapters/out/crypto/field-cipher.ts";
-import { createKeyring } from "../../src/adapters/out/crypto/keyring.ts";
+import { createKeyring, deriveKey } from "../../src/adapters/out/crypto/keyring.ts";
 import { createIdGenerator } from "../../src/adapters/out/ids.ts";
 import { type Database, openDatabase } from "../../src/adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "../../src/adapters/out/sqlite/devices.ts";
@@ -45,7 +46,7 @@ import {
 import { createReportRepository } from "../../src/adapters/out/sqlite/reports.ts";
 import { createResponseRepository } from "../../src/adapters/out/sqlite/responses.ts";
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
-import { type Config, loadConfig } from "../../src/config.ts";
+import { adminPagesOrigin, type Config, loadConfig } from "../../src/config.ts";
 import type { PlanDeps } from "../../src/application/plans.ts";
 import type { PreviewRenderer, WeatherProvider } from "../../src/application/ports.ts";
 import { createLookupHasher } from "../../src/adapters/out/crypto/lookup-hasher.ts";
@@ -185,6 +186,7 @@ export async function createTestApp({
           instanceName: config.instanceName,
           contactEmail: config.contactEmail,
           timeZone: config.defaultTimezone,
+          adminUrl: adminPagesOrigin(config),
         });
   // Telegram messages go to the fake bot (decision D34); tests press Start with pressStart().
   const telegramClient = new FakeTelegramClient();
@@ -296,17 +298,24 @@ export async function createTestApp({
           reporting: config.adminToken !== undefined,
         });
 
+  // As in main.ts: both CSRF keys come from one keyring, each for its own purpose.
+  const csrfKeyring = createKeyring(1, [[1, randomBytes(32)]]);
+  const rateLimits = createRateLimits(() => clock.now().getTime());
+  const logger = createLogger({ write: (line) => logs.push(line) });
+  const adminAuth =
+    config.adminToken === undefined
+      ? undefined
+      : createTokenAdminAuth(config.adminToken, { split: config.admin !== undefined });
   const app = createApp({
     federation,
     config,
     geocoder: config.geocoder.enabled ? geocoder : undefined,
     previewRenderer: renderer ?? previewRenderer,
     weather: config.weather.enabled ? weather : undefined,
-    rateLimits: createRateLimits(() => clock.now().getTime()),
+    rateLimits,
     vapidPublicKey,
-    adminAuth:
-      config.adminToken === undefined ? undefined : createTokenAdminAuth(config.adminToken),
-    csrfKey: randomBytes(32),
+    adminAuth,
+    csrfKey: deriveKey(csrfKeyring, "csrf"),
     accounts: {
       identities,
       pendingLogins,
@@ -337,11 +346,24 @@ export async function createTestApp({
       },
       fediverse: { servers: config.fediverseLogin?.servers, allowInsecure: false },
     },
-    logger: createLogger({ write: (line) => logs.push(line) }),
+    logger,
     planDeps,
   });
+  // With ADMIN_PORT (decision D55): the admin listener's app, on the same database and limits.
+  const adminApp =
+    config.admin === undefined || adminAuth === undefined
+      ? undefined
+      : createAdminApp({
+          config,
+          csrfKey: deriveKey(csrfKeyring, "csrf-admin"),
+          logger,
+          planDeps,
+          rateLimits,
+          adminAuth,
+        });
   return {
     app,
+    adminApp,
     database,
     clock,
     logs,

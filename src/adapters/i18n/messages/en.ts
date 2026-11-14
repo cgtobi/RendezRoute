@@ -584,6 +584,7 @@ export const en = {
   "email.confirmWhy": "You get this email because this address was entered on {instance}.",
   "email.reportSubject": "New report on {instance}",
   "email.reportBody": "Someone reported a plan. The admin page shows the report.",
+  "email.reportBodyNoLink": "Someone reported a plan. Open the admin pages to see the report.",
   "email.reportAction": "Open the admin page",
   "email.reportWhy":
     "You get this email because this address is the contact address of {instance}.",

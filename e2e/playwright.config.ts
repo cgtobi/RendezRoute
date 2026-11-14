@@ -5,6 +5,9 @@ import { defineConfig, devices } from "@playwright/test";
 /** Specs that need the 0.7 to 0.9 configuration (admin, invites, logins, email, federation): the third container. */
 const ACCOUNT_SPECS = /v0[789][^/]*\.spec\.ts$/;
 
+/** The admin listener on its own port (0.10): the fourth container. */
+const ADMIN_SPLIT_SPECS = /v10-admin-split\.spec\.ts$/;
+
 export default defineConfig({
   testDir: ".",
   globalSetup: "./global-setup.ts",
@@ -26,12 +29,12 @@ export default defineConfig({
   projects: [
     {
       name: "default settings",
-      testIgnore: ACCOUNT_SPECS,
+      testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS],
       use: { baseURL: "http://localhost:3101" },
     },
     {
       name: "maps, geocoder and weather disabled",
-      testIgnore: ACCOUNT_SPECS,
+      testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS],
       use: { baseURL: "http://localhost:3102" },
     },
     // Admin, invites and accounts (0.7), email (0.8) and federation (0.9) need their own configuration.
@@ -39,6 +42,11 @@ export default defineConfig({
       name: "0.7 to 0.9 features",
       testMatch: ACCOUNT_SPECS,
       use: { baseURL: "http://localhost:3103" },
+    },
+    {
+      name: "0.10 admin listener",
+      testMatch: ADMIN_SPLIT_SPECS,
+      use: { baseURL: "http://localhost:3104" },
     },
   ],
 });

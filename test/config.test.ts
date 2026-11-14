@@ -67,6 +67,164 @@ describe("ADMIN_TOKEN (spec 7 Moderation)", () => {
   });
 });
 
+describe("ADMIN_PORT, ADMIN_BIND and ADMIN_URL (decision D55)", () => {
+  const token = "x".repeat(32);
+  const split = { ...minimal, ADMIN_TOKEN: token, ADMIN_PORT: "3001" };
+
+  it("changes nothing while ADMIN_PORT is unset, also when it is empty", () => {
+    expect(ok(minimal).config.admin).toBeUndefined();
+    expect(ok({ ...minimal, ADMIN_TOKEN: token, ADMIN_PORT: "" }).config.admin).toBeUndefined();
+  });
+
+  it("listens on 127.0.0.1 by default, without an own URL", () => {
+    expect(ok(split).config.admin).toEqual({ port: 3001, bind: "127.0.0.1", url: undefined });
+  });
+
+  it("accepts whole port numbers from 1 to 65535", () => {
+    expect(ok({ ...split, ADMIN_PORT: "1" }).config.admin?.port).toBe(1);
+    expect(ok({ ...split, ADMIN_PORT: "65535" }).config.admin?.port).toBe(65535);
+    for (const bad of ["0", "65536", "30.5", "abc", "-1", "3001 3002"]) {
+      expect(errors({ ...split, ADMIN_PORT: bad })).toEqual([
+        expect.stringContaining("ADMIN_PORT must be a port number"),
+      ]);
+    }
+  });
+
+  it("must differ from the public port", () => {
+    expect(errors({ ...split, ADMIN_PORT: "3000" })).toEqual([
+      expect.stringContaining("ADMIN_PORT must differ from the public port 3000"),
+    ]);
+  });
+
+  it("needs ADMIN_TOKEN until another way to log in exists", () => {
+    expect(errors({ ...minimal, ADMIN_PORT: "3001" })).toEqual([
+      "ADMIN_PORT needs ADMIN_TOKEN: the admin pages need a way to log in.",
+    ]);
+  });
+
+  it("takes an IP address or a host name as ADMIN_BIND", () => {
+    for (const bind of ["0.0.0.0", "::1", "192.168.1.5", "localhost", "admin.internal"]) {
+      expect(ok({ ...split, ADMIN_BIND: bind }).config.admin?.bind).toBe(bind);
+    }
+    expect(ok({ ...split, ADMIN_BIND: "[::1]" }).config.admin?.bind).toBe("::1");
+  });
+
+  it("refuses garbage as ADMIN_BIND", () => {
+    for (const bad of [
+      "not an address",
+      "a b",
+      "http://0.0.0.0",
+      "-bad.example",
+      "1.2.3",
+      "a_b",
+      "::g",
+    ]) {
+      expect(errors({ ...split, ADMIN_BIND: bad })).toEqual([
+        expect.stringContaining("ADMIN_BIND must be an IP address or a host name"),
+      ]);
+    }
+  });
+
+  it("refuses ADMIN_BIND and ADMIN_URL without ADMIN_PORT", () => {
+    expect(errors({ ...minimal, ADMIN_BIND: "0.0.0.0" })).toEqual(["ADMIN_BIND needs ADMIN_PORT."]);
+    expect(errors({ ...minimal, ADMIN_URL: "https://admin.example.org" })).toEqual([
+      "ADMIN_URL needs ADMIN_PORT.",
+    ]);
+  });
+
+  it("takes ADMIN_URL as an origin", () => {
+    const url = ok({ ...split, ADMIN_URL: "https://admin.example.org" }).config.admin?.url;
+    expect(url?.origin).toBe("https://admin.example.org");
+    expect(
+      ok({ ...split, ADMIN_URL: "https://admin.example.org:8443/" }).config.admin?.url?.origin,
+    ).toBe("https://admin.example.org:8443");
+  });
+
+  it("refuses an ADMIN_URL with path, query, fragment or credentials", () => {
+    for (const bad of [
+      "https://admin.example.org/admin",
+      "https://admin.example.org/?a=1",
+      "https://admin.example.org/#x",
+      "https://user:pw@admin.example.org",
+      "ftp://admin.example.org",
+      "nope",
+    ]) {
+      expect(errors({ ...split, ADMIN_URL: bad })).toEqual([expect.stringContaining("ADMIN_URL")]);
+    }
+  });
+
+  const HTTPS_RULE =
+    "ADMIN_URL must use HTTPS unless it is localhost, a loopback or private-network IP address, or ALLOW_INSECURE_DEV=true (development only).";
+
+  it("takes http for ADMIN_URL on loopback and private-network addresses", () => {
+    for (const host of [
+      "localhost:3105",
+      "127.0.0.1:3105",
+      "127.5.6.7",
+      "[::1]:3105",
+      "10.0.0.5:3105",
+      "10.255.255.255",
+      "172.16.0.1",
+      "172.31.255.255:3105",
+      "192.168.1.5:3105",
+      "[fc00::1]",
+      "[fd12:3456:789a::1]:3105",
+      "169.254.10.20",
+    ]) {
+      expect([
+        host,
+        ok({ ...split, ADMIN_URL: `http://${host}` }).config.admin?.url?.origin,
+      ]).toEqual([host, `http://${host}`]);
+    }
+  });
+
+  it("relies on URL normalisation for loopback spellings and mapped IPv6 addresses", () => {
+    for (const host of ["0x7f.1:3001", "127.1:3001", "2130706433:3001", "LOCALHOST:3001"]) {
+      expect([
+        host,
+        ok({ ...split, ADMIN_URL: `http://${host}` }).config.admin?.url?.protocol,
+      ]).toEqual([host, "http:"]);
+    }
+    for (const host of ["[::ffff:10.0.0.1]:3001", "localhost.evil.example:3001"]) {
+      expect([host, errors({ ...split, ADMIN_URL: `http://${host}` })]).toEqual([
+        host,
+        [HTTPS_RULE],
+      ]);
+    }
+  });
+
+  it("needs HTTPS for ADMIN_URL on any other address, except in development mode", () => {
+    for (const host of [
+      "admin.example.org",
+      "localhost.example.org",
+      "10.example.org",
+      "8.8.8.8",
+      "11.0.0.1",
+      "172.15.255.255",
+      "172.32.0.1",
+      "192.169.0.1",
+      "169.253.1.1",
+      "128.0.0.1",
+      "[2001:db8::1]",
+      "[fe00::1]",
+      "[fb00::1]",
+      "[::ffff:808:808]",
+    ]) {
+      expect([host, errors({ ...split, ADMIN_URL: `http://${host}` })]).toEqual([
+        host,
+        [HTTPS_RULE],
+      ]);
+      expect(ok({ ...split, ADMIN_URL: `https://${host}` }).config.admin?.url?.protocol).toBe(
+        "https:",
+      );
+    }
+    expect(
+      ok({ ...split, ADMIN_URL: "http://admin.example.org", ALLOW_INSECURE_DEV: "true" }).config
+        .admin?.url?.origin,
+    ).toBe("http://admin.example.org");
+  });
+});
+
 describe("PUBLIC_REQUIRES_LOGIN (spec 7 Visibility and Nearby plans)", () => {
   it("requires an account for public plans unless turned off", () => {
     expect(ok(minimal).config.publicRequiresLogin).toBe(true);

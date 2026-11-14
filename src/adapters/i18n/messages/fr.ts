@@ -609,6 +609,8 @@ export const fr: Messages = {
   "email.reportSubject": "Nouveau signalement sur {instance}",
   "email.reportBody":
     "Quelqu’un a signalé une sortie. La page d’administration affiche le signalement.",
+  "email.reportBodyNoLink":
+    "Quelqu’un a signalé une sortie. Ouvrez les pages d’administration pour voir le signalement.",
   "email.reportAction": "Ouvrir la page d’administration",
   "email.reportWhy":
     "Vous recevez cet e-mail parce que cette adresse est l’adresse de contact de {instance}.",

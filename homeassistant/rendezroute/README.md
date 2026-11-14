@@ -11,7 +11,8 @@ This app runs RendezRoute inside Home Assistant:
   a panel in the Home Assistant sidebar if you switch on **Show in sidebar** there, for Home
   Assistant administrators only, with no extra password;
 - the **public site** is served on port 3000, which you put behind your own https address;
-- all settings are in the app's **Configuration** tab.
+- all settings are in the app's **Configuration** tab; advanced ones appear under
+  **⋮ → Show unused optional configuration options**.
 
 **Experimental:** this is the first release of the app and it has not yet been tested on real Home
 Assistant devices. Read the **Documentation** tab before you install it.

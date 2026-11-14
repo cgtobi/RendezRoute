@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.1
+
+- The common options (contact email, imprint and privacy links, email server settings) are now
+  always visible in the configuration form. The others (single sign-on, ntfy, Telegram, map and
+  service addresses, Fediverse login servers, email port) are shown through **⋮ → Show unused
+  optional configuration options**.
+- The form no longer checks the email and link syntax of these fields; the app does at start and
+  names the setting in the log (for example CONTACT_EMAIL). An empty field means "not set".
+
 ## 0.10.0
 
 First release of the RendezRoute Home Assistant app. It is experimental: it has been tested in

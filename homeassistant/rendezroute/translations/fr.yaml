@@ -7,7 +7,7 @@ configuration:
     description: "Le nom affiché dans l’en-tête et dans les messages. De 1 à 60 caractères."
   contact_email:
     name: "E-mail de contact"
-    description: "Une adresse qui vous identifie auprès des services de cartes, de géocodage et de météo (leurs conditions l’exigent) et que les visiteurs voient comme contact. Sans elle, le géocodage et les tuiles de carte côté serveur restent désactivés."
+    description: "Une adresse qui vous identifie auprès des services de cartes, de géocodage et de météo (leurs conditions l’exigent) et que les visiteurs voient comme contact. Laissez vide : le géocodage et les tuiles de carte côté serveur restent désactivés."
   imprint_url:
     name: "Lien vers les mentions légales"
     description: "Lien vers vos mentions légales, affiché en pied de page. Laissez vide si vous n’en avez pas."
@@ -70,22 +70,22 @@ configuration:
     description: "Limiter la connexion Fediverse à ces serveurs, un domaine par entrée, par exemple mastodon.social. Laissez vide pour autoriser tous les serveurs. Nécessite la connexion Fediverse."
   smtp_host:
     name: "E-mail : serveur"
-    description: "Nom d’hôte de votre serveur de courrier sortant. Sans lui, aucun e-mail n’est envoyé. Nécessite l’adresse d’expéditeur."
+    description: "Nom d’hôte de votre serveur de courrier sortant. Laissez vide et aucun e-mail n’est envoyé. Nécessite l’adresse d’expéditeur."
   smtp_port:
     name: "E-mail : port"
     description: "Port du serveur de courrier. Laissez vide pour le port habituel du chiffrement choisi (587 ou 465)."
   smtp_tls:
     name: "E-mail : chiffrement"
-    description: "starttls (par défaut, port 587) ou tls (port 465)."
+    description: "starttls (par défaut, port 587) ou tls (port 465). Ne sert que si un serveur est défini."
   smtp_user:
     name: "E-mail : nom d’utilisateur"
-    description: "Nom d’utilisateur du serveur de courrier, s’il en demande un."
+    description: "Nom d’utilisateur du serveur de courrier. Laissez vide s’il n’en demande pas."
   smtp_password:
     name: "E-mail : mot de passe"
-    description: "Mot de passe du serveur de courrier, s’il en demande un."
+    description: "Mot de passe du serveur de courrier. Laissez vide s’il n’en demande pas."
   smtp_from:
     name: "E-mail : adresse d’expéditeur"
-    description: "L’adresse depuis laquelle les e-mails sont envoyés. Obligatoire dès qu’un serveur de courrier est défini."
+    description: "L’adresse depuis laquelle les e-mails sont envoyés. Obligatoire dès qu’un serveur de courrier est défini, sinon laissez vide."
   ntfy_url:
     name: "ntfy : serveur"
     description: "Adresse de votre serveur ntfy, pour les notifications push. Laissez vide pour ne pas utiliser ntfy."

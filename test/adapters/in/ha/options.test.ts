@@ -116,6 +116,25 @@ describe("mapping the options", () => {
     expect(mapped({ fediverse_login_servers: ["", "  "] })).toEqual(FIXED);
   });
 
+  it("treats the form's shown defaults as unset", () => {
+    // contact_email, the URLs and the SMTP fields are always shown, with "" (decision I78); the
+    // transport default "starttls" without a host would otherwise make the start fail.
+    const shown = {
+      contact_email: "",
+      imprint_url: "",
+      privacy_url: "",
+      smtp_host: "",
+      smtp_tls: "starttls",
+      smtp_user: "",
+      smtp_password: "",
+      smtp_from: "",
+    };
+    expect(mapped(shown)).toEqual(FIXED);
+    expect(mapped({ ...shown, smtp_host: "mail.example.org" }).SMTP_TLS).toBe("starttls");
+    expect(mapped({ smtp_tls: "tls" }).SMTP_TLS).toBe("tls");
+    expect("SMTP_PORT" in mapped(shown)).toBe(false);
+  });
+
   it("keeps false and 0-like values that mean something", () => {
     const env = mapped({ maps_enabled: false, trust_proxy: false });
     expect(env.MAPS_ENABLED).toBe("false");

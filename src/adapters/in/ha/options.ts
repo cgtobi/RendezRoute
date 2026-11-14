@@ -112,5 +112,8 @@ export function mapHomeAssistantOptions(options: unknown): HaOptionsResult {
     }
   }
   if (errors.length > 0) return { ok: false, errors };
+  // The form always shows smtp_tls with the default "starttls" (decision I78), also without a mail
+  // server; configuration rejects SMTP settings without SMTP_HOST, so the default alone is unset.
+  if (env.SMTP_HOST === undefined && env.SMTP_TLS === "starttls") delete env.SMTP_TLS;
   return { ok: true, env: { ...env, ...FIXED_ENVIRONMENT } };
 }

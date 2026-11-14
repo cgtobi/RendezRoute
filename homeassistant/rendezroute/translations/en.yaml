@@ -7,7 +7,7 @@ configuration:
     description: "The name shown in the page header and in messages. 1 to 60 characters."
   contact_email:
     name: "Contact email"
-    description: "An address that identifies you to the map, geocoding and weather providers (their usage policies require it) and that is shown to visitors as the contact. Without it, geocoding and server-side map tiles stay off."
+    description: "An address that identifies you to the map, geocoding and weather providers (their usage policies require it) and that is shown to visitors as the contact. Leave empty and geocoding and server-side map tiles stay off."
   imprint_url:
     name: "Imprint link"
     description: "Link to your imprint (legal notice), shown in the footer. Leave empty if you have none."
@@ -70,22 +70,22 @@ configuration:
     description: "Limit the Fediverse login to these servers, one domain per entry, for example mastodon.social. Leave empty to allow any server. Needs the Fediverse login."
   smtp_host:
     name: "Email: server"
-    description: "Host name of your outgoing mail server. Without it, no emails are sent. Needs the sender address."
+    description: "Host name of your outgoing mail server. Leave empty and no emails are sent. Needs the sender address."
   smtp_port:
     name: "Email: port"
     description: "Port of the mail server. Leave empty for the usual port of the chosen encryption (587 or 465)."
   smtp_tls:
     name: "Email: encryption"
-    description: "starttls (default, port 587) or tls (port 465)."
+    description: "starttls (default, port 587) or tls (port 465). Used only when a server is set."
   smtp_user:
     name: "Email: user name"
-    description: "User name for the mail server, if it needs one."
+    description: "User name for the mail server. Leave empty if it needs none."
   smtp_password:
     name: "Email: password"
-    description: "Password for the mail server, if it needs one."
+    description: "Password for the mail server. Leave empty if it needs none."
   smtp_from:
     name: "Email: sender address"
-    description: "The address emails are sent from. Required when a mail server is set."
+    description: "The address emails are sent from. Required when a mail server is set, otherwise leave empty."
   ntfy_url:
     name: "ntfy: server"
     description: "Address of your ntfy server, for push notifications. Leave empty for no ntfy."

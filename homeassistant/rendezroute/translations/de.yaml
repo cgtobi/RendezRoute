@@ -7,7 +7,7 @@ configuration:
     description: "Der Name in der Kopfzeile und in Nachrichten. 1 bis 60 Zeichen."
   contact_email:
     name: "Kontakt-E-Mail"
-    description: "Eine Adresse, mit der du dich gegenüber den Anbietern von Karten, Ortssuche und Wetter ausweist (ihre Nutzungsbedingungen verlangen das) und die Besucher:innen als Kontakt sehen. Ohne sie bleiben Ortssuche und das Laden von Kartenkacheln durch den Server ausgeschaltet."
+    description: "Eine Adresse, mit der du dich gegenüber den Anbietern von Karten, Ortssuche und Wetter ausweist (ihre Nutzungsbedingungen verlangen das) und die Besucher:innen als Kontakt sehen. Leer lassen, dann bleiben Ortssuche und das Laden von Kartenkacheln durch den Server ausgeschaltet."
   imprint_url:
     name: "Link zum Impressum"
     description: "Link zu deinem Impressum, im Seitenfuß angezeigt. Leer lassen, wenn du keins hast."
@@ -70,22 +70,22 @@ configuration:
     description: "Die Fediverse-Anmeldung auf diese Server beschränken, eine Domain pro Eintrag, zum Beispiel mastodon.social. Leer lassen, um jeden Server zuzulassen. Braucht die Fediverse-Anmeldung."
   smtp_host:
     name: "E-Mail: Server"
-    description: "Hostname deines Postausgangsservers. Ohne ihn werden keine E-Mails verschickt. Braucht die Absenderadresse."
+    description: "Hostname deines Postausgangsservers. Leer lassen, dann werden keine E-Mails verschickt. Braucht die Absenderadresse."
   smtp_port:
     name: "E-Mail: Port"
     description: "Port des Mailservers. Leer lassen für den üblichen Port der gewählten Verschlüsselung (587 oder 465)."
   smtp_tls:
     name: "E-Mail: Verschlüsselung"
-    description: "starttls (Standard, Port 587) oder tls (Port 465)."
+    description: "starttls (Standard, Port 587) oder tls (Port 465). Gilt nur, wenn ein Server gesetzt ist."
   smtp_user:
     name: "E-Mail: Benutzername"
-    description: "Benutzername für den Mailserver, falls er einen braucht."
+    description: "Benutzername für den Mailserver. Leer lassen, wenn er keinen braucht."
   smtp_password:
     name: "E-Mail: Passwort"
-    description: "Passwort für den Mailserver, falls er eins braucht."
+    description: "Passwort für den Mailserver. Leer lassen, wenn er keins braucht."
   smtp_from:
     name: "E-Mail: Absenderadresse"
-    description: "Die Adresse, von der aus E-Mails verschickt werden. Pflicht, sobald ein Mailserver gesetzt ist."
+    description: "Die Adresse, von der aus E-Mails verschickt werden. Pflicht, sobald ein Mailserver gesetzt ist, sonst leer lassen."
   ntfy_url:
     name: "ntfy: Server"
     description: "Adresse deines ntfy-Servers für Push-Benachrichtigungen. Leer lassen für kein ntfy."

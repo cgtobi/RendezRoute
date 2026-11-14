@@ -138,9 +138,60 @@ describe("config.yaml and the options mapper", () => {
     expect(wrong).toEqual([]);
   });
 
+  it("shows the options a self-hoster sets on day one, and hides the others (decision I78)", () => {
+    // The Supervisor hides an optional option without a value behind "Show unused optional
+    // configuration options". Pinned by name, so adding or removing one is deliberate.
+    const shown = Object.keys(schema).filter((name) => !isOptional(name));
+    expect(shown.toSorted()).toEqual(
+      [
+        "base_url",
+        "instance_name",
+        "contact_email",
+        "imprint_url",
+        "privacy_url",
+        "default_timezone",
+        "maps_enabled",
+        "geocoder_enabled",
+        "weather_enabled",
+        "posting_mode",
+        "public_requires_login",
+        "nearby_enabled",
+        "federation_enabled",
+        "fediverse_login",
+        "smtp_host",
+        "smtp_tls",
+        "smtp_user",
+        "smtp_password",
+        "smtp_from",
+        "max_retention_days",
+        "max_plan_horizon_days",
+        "trust_proxy",
+      ].sort(),
+    );
+    // Every shown option has a default (base_url is the one required option, with a null one).
+    expect(shown.filter((name) => name !== "base_url" && options[name] === undefined)).toEqual([]);
+  });
+
+  it("gives the free-text options an empty default and a plain type that accepts it", () => {
+    const empty = [
+      "contact_email",
+      "imprint_url",
+      "privacy_url",
+      "smtp_host",
+      "smtp_user",
+      "smtp_password",
+      "smtp_from",
+    ];
+    for (const name of empty) expect([name, options[name]]).toEqual([name, ""]);
+    // email and url reject "" in the Supervisor (scripts/validate-ha-app.py runs the defaults).
+    expect(empty.map(typeOf).sort()).toEqual(["password", ...Array<string>(6).fill("str")].sort());
+    expect(options.smtp_tls).toBe("starttls");
+    expect(typeOf("smtp_tls")).toBe("list(starttls|tls)");
+  });
+
   it("keeps secrets as password fields, and only secrets", () => {
     const passwords = Object.keys(schema).filter((name) => typeOf(name).startsWith("password"));
-    expect(passwords.sort()).toEqual([...SECRETS].sort());
+    expect(passwords.toSorted()).toEqual([...SECRETS].sort());
   });
 
   it("requires base_url and nothing else", () => {
@@ -163,6 +214,33 @@ describe("config.yaml and the options mapper", () => {
       const viaField = viaOptions.config[field as keyof typeof viaOptions.config];
       expect([field, viaField]).toEqual([field, value]);
     }
+  });
+
+  it("reports a wrong value of a field the form no longer checks, at start", () => {
+    const start = (given: Record<string, string>) => {
+      const mapped = mapHomeAssistantOptions({
+        ...options,
+        base_url: "https://runs.example.org",
+        ...given,
+      });
+      if (!mapped.ok) throw new Error(mapped.errors.join(" "));
+      const fixed = new Set(Object.keys(FIXED_ENVIRONMENT));
+      const env = Object.fromEntries(Object.entries(mapped.env).filter(([k]) => !fixed.has(k)));
+      const loaded = loadConfig(env);
+      return loaded.ok ? [] : loaded.errors;
+    };
+    expect(start({})).toEqual([]);
+    expect(start({ contact_email: "not-an-email" }).join(" ")).toMatch(/CONTACT_EMAIL.*email/);
+    expect(start({ imprint_url: "not a url" }).join(" ")).toContain("IMPRINT_URL");
+    expect(start({ privacy_url: "ftp://x.example" }).join(" ")).toContain("PRIVACY_URL");
+    expect(start({ smtp_host: "mail.example.org", smtp_from: "nope" }).join(" ")).toContain(
+      "SMTP_FROM must be an email address",
+    );
+    expect(start({ smtp_host: "mail.example.org" }).join(" ")).toContain("SMTP_FROM is required");
+    expect(start({ smtp_user: "mailer" }).join(" ")).toContain("need SMTP_HOST");
+    expect(
+      start({ smtp_host: "mail.example.org", smtp_from: "a@example.org", smtp_tls: "tls" }),
+    ).toEqual([]);
   });
 
   it("limits the numbers and the names as the configuration does", () => {
@@ -194,7 +272,6 @@ describe("config.yaml and the options mapper", () => {
 
   it("restricts the enumerated options to the values the configuration accepts", () => {
     expect(typeOf("posting_mode")).toBe("list(anyone|invite|logged_in)");
-    expect(typeOf("smtp_tls")).toBe("list(starttls|tls)?");
     expect(options.posting_mode).toBe("anyone");
   });
 

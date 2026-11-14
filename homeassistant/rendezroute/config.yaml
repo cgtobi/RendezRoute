@@ -1,5 +1,5 @@
 name: RendezRoute
-version: "0.10.0"
+version: "0.10.1"
 slug: rendezroute
 description: Advertise a planned run or ride so others can join, without accounts for guests
 url: https://github.com/cgtobi/RendezRoute
@@ -26,9 +26,16 @@ ports_description:
   3000/tcp: The public site (guests, shared links, federation). Put an https reverse proxy in front.
 # A running SQLite database copied under the app's feet is risky: stop the app for the backup.
 backup: cold
+# The Supervisor hides an optional (?) option that has no value behind "Show unused optional
+# configuration options". The options a self-hoster sets on day one therefore have a default and a
+# plain type, with "" for "not set": str and password accept "", email and url do not (decision
+# I78). The app checks the email and URL syntax at start, and treats "" as unset.
 options:
   base_url: null
   instance_name: RendezRoute
+  contact_email: ""
+  imprint_url: ""
+  privacy_url: ""
   default_timezone: UTC
   maps_enabled: true
   geocoder_enabled: true
@@ -38,15 +45,20 @@ options:
   nearby_enabled: true
   federation_enabled: true
   fediverse_login: false
+  smtp_host: ""
+  smtp_tls: starttls
+  smtp_user: ""
+  smtp_password: ""
+  smtp_from: ""
   max_retention_days: 30
   max_plan_horizon_days: 180
   trust_proxy: false
 schema:
   base_url: url
   instance_name: str(1,60)
-  contact_email: email?
-  imprint_url: url?
-  privacy_url: url?
+  contact_email: str
+  imprint_url: str
+  privacy_url: str
   default_timezone: str
   maps_enabled: bool
   map_tile_url: str?
@@ -66,12 +78,12 @@ schema:
   fediverse_login: bool
   fediverse_login_servers:
     - str?
-  smtp_host: str?
+  smtp_host: str
   smtp_port: port?
-  smtp_tls: list(starttls|tls)?
-  smtp_user: str?
-  smtp_password: password?
-  smtp_from: email?
+  smtp_tls: list(starttls|tls)
+  smtp_user: str
+  smtp_password: password
+  smtp_from: str
   ntfy_url: url?
   ntfy_token: password?
   telegram_bot_token: password?

@@ -42,6 +42,15 @@ start and route do. This app runs it inside Home Assistant.
 
 5. Open the admin pages with **Open Web UI** on the app's Info tab, or switch on **Show in sidebar** there to get a RendezRoute panel.
 
+### Configuration
+
+The Configuration tab always shows the options most people set first: the public address, instance
+name, contact email, imprint and privacy links, the email server and the limits. An empty field means
+"not set". The form does not check the email and link syntax of these fields; the app does when it
+starts and names the setting in the log (for example CONTACT_EMAIL). The advanced options (single sign-on, ntfy, Telegram, map,
+geocoder and weather addresses, Fediverse login servers, the email port) are hidden until you open
+the **⋮** menu of the Configuration tab and choose **Show unused optional configuration options**.
+
 ### Reverse proxy and `trust_proxy`
 
 Turn **Trust the reverse proxy** (`trust_proxy`) on only when a reverse proxy or tunnel sits in

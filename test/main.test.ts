@@ -579,6 +579,31 @@ describe("Home Assistant Ingress on the admin listener (decision D56)", () => {
     expect(await accepts("127.0.0.1", adminPort)).toBe(false);
   });
 
+  it("asks the Supervisor over SUPERVISOR_SOCKET, with no token (decision D57)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rr-sock-"));
+    dirs.push(dir);
+    for (const [version, ok, name] of [
+      ["2026.10.4", true, "a.sock"],
+      ["2026.10.3", false, "b.sock"],
+    ] as const) {
+      const socketPath = join(dir, name);
+      const seen: (string | undefined)[] = [];
+      const fake = createHttpServer((request, response) => {
+        seen.push(request.headers.authorization);
+        versionOf(version)(response);
+      });
+      fakes.push(fake);
+      await new Promise<void>((resolve) => fake.listen(socketPath, resolve));
+      const { result } = await startIngress("http://127.0.0.1:1", {
+        SUPERVISOR_URL: "",
+        SUPERVISOR_SOCKET: socketPath,
+        SUPERVISOR_TOKEN: "",
+      });
+      expect(result.ok).toBe(ok);
+      expect(seen).toEqual([undefined]);
+    }
+  });
+
   it("refuses a dev, unreadable, unauthorized or redirecting Supervisor", async () => {
     const answers = [
       versionOf("dev"),
@@ -609,6 +634,52 @@ describe("Home Assistant Ingress on the admin listener (decision D56)", () => {
     expect(result.errors[0]).toContain("ECONNREFUSED");
     expect(result.errors[0]).not.toContain("the-supervisor-token");
     expect(await accepts("127.0.0.1", adminPort)).toBe(false);
+  });
+
+  it("with the verified flag it neither asks nor needs the token (decision I75)", async () => {
+    const supervisor = await fakeSupervisor(versionOf("2026.1.0"));
+    const adminPort = await freePort();
+    const ingressEnv = env({
+      ADMIN_INGRESS: "true",
+      ADMIN_PORT: String(adminPort),
+      ADMIN_BIND: "127.0.0.1",
+      ADMIN_INGRESS_PEER: "127.0.0.1",
+      SUPERVISOR_URL: supervisor.url,
+      POSTING_MODE: "invite",
+    });
+    // Without the fact: the configuration insists on the token, nothing starts.
+    const refused = await start(ingressEnv);
+    expect(refused.ok).toBe(false);
+    const result = await startServer(ingressEnv, {
+      port: 0,
+      hostname: "127.0.0.1",
+      ingressVersionVerified: true,
+    });
+    if (result.ok) running.push(result.server);
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    expect(supervisor.seen).toEqual([]);
+    expect(await accepts("127.0.0.1", adminPort)).toBe(true);
+  });
+
+  it("an environment variable cannot stand in for the verified flag", async () => {
+    const supervisor = await fakeSupervisor(versionOf("2026.10.3"));
+    for (const name of ["INGRESS_VERSION_VERIFIED", "ADMIN_INGRESS_VERSION_VERIFIED"]) {
+      // Old Supervisor: still refused after asking.
+      const { result } = await startIngress(supervisor.url, { [name]: "true" });
+      expect(result.ok).toBe(false);
+      // No token: still a configuration error.
+      const adminPort = await freePort();
+      const noToken = await start(
+        env({
+          ADMIN_INGRESS: "true",
+          ADMIN_PORT: String(adminPort),
+          ADMIN_BIND: "127.0.0.1",
+          [name]: "true",
+        }),
+      );
+      expect(noToken.ok).toBe(false);
+    }
+    expect(supervisor.seen.length).toBe(2);
   });
 
   it("does not ask when the version check is skipped", async () => {

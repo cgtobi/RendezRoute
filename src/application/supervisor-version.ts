@@ -30,7 +30,14 @@ function compare(a: ReturnType<typeof parseVersion>, b: ReturnType<typeof parseV
   return Number(!a.dev) - Number(!b.dev);
 }
 
-export async function checkSupervisorVersion(supervisor: SupervisorInfo): Promise<SupervisorCheck> {
+const DEFAULT_REMEDY =
+  "Set SUPERVISOR_URL and SUPERVISOR_TOKEN, or ADMIN_INGRESS_SKIP_VERSION_CHECK=true for development.";
+
+/** `remedy` replaces the advice after an unreachable Supervisor (the Home Assistant start step). */
+export async function checkSupervisorVersion(
+  supervisor: SupervisorInfo,
+  { remedy = DEFAULT_REMEDY }: { remedy?: string } = {},
+): Promise<SupervisorCheck> {
   const needs = `Ingress mode needs Home Assistant Supervisor ${MINIMUM_SUPERVISOR_VERSION} or newer`;
   let version: string;
   try {
@@ -39,7 +46,7 @@ export async function checkSupervisorVersion(supervisor: SupervisorInfo): Promis
     const reason = error instanceof Error ? error.message : "unknown error";
     return {
       ok: false,
-      message: `Ingress mode could not ask the Supervisor for its version (${reason}). Set SUPERVISOR_URL and SUPERVISOR_TOKEN, or ADMIN_INGRESS_SKIP_VERSION_CHECK=true for development.`,
+      message: `Ingress mode could not ask the Supervisor for its version (${reason}). ${remedy}`,
     };
   }
   const found = parseVersion(version);

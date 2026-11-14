@@ -112,6 +112,7 @@ import {
   type Config,
   type ConfigSource,
   DEFAULT_PORT,
+  type LoadConfigOptions,
   loadConfig,
 } from "./config.ts";
 
@@ -235,8 +236,9 @@ const backupDir = (config: Config) => join(config.dataDir, "backups");
 
 async function openInstance(
   env: ConfigSource,
+  options: LoadConfigOptions = {},
 ): Promise<{ ok: true; instance: Instance } | { ok: false; errors: string[] }> {
-  const loaded = loadConfig(env);
+  const loaded = loadConfig(env, options);
   if (!loaded.ok) return loaded;
   const { config } = loaded;
   const warnings = [...loaded.warnings];
@@ -447,9 +449,20 @@ export async function startServer(
     port = DEFAULT_PORT,
     logger = createLogger(),
     hostname,
-  }: { port?: number; logger?: Logger; hostname?: string } = {},
+    ingressVersionVerified = false,
+  }: {
+    port?: number;
+    logger?: Logger;
+    hostname?: string;
+    /**
+     * Decision I75: the caller (the Home Assistant start step, as root, before it dropped
+     * privileges) already checked the Supervisor's version. In-process only: no environment
+     * variable, option or setting can set it.
+     */
+    ingressVersionVerified?: boolean;
+  } = {},
 ): Promise<StartResult> {
-  const opened = await openInstance(env);
+  const opened = await openInstance(env, { ingressVersionVerified });
   if (!opened.ok) return opened;
   const { config, database, keys, planDeps, warnings } = opened.instance;
   if (config.admin?.port === port) {
@@ -463,24 +476,31 @@ export async function startServer(
   // Ingress mode trusts the identity headers of the Supervisor, so an old one that lets clients
   // forge them must not be trusted at all (decision D56): nothing starts.
   const ingressSettings = config.admin?.ingress;
-  if (ingressSettings !== undefined && !ingressSettings.skipVersionCheck) {
-    // The configuration already insists on the token; without it nothing may start unchecked.
-    if (ingressSettings.supervisorToken === undefined) {
+  if (
+    ingressSettings !== undefined &&
+    !ingressSettings.skipVersionCheck &&
+    !ingressVersionVerified
+  ) {
+    // The configuration already insists on the socket or the token; without one nothing may start
+    // unchecked.
+    const { supervisorSocket, supervisorToken, supervisorUrl } = ingressSettings;
+    const endpoint =
+      supervisorSocket !== undefined
+        ? { socketPath: supervisorSocket }
+        : supervisorToken !== undefined
+          ? { url: supervisorUrl, token: supervisorToken }
+          : undefined;
+    if (endpoint === undefined) {
       await database.close();
       return {
         ok: false,
         kind: "supervisor",
         errors: [
-          "Ingress mode needs SUPERVISOR_TOKEN to check the Supervisor's version, or ADMIN_INGRESS_SKIP_VERSION_CHECK=true for development.",
+          "Ingress mode needs SUPERVISOR_SOCKET or SUPERVISOR_TOKEN to check the Supervisor's version, or ADMIN_INGRESS_SKIP_VERSION_CHECK=true for development.",
         ],
       };
     }
-    const checked = await checkSupervisorVersion(
-      createSupervisorInfo({
-        url: ingressSettings.supervisorUrl,
-        token: ingressSettings.supervisorToken,
-      }),
-    );
+    const checked = await checkSupervisorVersion(createSupervisorInfo(endpoint));
     if (!checked.ok) {
       await database.close();
       return { ok: false, kind: "supervisor", errors: [checked.message] };
@@ -839,4 +859,41 @@ export async function runBackup(
   const source = databasePath(loaded.config);
   if (!existsSync(source)) return { ok: false, errors: [`No database at ${source}.`] };
   return { ok: true, path: await backupDatabase(source, directory, systemClock.now()) };
+}
+
+/**
+ * CLI `serve` (and the Home Assistant start step, which serves with its own environment): starts
+ * the server, reports to the console and closes on SIGTERM and SIGINT. A server that cannot start
+ * ends the process with exit code 1.
+ */
+export async function runServe(
+  env: ConfigSource,
+  options: { ingressVersionVerified?: boolean } = {},
+): Promise<void> {
+  const result = await startServer(env, options);
+  if (!result.ok) {
+    console.error(
+      `${result.kind === undefined ? "RendezRoute cannot start: invalid configuration" : "RendezRoute cannot start:"}\n${result.errors.map((e) => `  - ${e}`).join("\n")}`,
+    );
+    process.exit(1);
+  }
+  for (const warning of result.warnings) console.warn(`Warning: ${warning}`);
+  console.log(`RendezRoute listening on port ${result.server.url.port}`);
+  if (result.server.adminAddress !== undefined) {
+    console.log(
+      `RendezRoute admin pages listening on ${result.server.adminAddress}` +
+        (result.server.adminIngressPeer === undefined
+          ? ""
+          : ` (Home Assistant Ingress: only ${result.server.adminIngressPeer} is trusted)`),
+    );
+  }
+
+  const shutdown = () => {
+    result.server.close().then(
+      () => process.exit(0),
+      () => process.exit(1),
+    );
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
 }

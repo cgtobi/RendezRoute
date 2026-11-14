@@ -97,6 +97,7 @@ describe("ADMIN_INGRESS (decision D56)", () => {
       ingress: {
         peer: "172.30.32.2",
         supervisorUrl: new URL("http://supervisor"),
+        supervisorSocket: undefined,
         supervisorToken: "supervisor-token",
         skipVersionCheck: false,
       },
@@ -158,6 +159,67 @@ describe("ADMIN_INGRESS (decision D56)", () => {
     ]);
     const skipped = ok({ ...without, ADMIN_INGRESS_SKIP_VERSION_CHECK: "true" });
     expect(skipped.config.admin?.ingress?.supervisorToken).toBeUndefined();
+  });
+
+  it("needs no Supervisor settings when the version was verified outside (decision I75)", () => {
+    const { SUPERVISOR_TOKEN: _token, ...without } = ingress;
+    const result = loadConfig(without, { ingressVersionVerified: true });
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    expect(result.config.admin?.ingress).toEqual({
+      peer: "172.30.32.2",
+      supervisorUrl: new URL("http://supervisor"),
+      supervisorSocket: undefined,
+      supervisorToken: undefined,
+      skipVersionCheck: false,
+    });
+    expect(result.warnings).toEqual([]);
+    // The same environment without the fact is still an error, and false is the default.
+    for (const options of [undefined, {}, { ingressVersionVerified: false }]) {
+      const refused = loadConfig(without, options);
+      expect(refused.ok).toBe(false);
+    }
+  });
+
+  it("does not take the verified fact from the environment", () => {
+    const { SUPERVISOR_TOKEN: _token, ...without } = ingress;
+    for (const name of [
+      "INGRESS_VERSION_VERIFIED",
+      "ADMIN_INGRESS_VERSION_VERIFIED",
+      "ADMIN_INGRESS_VERSION_CHECKED",
+      "SUPERVISOR_VERSION_VERIFIED",
+    ]) {
+      expect(errors({ ...without, [name]: "true" })).toEqual([
+        expect.stringContaining("ADMIN_INGRESS needs SUPERVISOR_TOKEN"),
+      ]);
+    }
+  });
+
+  it("takes SUPERVISOR_SOCKET instead of the URL and the token (decision D57)", () => {
+    const { SUPERVISOR_TOKEN: _token, ...withoutToken } = ingress;
+    const socket = "/run/supervisor/api/supervisor.sock";
+    const { config } = ok({ ...withoutToken, SUPERVISOR_SOCKET: socket });
+    expect(config.admin?.ingress?.supervisorSocket).toBe(socket);
+    expect(config.admin?.ingress?.supervisorToken).toBeUndefined();
+    // Home Assistant sets both; the socket wins and the token is not kept.
+    const both = ok({ ...ingress, SUPERVISOR_SOCKET: socket }).config.admin?.ingress;
+    expect(both?.supervisorSocket).toBe(socket);
+    expect(both?.supervisorToken).toBeUndefined();
+  });
+
+  it("refuses a socket path that is relative or too long, and a socket with a URL", () => {
+    for (const bad of ["supervisor.sock", "run/x.sock", `/${"a".repeat(120)}`]) {
+      expect(errors({ ...ingress, SUPERVISOR_SOCKET: bad })).toEqual([
+        expect.stringContaining("SUPERVISOR_SOCKET"),
+      ]);
+    }
+    expect(
+      errors({ ...ingress, SUPERVISOR_SOCKET: "/s.sock", SUPERVISOR_URL: "http://127.0.0.1:1" }),
+    ).toEqual(["SUPERVISOR_SOCKET and SUPERVISOR_URL cannot be used together."]);
+  });
+
+  it("ignores SUPERVISOR_SOCKET without ADMIN_INGRESS, as Home Assistant sets it for every app", () => {
+    const split = { ...minimal, ADMIN_TOKEN: "x".repeat(32), ADMIN_PORT: "3001" };
+    expect(ok({ ...split, SUPERVISOR_SOCKET: "/s.sock" }).config.admin?.ingress).toBeUndefined();
   });
 
   it("refuses the Ingress settings without ADMIN_INGRESS", () => {

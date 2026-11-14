@@ -103,7 +103,12 @@ export interface IngressConfig {
   peer: string;
   /** Where the Supervisor API answers, for the version check at start-up. */
   supervisorUrl: URL;
-  /** From the environment (SUPERVISOR_TOKEN); undefined only when the version check is skipped. */
+  /**
+   * The unix socket the Supervisor mounts into an app (SUPERVISOR_SOCKET, decision D57); it
+   * identifies the app, so no token is used. Set: it replaces the URL and the token.
+   */
+  supervisorSocket: string | undefined;
+  /** From the environment (SUPERVISOR_TOKEN); undefined with a socket or a skipped check. */
   supervisorToken: string | undefined;
   /** Tests and development only: start without asking the Supervisor for its version. */
   skipVersionCheck: boolean;
@@ -167,7 +172,19 @@ function isLocalOrPrivateHost(hostname: string): boolean {
   );
 }
 
-export function loadConfig(env: ConfigSource): ConfigResult {
+export interface LoadConfigOptions {
+  /**
+   * The Supervisor's version was already checked by the caller (decision I75: the Home Assistant
+   * start step asks as root before it drops privileges). A fact passed in-process, never read
+   * from the environment: Ingress mode then needs no Supervisor settings.
+   */
+  ingressVersionVerified?: boolean;
+}
+
+export function loadConfig(
+  env: ConfigSource,
+  { ingressVersionVerified = false }: LoadConfigOptions = {},
+): ConfigResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   const read = (name: string): string | undefined => {
@@ -365,8 +382,14 @@ export function loadConfig(env: ConfigSource): ConfigResult {
   const ingress = ((): IngressConfig | undefined => {
     const peerSetting = read("ADMIN_INGRESS_PEER") || undefined;
     const supervisorSetting = read("SUPERVISOR_URL") || undefined;
+    const socketSetting = read("SUPERVISOR_SOCKET") || undefined;
     const skipSetting = read("ADMIN_INGRESS_SKIP_VERSION_CHECK") || undefined;
+    // Keep in step with chooseSupervisorEndpoint in adapters/in/ha/start.ts: both validate the
+    // Supervisor URL and socket and can drift. This one also limits the socket path's length and
+    // refuses NULs.
     if (!ingressOn) {
+      // SUPERVISOR_SOCKET is ignored here: Home Assistant injects it into every app (like
+      // SUPERVISOR_TOKEN), so it says nothing about what the owner configured.
       for (const [name, value] of [
         ["ADMIN_INGRESS_PEER", peerSetting],
         ["SUPERVISOR_URL", supervisorSetting],
@@ -380,6 +403,22 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     if (isIP(peer) === 0) {
       errors.push(`ADMIN_INGRESS_PEER must be an IP address (IPv4 or IPv6), got "${peer}".`);
     }
+    if (socketSetting !== undefined) {
+      // sun_path holds 104 (macOS) to 108 (Linux) bytes including the terminator.
+      if (
+        !isAbsolute(socketSetting) ||
+        socketSetting.length > 100 ||
+        socketSetting.includes("\0")
+      ) {
+        errors.push(
+          `SUPERVISOR_SOCKET must be an absolute path of at most 100 characters, got "${socketSetting}".`,
+        );
+      }
+      if (supervisorSetting !== undefined) {
+        errors.push("SUPERVISOR_SOCKET and SUPERVISOR_URL cannot be used together.");
+      }
+      return finishIngress(peer, new URL(DEFAULTS.SUPERVISOR_URL), socketSetting);
+    }
     // The internal Supervisor API is plain http on the app network.
     const supervisorUrl = new URL(DEFAULTS.SUPERVISOR_URL);
     if (supervisorSetting !== undefined) {
@@ -389,17 +428,28 @@ export function loadConfig(env: ConfigSource): ConfigResult {
           errors.push(
             `SUPERVISOR_URL must be an origin without path, query or fragment, got "${supervisorSetting}".`,
           );
-        } else return finishIngress(peer, parsed);
+        } else return finishIngress(peer, parsed, undefined);
       }
       return undefined;
     }
-    return finishIngress(peer, supervisorUrl);
+    return finishIngress(peer, supervisorUrl, undefined);
   })();
 
-  function finishIngress(peer: string, supervisorUrl: URL): IngressConfig {
+  function finishIngress(
+    peer: string,
+    supervisorUrl: URL,
+    supervisorSocket: string | undefined,
+  ): IngressConfig {
     const skipVersionCheck = bool("ADMIN_INGRESS_SKIP_VERSION_CHECK", false);
-    const supervisorToken = read("SUPERVISOR_TOKEN") || undefined;
-    if (supervisorToken === undefined && !skipVersionCheck) {
+    // Home Assistant sets both; the socket identifies the app, so the token stays unused.
+    const supervisorToken =
+      supervisorSocket === undefined ? read("SUPERVISOR_TOKEN") || undefined : undefined;
+    if (
+      supervisorToken === undefined &&
+      supervisorSocket === undefined &&
+      !skipVersionCheck &&
+      !ingressVersionVerified
+    ) {
       errors.push(
         "ADMIN_INGRESS needs SUPERVISOR_TOKEN in the environment (Home Assistant sets it for apps) to ask the Supervisor for its version.",
       );
@@ -409,7 +459,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
         "ADMIN_INGRESS_SKIP_VERSION_CHECK=true: the Supervisor's version is not checked; a Supervisor older than 2026.10.4 lets a logged-in client forge the admin identity. Tests and development only.",
       );
     }
-    return { peer, supervisorUrl, supervisorToken, skipVersionCheck };
+    return { peer, supervisorUrl, supervisorSocket, supervisorToken, skipVersionCheck };
   }
 
   const admin = ((): Config["admin"] => {

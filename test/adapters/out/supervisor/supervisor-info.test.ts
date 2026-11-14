@@ -1,5 +1,8 @@
 // The Supervisor's version over its internal API (decision D56), against a fake Supervisor.
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { createSupervisorInfo } from "../../../../src/adapters/out/supervisor/supervisor-info.ts";
 
@@ -141,5 +144,121 @@ describe("asking the Supervisor for its version", () => {
       json(response, { data: { version: "2026.10.4", padding: "x".repeat(200_000) } }),
     );
     await expect(info(url).version()).rejects.toThrow("too large");
+  });
+});
+
+describe("asking the Supervisor over its unix socket", () => {
+  let directory: string | undefined;
+  afterEach(async () => {
+    if (directory !== undefined) await rm(directory, { recursive: true, force: true });
+    directory = undefined;
+  });
+
+  async function fakeSocket(
+    handle: (request: IncomingMessage, response: ServerResponse) => void,
+  ): Promise<string> {
+    directory = await mkdtemp(join(tmpdir(), "rr-sup-"));
+    const socketPath = join(directory, "supervisor.sock");
+    server = createServer(handle);
+    await new Promise<void>((resolve) => server?.listen(socketPath, resolve));
+    return socketPath;
+  }
+
+  const viaSocket = (socketPath: string, options: { timeoutMs?: number } = {}) =>
+    createSupervisorInfo({ socketPath, ...options });
+
+  it("reads data.version from /supervisor/info, without any token", async () => {
+    const seen: { url?: string | undefined; auth?: string | undefined; method?: string } = {};
+    const socketPath = await fakeSocket((request, response) => {
+      Object.assign(seen, {
+        url: request.url,
+        auth: request.headers.authorization,
+        method: request.method,
+      });
+      json(response, { result: "ok", data: { version: "2026.10.4" } });
+    });
+    expect(await viaSocket(socketPath).version()).toBe("2026.10.4");
+    expect(seen).toEqual({ url: "/supervisor/info", auth: undefined, method: "GET" });
+  });
+
+  it("fails on error statuses, a missing version and bad JSON", async () => {
+    const socketPath = await fakeSocket((request, response) => {
+      if (request.url === "/supervisor/info") json(response, { data: {} }, 403);
+    });
+    await expect(viaSocket(socketPath).version()).rejects.toThrow("HTTP 403");
+    await new Promise<void>((resolve) => server?.close(() => resolve()));
+    server = undefined;
+    const second = await fakeSocket((_request, response) => response.end("<html>"));
+    await expect(viaSocket(second).version()).rejects.toThrow("version");
+  });
+
+  it("does not follow a redirect", async () => {
+    let followed = false;
+    const socketPath = await fakeSocket((request, response) => {
+      if (request.url === "/elsewhere") {
+        followed = true;
+        json(response, { data: { version: "2026.10.4" } });
+      } else {
+        response.writeHead(302, { location: "/elsewhere" });
+        response.end();
+      }
+    });
+    await expect(viaSocket(socketPath).version()).rejects.toThrow("HTTP 302");
+    expect(followed).toBe(false);
+  });
+
+  it("names ENOENT for a missing socket and the code for a file that is no socket (ENOTSOCK on macOS, ECONNREFUSED on Linux)", async () => {
+    const socketPath = await fakeSocket((_request, response) => response.end());
+    await new Promise<void>((resolve) => server?.close(() => resolve()));
+    server = undefined;
+    // closing the server unlinks the socket file: ENOENT
+    await expect(viaSocket(socketPath).version()).rejects.toThrow("ENOENT");
+    // a file at the path that nobody listens on
+    const stale = join(directory ?? "", "stale.sock");
+    await writeFile(stale, "");
+    await expect(viaSocket(stale).version()).rejects.toThrow(/ENOTSOCK|ECONNREFUSED/);
+  });
+
+  it("keeps no connection open: it asks for close and uses no shared agent", async () => {
+    let connection: string | undefined;
+    const socketPath = await fakeSocket((request, response) => {
+      connection = request.headers.connection;
+      json(response, { data: { version: "2026.10.4" } });
+    });
+    const open = () =>
+      new Promise<number>((resolve, reject) =>
+        server?.getConnections((error, count) => (error ? reject(error) : resolve(count))),
+      );
+    expect(await viaSocket(socketPath).version()).toBe("2026.10.4");
+    expect(connection).toBe("close");
+    for (let waited = 0; waited < 1000 && (await open()) > 0; waited += 20) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(await open()).toBe(0);
+  });
+
+  it("gives up after the timeout", async () => {
+    const socketPath = await fakeSocket(() => {
+      // never answers
+    });
+    const started = Date.now();
+    await expect(viaSocket(socketPath, { timeoutMs: 150 }).version()).rejects.toThrow(/./);
+    expect(Date.now() - started).toBeLessThan(3000);
+  });
+
+  it("refuses an oversized answer", async () => {
+    const socketPath = await fakeSocket((_request, response) =>
+      json(response, { data: { version: "2026.10.4", padding: "x".repeat(200_000) } }),
+    );
+    await expect(viaSocket(socketPath).version()).rejects.toThrow("too large");
+  });
+
+  it("refuses an oversized answer without a content-length too", async () => {
+    const socketPath = await fakeSocket((_request, response) => {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.write("x".repeat(100_000));
+      response.end("x".repeat(100_000));
+    });
+    await expect(viaSocket(socketPath).version()).rejects.toThrow("too large");
   });
 });

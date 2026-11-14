@@ -89,8 +89,8 @@ export default defineConfig({
         },
       },
       {
-        // The composition root and the CLI are where the process talks to the console.
-        files: ["src/main.ts", "src/cli.ts", "test/**"],
+        // The composition root and the entry points are where the process talks to the console.
+        files: ["src/main.ts", "src/cli.ts", "src/ha-start.ts", "test/**"],
         rules: { "no-console": "off" },
       },
     ],

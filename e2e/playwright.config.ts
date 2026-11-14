@@ -3,7 +3,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /** Specs that need the 0.7 to 0.9 configuration (admin, invites, logins, email, federation): the third container. */
-const ACCOUNT_SPECS = /v0[789]\.spec\.ts$/;
+const ACCOUNT_SPECS = /v0[789][^/]*\.spec\.ts$/;
 
 export default defineConfig({
   testDir: ".",

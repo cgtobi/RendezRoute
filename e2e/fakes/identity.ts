@@ -25,9 +25,12 @@ interface Grant {
   nonce: string | null;
   /** Who the OIDC provider approves: a person of the spec's own when it set the cookie. */
   person: { sub: string; name: string };
+  /** Who the Mastodon-API server approves, by the same cookie. */
+  fediverse: typeof FEDIVERSE_PERSON;
 }
 const grants = new Map<string, Grant>();
-const tokens = new Set<string>();
+/** Access tokens of the Mastodon-API server and the account each stands for. */
+const tokens = new Map<string, typeof FEDIVERSE_PERSON>();
 const apps = new Map<string, { secret: string; redirectUri: string; scopes: string }>();
 
 const json = (response: ServerResponse, status: number, value: unknown) => {
@@ -41,15 +44,28 @@ async function formOf(request: IncomingMessage): Promise<URLSearchParams> {
   return new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
 }
 
+/** The value of the opt-in cookie `e2e-oidc-person` (letters, digits, - and _), if the browser sent it. */
+const cookieSub = (request: IncomingMessage) =>
+  /(?:^|; )e2e-oidc-person=([A-Za-z0-9_-]{1,64})(?:;|$)/.exec(request.headers.cookie ?? "")?.[1];
+
 /**
  * A spec that must not share the fixed OIDC person (another spec deletes that account while it
- * runs) sets the cookie `e2e-oidc-person` (`sub`, letters, digits, - and _) on this server.
+ * runs) sets the cookie `e2e-oidc-person` on this server.
  */
 function personOf(request: IncomingMessage) {
-  const sub = /(?:^|; )e2e-oidc-person=([A-Za-z0-9_-]{1,64})(?:;|$)/.exec(
-    request.headers.cookie ?? "",
-  )?.[1];
+  const sub = cookieSub(request);
   return sub === undefined ? OIDC_PERSON : { sub, name: `Person ${sub}` };
+}
+
+/**
+ * The same cookie for the Mastodon-API server: the account's id and username are the cookie's
+ * value, so the fediverse fake can serve that person's WebFinger and actor (fediverse.ts).
+ */
+function fediversePersonOf(request: IncomingMessage) {
+  const sub = cookieSub(request);
+  return sub === undefined
+    ? FEDIVERSE_PERSON
+    : { id: sub, username: sub, display_name: `Person ${sub}` };
 }
 
 /** The person agrees at once: back to the redirect URI with a code. */
@@ -67,6 +83,7 @@ function approve(
     challenge: url.searchParams.get("code_challenge") ?? "",
     nonce: url.searchParams.get("nonce"),
     person: personOf(request),
+    fediverse: fediversePersonOf(request),
   });
   const back = new URL(redirectUri);
   back.searchParams.set("code", code);
@@ -203,14 +220,15 @@ export async function handleIdentity(
       return true;
     }
     const token = base64url(randomBytes(24));
-    tokens.add(token);
+    tokens.set(token, grant.fediverse);
     json(response, 200, { access_token: token, token_type: "Bearer", scope: "read:accounts" });
     return true;
   }
   if (path === "/api/v1/accounts/verify_credentials") {
     const token = (request.headers.authorization ?? "").replace(/^Bearer /, "");
-    if (!tokens.has(token)) json(response, 401, { error: "The access token is invalid" });
-    else json(response, 200, { ...FEDIVERSE_PERSON, acct: FEDIVERSE_PERSON.username });
+    const account = tokens.get(token);
+    if (account === undefined) json(response, 401, { error: "The access token is invalid" });
+    else json(response, 200, { ...account, acct: account.username });
     return true;
   }
   if (path === "/oauth/revoke" && request.method === "POST") {

@@ -6,78 +6,19 @@
 // keeps its state across runs with E2E_KEEP.
 import { expect, test } from "@playwright/test";
 import { adminLogIn, inFiveDays, newInvite, oidcLogIn, person, useInvite } from "./helpers.ts";
+import {
+  addresses,
+  APP,
+  expectSigned,
+  FAKES_HOST,
+  objectId,
+  received,
+  recipientsOf,
+  send,
+  waitFor,
+} from "./federation.ts";
 
 const RUN = Date.now().toString(36);
-const FAKES = "http://localhost:8080";
-/** Where the browser reaches the fakes (it maps `fakes` to the local machine). */
-const FAKES_HOST = "http://fakes:8080";
-const APP = "http://localhost:3103";
-
-interface Activity {
-  type?: string;
-  id?: string;
-  to?: unknown;
-  cc?: unknown;
-  object?: { type?: string; id?: string; name?: string; content?: string } | string;
-}
-interface Received {
-  inbox: string | null;
-  headers: Record<string, string | string[] | undefined>;
-  activity: Activity;
-}
-
-/** A fetch to the fakes that fails clearly when the fake is down or slow. */
-async function fake(path: string, init?: RequestInit): Promise<Response> {
-  const answer = await fetch(`${FAKES}${path}`, { ...init, signal: AbortSignal.timeout(10_000) });
-  if (!answer.ok) throw new Error(`fakes ${path} answered ${answer.status}`);
-  return answer;
-}
-
-/** Append-only. */
-const received = async (to: string): Promise<Received[]> => {
-  return (await (await fake(`/fedi/received?to=${to}`)).json()) as Received[];
-};
-
-/** Every delivery from the app is signed and carries a digest; a missing header fails by name. */
-const expectSigned = (entries: Received[]) => {
-  for (const entry of entries) {
-    expect(entry.headers.signature, `signature on ${entry.activity.id}`).toBeTruthy();
-    expect(entry.headers.digest, `digest on ${entry.activity.id}`).toBeTruthy();
-  }
-};
-
-/** Polls the fake's inbox (the job runner delivers every 10 seconds) for a matching activity. */
-async function waitFor(to: string, match: (activity: Activity) => boolean): Promise<Activity> {
-  let found: Received | undefined;
-  await expect
-    .poll(
-      async () => {
-        found = (await received(to)).find((entry) => match(entry.activity));
-        return found !== undefined;
-      },
-      { timeout: 45_000, intervals: [1_000] },
-    )
-    .toBe(true);
-  if (found === undefined) throw new Error(`no matching activity for ${to}`);
-  expectSigned([found]);
-  return found.activity;
-}
-
-/** The address of an activity's object, whether it is embedded or a bare address. */
-const objectId = (activity: Activity) =>
-  typeof activity.object === "string" ? activity.object : activity.object?.id;
-
-/** A `to` that may be one address or a list, as a list. */
-const addresses = (value: unknown): string[] =>
-  Array.isArray(value) ? (value as string[]) : typeof value === "string" ? [value] : [];
-
-async function send(as: string, path: string, activity: Record<string, unknown>) {
-  const answer = await fake("/fedi/send", {
-    method: "POST",
-    body: JSON.stringify({ as, path, activity }),
-  });
-  return (await answer.json()) as { status: number; body: string };
-}
 
 test("Federation: follow, a plan for followers, a remote join, a private exact start, deletion", async ({
   browser,
@@ -188,15 +129,27 @@ test("Federation: follow, a plan for followers, a remote join, a private exact s
   expect(JSON.stringify(event.location)).not.toMatch(/\d\.\d{3,}/);
   // The app's own area point for this route (not the exact start), at two decimals.
   expect(event.location).toMatchObject({ latitude: 47.12, longitude: 10.99 });
-  const secrets = [START, GPX_LAT, GPX_LNG, LATER_LAT_20, LATER_LAT_39, "/federation/notes/"];
-  // Only this run's activities.
+  // Run-unique secrets (this run's start, route points) are checked on every delivery after the
+  // snapshot, wherever it was addressed. Only the Note marker, which other parallel specs' Notes
+  // also carry, is limited to what names this person or their host's followers.
+  const secrets = [START, GPX_LAT, GPX_LNG, LATER_LAT_20, LATER_LAT_39];
+  const ours = [fanId, `${actor}/followers`];
   const fresh = async () => {
     const entries = (await received(fan)).slice(oldLength);
     expectSigned(entries);
     return entries;
   };
   const everything = async () => JSON.stringify(await fresh());
+  const everythingToUs = async () =>
+    JSON.stringify(
+      (await fresh()).filter(
+        (entry) =>
+          entry.inbox === fan ||
+          recipientsOf(entry.activity).some((address) => ours.includes(address)),
+      ),
+    );
   for (const secret of secrets) expect(await everything()).not.toContain(secret);
+  expect(await everythingToUs()).not.toContain("/federation/notes/");
   // The exact start and the route reach nobody but the person, and only inside a Note.
   const onlyInNotesToFan = async () => {
     for (const entry of await fresh()) {
@@ -204,6 +157,7 @@ test("Federation: follow, a plan for followers, a remote join, a private exact s
       if (secrets.some((secret) => text.includes(secret))) {
         expect(entry.activity.object).toMatchObject({ type: "Note" });
         expect(addresses(entry.activity.to)).toEqual([fanId]);
+        expect(addresses(entry.activity.cc)).toEqual([]);
       }
     }
   };

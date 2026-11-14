@@ -3,5 +3,16 @@
 # addresses would undo the app's own care. If you need logs, redact the URI and client address.
 runs.example.org {
 	encode zstd gzip
+
+	# Optional: reach the instance admin pages (/admin) only from your own addresses or VPN; everyone
+	# else gets a plain 404. Uncomment and replace the example addresses (single IPs or CIDR ranges).
+	# This limits who can reach the pages; logging in still needs ADMIN_TOKEN. Needs TRUST_PROXY=true
+	# in compose.yaml (set there by default), and Caddy must see the visitors' real addresses.
+	# @admin_denied {
+	# 	path /admin /admin/*
+	# 	not remote_ip 203.0.113.7 10.8.0.0/24
+	# }
+	# respond @admin_denied 404
+
 	reverse_proxy rendezroute:3000
 }

@@ -16,6 +16,7 @@ import { randomBytes } from "node:crypto";
 import { createGpxRouteParser } from "../../src/adapters/out/gpx/route-parser.ts";
 import { createApp } from "../../src/adapters/in/http/app.tsx";
 import { createAdminApp } from "../../src/adapters/in/http/admin-app.tsx";
+import { createIngressAdminAuth } from "../../src/adapters/out/admin/ingress-admin-auth.ts";
 import { createTokenAdminAuth } from "../../src/adapters/out/admin/token-admin-auth.ts";
 import {
   createFlagLimits,
@@ -46,7 +47,7 @@ import {
 import { createReportRepository } from "../../src/adapters/out/sqlite/reports.ts";
 import { createResponseRepository } from "../../src/adapters/out/sqlite/responses.ts";
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
-import { adminPagesOrigin, type Config, loadConfig } from "../../src/config.ts";
+import { adminConfigured, adminPagesOrigin, type Config, loadConfig } from "../../src/config.ts";
 import type { PlanDeps } from "../../src/application/plans.ts";
 import type { PreviewRenderer, WeatherProvider } from "../../src/application/ports.ts";
 import { createLookupHasher } from "../../src/adapters/out/crypto/lookup-hasher.ts";
@@ -295,17 +296,24 @@ export async function createTestApp({
           joinLimits: createJoinLimits(() => clock.now().getTime()),
           replyLimits: createReplyLimits(() => clock.now().getTime()),
           flagLimits: createFlagLimits(() => clock.now().getTime()),
-          reporting: config.adminToken !== undefined,
+          reporting: adminConfigured(config),
         });
 
   // As in main.ts: both CSRF keys come from one keyring, each for its own purpose.
   const csrfKeyring = createKeyring(1, [[1, randomBytes(32)]]);
+  const publicCsrfKey = deriveKey(csrfKeyring, "csrf");
+  const adminCsrfKey = deriveKey(csrfKeyring, "csrf-admin");
   const rateLimits = createRateLimits(() => clock.now().getTime());
   const logger = createLogger({ write: (line) => logs.push(line) });
-  const adminAuth =
-    config.adminToken === undefined
+  const ingress =
+    config.admin?.ingress === undefined
       ? undefined
-      : createTokenAdminAuth(config.adminToken, { split: config.admin !== undefined });
+      : createIngressAdminAuth({ peer: config.admin.ingress.peer });
+  const adminAuth =
+    ingress ??
+    (config.adminToken === undefined
+      ? undefined
+      : createTokenAdminAuth(config.adminToken, { split: config.admin !== undefined }));
   const app = createApp({
     federation,
     config,
@@ -315,7 +323,7 @@ export async function createTestApp({
     rateLimits,
     vapidPublicKey,
     adminAuth,
-    csrfKey: deriveKey(csrfKeyring, "csrf"),
+    csrfKey: publicCsrfKey,
     accounts: {
       identities,
       pendingLogins,
@@ -355,17 +363,20 @@ export async function createTestApp({
       ? undefined
       : createAdminApp({
           config,
-          csrfKey: deriveKey(csrfKeyring, "csrf-admin"),
+          csrfKey: adminCsrfKey,
           logger,
           planDeps,
           rateLimits,
           adminAuth,
+          ingress,
         });
   return {
     app,
     adminApp,
     database,
     clock,
+    publicCsrfKey,
+    adminCsrfKey,
     logs,
     config,
     geocoder,

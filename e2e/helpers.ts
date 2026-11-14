@@ -18,6 +18,8 @@ const ALLOWED_HOSTS = new Set([
   "localhost:3103",
   "localhost:3104",
   "localhost:3105",
+  "localhost:3106",
+  "localhost:8080",
   "fakes:8080",
 ]);
 

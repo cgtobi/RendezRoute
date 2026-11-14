@@ -63,11 +63,14 @@ export function AdminHome({
   notFound,
   openReports,
   invites,
+  logout = true,
 }: {
   t: Translate;
   csrfToken: string;
   /** Relative path to /admin/ from the current page. */
   adminDir: string;
+  /** The log out button; left out behind Home Assistant Ingress, which has no session here. */
+  logout?: boolean;
   deleted: boolean;
   /** A plan, report or invite the admin asked for that does not exist (any more). */
   notFound: "plan" | "report" | "invite" | undefined;
@@ -123,14 +126,16 @@ export function AdminHome({
       {invites !== undefined && (
         <InvitesSection {...invites} t={t} csrfToken={csrfToken} adminDir={adminDir} />
       )}
-      <section>
-        <form method="post" action={`${adminDir}logout`}>
-          {csrf}
-          <button type="submit" class="secondary">
-            {t("admin.logout")}
-          </button>
-        </form>
-      </section>
+      {logout && (
+        <section>
+          <form method="post" action={`${adminDir}logout`}>
+            {csrf}
+            <button type="submit" class="secondary">
+              {t("admin.logout")}
+            </button>
+          </form>
+        </section>
+      )}
     </section>
   );
 }

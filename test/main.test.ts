@@ -1,4 +1,9 @@
 import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  createServer as createHttpServer,
+  request as httpRequest,
+  type ServerResponse,
+} from "node:http";
 import { createServer, createConnection } from "node:net";
 import { networkInterfaces, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -419,5 +424,200 @@ describe("the admin listener (decision D55)", () => {
       ok: false,
       errors: [expect.stringContaining("ADMIN_PORT must differ from the public port")],
     });
+  });
+});
+
+describe("Home Assistant Ingress on the admin listener (decision D56)", () => {
+  const fakes: ReturnType<typeof createHttpServer>[] = [];
+  afterEach(async () => {
+    for (const fake of fakes.splice(0)) {
+      fake.closeAllConnections();
+      await new Promise<void>((resolve) => fake.close(() => resolve()));
+    }
+  });
+
+  /** A fake Supervisor on a free 127.0.0.1 port; `seen` collects the calls it received. */
+  async function fakeSupervisor(
+    answer: (response: ServerResponse) => void,
+  ): Promise<{ url: string; seen: { path?: string; auth?: string }[] }> {
+    const seen: { path?: string; auth?: string }[] = [];
+    const fake = createHttpServer((request, response) => {
+      seen.push({ path: request.url ?? "", auth: request.headers.authorization ?? "" });
+      answer(response);
+    });
+    fakes.push(fake);
+    await new Promise<void>((resolve) => fake.listen(0, "127.0.0.1", resolve));
+    const address = fake.address();
+    if (address === null || typeof address === "string") throw new Error("no address");
+    return { url: `http://127.0.0.1:${address.port}`, seen };
+  }
+  const versionOf = (version: string) => (response: ServerResponse) => {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ result: "ok", data: { version } }));
+  };
+
+  async function startIngress(
+    supervisorUrl: string,
+    extra: Record<string, string> = {},
+  ): Promise<{ result: Awaited<ReturnType<typeof start>>; adminPort: number }> {
+    const adminPort = await freePort();
+    const result = await start(
+      env({
+        ADMIN_INGRESS: "true",
+        ADMIN_PORT: String(adminPort),
+        ADMIN_BIND: "127.0.0.1",
+        ADMIN_INGRESS_PEER: "127.0.0.1",
+        SUPERVISOR_URL: supervisorUrl,
+        SUPERVISOR_TOKEN: "the-supervisor-token",
+        POSTING_MODE: "invite",
+        ...extra,
+      }),
+    );
+    return { result, adminPort };
+  }
+
+  /** A raw request, so the header names keep their letter case on the wire. */
+  function raw(url: URL, headers: Record<string, string>, method = "GET", body?: string) {
+    return new Promise<{
+      status: number;
+      headers: Record<string, string | string[] | undefined>;
+      body: string;
+    }>((resolve, reject) => {
+      const request = httpRequest(url, { method, headers }, (response) => {
+        let text = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => (text += chunk));
+        response.on("end", () =>
+          resolve({ status: response.statusCode ?? 0, headers: response.headers, body: text }),
+        );
+      });
+      request.on("error", reject);
+      request.end(body);
+    });
+  }
+
+  it("asks the Supervisor, starts, and serves /admin/ to the trusted peer's admin", async () => {
+    const supervisor = await fakeSupervisor(versionOf("2026.10.4"));
+    const { result, adminPort } = await startIngress(supervisor.url);
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    expect(supervisor.seen).toEqual([
+      { path: "/supervisor/info", auth: "Bearer the-supervisor-token" },
+    ]);
+    expect(result.server.adminAddress).toBe(`127.0.0.1:${adminPort}`);
+    expect(result.server.adminIngressPeer).toBe("127.0.0.1");
+    const admin = result.server.adminUrl;
+    if (admin === undefined) throw new Error("no admin listener");
+
+    // Header names are case-insensitive on the wire; the Supervisor's own spelling and others work.
+    for (const name of ["X-Remote-User-Groups", "x-remote-user-groups", "X-REMOTE-USER-GROUPS"]) {
+      const page = await raw(new URL("/admin/", admin), {
+        [name]: "system-users,system-admin",
+        "x-remote-user-id": "user-a",
+      });
+      expect([name, page.status]).toEqual([name, 200]);
+      expect(page.headers["set-cookie"]).toBeUndefined();
+      expect(page.headers["content-security-policy"]).toContain("frame-ancestors 'self'");
+    }
+    const withoutGroups = await raw(new URL("/admin/", admin), {});
+    expect(withoutGroups.status).toBe(403);
+    expect(withoutGroups.body).toContain("2026.10.4");
+    const withoutUser = await raw(new URL("/admin/", admin), {
+      "x-remote-user-groups": "system-admin",
+    });
+    expect(withoutUser.status).toBe(403);
+    expect(withoutUser.body).toContain("2026.10.4");
+
+    // The admin pages are not on the public port.
+    expect((await fetch(new URL("/admin/", result.server.url))).status).toBe(404);
+
+    // A form post, as the browser sends it through the Supervisor: the token from the page, no cookie.
+    const identity = { "x-remote-user-groups": "system-admin", "x-remote-user-id": "user-a" };
+    const home = await raw(new URL("/admin/", admin), identity);
+    const csrf = /name="_csrf" value="([^"]+)"/.exec(home.body)?.[1] ?? "";
+    expect(csrf).not.toBe("");
+    const find = (headers: Record<string, string>, token: string) =>
+      raw(
+        new URL("/admin/plans", admin),
+        {
+          ...identity,
+          "content-type": "application/x-www-form-urlencoded",
+          ...headers,
+        },
+        "POST",
+        `plan=nonsense&_csrf=${encodeURIComponent(token)}`,
+      );
+    expect((await find({}, "")).status).toBe(403);
+    expect((await find({ "sec-fetch-site": "cross-site", origin: "null" }, csrf)).status).toBe(403);
+    expect((await find({ "sec-fetch-site": "same-origin", origin: "null" }, csrf)).status).toBe(
+      422,
+    );
+    expect((await find({ origin: "null" }, csrf)).status).toBe(422);
+  });
+
+  it("trusts no other peer, whatever headers it sends", async () => {
+    const supervisor = await fakeSupervisor(versionOf("2026.11.0"));
+    const { result } = await startIngress(supervisor.url, { ADMIN_INGRESS_PEER: "172.30.32.2" });
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    const admin = result.server.adminUrl;
+    if (admin === undefined) throw new Error("no admin listener");
+    const forged = await raw(new URL("/admin/", admin), {
+      "x-remote-user-groups": "system-admin",
+      "x-forwarded-for": "172.30.32.2",
+    });
+    expect(forged.status).toBe(403);
+    expect(forged.body).not.toContain("2026.10.4");
+  });
+
+  it("refuses a Supervisor that is too old, and starts nothing", async () => {
+    const supervisor = await fakeSupervisor(versionOf("2026.10.3"));
+    const { result, adminPort } = await startIngress(supervisor.url);
+    expect(result).toEqual({
+      ok: false,
+      kind: "supervisor",
+      errors: ["Ingress mode needs Home Assistant Supervisor 2026.10.4 or newer; found 2026.10.3."],
+    });
+    expect(await accepts("127.0.0.1", adminPort)).toBe(false);
+  });
+
+  it("refuses a dev, unreadable, unauthorized or redirecting Supervisor", async () => {
+    const answers = [
+      versionOf("dev"),
+      versionOf("banana"),
+      (response: ServerResponse) => {
+        response.writeHead(401);
+        response.end();
+      },
+      (response: ServerResponse) => {
+        response.writeHead(302, { location: "/elsewhere" });
+        response.end();
+      },
+    ];
+    for (const answer of answers) {
+      const supervisor = await fakeSupervisor(answer);
+      const { result } = await startIngress(supervisor.url);
+      expect(result.ok ? [] : result.errors.map((e) => e.startsWith("Ingress mode"))).toEqual([
+        true,
+      ]);
+    }
+  });
+
+  it("says so when the Supervisor cannot be reached, and starts nothing", async () => {
+    const { result, adminPort } = await startIngress(`http://127.0.0.1:${await freePort()}`);
+    if (result.ok) throw new Error("started");
+    expect(result.kind).toBe("supervisor");
+    expect(result.errors[0]).toContain("could not ask the Supervisor");
+    expect(result.errors[0]).toContain("ECONNREFUSED");
+    expect(result.errors[0]).not.toContain("the-supervisor-token");
+    expect(await accepts("127.0.0.1", adminPort)).toBe(false);
+  });
+
+  it("does not ask when the version check is skipped", async () => {
+    const supervisor = await fakeSupervisor(versionOf("2026.1.0"));
+    const { result } = await startIngress(supervisor.url, {
+      ADMIN_INGRESS_SKIP_VERSION_CHECK: "true",
+    });
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    expect(supervisor.seen).toEqual([]);
+    expect(result.warnings.join(" ")).toContain("ADMIN_INGRESS_SKIP_VERSION_CHECK=true");
   });
 });

@@ -67,6 +67,121 @@ describe("ADMIN_TOKEN (spec 7 Moderation)", () => {
   });
 });
 
+describe("ADMIN_INGRESS (decision D56)", () => {
+  const ingress = {
+    ...minimal,
+    ADMIN_INGRESS: "true",
+    ADMIN_PORT: "8099",
+    ADMIN_BIND: "0.0.0.0",
+    SUPERVISOR_TOKEN: "supervisor-token",
+  };
+
+  it("changes nothing while it is unset or false", () => {
+    expect(ok(minimal).config.admin).toBeUndefined();
+    const token = "x".repeat(32);
+    const split = { ...minimal, ADMIN_TOKEN: token, ADMIN_PORT: "3001" };
+    expect(ok(split).config.admin?.ingress).toBeUndefined();
+    expect(ok({ ...split, ADMIN_INGRESS: "false" }).config.admin?.ingress).toBeUndefined();
+    expect(errors({ ...minimal, ADMIN_PORT: "3001" })).toEqual([
+      "ADMIN_PORT needs ADMIN_TOKEN: the admin pages need a way to log in.",
+    ]);
+  });
+
+  it("is on with its defaults, and needs no ADMIN_TOKEN", () => {
+    const { config } = ok(ingress);
+    expect(config.adminToken).toBeUndefined();
+    expect(config.admin).toEqual({
+      port: 8099,
+      bind: "0.0.0.0",
+      url: undefined,
+      ingress: {
+        peer: "172.30.32.2",
+        supervisorUrl: new URL("http://supervisor"),
+        supervisorToken: "supervisor-token",
+        skipVersionCheck: false,
+      },
+    });
+  });
+
+  it("takes the peer, the Supervisor URL and the skip flag", () => {
+    for (const peer of ["127.0.0.1", "::1", "fd00::2", "::ffff:172.30.32.2"]) {
+      expect(ok({ ...ingress, ADMIN_INGRESS_PEER: peer }).config.admin?.ingress?.peer).toBe(peer);
+    }
+    const { config, warnings } = ok({
+      ...ingress,
+      SUPERVISOR_URL: "http://127.0.0.1:4000",
+      ADMIN_INGRESS_SKIP_VERSION_CHECK: "true",
+    });
+    expect(config.admin?.ingress?.supervisorUrl.origin).toBe("http://127.0.0.1:4000");
+    expect(config.admin?.ingress?.skipVersionCheck).toBe(true);
+    expect(warnings.join(" ")).toContain("ADMIN_INGRESS_SKIP_VERSION_CHECK=true");
+  });
+
+  it("needs ADMIN_PORT", () => {
+    const { ADMIN_PORT: _port, ADMIN_BIND: _bind, ...without } = ingress;
+    expect(errors(without)).toEqual(["ADMIN_INGRESS needs ADMIN_PORT."]);
+  });
+
+  it("is mutually exclusive with ADMIN_TOKEN", () => {
+    expect(errors({ ...ingress, ADMIN_TOKEN: "x".repeat(32) })).toEqual([
+      "ADMIN_INGRESS and ADMIN_TOKEN cannot be used together: Home Assistant signs the admin in.",
+    ]);
+  });
+
+  it("needs ADMIN_BIND to be set explicitly", () => {
+    const { ADMIN_BIND: _bind, ...without } = ingress;
+    expect(errors(without)).toEqual([
+      "ADMIN_INGRESS needs ADMIN_BIND: the Supervisor connects from outside the container.",
+    ]);
+  });
+
+  it("refuses a peer that is not an IP address", () => {
+    for (const bad of ["supervisor", "172.30.32", "172.30.32.2/24", "256.1.1.1", "[::1]"]) {
+      expect(errors({ ...ingress, ADMIN_INGRESS_PEER: bad })).toEqual([
+        expect.stringContaining("ADMIN_INGRESS_PEER must be an IP address"),
+      ]);
+    }
+  });
+
+  it("refuses a Supervisor URL that is not an http(s) origin", () => {
+    for (const bad of ["supervisor", "ftp://supervisor", "http://u:p@supervisor", "http://s/x"]) {
+      expect(errors({ ...ingress, SUPERVISOR_URL: bad })).toEqual([
+        expect.stringContaining("SUPERVISOR_URL"),
+      ]);
+    }
+  });
+
+  it("needs SUPERVISOR_TOKEN unless the version check is skipped", () => {
+    const { SUPERVISOR_TOKEN: _token, ...without } = ingress;
+    expect(errors(without)).toEqual([
+      "ADMIN_INGRESS needs SUPERVISOR_TOKEN in the environment (Home Assistant sets it for apps) to ask the Supervisor for its version.",
+    ]);
+    const skipped = ok({ ...without, ADMIN_INGRESS_SKIP_VERSION_CHECK: "true" });
+    expect(skipped.config.admin?.ingress?.supervisorToken).toBeUndefined();
+  });
+
+  it("refuses the Ingress settings without ADMIN_INGRESS", () => {
+    const split = { ...minimal, ADMIN_TOKEN: "x".repeat(32), ADMIN_PORT: "3001" };
+    for (const name of [
+      "ADMIN_INGRESS_PEER",
+      "SUPERVISOR_URL",
+      "ADMIN_INGRESS_SKIP_VERSION_CHECK",
+    ]) {
+      const value =
+        name === "ADMIN_INGRESS_PEER"
+          ? "127.0.0.1"
+          : name === "SUPERVISOR_URL"
+            ? "http://s"
+            : "true";
+      expect(errors({ ...split, [name]: value })).toEqual([`${name} needs ADMIN_INGRESS.`]);
+    }
+  });
+
+  it("allows POSTING_MODE=invite, as the admin exists", () => {
+    expect(ok({ ...ingress, POSTING_MODE: "invite" }).config.postingMode).toBe("invite");
+  });
+});
+
 describe("ADMIN_PORT, ADMIN_BIND and ADMIN_URL (decision D55)", () => {
   const token = "x".repeat(32);
   const split = { ...minimal, ADMIN_TOKEN: token, ADMIN_PORT: "3001" };
@@ -263,7 +378,7 @@ describe("POSTING_MODE (spec 7 Moderation)", () => {
       "invite",
     );
     expect(errors({ ...minimal, POSTING_MODE: "invite" })).toEqual([
-      "POSTING_MODE=invite needs ADMIN_TOKEN: only the instance admin can create invite links.",
+      "POSTING_MODE=invite needs ADMIN_TOKEN (or ADMIN_INGRESS in the Home Assistant app): only the instance admin can create invite links.",
     ]);
   });
 

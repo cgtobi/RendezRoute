@@ -48,7 +48,9 @@ export interface Config {
    * listener as before. `url` is where browsers reach it, for the report alert email and the
    * CSRF origin check.
    */
-  admin: { port: number; bind: string; url: URL | undefined } | undefined;
+  admin:
+    | { port: number; bind: string; url: URL | undefined; ingress: IngressConfig | undefined }
+    | undefined;
   /** Who may create plans (spec 7 Moderation). */
   postingMode: PostingMode;
   /** Only plans that belong to an account may be public (spec 7 Visibility and Nearby plans). */
@@ -93,6 +95,25 @@ export interface OidcConfig {
 }
 
 /**
+ * Home Assistant Ingress as the way in to the admin listener (decision D56); undefined: the
+ * admin signs in with ADMIN_TOKEN.
+ */
+export interface IngressConfig {
+  /** The only TCP peer whose identity headers count: the Supervisor (an IP literal as given). */
+  peer: string;
+  /** Where the Supervisor API answers, for the version check at start-up. */
+  supervisorUrl: URL;
+  /** From the environment (SUPERVISOR_TOKEN); undefined only when the version check is skipped. */
+  supervisorToken: string | undefined;
+  /** Tests and development only: start without asking the Supervisor for its version. */
+  skipVersionCheck: boolean;
+}
+
+/** Whether the instance has an admin at all (reports, invites): a token or Home Assistant Ingress. */
+export const adminConfigured = (config: Config): boolean =>
+  config.adminToken !== undefined || config.admin?.ingress !== undefined;
+
+/**
  * Where the report alert email sends the operator (decision D55): the admin pages on the public
  * origin, on ADMIN_URL's when the admin listener has its own address, or nowhere known (undefined).
  */
@@ -118,6 +139,8 @@ const DEFAULTS = {
   GEOCODER_URL: "https://nominatim.openstreetmap.org",
   WEATHER_URL: "https://api.open-meteo.com",
   TELEGRAM_API_URL: "https://api.telegram.org",
+  ADMIN_INGRESS_PEER: "172.30.32.2",
+  SUPERVISOR_URL: "http://supervisor",
 } as const;
 
 const MAX_INSTANCE_NAME_LENGTH = 60;
@@ -338,11 +361,63 @@ export function loadConfig(env: ConfigSource): ConfigResult {
   // ADMIN_PORT, ADMIN_BIND, ADMIN_URL: the admin pages on a second listener (decision D55). Without
   // ADMIN_PORT the other two are a mistake, not a no-op: they would suggest a listener that is not
   // there.
+  const ingressOn = bool("ADMIN_INGRESS", false);
+  const ingress = ((): IngressConfig | undefined => {
+    const peerSetting = read("ADMIN_INGRESS_PEER") || undefined;
+    const supervisorSetting = read("SUPERVISOR_URL") || undefined;
+    const skipSetting = read("ADMIN_INGRESS_SKIP_VERSION_CHECK") || undefined;
+    if (!ingressOn) {
+      for (const [name, value] of [
+        ["ADMIN_INGRESS_PEER", peerSetting],
+        ["SUPERVISOR_URL", supervisorSetting],
+        ["ADMIN_INGRESS_SKIP_VERSION_CHECK", skipSetting],
+      ] as const) {
+        if (value !== undefined) errors.push(`${name} needs ADMIN_INGRESS.`);
+      }
+      return undefined;
+    }
+    const peer = peerSetting ?? DEFAULTS.ADMIN_INGRESS_PEER;
+    if (isIP(peer) === 0) {
+      errors.push(`ADMIN_INGRESS_PEER must be an IP address (IPv4 or IPv6), got "${peer}".`);
+    }
+    // The internal Supervisor API is plain http on the app network.
+    const supervisorUrl = new URL(DEFAULTS.SUPERVISOR_URL);
+    if (supervisorSetting !== undefined) {
+      const parsed = httpUrl("SUPERVISOR_URL", supervisorSetting);
+      if (parsed !== undefined && rejectCredentials("SUPERVISOR_URL", parsed)) {
+        if (parsed.pathname !== "/" || parsed.search !== "" || parsed.hash !== "") {
+          errors.push(
+            `SUPERVISOR_URL must be an origin without path, query or fragment, got "${supervisorSetting}".`,
+          );
+        } else return finishIngress(peer, parsed);
+      }
+      return undefined;
+    }
+    return finishIngress(peer, supervisorUrl);
+  })();
+
+  function finishIngress(peer: string, supervisorUrl: URL): IngressConfig {
+    const skipVersionCheck = bool("ADMIN_INGRESS_SKIP_VERSION_CHECK", false);
+    const supervisorToken = read("SUPERVISOR_TOKEN") || undefined;
+    if (supervisorToken === undefined && !skipVersionCheck) {
+      errors.push(
+        "ADMIN_INGRESS needs SUPERVISOR_TOKEN in the environment (Home Assistant sets it for apps) to ask the Supervisor for its version.",
+      );
+    }
+    if (skipVersionCheck) {
+      warnings.push(
+        "ADMIN_INGRESS_SKIP_VERSION_CHECK=true: the Supervisor's version is not checked; a Supervisor older than 2026.10.4 lets a logged-in client forge the admin identity. Tests and development only.",
+      );
+    }
+    return { peer, supervisorUrl, supervisorToken, skipVersionCheck };
+  }
+
   const admin = ((): Config["admin"] => {
     const portSetting = read("ADMIN_PORT") || undefined;
     const bindSetting = read("ADMIN_BIND") || undefined;
     const urlSetting = read("ADMIN_URL") || undefined;
     if (portSetting === undefined) {
+      if (ingressOn) errors.push("ADMIN_INGRESS needs ADMIN_PORT.");
       if (bindSetting !== undefined) errors.push("ADMIN_BIND needs ADMIN_PORT.");
       if (urlSetting !== undefined) errors.push("ADMIN_URL needs ADMIN_PORT.");
       return undefined;
@@ -353,8 +428,18 @@ export function loadConfig(env: ConfigSource): ConfigResult {
     } else if (port === DEFAULT_PORT) {
       errors.push(`ADMIN_PORT must differ from the public port ${DEFAULT_PORT}.`);
     }
-    // Until Home Assistant Ingress is another way in (decision D54).
-    if (adminToken === undefined) {
+    if (ingressOn) {
+      if (adminToken !== undefined) {
+        errors.push(
+          "ADMIN_INGRESS and ADMIN_TOKEN cannot be used together: Home Assistant signs the admin in.",
+        );
+      }
+      if (bindSetting === undefined) {
+        errors.push(
+          "ADMIN_INGRESS needs ADMIN_BIND: the Supervisor connects from outside the container.",
+        );
+      }
+    } else if (adminToken === undefined) {
       errors.push("ADMIN_PORT needs ADMIN_TOKEN: the admin pages need a way to log in.");
     }
     const bracketed = /^\[(.+)\]$/.exec(bindSetting ?? "")?.[1];
@@ -383,7 +468,7 @@ export function loadConfig(env: ConfigSource): ConfigResult {
         }
       }
     }
-    return { port, bind: bind ?? "127.0.0.1", url };
+    return { port, bind: bind ?? "127.0.0.1", url, ingress };
   })();
 
   // OIDC_*: issuer and client ID together; the issuer is trusted configuration (decision D23).
@@ -443,16 +528,16 @@ export function loadConfig(env: ConfigSource): ConfigResult {
   }
   const fediverseLogin = fediverseOn ? { servers } : undefined;
 
-  // POSTING_MODE: invite links come from the admin page, so invite needs ADMIN_TOKEN; logged_in
-  // needs a way to log in.
+  // POSTING_MODE: invite links come from the admin page, so invite needs an admin (ADMIN_TOKEN or
+  // ADMIN_INGRESS); logged_in needs a way to log in.
   const postingSetting = read("POSTING_MODE") || "anyone";
   const postingMode = (POSTING_MODES as readonly string[]).includes(postingSetting)
     ? (postingSetting as PostingMode)
     : undefined;
   if (postingMode === undefined) errors.push("POSTING_MODE must be anyone, invite or logged_in.");
-  if (postingMode === "invite" && adminToken === undefined) {
+  if (postingMode === "invite" && adminToken === undefined && !ingressOn) {
     errors.push(
-      "POSTING_MODE=invite needs ADMIN_TOKEN: only the instance admin can create invite links.",
+      "POSTING_MODE=invite needs ADMIN_TOKEN (or ADMIN_INGRESS in the Home Assistant app): only the instance admin can create invite links.",
     );
   }
   if (

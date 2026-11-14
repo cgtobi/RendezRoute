@@ -87,6 +87,7 @@ export const de: Messages = {
   "error.rateLimited":
     "Zu viele Anfragen aus deinem Netzwerk. Bitte versuche es in ein paar Minuten noch einmal.",
   "error.notFound": "Diese Seite gibt es nicht.",
+  "error.forbidden": "Du hast keinen Zugriff auf diese Seite.",
   "error.badRequest":
     "Das Formular konnte nicht verarbeitet werden. Bitte lade die Seite neu und versuche es noch einmal.",
 
@@ -983,6 +984,7 @@ export const de: Messages = {
   "admin.login": "Anmelden",
   "admin.loginFailed": "Dieses Token stimmt nicht.",
   "admin.logout": "Abmelden",
+  "admin.ingressDenied": "Benötigt Home Assistant 2026.10.4 oder neuer und ein Administratorkonto.",
   "admin.findPlan": "Treffen finden",
   "admin.findPlanHint": "Füge den Link oder die ID des Treffens ein.",
   "admin.findPlanSubmit": "Treffen finden",

@@ -83,6 +83,7 @@ export const en = {
   "error.busy": "The server is busy. Please try again in a few seconds.",
   "error.rateLimited": "Too many requests from your network. Please try again in a few minutes.",
   "error.notFound": "This page does not exist.",
+  "error.forbidden": "You do not have access to this page.",
   "error.badRequest": "The form could not be processed. Please reload the page and try again.",
 
   "activity.run": "Run",
@@ -945,6 +946,7 @@ export const en = {
   "admin.login": "Log in",
   "admin.loginFailed": "That token is not right.",
   "admin.logout": "Log out",
+  "admin.ingressDenied": "Needs Home Assistant 2026.10.4 or newer and an administrator account.",
   "admin.findPlan": "Find a plan",
   "admin.findPlanHint": "Paste the plan’s link or its ID.",
   "admin.findPlanSubmit": "Find plan",

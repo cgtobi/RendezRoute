@@ -13,6 +13,7 @@ import {
   viewPlanAsAdmin,
 } from "../../../../application/admin.ts";
 import { createInvite, listInvites, revokeInvite } from "../../../../application/posting.ts";
+import type { IngressAdminAuth } from "../../../../application/ports.ts";
 import type { Config } from "../../../../config.ts";
 import type { InviteError, InviteInput } from "../../../../domain/invite.ts";
 import { adminSessionOf, endAdminSession, setAdminSession } from "../admin-session.ts";
@@ -24,6 +25,7 @@ import {
   badRequest,
   clientOf,
   formField,
+  messagePage,
   newNonce,
   readForm,
   secretLinkHeaders,
@@ -44,12 +46,24 @@ export function planIdFrom(input: string): string | undefined {
 
 export function registerAdminRoutes(
   app: Hono<AppEnv>,
-  deps: { config: Config; adminDeps: AdminDeps; limits: RateLimits },
+  deps: {
+    config: Config;
+    adminDeps: AdminDeps;
+    limits: RateLimits;
+    /** Home Assistant Ingress (decision D56): no login or logout, the gate has checked the request. */
+    ingress?: IngressAdminAuth | undefined;
+  },
 ) {
-  const { config, adminDeps, limits } = deps;
+  const { config, adminDeps, limits, ingress } = deps;
   const adminDir = (c: Context<AppEnv>) => `${adminRoot(c.req.path)}admin/`;
-  const session = (c: Context<AppEnv>) => adminSessionOf(c, config);
-  const toLogin = (c: Context<AppEnv>) => c.redirect(`${adminDir(c)}login`, 303);
+  // Behind Ingress the identity was checked by the gate in front of every route (ingress-guard.ts);
+  // the use cases get its process-local marker, never anything the request carries.
+  const session = (c: Context<AppEnv>) =>
+    ingress === undefined ? adminSessionOf(c, config) : ingress.session;
+  const toLogin = (c: Context<AppEnv>) =>
+    ingress === undefined
+      ? c.redirect(`${adminDir(c)}login`, 303)
+      : messagePage(c, 403, c.get("t")("admin.ingressDenied"));
   const render = (c: Context<AppEnv>, title: string, body: string | Promise<string>) => {
     c.header("cache-control", "no-store");
     c.header("x-robots-tag", "noindex");
@@ -60,45 +74,54 @@ export function registerAdminRoutes(
 
   // Every admin page but the login needs the admin session.
   app.use("/admin/*", async (c, next) => {
-    if (c.req.path === "/admin/login") return next();
+    if (ingress !== undefined || c.req.path === "/admin/login") return next();
     if (!isAdmin(adminDeps, { session: session(c) })) return toLogin(c);
     return next();
   });
 
-  app.get("/admin/login", (c) => {
-    if (isAdmin(adminDeps, { session: session(c) })) return c.redirect(adminDir(c), 303);
-    const t = c.get("t");
-    return render(
-      c,
-      t("admin.loginHeading"),
-      <AdminLogin t={t} csrfToken={c.get("csrfToken")()} failed={false} />,
-    );
-  });
+  if (ingress !== undefined) {
+    // No login page: the Supervisor signs the admin in. Relative, like every redirect here.
+    app.on(["GET", "POST"], "/admin/login", (c) => c.redirect(adminDir(c), 303));
+  } else {
+    registerLogin();
+  }
 
-  app.post("/admin/login", async (c) => {
-    const body = await readForm(c);
-    if (body === undefined) return badRequest(c);
-    // Every attempt counts, against guessing the token.
-    const allowed = limits.adminLogin.take(clientOf(c));
-    if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
-    const result = logInAsAdmin(adminDeps, { token: formField(body, "token") });
-    if (result.kind === "refused") {
+  function registerLogin() {
+    app.get("/admin/login", (c) => {
+      if (isAdmin(adminDeps, { session: session(c) })) return c.redirect(adminDir(c), 303);
       const t = c.get("t");
-      c.status(401);
       return render(
         c,
         t("admin.loginHeading"),
-        <AdminLogin t={t} csrfToken={c.get("csrfToken")()} failed />,
+        <AdminLogin t={t} csrfToken={c.get("csrfToken")()} failed={false} />,
       );
-    }
-    setAdminSession(c, config, result.session, adminDeps.clock.now());
-    return c.redirect(adminDir(c), 303);
-  });
+    });
 
-  app.post("/admin/logout", (c) => {
-    endAdminSession(c, config);
-    return toLogin(c);
-  });
+    app.post("/admin/login", async (c) => {
+      const body = await readForm(c);
+      if (body === undefined) return badRequest(c);
+      // Every attempt counts, against guessing the token.
+      const allowed = limits.adminLogin.take(clientOf(c));
+      if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
+      const result = logInAsAdmin(adminDeps, { token: formField(body, "token") });
+      if (result.kind === "refused") {
+        const t = c.get("t");
+        c.status(401);
+        return render(
+          c,
+          t("admin.loginHeading"),
+          <AdminLogin t={t} csrfToken={c.get("csrfToken")()} failed />,
+        );
+      }
+      setAdminSession(c, config, result.session, adminDeps.clock.now());
+      return c.redirect(adminDir(c), 303);
+    });
+
+    app.post("/admin/logout", (c) => {
+      endAdminSession(c, config);
+      return toLogin(c);
+    });
+  }
 
   type NotFound = "plan" | "report" | "invite";
   /** The admin's home with the open reports and invites; also the page for something not found. */
@@ -127,6 +150,7 @@ export function registerAdminRoutes(
         t={t}
         csrfToken={c.get("csrfToken")()}
         adminDir={adminDir(c)}
+        logout={ingress === undefined}
         deleted={state.deleted}
         notFound={state.notFound}
         openReports={overview.openReports}

@@ -117,6 +117,18 @@ describe("a Flag naming a plan or one of our contribution Notes", () => {
     expect(reportCount(test)).toBe(1);
   });
 
+  it("is one report when Home Assistant Ingress is the admin: an admin exists, so reporting is on (D56)", async () => {
+    const { test, planId, zed } = await setup({
+      ADMIN_INGRESS: "true",
+      ADMIN_PORT: "3001",
+      ADMIN_BIND: "0.0.0.0",
+      ADMIN_INGRESS_SKIP_VERSION_CHECK: "true",
+    });
+    const sent = await post(test, zed, flagOf(zed, [planUri(planId)], { content: "Ingress 9930" }));
+    expect(sent.status).toBe(202);
+    expect((await reportsOf(test, planId)).map((r) => r.details)).toEqual(["Ingress 9930"]);
+  });
+
   it("is one report when it names the account first and the Event after (Mastodon's shape)", async () => {
     const { test, planId, zed } = await setup();
     const sent = await post(

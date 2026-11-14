@@ -89,6 +89,7 @@ export const fr: Messages = {
   "error.rateLimited":
     "Trop de requêtes depuis votre réseau. Veuillez réessayer dans quelques minutes.",
   "error.notFound": "Cette page n’existe pas.",
+  "error.forbidden": "Vous n’avez pas accès à cette page.",
   "error.badRequest":
     "Le formulaire n’a pas pu être traité. Veuillez recharger la page et réessayer.",
 
@@ -981,6 +982,8 @@ export const fr: Messages = {
   "admin.login": "Se connecter",
   "admin.loginFailed": "Ce jeton n’est pas le bon.",
   "admin.logout": "Se déconnecter",
+  "admin.ingressDenied":
+    "Nécessite Home Assistant 2026.10.4 ou plus récent et un compte administrateur.",
   "admin.findPlan": "Trouver une sortie",
   "admin.findPlanHint": "Collez le lien ou l’identifiant de la sortie.",
   "admin.findPlanSubmit": "Trouver la sortie",

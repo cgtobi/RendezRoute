@@ -114,6 +114,8 @@ export type AppEnv = {
     units: Units;
     csrfToken: () => string;
     clientIp: string;
+    /** Pages outside /admin/ link relative to the request path (Ingress admin listener). */
+    relativeLinks: boolean;
   };
 };
 
@@ -217,9 +219,17 @@ export function createApp({
   app.get("/privacy", (c) => {
     if (config.privacyUrl !== undefined) return c.redirect(config.privacyUrl.href, 302);
     const t = c.get("t");
-    return c.render(<PrivacyPage t={t} config={config} adminLogin={adminAuth !== undefined} />, {
-      title: t("privacy.title"),
-    });
+    return c.render(
+      <PrivacyPage
+        t={t}
+        config={config}
+        adminLogin={adminAuth !== undefined}
+        adminCookie={adminAuth !== undefined && config.admin?.ingress === undefined}
+      />,
+      {
+        title: t("privacy.title"),
+      },
+    );
   });
 
   /** The service worker must come from the site root to show this site's notifications (spec 6 feature 3). */

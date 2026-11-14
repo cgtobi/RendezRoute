@@ -27,6 +27,11 @@ x-env: &env # Plain http for localhost and the fake services; production require
 
 services:
   fakes:
+    # A fixed address: the app of the Ingress variant trusts only this one as its Supervisor
+    # (ADMIN_INGRESS_PEER below), as the real app trusts 172.30.32.2.
+    networks:
+      default:
+        ipv4_address: 10.213.77.10
     image: node:26-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072
     command: ["node", "/fakes/server.ts"]
     volumes:
@@ -119,8 +124,40 @@ services:
       - "3104:3000"
       - "3105:3001"
 
+  # The admin listener behind Home Assistant Ingress (0.10 step 10b, decision D56). The fake
+  # Supervisor in the fakes container (supervisor.ts) proxies http://fakes:8080/ingress/e2e/ to the
+  # admin listener and answers the version check; the browser never reaches the listener on its
+  # own (3107 is published only to show that a direct request is refused). No ADMIN_TOKEN.
+  app-admin-ingress:
+    <<: *app
+    environment:
+      <<: *env
+      BASE_URL: http://localhost:3106
+      TRUST_PROXY: "true"
+      ADMIN_INGRESS: "true"
+      ADMIN_PORT: "3001"
+      ADMIN_BIND: 0.0.0.0
+      ADMIN_INGRESS_PEER: 10.213.77.10
+      SUPERVISOR_URL: http://fakes:8080
+      SUPERVISOR_TOKEN: e2e-supervisor-token
+      POSTING_MODE: invite
+    volumes:
+      - admin-ingress-data:/data
+    ports:
+      - "3106:3000"
+      - "3107:3001"
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.213.77.0/24
+          # Dynamic addresses stay out of the fakes fixed .10.
+          ip_range: 10.213.77.128/25
+
 volumes:
   default-data:
   minimal-data:
   accounts-data:
   admin-split-data:
+  admin-ingress-data:

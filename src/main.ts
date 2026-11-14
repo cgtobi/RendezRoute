@@ -35,7 +35,10 @@ import { runReminders } from "./application/reminders.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
 import { createAdminApp } from "./adapters/in/http/admin-app.tsx";
 import { type AccountWiring, createApp } from "./adapters/in/http/app.tsx";
+import { createIngressAdminAuth } from "./adapters/out/admin/ingress-admin-auth.ts";
+import { createSupervisorInfo } from "./adapters/out/supervisor/supervisor-info.ts";
 import { createTokenAdminAuth } from "./adapters/out/admin/token-admin-auth.ts";
+import { checkSupervisorVersion } from "./application/supervisor-version.ts";
 import {
   createFlagLimits,
   createJoinLimits,
@@ -104,6 +107,7 @@ import { createResponseRepository } from "./adapters/out/sqlite/responses.ts";
 import { systemClock } from "./adapters/out/system-clock.ts";
 import { createTokenService } from "./adapters/out/tokens.ts";
 import {
+  adminConfigured,
   adminPagesOrigin,
   type Config,
   type ConfigSource,
@@ -194,12 +198,14 @@ export interface RunningServer {
   adminUrl: URL | undefined;
   /** What the admin listener is bound to, "host:port", for the start-up message. */
   adminAddress: string | undefined;
+  /** Ingress mode (decision D56): the one address whose identity headers are trusted. */
+  adminIngressPeer: string | undefined;
   close(): Promise<void>;
 }
 
 export type StartResult =
   | { ok: true; server: RunningServer; warnings: string[] }
-  | { ok: false; errors: string[]; kind?: "listen" };
+  | { ok: false; errors: string[]; kind?: "listen" | "supervisor" };
 
 interface Instance {
   /** Notifications by email and ntfy; each undefined while its service is not configured. */
@@ -433,6 +439,8 @@ async function openInstance(
   };
 }
 
+const INGRESS_KEEP_ALIVE_MS = 65_000;
+
 export async function startServer(
   env: ConfigSource,
   {
@@ -450,6 +458,33 @@ export async function startServer(
       ok: false,
       errors: [`ADMIN_PORT must differ from the public port ${port}.`],
     };
+  }
+
+  // Ingress mode trusts the identity headers of the Supervisor, so an old one that lets clients
+  // forge them must not be trusted at all (decision D56): nothing starts.
+  const ingressSettings = config.admin?.ingress;
+  if (ingressSettings !== undefined && !ingressSettings.skipVersionCheck) {
+    // The configuration already insists on the token; without it nothing may start unchecked.
+    if (ingressSettings.supervisorToken === undefined) {
+      await database.close();
+      return {
+        ok: false,
+        kind: "supervisor",
+        errors: [
+          "Ingress mode needs SUPERVISOR_TOKEN to check the Supervisor's version, or ADMIN_INGRESS_SKIP_VERSION_CHECK=true for development.",
+        ],
+      };
+    }
+    const checked = await checkSupervisorVersion(
+      createSupervisorInfo({
+        url: ingressSettings.supervisorUrl,
+        token: ingressSettings.supervisorToken,
+      }),
+    );
+    if (!checked.ok) {
+      await database.close();
+      return { ok: false, kind: "supervisor", errors: [checked.message] };
+    }
   }
 
   const rateLimits = createRateLimits(() => planDeps.clock.now().getTime());
@@ -542,7 +577,7 @@ export async function startServer(
           joinLimits: createJoinLimits(() => planDeps.clock.now().getTime()),
           replyLimits: createReplyLimits(() => planDeps.clock.now().getTime()),
           flagLimits: createFlagLimits(() => planDeps.clock.now().getTime()),
-          reporting: config.adminToken !== undefined,
+          reporting: adminConfigured(config),
         });
 
   // The first sweep finishes before the server listens, so plans past their deletion
@@ -597,10 +632,15 @@ export async function startServer(
         });
   if (bot !== undefined && poller !== undefined) bot.name.current = () => poller.botName();
 
-  const adminAuth =
-    config.adminToken === undefined
+  const ingress =
+    ingressSettings === undefined
       ? undefined
-      : createTokenAdminAuth(config.adminToken, { split: config.admin !== undefined });
+      : createIngressAdminAuth({ peer: ingressSettings.peer });
+  const adminAuth =
+    ingress ??
+    (config.adminToken === undefined
+      ? undefined
+      : createTokenAdminAuth(config.adminToken, { split: config.admin !== undefined }));
   const app = createApp({
     config,
     csrfKey: keys.csrfKey,
@@ -626,6 +666,7 @@ export async function startServer(
           planDeps,
           rateLimits,
           adminAuth,
+          ingress,
         });
 
   /** Stops everything started so far, for a start that fails after the scheduler began. */
@@ -678,6 +719,13 @@ export async function startServer(
         errors: [listenError("ADMIN_PORT", config.admin.port, config.admin.bind, error)],
       };
     }
+    // The Supervisor reuses its connections to the app. Node closes an idle one after 5 seconds,
+    // which a request on a reused connection can race, a sporadic 502 in Home Assistant: keep them
+    // longer than the proxy does (headersTimeout must exceed keepAliveTimeout).
+    if (ingressSettings !== undefined) {
+      adminServer.keepAliveTimeout = INGRESS_KEEP_ALIVE_MS;
+      adminServer.headersTimeout = INGRESS_KEEP_ALIVE_MS + 1_000;
+    }
     listeners.push(adminServer);
   }
 
@@ -688,6 +736,7 @@ export async function startServer(
       url: localUrl(server),
       adminUrl: adminServer === undefined ? undefined : localUrl(adminServer),
       adminAddress: adminServer === undefined ? undefined : boundAddress(adminServer),
+      adminIngressPeer: adminServer === undefined ? undefined : ingressSettings?.peer,
       close: async () => {
         await poller?.stop();
         await scheduler.stop();

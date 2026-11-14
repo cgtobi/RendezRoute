@@ -8,6 +8,9 @@ const ACCOUNT_SPECS = /v0[789][^/]*\.spec\.ts$/;
 /** The admin listener on its own port (0.10): the fourth container. */
 const ADMIN_SPLIT_SPECS = /v10-admin-split\.spec\.ts$/;
 
+/** The admin listener behind a fake Home Assistant Ingress (0.10 step 10b): the fifth container. */
+const ADMIN_INGRESS_SPECS = /v10-admin-ingress\.spec\.ts$/;
+
 export default defineConfig({
   testDir: ".",
   globalSetup: "./global-setup.ts",
@@ -29,12 +32,12 @@ export default defineConfig({
   projects: [
     {
       name: "default settings",
-      testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS],
+      testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS, ADMIN_INGRESS_SPECS],
       use: { baseURL: "http://localhost:3101" },
     },
     {
       name: "maps, geocoder and weather disabled",
-      testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS],
+      testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS, ADMIN_INGRESS_SPECS],
       use: { baseURL: "http://localhost:3102" },
     },
     // Admin, invites and accounts (0.7), email (0.8) and federation (0.9) need their own configuration.
@@ -47,6 +50,11 @@ export default defineConfig({
       name: "0.10 admin listener",
       testMatch: ADMIN_SPLIT_SPECS,
       use: { baseURL: "http://localhost:3104" },
+    },
+    {
+      name: "0.10 admin behind Ingress",
+      testMatch: ADMIN_INGRESS_SPECS,
+      use: { baseURL: "http://localhost:3106" },
     },
   ],
 });

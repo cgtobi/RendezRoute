@@ -15,6 +15,7 @@ import type { Logger } from "../../logging.ts";
 import type { AppEnv } from "./app.tsx";
 import { clientIp } from "./client-ip.ts";
 import { csrf, type CsrfOptions } from "./csrf.ts";
+import { ingressCsrfGuard, type IngressCsrfOptions } from "./ingress-guard.ts";
 import { Layout } from "./layout.tsx";
 import { readPreference } from "./preference-cookies.ts";
 import { requestLogger } from "./request-logger.ts";
@@ -36,14 +37,25 @@ const MAX_UPLOAD_BODY_BYTES = 5.5 * 1024 * 1024;
 export interface CommonStackOptions {
   config: Config;
   logger: Logger;
-  /** The app's CSRF settings; each listener has its own key (and on the admin listener cookie and origin rule). */
-  csrf: Omit<CsrfOptions, "config" | "onReject">;
+  /**
+   * The app's CSRF settings; each listener has its own key (and on the admin listener cookie and
+   * origin rule). `{ ingressToken }`: the stateless token bound to the Supervisor's user, no cookie
+   * (Ingress, D56 and I74).
+   */
+  csrf: Omit<CsrfOptions, "config" | "onReject"> | { ingressToken: IngressCsrfOptions };
+  /** Who may frame the pages; 'self' for the admin listener behind Ingress (decision D56). */
+  frameAncestors?: "'none'" | "'self'";
   /** Posts that may be larger than a form (the public app's GPX uploads). */
   isUploadRoute?: (method: string, path: string) => boolean;
   /** Registered after the body limit and before CSRF (ActivityPub on the public app). */
   beforeCsrf?: (app: Hono<AppEnv>) => void;
   /** The admin-only app: its pages leave out the public footer links (see Layout). */
   adminListener?: boolean;
+  /**
+   * Pages outside /admin/ (refusals, not-found, errors) link relative to the request path, as the
+   * listener sits behind a path prefix (Ingress, D56).
+   */
+  relativeLinks?: boolean;
   /** Pages at these paths also answer other media types, so caches keep them apart by Accept. */
   variesByAccept?: (path: string) => boolean;
 }
@@ -59,10 +71,12 @@ export function composeCommonStack(
     config,
     logger,
     csrf: csrfOptions,
+    frameAncestors,
     isUploadRoute,
     beforeCsrf,
     variesByAccept,
     adminListener = false,
+    relativeLinks = false,
   }: CommonStackOptions,
 ): { translate: (c: Context) => Translate } {
   /** The language cookie, else the browser's languages (decision D15). */
@@ -75,7 +89,7 @@ export function composeCommonStack(
   const translate = (c: Context): Translate => translator(requestLanguage(c));
 
   app.use(requestLogger(logger));
-  app.use(securityHeaders(config));
+  app.use(securityHeaders(config, frameAncestors));
   app.use(clientIp({ trustProxy: config.trustProxy }));
 
   app.use(async (c, next) => {
@@ -84,6 +98,7 @@ export function composeCommonStack(
     c.set("t", translator(language));
     const units = readPreference(c, config, "units");
     c.set("units", isUnits(units) ? units : "metric");
+    c.set("relativeLinks", relativeLinks);
     await next();
     // Pages and plain-text errors are in the request's language; images, scripts and feeds are not.
     if (/^text\/(html|plain)/.test(c.res.headers.get("content-type") ?? "")) {
@@ -135,13 +150,16 @@ export function composeCommonStack(
 
   beforeCsrf?.(app);
 
-  app.use(
-    csrf({
-      ...csrfOptions,
-      config,
-      onReject: (c) => messagePage(c, 403, translate(c)("error.csrf")),
-    }),
-  );
+  if ("ingressToken" in csrfOptions) app.use(ingressCsrfGuard(csrfOptions.ingressToken));
+  else {
+    app.use(
+      csrf({
+        ...csrfOptions,
+        config,
+        onReject: (c) => messagePage(c, 403, translate(c)("error.csrf")),
+      }),
+    );
+  }
 
   app.onError(async (error, c) => {
     // Error class only: messages may contain user input.

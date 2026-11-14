@@ -688,8 +688,9 @@ export interface RatingRepository {
 }
 
 /**
- * Authenticates the instance admin (spec 2a, 7 Moderation): `ADMIN_TOKEN` now; an OIDC admin group
- * and Home Assistant Ingress later.
+ * Authenticates the instance admin (spec 2a, 7 Moderation): `ADMIN_TOKEN`, or the Supervisor's
+ * identity in Home Assistant Ingress mode (`IngressAdminAuth`, decision D56); an OIDC admin group
+ * later.
  */
 export interface AdminAuth {
   /** Whether the presented secret is the admin's; never leaks how close a guess was. */
@@ -698,6 +699,37 @@ export interface AdminAuth {
   startSession(now: Date): { value: string; expiresAt: Date };
   /** Whether a session value is one this instance issued and has not expired. */
   hasSession(value: string, now: Date): boolean;
+}
+
+/** What an adapter read from a request that tells who is asking, for `IngressAdminAuth`. */
+export interface IngressFacts {
+  /** The TCP peer address of the connection (never a forwarded header); undefined if unknown. */
+  peer: string | undefined;
+  /** The raw value of the identity header listing the user's groups; undefined if absent. */
+  groups: string | undefined;
+}
+
+export type IngressDecision =
+  | { kind: "allowed" }
+  // `not_supervisor` (the peer is not the trusted proxy) must not be explained to the caller.
+  | { kind: "denied"; reason: "not_supervisor" | "not_admin" };
+
+/**
+ * Home Assistant Ingress as the admin's way in (decision D56): there is no login and no session,
+ * the Supervisor vouches for the user on every request. The HTTP adapter reads the facts (what
+ * header, what socket) and asks `check`; for a request that passed, it hands `session` to the admin
+ * use cases, whose `AdminAuth.hasSession` check then holds as for any other mode. `session` is a
+ * random value of this process: no cookie or header ever carries it.
+ */
+export interface IngressAdminAuth extends AdminAuth {
+  check(facts: IngressFacts): IngressDecision;
+  readonly session: string;
+}
+
+/** Asks the Home Assistant Supervisor about itself (decision D56). */
+export interface SupervisorInfo {
+  /** The Supervisor's version string, e.g. "2026.10.4"; rejects when it cannot be asked. */
+  version(): Promise<string>;
 }
 
 /** One-time form values that were used (decision I44); kept for a day. */

@@ -42,14 +42,19 @@ switch (command.kind) {
     const result = await startServer(process.env);
     if (!result.ok) {
       console.error(
-        `${result.kind === "listen" ? "RendezRoute cannot start:" : "RendezRoute cannot start: invalid configuration"}\n${result.errors.map((e) => `  - ${e}`).join("\n")}`,
+        `${result.kind === undefined ? "RendezRoute cannot start: invalid configuration" : "RendezRoute cannot start:"}\n${result.errors.map((e) => `  - ${e}`).join("\n")}`,
       );
       process.exit(1);
     }
     for (const warning of result.warnings) console.warn(`Warning: ${warning}`);
     console.log(`RendezRoute listening on port ${result.server.url.port}`);
     if (result.server.adminAddress !== undefined) {
-      console.log(`RendezRoute admin pages listening on ${result.server.adminAddress}`);
+      console.log(
+        `RendezRoute admin pages listening on ${result.server.adminAddress}` +
+          (result.server.adminIngressPeer === undefined
+            ? ""
+            : ` (Home Assistant Ingress: only ${result.server.adminIngressPeer} is trusted)`),
+      );
     }
 
     const shutdown = () => {

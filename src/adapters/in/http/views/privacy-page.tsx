@@ -19,11 +19,14 @@ export function PrivacyPage({
   t,
   config,
   adminLogin,
+  adminCookie = adminLogin,
 }: {
   t: Translate;
   config: Config;
   /** Instance admin login is configured, and with it reports (spec 7 Moderation). */
   adminLogin: boolean;
+  /** The admin has a login cookie: not behind Home Assistant Ingress, which sets none (D56). */
+  adminCookie?: boolean;
 }) {
   const { maps, geocoder, weather } = config;
   // Each topic in its own part, divided by hairlines (decision D27).
@@ -103,7 +106,7 @@ export function PrivacyPage({
           <li>{t("privacy.cookieDevice", { days: LONG_COOKIE_DAYS })}</li>
           <li>{t("privacy.cookieCsrf")}</li>
           <li>{t("privacy.cookiePreferences", { days: LONG_COOKIE_DAYS })}</li>
-          {adminLogin && <li>{t("privacy.cookieAdmin", { hours: ADMIN_SESSION_HOURS })}</li>}
+          {adminCookie && <li>{t("privacy.cookieAdmin", { hours: ADMIN_SESSION_HOURS })}</li>}
           {loginConfigured(config) && (
             <li>{t("privacy.cookieLogin", { minutes: LOGIN_WINDOW_MINUTES })}</li>
           )}

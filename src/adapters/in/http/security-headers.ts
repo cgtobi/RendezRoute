@@ -2,7 +2,14 @@ import type { MiddlewareHandler } from "hono";
 import type { Config } from "../../../config.ts";
 
 /** Security headers from spec 3.8 on every response, including 404 and error responses. */
-export function securityHeaders(config: Config): MiddlewareHandler {
+export function securityHeaders(
+  config: Config,
+  /**
+   * Who may frame the pages: nobody, except that the admin listener behind Home Assistant Ingress
+   * is framed by the Home Assistant frontend, which is same-origin with it (decision D56).
+   */
+  frameAncestors: "'none'" | "'self'" = "'none'",
+): MiddlewareHandler {
   const imgSources = [
     "'self'",
     "data:",
@@ -15,7 +22,7 @@ export function securityHeaders(config: Config): MiddlewareHandler {
     "font-src 'self'",
     `img-src ${imgSources.join(" ")}`,
     "connect-src 'self'",
-    "frame-ancestors 'none'",
+    `frame-ancestors ${frameAncestors}`,
     "base-uri 'self'",
     "form-action 'self'",
   ].join("; ");

@@ -102,6 +102,16 @@ export function adminRoot(path: string): string {
 }
 
 /**
+ * The relative way from any path back to the root, whatever prefix the app is served under: "./"
+ * for "/" and "/x", "../" for "/x/" and "/x/y", and so on. Every slash after the first is one
+ * level, empty segments ("/a//b") included, as a browser resolves them.
+ */
+export function relativeRoot(path: string): string {
+  const up = path.split("/").length - 2;
+  return up <= 0 ? "./" : "../".repeat(up);
+}
+
+/**
  * A page that only says what happened, e.g. an error (decision D29); it sets no cookie. Under
  * /admin/ it keeps relative links, so it works under any path prefix, and like every admin
  * response it is neither stored nor indexed (decision I46).
@@ -115,7 +125,11 @@ export function messagePage(c: Context, status: ContentfulStatusCode, message: s
   c.status(status);
   return c.render(<MessagePage message={message} />, {
     title: message,
-    pathBase: admin ? adminRoot(c.req.path) : undefined,
+    pathBase: admin
+      ? adminRoot(c.req.path)
+      : c.get("relativeLinks") === true
+        ? relativeRoot(c.req.path)
+        : undefined,
     plain: true,
   });
 }

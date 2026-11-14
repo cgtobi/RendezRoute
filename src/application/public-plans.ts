@@ -30,6 +30,8 @@ export type PlanFor =
 
 export interface VisibilityChoices {
   publicAllowed: boolean;
+  /** For `{ plan }`: whether the plan's owner is an account; for create and repeat: whether this device has one. */
+  hasAccount: boolean;
   /** Undefined while federation is off and the plan is not for followers: not offered at all. */
   followers: { allowed: boolean } | undefined;
   /** The owner's handle while it has an active profile: it shares public and followers plans. */
@@ -64,6 +66,7 @@ export async function visibilityChoices(
   // Listed in Nearby, or shared by the owner's profile: otherwise nothing would find it.
   const found = deps.publicPlansOffered !== false || (profile !== undefined && !withdrawn);
   return {
+    hasAccount: owner !== undefined,
     publicAllowed:
       stored?.visibility === "public" ||
       (found &&

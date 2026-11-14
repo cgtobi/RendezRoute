@@ -161,13 +161,13 @@ export function AccountPage(props: {
               />
             </section>
           )}
-          {props.profileNotice !== undefined && (
-            <p class="notice" role="status">
-              {props.profileNotice}
-            </p>
-          )}
           {props.profile !== undefined && (
-            <ProfileSection t={t} csrfToken={props.csrfToken} {...props.profile} />
+            <ProfileSection
+              t={t}
+              csrfToken={props.csrfToken}
+              notice={props.profileNotice}
+              {...props.profile}
+            />
           )}
           <ClaimSection t={t} csrfToken={props.csrfToken} claimable={account.claimable} />
           {props.data !== undefined && (

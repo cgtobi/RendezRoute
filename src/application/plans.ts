@@ -20,6 +20,7 @@ import {
   visibilityChoices,
   visibilityRefused,
 } from "./public-plans.ts";
+import { planActor } from "./attribution.ts";
 import { syncPublication } from "./publishing.ts";
 import {
   applyRouteDefaults,
@@ -430,6 +431,18 @@ export async function viewPlan(
     return { kind: "responder", view: viewForResponder(plan, counts, own, now), ...shared };
   }
   return { kind: "viewer", view: viewForViewer(plan, counts), ...shared };
+}
+
+/**
+ * Whether the fediverse gets this plan from an owner's active profile: a followers or public
+ * plan, not withdrawn from the fediverse (D39). Only the plan page asks.
+ */
+export async function isSharedByActor(deps: PlanDeps, planId: string): Promise<boolean> {
+  const plan = await deps.plans.findById(planId);
+  if (plan === undefined || plan.visibility === "link") return false;
+  if (deps.posterActors?.enabled !== true || plan.federatedAt === undefined) return false;
+  if ((await deps.posterActors.publications.find(plan.id))?.kind === "withdrawn") return false;
+  return (await planActor(deps, plan)) !== undefined;
 }
 
 /** The plan's colors for its theme stylesheet; public data (spec 3.1). */

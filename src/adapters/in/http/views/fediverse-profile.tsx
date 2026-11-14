@@ -22,13 +22,21 @@ export function ProfileSection({
   setting,
   host,
   form,
-}: ProfileSectionProps & { t: Translate; csrfToken: string }) {
+  notice,
+}: ProfileSectionProps & { t: Translate; csrfToken: string; notice?: string | undefined }) {
   const csrf = <input type="hidden" name={CSRF_FIELD} value={csrfToken} />;
+  // The result of turning on or off, where the redirect to #profile lands.
+  const done = notice !== undefined && (
+    <p class="notice" role="status">
+      {notice}
+    </p>
+  );
   if (setting.kind === "on") {
     const handle = fediverseAddress(setting.handle, host);
     return (
       <section id="profile">
         <h2>{t("profile.heading")}</h2>
+        {done}
         <p>
           {t("profile.on", { handle })} <a href={`/@${setting.handle}`}>{t("profile.view")}</a>
         </p>
@@ -51,6 +59,7 @@ export function ProfileSection({
   return (
     <section id="profile">
       <h2>{t("profile.heading")}</h2>
+      {done}
       <p>{t("profile.intro", { host })}</p>
       {/* Before anything exists: what turning it on means (spec 7: discoverability notice). */}
       <p class="notice">{t("profile.notice")}</p>
@@ -71,7 +80,9 @@ export function ProfileSection({
               aria-invalid={error === undefined ? undefined : "true"}
               aria-describedby={error === undefined ? "field-handle-hint" : "field-handle-error"}
             />
-            <span aria-hidden="true">@{host}</span>
+            <span class="handle-host" aria-hidden="true">
+              @{host}
+            </span>
           </div>
           <p class="hint" id="field-handle-hint">
             {t("profile.handleHint")}

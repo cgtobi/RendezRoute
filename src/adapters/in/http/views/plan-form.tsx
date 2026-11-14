@@ -73,6 +73,8 @@ export interface VisibilityChoice {
   publicAllowed: boolean;
   /** Where to log in; undefined when the instance offers no login. */
   loginHref: string | undefined;
+  /** Whether the plan's owner is an account (for a new plan: this device's): only accounts have profiles, which followers need. */
+  hasAccount: boolean;
   /** Undefined while federation is off: followers is not offered (decision D37). */
   followers: { allowed: boolean } | undefined;
   /** The owner's full handle while it has a profile, e.g. "@anna@runs.example.org". */
@@ -495,12 +497,14 @@ function VisibilityFieldset({
           {options[visibility].label}
         </label>
       ))}
-      {choice.fediverse === "shared" && <p class="hint">{t("form.fediverseShared")}</p>}
+      {choice.fediverse === "shared" && <p class="warning">{t("form.fediverseShared")}</p>}
       {choice.fediverse === "withdrawn" && <p class="hint">{t("form.fediverseWithdrawn")}</p>}
       {followers !== undefined && !followers.allowed && (
         <p class="hint">
           {t("form.followersNeedsProfile")}{" "}
-          <a href="/account#profile">{t("form.followersSetUp")}</a>
+          <a href="/account#profile">
+            {t(choice.hasAccount ? "form.followersSetUp" : "form.followersLogInSetUp")}
+          </a>
         </p>
       )}
       {!choice.publicAllowed && choice.loginHref !== undefined && (

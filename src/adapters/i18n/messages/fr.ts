@@ -186,6 +186,7 @@ export const fr: Messages = {
   "form.followersNeedsProfile":
     "Les abonné·e·s demandent un profil fédivers, à configurer une fois sur la page du compte.",
   "form.followersSetUp": "Le configurer",
+  "form.followersLogInSetUp": "Se connecter et configurer un profil",
   "form.fediverseShared":
     "Cette sortie est partagée dans le fédivers. Si vous la rendez trouvable par moins de personnes, elle y est retirée pour de bon et n’est plus partagée ; vos abonné·e·s n’y accèdent alors que par son lien.",
   "form.fediverseWithdrawn": "Cette sortie a été retirée du fédivers et n’y est plus partagée.",
@@ -308,6 +309,11 @@ export const fr: Messages = {
 
   "plan.gone": "Cette sortie n’existe plus.",
   "plan.public": "Publique",
+  "plan.followers": "Abonné·e·s",
+  "plan.fediverseJoin":
+    "Sur Mastodon, vous pouvez suivre l’organisateur·rice, mais l’inscription se fait sur cette page.",
+  "plan.fediverseJoinLogin":
+    "Sur Mastodon, vous pouvez suivre l’organisateur·rice, mais l’inscription se fait sur cette page : connectez-vous avec votre compte du fédivers.",
   "plan.host": "organisateur·rice",
   "plan.postedBy": "Proposée par {name}",
   "plan.youAreHost": "Vous organisez cette sortie.",

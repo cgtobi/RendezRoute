@@ -183,6 +183,7 @@ export const de: Messages = {
   "form.followersNeedsProfile":
     "Für Follower:innen brauchst du ein Fediverse-Profil, einmal eingerichtet auf der Kontoseite.",
   "form.followersSetUp": "Einrichten",
+  "form.followersLogInSetUp": "Anmelden und Profil einrichten",
   "form.fediverseShared":
     "Dieses Treffen ist im Fediverse geteilt. Machst du es für weniger Leute auffindbar, wird es dort dauerhaft entfernt und nicht wieder geteilt; deine Follower:innen erreichen es dann nur noch über seinen Link.",
   "form.fediverseWithdrawn":
@@ -309,6 +310,11 @@ export const de: Messages = {
 
   "plan.gone": "Dieses Treffen gibt es nicht mehr.",
   "plan.public": "Öffentlich",
+  "plan.followers": "Follower:innen",
+  "plan.fediverseJoin":
+    "Auf Mastodon kannst du der Organisator:in folgen, mitmachen kannst du aber nur auf dieser Seite.",
+  "plan.fediverseJoinLogin":
+    "Auf Mastodon kannst du der Organisator:in folgen, mitmachen kannst du aber nur auf dieser Seite: Melde dich mit deinem Fediverse-Konto an.",
   "plan.host": "Organisator:in",
   "plan.postedBy": "Eingestellt von {name}",
   "plan.youAreHost": "Du organisierst dieses Treffen.",

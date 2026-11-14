@@ -317,7 +317,9 @@ describe("publishing plans (decisions D38, D39)", () => {
     expect(fetched.to).toBe("as:Public");
     // The host is told what narrowing would do.
     const hostPage = await (await anna.get(`/p/${planId}/host`)).text();
-    expect(hostPage).toContain(escaped(translator("en")("form.fediverseShared")));
+    expect(hostPage).toContain(
+      `<p class="warning">${escaped(translator("en")("form.fediverseShared"))}</p>`,
+    );
 
     await anna.postForm(`/p/${planId}/host/delete`, hiddenFields(hostPage));
     await test.runJobs();

@@ -57,6 +57,8 @@ export function PlanPage(props: {
   csrfToken: string;
   /** Show "Report this plan": instance admin authentication is configured (spec 7 Moderation). */
   reporting: boolean;
+  /** While federation is on: what Mastodon can do (spec 7 Client compatibility); with the fediverse login named where it is configured. */
+  fediverseNote?: "general" | "login" | undefined;
 }) {
   const { t, language, units, audience, map } = props;
   const { view } = audience;
@@ -94,16 +96,22 @@ export function PlanPage(props: {
           <p class="plan-byline">
             <span class="plan-activity">{t(`activity.${view.activity}`)}</span>{" "}
             {/* Who can find the plan, when more than people with the link (design note). */}
-            {view.visibility === "public" && (
+            {(view.visibility === "public" || view.visibility === "followers") && (
               <>
                 <span class="plan-visibility">
-                  <span class="icon icon-globe" aria-hidden="true"></span>
-                  {t("plan.public")}
+                  <span
+                    class={`icon ${view.visibility === "public" ? "icon-globe" : "icon-users"}`}
+                    aria-hidden="true"
+                  ></span>
+                  {t(view.visibility === "public" ? "plan.public" : "plan.followers")}
                 </span>{" "}
               </>
             )}
-            <span>{t("plan.postedBy", { name: view.posterName })}</span>{" "}
-            <span class="badge">{t("plan.host")}</span>
+            {/* One unit, so the host badge never wraps away from the name. */}
+            <span class="plan-poster">
+              <span>{t("plan.postedBy", { name: view.posterName })}</span>{" "}
+              <span class="badge">{t("plan.host")}</span>
+            </span>
           </p>
         </header>
 
@@ -201,6 +209,11 @@ export function PlanPage(props: {
           ) : (
             <p class="notice">{t("respond.closed")}</p>
           ))}
+        {audience.kind === "viewer" && props.fediverseNote !== undefined && (
+          <p class="hint">
+            {t(props.fediverseNote === "login" ? "plan.fediverseJoinLogin" : "plan.fediverseJoin")}
+          </p>
+        )}
 
         {props.forecast !== undefined && (
           <WeatherSection t={t} language={language} units={units} forecast={props.forecast} />

@@ -393,6 +393,10 @@ main,
   --icon: url("icons/globe.svg");
 }
 
+.icon-users {
+  --icon: url("icons/users.svg");
+}
+
 /* Buttons: one primary per page, quiet secondaries, red for deleting. */
 
 .button,
@@ -522,7 +526,13 @@ input[type="checkbox"] {
   gap: var(--s3);
   align-items: center;
   min-height: var(--target);
+  padding-block: var(--s1);
   font-weight: 400;
+}
+
+/* A choice that cannot be made reads as unavailable, not only its radio. */
+.choice:has(input:disabled) {
+  color: var(--muted);
 }
 
 .hint {
@@ -728,6 +738,11 @@ input[type="checkbox"] {
   color: var(--muted);
   font-size: var(--text-sm);
   font-weight: 600;
+}
+
+/* Name and host badge wrap together; a long name still breaks inside the block. */
+.plan-poster {
+  display: inline-block;
 }
 
 /* App text only: names keep their case. */
@@ -1245,6 +1260,7 @@ input[type="checkbox"] {
 
 .contribution-author {
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .contribution-body {
@@ -1375,12 +1391,18 @@ details > summary {
 
 .inline-input {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--s2);
+  align-items: center;
+}
+
+.inline-input .handle-host {
+  overflow-wrap: anywhere;
 }
 
 .inline-input input {
   flex: 1;
-  min-width: 0;
+  min-width: 10rem;
 }
 
 .place-results {
@@ -1441,7 +1463,7 @@ details > summary {
 }
 
 /* Each channel its own part: room above the next one's heading. */
-.ntfy-switch + .telegram-switch {
+:is(.ntfy-switch, .telegram-switch) + :is(.telegram-switch, .fediverse-messages-switch) {
   margin-top: var(--s6);
 }
 

@@ -178,6 +178,7 @@ export const en = {
   "form.followersNeedsProfile":
     "Followers need a fediverse profile, set up once on the account page.",
   "form.followersSetUp": "Set it up",
+  "form.followersLogInSetUp": "Log in and set up a profile",
   "form.fediverseShared":
     "This plan is shared in the fediverse. If you let fewer people find it, it is removed there for good and not shared again; your followers then reach it only through its link.",
   "form.fediverseWithdrawn":
@@ -298,6 +299,10 @@ export const en = {
 
   "plan.gone": "This plan no longer exists.",
   "plan.public": "Public",
+  "plan.followers": "Followers",
+  "plan.fediverseJoin": "On Mastodon you can follow the host, but joining happens on this page.",
+  "plan.fediverseJoinLogin":
+    "On Mastodon you can follow the host, but joining happens on this page: log in with your fediverse account.",
   "plan.host": "host",
   "plan.postedBy": "Posted by {name}",
   "plan.youAreHost": "You are the host of this plan.",

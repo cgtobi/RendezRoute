@@ -8,7 +8,7 @@ import { randomBytes } from "node:crypto";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AccountDeps } from "../../../../application/accounts.ts";
-import type { PlanDeps } from "../../../../application/plans.ts";
+import { isSharedByActor, type PlanDeps } from "../../../../application/plans.ts";
 import type { Geocoder, PreviewRenderer, WeatherProvider } from "../../../../application/ports.ts";
 import { planWeather } from "../../../../application/weather.ts";
 import type { VisibilityChoice } from "../views/plan-form.tsx";
@@ -183,6 +183,7 @@ export async function renderPlanPage(
   const map = mapSettings(config);
   const showForm = result.kind === "viewer" && result.responsesOpen;
   const { responsesOpen, hasRecap, preview: _preview, ...audience } = result;
+  const sharedByActor = showForm && (await isSharedByActor(planDeps, result.view.id));
   const forecast = await planWeather({ weather, clock: planDeps.clock }, result.view);
   return c.render(
     <PlanPage
@@ -198,6 +199,7 @@ export async function renderPlanPage(
       hasRecap={hasRecap}
       csrfToken={c.get("csrfToken")()}
       reporting={reporting}
+      fediverseNote={fediverseNote(config, sharedByActor)}
     />,
     {
       title: result.view.title,
@@ -219,6 +221,17 @@ export async function renderPlanPage(
     },
   );
 }
+
+/**
+ * Mastodon can follow but not join: the plan page says so where the fediverse can find the plan
+ * (a profile shares it) and people can still join.
+ */
+const fediverseNote = (config: Config, joinable: boolean) =>
+  config.federationEnabled && joinable
+    ? config.fediverseLogin !== undefined
+      ? "login"
+      : "general"
+    : undefined;
 
 /** The time zones offered by the plan and template forms. */
 export const TIME_ZONES = (() => {
@@ -272,6 +285,7 @@ export function switchRoute(
  */
 export const visibilityChoice = (config: Config, choices: VisibilityChoices): VisibilityChoice => ({
   publicAllowed: choices.publicAllowed,
+  hasAccount: choices.hasAccount,
   // Logging in cannot help while public plans are not offered (Nearby off, decision I59).
   loginHref: loginConfigured(config) && config.nearbyEnabled ? "/account" : undefined,
   // Only accounts have profiles: without a login, followers could never be chosen anew.

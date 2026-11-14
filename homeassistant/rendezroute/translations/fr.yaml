@@ -1,0 +1,111 @@
+configuration:
+  base_url:
+    name: "Adresse publique"
+    description: "L’adresse https publique de cette instance, par exemple https://sorties.example.org (sans chemin). Elle figure dans les liens partagés et sert à joindre le port public depuis l’extérieur. Obligatoire."
+  instance_name:
+    name: "Nom de l’instance"
+    description: "Le nom affiché dans l’en-tête et dans les messages. De 1 à 60 caractères."
+  contact_email:
+    name: "E-mail de contact"
+    description: "Une adresse qui vous identifie auprès des services de cartes, de géocodage et de météo (leurs conditions l’exigent) et que les visiteurs voient comme contact. Sans elle, le géocodage et les tuiles de carte côté serveur restent désactivés."
+  imprint_url:
+    name: "Lien vers les mentions légales"
+    description: "Lien vers vos mentions légales, affiché en pied de page. Laissez vide si vous n’en avez pas."
+  privacy_url:
+    name: "Lien vers la politique de confidentialité"
+    description: "Lien vers votre propre politique de confidentialité, affiché en plus de l’avis de confidentialité intégré de l’application sous /privacy. Laissez vide pour n’afficher que l’avis intégré."
+  default_timezone:
+    name: "Fuseau horaire par défaut"
+    description: "Le fuseau horaire utilisé quand le navigateur n’en indique aucun, par exemple Europe/Paris. UTC par défaut."
+  maps_enabled:
+    name: "Afficher les cartes"
+    description: "Afficher des cartes avec les parcours. Désactivez pour ne charger aucune tuile de carte."
+  map_tile_url:
+    name: "Adresse des tuiles de carte"
+    description: "Modèle du serveur de tuiles, avec {z}, {x} et {y} (et {s} en option). Laissez vide pour le serveur public d’OpenStreetMap. Doit être en https."
+  map_attribution:
+    name: "Source de la carte"
+    description: "La mention de source affichée sur les cartes. Laissez vide pour celle d’OpenStreetMap ; modifiez-la avec le serveur de tuiles."
+  geocoder_enabled:
+    name: "Rechercher des lieux"
+    description: "Permettre à l’application de rechercher des adresses et des noms de lieux lors de la préparation d’une sortie. Nécessite l’e-mail de contact."
+  geocoder_url:
+    name: "Adresse du service de géocodage"
+    description: "Adresse du service de géocodage (compatible Nominatim). Laissez vide pour le service public d’OpenStreetMap."
+  weather_enabled:
+    name: "Afficher la météo"
+    description: "Afficher une courte prévision météo sur la page d’une sortie."
+  weather_url:
+    name: "Adresse du service météo"
+    description: "Adresse du service météo (compatible Open-Meteo). Laissez vide pour le service public Open-Meteo."
+  posting_mode:
+    name: "Qui peut créer des sorties"
+    description: "anyone : tous les visiteurs. invite : seulement les personnes ayant un lien d’invitation que vous créez dans les pages d’administration. logged_in : seulement les personnes connectées par l’authentification unique ou la connexion Fediverse ci-dessous."
+  public_requires_login:
+    name: "Liste publique réservée aux comptes"
+    description: "Réserver la liste des sorties publiques aux personnes connectées. Désactivez pour l’afficher à tous les visiteurs."
+  nearby_enabled:
+    name: "Proposer « À proximité »"
+    description: "Proposer la liste des sorties publiques proches de la position du visiteur."
+  federation_enabled:
+    name: "Fédération (Fediverse)"
+    description: "Permettre de suivre les comptes de l’instance depuis Mastodon et d’autres serveurs du Fediverse, et y partager les sorties publiques. Désactivez pour que sorties et profils ne soient pas envoyés à d’autres serveurs du Fediverse."
+  oidc_issuer:
+    name: "Authentification unique : émetteur"
+    description: "Adresse de votre fournisseur OpenID Connect (par exemple Authentik, Keycloak ou Authelia). L’émetteur et l’identifiant client activent l’authentification unique."
+  oidc_client_id:
+    name: "Authentification unique : identifiant client"
+    description: "L’identifiant client que vous avez créé pour RendezRoute chez votre fournisseur OpenID Connect."
+  oidc_client_secret:
+    name: "Authentification unique : secret client"
+    description: "Le secret client de votre fournisseur, s’il en a fourni un."
+  oidc_name:
+    name: "Authentification unique : nom du bouton"
+    description: "Le nom du bouton de connexion, par exemple Authentik. De 1 à 40 caractères. Laissez vide pour utiliser le nom d’hôte du fournisseur."
+  fediverse_login:
+    name: "Connexion avec le Fediverse"
+    description: "Permettre aux visiteurs de se connecter avec leur compte Mastodon ou un autre compte du Fediverse."
+  fediverse_login_servers:
+    name: "Serveurs Fediverse autorisés"
+    description: "Limiter la connexion Fediverse à ces serveurs, un domaine par entrée, par exemple mastodon.social. Laissez vide pour autoriser tous les serveurs. Nécessite la connexion Fediverse."
+  smtp_host:
+    name: "E-mail : serveur"
+    description: "Nom d’hôte de votre serveur de courrier sortant. Sans lui, aucun e-mail n’est envoyé. Nécessite l’adresse d’expéditeur."
+  smtp_port:
+    name: "E-mail : port"
+    description: "Port du serveur de courrier. Laissez vide pour le port habituel du chiffrement choisi (587 ou 465)."
+  smtp_tls:
+    name: "E-mail : chiffrement"
+    description: "starttls (par défaut, port 587) ou tls (port 465)."
+  smtp_user:
+    name: "E-mail : nom d’utilisateur"
+    description: "Nom d’utilisateur du serveur de courrier, s’il en demande un."
+  smtp_password:
+    name: "E-mail : mot de passe"
+    description: "Mot de passe du serveur de courrier, s’il en demande un."
+  smtp_from:
+    name: "E-mail : adresse d’expéditeur"
+    description: "L’adresse depuis laquelle les e-mails sont envoyés. Obligatoire dès qu’un serveur de courrier est défini."
+  ntfy_url:
+    name: "ntfy : serveur"
+    description: "Adresse de votre serveur ntfy, pour les notifications push. Laissez vide pour ne pas utiliser ntfy."
+  ntfy_token:
+    name: "ntfy : jeton d’accès"
+    description: "Jeton d’accès du serveur ntfy, s’il en demande un."
+  telegram_bot_token:
+    name: "Telegram : jeton du bot"
+    description: "Le jeton de votre bot Telegram, pour les notifications par Telegram. Laissez vide pour ne pas utiliser Telegram."
+  telegram_api_url:
+    name: "Telegram : adresse de l’API"
+    description: "Adresse de l’API Bot de Telegram. Laissez vide pour l’adresse officielle."
+  max_retention_days:
+    name: "Conserver les sorties terminées (jours)"
+    description: "La durée maximale de conservation d’une sortie terminée, de 1 à 30 jours. Les organisateur·rice·s ne peuvent choisir que des durées plus courtes."
+  max_plan_horizon_days:
+    name: "Planifier au plus à l’avance (jours)"
+    description: "Combien de jours à l’avance une sortie peut être planifiée, de 1 à 180."
+  trust_proxy:
+    name: "Faire confiance au proxy inverse"
+    description: "À activer seulement si un proxy inverse devant le port public définit l’en-tête X-Forwarded-For et que personne n’atteint le port directement. L’application compte alors les limites par visiteur réel et non par proxy."
+network:
+  3000/tcp: "Le site public (invités, liens partagés, fédération). Placez un proxy inverse https devant."

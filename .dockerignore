@@ -19,3 +19,7 @@ docs
 rendezroute-spec.md
 deploy
 e2e
+homeassistant
+repository.yaml
+scripts
+test

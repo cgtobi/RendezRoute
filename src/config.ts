@@ -148,9 +148,9 @@ const DEFAULTS = {
   SUPERVISOR_URL: "http://supervisor",
 } as const;
 
-const MAX_INSTANCE_NAME_LENGTH = 60;
+export const MAX_INSTANCE_NAME_LENGTH = 60;
 const MIN_ADMIN_TOKEN_LENGTH = 32;
-const MAX_OIDC_NAME_LENGTH = 40;
+export const MAX_OIDC_NAME_LENGTH = 40;
 
 /**
  * Where http is fine for ADMIN_URL (no certificate to be had): localhost, loopback addresses

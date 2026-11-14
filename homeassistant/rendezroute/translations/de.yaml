@@ -1,0 +1,111 @@
+configuration:
+  base_url:
+    name: "Öffentliche Adresse"
+    description: "Die öffentliche https-Adresse dieser Instanz, zum Beispiel https://laufen.example.org (ohne Pfad). Sie steht in geteilten Links und ist der Weg, auf dem man von außen den öffentlichen Port erreicht. Pflichtangabe."
+  instance_name:
+    name: "Name der Instanz"
+    description: "Der Name in der Kopfzeile und in Nachrichten. 1 bis 60 Zeichen."
+  contact_email:
+    name: "Kontakt-E-Mail"
+    description: "Eine Adresse, mit der du dich gegenüber den Anbietern von Karten, Ortssuche und Wetter ausweist (ihre Nutzungsbedingungen verlangen das) und die Besucher:innen als Kontakt sehen. Ohne sie bleiben Ortssuche und das Laden von Kartenkacheln durch den Server ausgeschaltet."
+  imprint_url:
+    name: "Link zum Impressum"
+    description: "Link zu deinem Impressum, im Seitenfuß angezeigt. Leer lassen, wenn du keins hast."
+  privacy_url:
+    name: "Link zur Datenschutzerklärung"
+    description: "Link zu deiner eigenen Datenschutzerklärung, zusätzlich zum eingebauten Datenschutzhinweis der App unter /privacy. Leer lassen, um nur den eingebauten zu zeigen."
+  default_timezone:
+    name: "Standard-Zeitzone"
+    description: "Die Zeitzone, wenn der Browser keine mitteilt, zum Beispiel Europe/Berlin. Standard ist UTC."
+  maps_enabled:
+    name: "Karten anzeigen"
+    description: "Karten mit Routen anzeigen. Ausschalten, damit gar keine Kartenkacheln geladen werden."
+  map_tile_url:
+    name: "Adresse der Kartenkacheln"
+    description: "Vorlage des Kachelservers mit {z}, {x} und {y} (und optional {s}). Leer lassen für den öffentlichen OpenStreetMap-Server. Muss https sein."
+  map_attribution:
+    name: "Kartenquelle"
+    description: "Die Quellenangabe auf den Karten. Leer lassen für die OpenStreetMap-Angabe; ändere sie zusammen mit dem Kachelserver."
+  geocoder_enabled:
+    name: "Orte suchen"
+    description: "Der App erlauben, beim Planen eines Treffens Adressen und Ortsnamen zu suchen. Braucht die Kontakt-E-Mail."
+  geocoder_url:
+    name: "Adresse der Ortssuche"
+    description: "Adresse des Ortssuche-Dienstes (kompatibel mit Nominatim). Leer lassen für den öffentlichen OpenStreetMap-Dienst."
+  weather_enabled:
+    name: "Wetter anzeigen"
+    description: "Eine kurze Wettervorhersage auf der Seite eines Treffens anzeigen."
+  weather_url:
+    name: "Adresse des Wetterdienstes"
+    description: "Adresse des Wetterdienstes (kompatibel mit Open-Meteo). Leer lassen für den öffentlichen Open-Meteo-Dienst."
+  posting_mode:
+    name: "Wer Treffen anlegen darf"
+    description: "anyone: alle Besucher:innen. invite: nur Personen mit einem Einladungslink, den du in den Admin-Seiten erzeugst. logged_in: nur Personen, die sich mit dem Single Sign-on oder dem Fediverse-Login unten angemeldet haben."
+  public_requires_login:
+    name: "Öffentliche Liste nur mit Anmeldung"
+    description: "Die Liste öffentlicher Treffen nur angemeldeten Personen zeigen. Ausschalten, um sie allen Besucher:innen zu zeigen."
+  nearby_enabled:
+    name: "„In der Nähe“ anbieten"
+    description: "Die Liste öffentlicher Treffen in der Nähe des Standorts der Besucher:innen anbieten."
+  federation_enabled:
+    name: "Föderation (Fediverse)"
+    description: "Erlauben, den Konten der Instanz von Mastodon und anderen Fediverse-Servern aus zu folgen, und öffentliche Treffen dort teilen. Ausschalten, damit Treffen und Profile nicht auf andere Fediverse-Server gelangen."
+  oidc_issuer:
+    name: "Single Sign-on: Aussteller"
+    description: "Adresse deines OpenID-Connect-Anbieters (zum Beispiel Authentik, Keycloak oder Authelia). Mit Aussteller und Client-ID ist das Single Sign-on eingeschaltet."
+  oidc_client_id:
+    name: "Single Sign-on: Client-ID"
+    description: "Die Client-ID, die du für RendezRoute bei deinem OpenID-Connect-Anbieter angelegt hast."
+  oidc_client_secret:
+    name: "Single Sign-on: Client-Geheimnis"
+    description: "Das Client-Geheimnis deines Anbieters, falls er eins vergeben hat."
+  oidc_name:
+    name: "Single Sign-on: Name der Schaltfläche"
+    description: "Der Name auf der Anmelde-Schaltfläche, zum Beispiel Authentik. 1 bis 40 Zeichen. Leer lassen, um den Hostnamen des Anbieters zu nutzen."
+  fediverse_login:
+    name: "Anmeldung mit dem Fediverse"
+    description: "Besucher:innen erlauben, sich mit ihrem Mastodon- oder anderem Fediverse-Konto anzumelden."
+  fediverse_login_servers:
+    name: "Erlaubte Fediverse-Server"
+    description: "Die Fediverse-Anmeldung auf diese Server beschränken, eine Domain pro Eintrag, zum Beispiel mastodon.social. Leer lassen, um jeden Server zuzulassen. Braucht die Fediverse-Anmeldung."
+  smtp_host:
+    name: "E-Mail: Server"
+    description: "Hostname deines Postausgangsservers. Ohne ihn werden keine E-Mails verschickt. Braucht die Absenderadresse."
+  smtp_port:
+    name: "E-Mail: Port"
+    description: "Port des Mailservers. Leer lassen für den üblichen Port der gewählten Verschlüsselung (587 oder 465)."
+  smtp_tls:
+    name: "E-Mail: Verschlüsselung"
+    description: "starttls (Standard, Port 587) oder tls (Port 465)."
+  smtp_user:
+    name: "E-Mail: Benutzername"
+    description: "Benutzername für den Mailserver, falls er einen braucht."
+  smtp_password:
+    name: "E-Mail: Passwort"
+    description: "Passwort für den Mailserver, falls er eins braucht."
+  smtp_from:
+    name: "E-Mail: Absenderadresse"
+    description: "Die Adresse, von der aus E-Mails verschickt werden. Pflicht, sobald ein Mailserver gesetzt ist."
+  ntfy_url:
+    name: "ntfy: Server"
+    description: "Adresse deines ntfy-Servers für Push-Benachrichtigungen. Leer lassen für kein ntfy."
+  ntfy_token:
+    name: "ntfy: Zugangstoken"
+    description: "Zugangstoken für den ntfy-Server, falls er einen braucht."
+  telegram_bot_token:
+    name: "Telegram: Bot-Token"
+    description: "Das Token deines Telegram-Bots für Benachrichtigungen über Telegram. Leer lassen für kein Telegram."
+  telegram_api_url:
+    name: "Telegram: API-Adresse"
+    description: "Adresse der Telegram-Bot-API. Leer lassen für die offizielle."
+  max_retention_days:
+    name: "Beendete Treffen aufbewahren (Tage)"
+    description: "Die längste Zeit, die ein beendetes Treffen aufbewahrt wird, 1 bis 30 Tage. Organisator:innen können nur kürzere Zeiten wählen."
+  max_plan_horizon_days:
+    name: "Höchstens im Voraus planen (Tage)"
+    description: "Wie weit im Voraus ein Treffen geplant werden darf, 1 bis 180 Tage."
+  trust_proxy:
+    name: "Reverse-Proxy vertrauen"
+    description: "Nur einschalten, wenn ein Reverse-Proxy vor dem öffentlichen Port den Header X-Forwarded-For setzt und niemand den Port direkt erreicht. Dann zählt die App ihre Begrenzungen je Besucher:in statt je Proxy."
+network:
+  3000/tcp: "Die öffentliche Seite (Gäste, geteilte Links, Föderation). Stelle einen https-Reverse-Proxy davor."

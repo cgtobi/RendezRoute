@@ -6,10 +6,10 @@ export type HaOptionsResult =
   | { ok: true; env: Record<string, string> }
   | { ok: false; errors: string[] };
 
-type Kind = "text" | "flag" | "integer" | "list";
+export type HaOptionKind = "text" | "flag" | "integer" | "list";
 
 /** option name (as the Home Assistant form shows it) -> [environment name, kind of value]. */
-const OPTIONS: Readonly<Record<string, readonly [string, Kind]>> = {
+const OPTIONS: Readonly<Record<string, readonly [string, HaOptionKind]>> = {
   base_url: ["BASE_URL", "text"],
   instance_name: ["INSTANCE_NAME", "text"],
   contact_email: ["CONTACT_EMAIL", "text"],
@@ -47,6 +47,12 @@ const OPTIONS: Readonly<Record<string, readonly [string, Kind]>> = {
   max_plan_horizon_days: ["MAX_PLAN_HORIZON_DAYS", "integer"],
   trust_proxy: ["TRUST_PROXY", "flag"],
 };
+
+/** The option names (the keys of the app's schema in config.yaml) and their kinds of value. */
+export const HA_OPTION_KINDS: Readonly<Record<string, HaOptionKind>> = Object.fromEntries(
+  Object.entries(OPTIONS).map(([option, [, kind]]) => [option, kind]),
+);
+export const HA_OPTION_NAMES: readonly string[] = Object.keys(OPTIONS);
 
 /** The environment names the options write (for tests that keep them in step with config.ts). */
 export const HA_OPTION_ENVIRONMENT_NAMES: readonly string[] = Object.values(OPTIONS).map(

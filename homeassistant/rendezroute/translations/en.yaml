@@ -1,0 +1,111 @@
+configuration:
+  base_url:
+    name: "Public address"
+    description: "The public https address of this instance, for example https://runs.example.org (no path). It appears in shared links and is how the outside world reaches the public port. Required."
+  instance_name:
+    name: "Instance name"
+    description: "The name shown in the page header and in messages. 1 to 60 characters."
+  contact_email:
+    name: "Contact email"
+    description: "An address that identifies you to the map, geocoding and weather providers (their usage policies require it) and that is shown to visitors as the contact. Without it, geocoding and server-side map tiles stay off."
+  imprint_url:
+    name: "Imprint link"
+    description: "Link to your imprint (legal notice), shown in the footer. Leave empty if you have none."
+  privacy_url:
+    name: "Privacy policy link"
+    description: "Link to your own privacy policy, shown in the footer in addition to the app's built-in privacy notice at /privacy. Leave empty to show only the built-in one."
+  default_timezone:
+    name: "Default time zone"
+    description: "The time zone used when a visitor's browser does not tell one, for example Europe/Berlin. Defaults to UTC."
+  maps_enabled:
+    name: "Show maps"
+    description: "Show maps with route lines. Turn off to load no map tiles at all."
+  map_tile_url:
+    name: "Map tile URL"
+    description: "Template of the tile server, with {z}, {x} and {y} (and optionally {s}). Leave empty for OpenStreetMap's public tile server. Must be https."
+  map_attribution:
+    name: "Map attribution"
+    description: "The credit line shown on maps. Leave empty for the OpenStreetMap credit; change it with the tile server."
+  geocoder_enabled:
+    name: "Look up place names"
+    description: "Let the app search addresses and place names while a run or ride is planned. Needs the contact email."
+  geocoder_url:
+    name: "Geocoder URL"
+    description: "Address of the geocoding service (Nominatim compatible). Leave empty for the public OpenStreetMap service."
+  weather_enabled:
+    name: "Show weather"
+    description: "Show a short weather forecast on the page of a run or ride."
+  weather_url:
+    name: "Weather service URL"
+    description: "Address of the weather service (Open-Meteo compatible). Leave empty for the public Open-Meteo service."
+  posting_mode:
+    name: "Who can create runs or rides"
+    description: "anyone: every visitor. invite: only people with an invite link that you create in the admin pages. logged_in: only people who signed in with the single sign-on or Fediverse login below."
+  public_requires_login:
+    name: "Public listings need login"
+    description: "Keep the list of public runs and rides visible only to signed-in people. Turn off to show it to every visitor."
+  nearby_enabled:
+    name: "Show nearby listings"
+    description: "Offer the list of public runs and rides near a visitor's location."
+  federation_enabled:
+    name: "Federation (Fediverse)"
+    description: "Let people follow the instance's accounts from Mastodon and other Fediverse servers, and let it share public runs and rides there. Turn off to keep plans and profiles off other Fediverse servers."
+  oidc_issuer:
+    name: "Single sign-on: issuer"
+    description: "Address of your OpenID Connect provider (for example Authentik, Keycloak or Authelia). Setting issuer and client ID turns on single sign-on."
+  oidc_client_id:
+    name: "Single sign-on: client ID"
+    description: "The client ID you registered for RendezRoute at your OpenID Connect provider."
+  oidc_client_secret:
+    name: "Single sign-on: client secret"
+    description: "The client secret from your provider, if it gave one."
+  oidc_name:
+    name: "Single sign-on: button name"
+    description: "The name on the login button, for example Authentik. 1 to 40 characters. Leave empty to use the provider's host name."
+  fediverse_login:
+    name: "Log in with the Fediverse"
+    description: "Let visitors sign in with their Mastodon or other Fediverse account."
+  fediverse_login_servers:
+    name: "Allowed Fediverse servers"
+    description: "Limit the Fediverse login to these servers, one domain per entry, for example mastodon.social. Leave empty to allow any server. Needs the Fediverse login."
+  smtp_host:
+    name: "Email: server"
+    description: "Host name of your outgoing mail server. Without it, no emails are sent. Needs the sender address."
+  smtp_port:
+    name: "Email: port"
+    description: "Port of the mail server. Leave empty for the usual port of the chosen encryption (587 or 465)."
+  smtp_tls:
+    name: "Email: encryption"
+    description: "starttls (default, port 587) or tls (port 465)."
+  smtp_user:
+    name: "Email: user name"
+    description: "User name for the mail server, if it needs one."
+  smtp_password:
+    name: "Email: password"
+    description: "Password for the mail server, if it needs one."
+  smtp_from:
+    name: "Email: sender address"
+    description: "The address emails are sent from. Required when a mail server is set."
+  ntfy_url:
+    name: "ntfy: server"
+    description: "Address of your ntfy server, for push notifications. Leave empty for no ntfy."
+  ntfy_token:
+    name: "ntfy: access token"
+    description: "Access token for the ntfy server, if it needs one."
+  telegram_bot_token:
+    name: "Telegram: bot token"
+    description: "The token of your Telegram bot, for notifications through Telegram. Leave empty for no Telegram."
+  telegram_api_url:
+    name: "Telegram: API address"
+    description: "Address of the Telegram Bot API. Leave empty for the official one."
+  max_retention_days:
+    name: "Keep finished runs for (days)"
+    description: "The longest time a finished run or ride is kept, 1 to 30 days. Organisers can only choose shorter times."
+  max_plan_horizon_days:
+    name: "Plan ahead at most (days)"
+    description: "How far ahead a run or ride may be planned, 1 to 180 days."
+  trust_proxy:
+    name: "Trust the reverse proxy"
+    description: "Turn on only when a reverse proxy in front of the public port sets the X-Forwarded-For header and no one can reach the port directly. Then the app counts rate limits per real visitor and not per proxy."
+network:
+  3000/tcp: "The public site (guests, shared links, federation). Put an https reverse proxy in front."

@@ -3,6 +3,13 @@
 # filesystem; only /data and the key directory are written. The base image is pinned by digest;
 # update it deliberately (and with it the Node version in .node-version). The `ha` target below is
 # the Home Assistant app image; the last stage is the normal one.
+#
+# IMAGE_TARGET picks which stage the last stage (`final`) is: `runtime` (the default, the normal
+# image) or `ha`. The official Home Assistant builder actions cannot pass `--target`, so the
+# publish workflow passes `IMAGE_TARGET=ha` as a build argument instead (decision I77). An ARG
+# before the first FROM is usable in FROM lines only, which is all it is needed for. Keep `final`
+# the last stage: a plain `docker build .` builds it.
+ARG IMAGE_TARGET=runtime
 ARG NODE_IMAGE=node:26-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072
 
 FROM ${NODE_IMAGE} AS build
@@ -49,3 +56,7 @@ USER node
 VOLUME ["/data"]
 ENTRYPOINT ["node", "dist/cli.js"]
 CMD ["serve"]
+
+# The image a plain `docker build .` produces: the normal image, or the Home Assistant one when
+# IMAGE_TARGET=ha. It adds nothing of its own, so it has the same layers and configuration.
+FROM ${IMAGE_TARGET} AS final

@@ -1,0 +1,144 @@
+# Publishes the Home Assistant app image (decisions D57, I76, I77) with the official Home Assistant
+# builder actions: one image per architecture (ghcr.io/<owner>/aarch64-rendezroute-ha and
+# ghcr.io/<owner>/amd64-rendezroute-ha), then the multi-arch manifest ghcr.io/<owner>/rendezroute-ha
+# that config.yaml's `image:` names. The builder signs the per-architecture images and the manifest
+# with Cosign (keyless, through this workflow's GitHub OIDC token; nothing to configure).
+#
+# NOTHING PUBLISHES until the repository owner sets the repository variable PUBLISH_HA_IMAGE to
+# `true` (Settings > Secrets and variables > Actions > Variables). Without it every job is skipped.
+name: Publish Home Assistant image
+
+# Runs on a pushed `v*` tag only. The manual run exists to re-run a tag (for example after a failed
+# build): choose that tag under "Use workflow from". A branch is refused by the first step of the
+# check job, so a manual run never publishes a branch build.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+# One publish at a time, and a running one is never cancelled half-way (a half-pushed image and
+# manifest would be worse than waiting).
+concurrency:
+  group: publish-ha
+  cancel-in-progress: false
+
+# Read-only by default; only the jobs that push to ghcr get more (below).
+permissions:
+  contents: read
+
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: rendezroute-ha
+
+# The builder actions are pinned to the commit of the 2026.09.0 tag. The Supervisor appends the
+# app version to `image:`, so the image tag is the version (no `latest`).
+jobs:
+  # Guard: only a tag publishes, and the image tag is the version in config.yaml. The Supervisor
+  # looks for exactly that tag, so a tag that disagrees would publish an image no installation can
+  # pull.
+  check:
+    name: Tag equals the version in config.yaml
+    if: vars.PUBLISH_HA_IMAGE == 'true'
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      # First, before anything is checked out: a branch run is refused here.
+      - name: Refuse anything but a tag
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          if [ "$REF_TYPE" != tag ]; then echo "::error::Run this workflow on a v* tag"; exit 1; fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read the version and compare it with the tag
+        id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          file=homeassistant/rendezroute/config.yaml
+          if [ "$(grep -c '^version:' "$file")" != 1 ]; then
+            echo "::error::Expected exactly one top-level 'version:' line in $file"
+            exit 1
+          fi
+          version="$(sed -n 's/^version:[[:space:]]*//p' "$file" | tr -d "\"'" | tr -d '[:space:]')"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Cannot read a version like 1.2.3 from $file (got '$version')"
+            exit 1
+          fi
+          if [ "${REF_NAME#v}" != "$version" ]; then
+            echo "::error::Tag $REF_NAME does not match version $version in $file"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  # The build matrix: runner and full image name per architecture (aarch64 builds on a native arm
+  # runner, `ubuntu-24.04-arm`; no emulation).
+  init:
+    name: Initialize build
+    if: vars.PUBLISH_HA_IMAGE == 'true'
+    needs: check
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+
+  build:
+    name: Build ${{ matrix.arch }} image
+    if: vars.PUBLISH_HA_IMAGE == 'true'
+    needs: [check, init]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read # check out the code
+      packages: write # push the per-architecture image to ghcr
+      id-token: write # Cosign keyless signing (the OIDC token)
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The action sets io.hass.arch, io.hass.version and the org.opencontainers.image.* labels
+      # itself; io.hass.type is the one it leaves to the caller. There is no `target` input, so the
+      # Dockerfile's IMAGE_TARGET build argument selects the `ha` stage (decision I77).
+      - uses: home-assistant/builder/actions/build-image@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
+        with:
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          context: .
+          file: Dockerfile
+          build-args: |
+            IMAGE_TARGET=ha
+          labels: |
+            io.hass.type=app
+          image: ${{ matrix.image }}
+          image-tags: ${{ needs.check.outputs.version }}
+          push: "true"
+          # A re-run of a published version builds again but does not overwrite or re-sign it.
+          skip-existing: ${{ needs.check.outputs.version }}
+          version: ${{ needs.check.outputs.version }}
+
+  manifest:
+    name: Publish multi-arch manifest
+    if: vars.PUBLISH_HA_IMAGE == 'true'
+    needs: [check, init, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write # push the manifest to ghcr
+      id-token: write # Cosign keyless signing of the manifest
+    steps:
+      - uses: home-assistant/builder/actions/publish-multi-arch-manifest@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: ${{ needs.check.outputs.version }}
+          skip-existing: ${{ needs.check.outputs.version }}

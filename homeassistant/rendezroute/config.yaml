@@ -1,0 +1,81 @@
+name: RendezRoute
+version: "0.10.0"
+slug: rendezroute
+description: Advertise a planned run or ride so others can join, without accounts for guests
+url: https://github.com/cgtobi/RendezRoute
+arch:
+  - aarch64
+  - amd64
+image: ghcr.io/cgtobi/rendezroute-ha
+# Marked experimental until the app has run on real devices.
+stage: experimental
+# The admin pages are reached only through Ingress (Home Assistant administrators, in the sidebar
+# panel). ingress_port stays at the Supervisor's default 8099, the app's fixed admin port.
+ingress: true
+panel_icon: mdi:map-marker-path
+panel_title: RendezRoute
+# Asks the Supervisor which version it is, to check that Ingress identifies the user (decision I75).
+hassio_api: true
+# The encryption and federation keys live in the app's config folder (/config), not in /data.
+map:
+  - app_config:rw
+# The public site. The user can change the host port or switch it off in the Network section.
+ports:
+  3000/tcp: 3000
+ports_description:
+  3000/tcp: The public site (guests, shared links, federation). Put an https reverse proxy in front.
+# A running SQLite database copied under the app's feet is risky: stop the app for the backup.
+backup: cold
+options:
+  base_url: null
+  instance_name: RendezRoute
+  default_timezone: UTC
+  maps_enabled: true
+  geocoder_enabled: true
+  weather_enabled: true
+  posting_mode: anyone
+  public_requires_login: true
+  nearby_enabled: true
+  federation_enabled: true
+  fediverse_login: false
+  max_retention_days: 30
+  max_plan_horizon_days: 180
+  trust_proxy: false
+schema:
+  base_url: url
+  instance_name: str(1,60)
+  contact_email: email?
+  imprint_url: url?
+  privacy_url: url?
+  default_timezone: str
+  maps_enabled: bool
+  map_tile_url: str?
+  map_attribution: str?
+  geocoder_enabled: bool
+  geocoder_url: url?
+  weather_enabled: bool
+  weather_url: url?
+  posting_mode: list(anyone|invite|logged_in)
+  public_requires_login: bool
+  nearby_enabled: bool
+  federation_enabled: bool
+  oidc_issuer: url?
+  oidc_client_id: str?
+  oidc_client_secret: password?
+  oidc_name: str(1,40)?
+  fediverse_login: bool
+  fediverse_login_servers:
+    - str?
+  smtp_host: str?
+  smtp_port: port?
+  smtp_tls: list(starttls|tls)?
+  smtp_user: str?
+  smtp_password: password?
+  smtp_from: email?
+  ntfy_url: url?
+  ntfy_token: password?
+  telegram_bot_token: password?
+  telegram_api_url: url?
+  max_retention_days: int(1,30)
+  max_plan_horizon_days: int(1,180)
+  trust_proxy: bool

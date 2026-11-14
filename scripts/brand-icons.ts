@@ -2,21 +2,24 @@
 //
 //   npm run icons -- <folder with the exports>
 //
+// Without a folder it rebuilds only the Home Assistant app's icon.png and logo.png (decision D57),
+// which come from the committed public/brand/app-icon.svg, so they are reproducible from the
+// repository alone.
+//
 // The folder holds RendezRoute_AppIcon.svg (the app icon) and RendezRoute_icon.svg (the pin, the
 // mark wherever it stands alone in the app). Only the marks are taken, as drawn: the hidden traced
 // photo, embedded pictures and editor data stay behind. The element ids and offsets
 // below are those of the current exports; a new export with other ids fails with a message.
 import { readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { Resvg } from "@resvg/resvg-js";
+import satori from "satori";
 
 const PUBLIC = join(import.meta.dirname, "../public");
+const HA_APP = join(import.meta.dirname, "../homeassistant/rendezroute");
 
 const folder = process.argv[2];
-if (folder === undefined) {
-  process.stderr.write("Usage: npm run icons -- <folder with the RendezRoute_*.svg exports>\n");
-  process.exit(1);
-}
 
 /** The path data of the element with this id in RendezRoute_<name>.svg. */
 function pathOf(name: string, id: string): string {
@@ -67,18 +70,81 @@ function headerLogo(): string {
 }
 
 const png = (svg: string, size: number) =>
-  new Resvg(svg, { fitTo: { mode: "width", value: size } }).render().asPng();
+  new Resvg(svg, { fitTo: { mode: "width", value: size }, font: { loadSystemFonts: false } })
+    .render()
+    .asPng();
 
-const files: [string, string | Buffer][] = [
-  ["brand/app-icon.svg", appIcon(30)],
-  ["brand/tab-icon.svg", tabIcon()],
-  ["icons/logo.svg", headerLogo()],
-  // iOS rounds the corners itself and shows transparent ones black: a full square.
-  ["brand/apple-touch-icon.png", png(appIcon(0), 180)],
-  // For browsers without SVG tab icons.
-  ["brand/tab-icon-32.png", png(appIcon(30), 32)],
+if (folder !== undefined) {
+  const files: [string, string | Buffer][] = [
+    ["brand/app-icon.svg", appIcon(30)],
+    ["brand/tab-icon.svg", tabIcon()],
+    ["icons/logo.svg", headerLogo()],
+    // iOS rounds the corners itself and shows transparent ones black: a full square.
+    ["brand/apple-touch-icon.png", png(appIcon(0), 180)],
+    // For browsers without SVG tab icons.
+    ["brand/tab-icon-32.png", png(appIcon(30), 32)],
+  ];
+  for (const [file, content] of files) {
+    writeFileSync(join(PUBLIC, file), content);
+    process.stdout.write(`public/${file}\n`);
+  }
+}
+
+// The Home Assistant app's store images, from the committed app icon: the icon square at 128 × 128,
+// and the logo at 250 × 100 (the sizes of the developer docs): the icon and the name beside it.
+// The wordmark is Inter (the font the app ships), set by Satori, and in the logo's mid blue, which
+// reads on the light and the dark theme.
+const iconSvg = readFileSync(join(PUBLIC, "brand/app-icon.svg"), "utf8");
+const iconUri = `data:image/svg+xml;base64,${Buffer.from(iconSvg).toString("base64")}`;
+const LOGO = { width: 250, height: 100, icon: 68 };
+
+async function haLogo(): Promise<string> {
+  const require = createRequire(import.meta.url);
+  const font = (weight: 600 | 700) => ({
+    name: "Inter",
+    data: readFileSync(
+      require.resolve(`@fontsource/inter/files/inter-latin-${weight}-normal.woff`),
+    ),
+    weight,
+    style: "normal" as const,
+  });
+  return satori(
+    {
+      type: "div",
+      props: {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          // Centred, and no padding: Satori adds it to the width and the height (a 14px padding
+          // once made the root 278 × 128 on the 250 × 100 canvas and clipped the wordmark).
+          justifyContent: "center",
+          width: LOGO.width,
+          height: LOGO.height,
+        },
+        children: [
+          {
+            type: "img",
+            props: { src: iconUri, width: LOGO.icon, height: LOGO.icon },
+          },
+          {
+            type: "div",
+            props: {
+              style: { marginLeft: 8, fontSize: 22, fontWeight: 700, color: "#3171b6" },
+              children: "RendezRoute",
+            },
+          },
+        ],
+      },
+    },
+    { width: LOGO.width, height: LOGO.height, fonts: [font(600), font(700)] },
+  );
+}
+
+const haFiles: [string, Buffer][] = [
+  ["icon.png", png(iconSvg, 128)],
+  ["logo.png", png(await haLogo(), LOGO.width)],
 ];
-for (const [file, content] of files) {
-  writeFileSync(join(PUBLIC, file), content);
-  process.stdout.write(`public/${file}\n`);
+for (const [file, content] of haFiles) {
+  writeFileSync(join(HA_APP, file), content);
+  process.stdout.write(`homeassistant/rendezroute/${file}\n`);
 }

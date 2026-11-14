@@ -1,10 +1,11 @@
 // Fake external services for end-to-end tests (spec 2b): map tiles, a Nominatim-style place
 // search, an Open-Meteo-style forecast, an OIDC provider and a Mastodon-API server (identity.ts),
-// a mail server (smtp.ts), an ntfy server (ntfy.ts) and a Telegram Bot API (telegram.ts), so E2E
-// runs never touch real providers.
+// a mail server (smtp.ts), an ntfy server (ntfy.ts), a Telegram Bot API (telegram.ts) and remote
+// fediverse people (fediverse.ts), so E2E runs never touch real providers.
 // Runs with Node's type stripping.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { deflateSync } from "node:zlib";
+import { handleFediverse } from "./fediverse.ts";
 import { handleIdentity } from "./identity.ts";
 import { handleNtfy } from "./ntfy.ts";
 import { handleTelegram } from "./telegram.ts";
@@ -59,6 +60,7 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
   if (handleMail(request, response, url)) return;
   if (await handleNtfy(request, response, url)) return;
   if (await handleTelegram(request, response, url)) return;
+  if (await handleFediverse(request, response, url)) return;
   if (/^\/tiles\/\d+\/\d+\/\d+\.png$/.test(url.pathname)) {
     response.writeHead(200, { "content-type": "image/png", "access-control-allow-origin": "*" });
     response.end(TILE);

@@ -1,6 +1,6 @@
 # End-to-end environment (spec 2b definition of done): the built image on empty volumes, hardened
 # like production, three times: default settings pointed at fake providers; maps, geocoder and
-# weather disabled; and the 0.7 and 0.8 features (admin, invite-only posting, OIDC and fediverse
+# weather disabled; and the 0.7 to 0.9 features (admin, invite-only posting, OIDC and fediverse
 # login, email, against fakes). Started and stopped by global-setup.ts.
 name: rendezroute-e2e
 
@@ -68,7 +68,7 @@ services:
     ports:
       - "3102:3000"
 
-  # The 0.7 and 0.8 features: instance admin, invite-only posting, OIDC and fediverse login,
+  # The 0.7 to 0.9 features: instance admin, invite-only posting, OIDC and fediverse login,
   # email (fakes).
   app-accounts:
     <<: *app

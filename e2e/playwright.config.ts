@@ -2,8 +2,8 @@
 // Locally, E2E_CHANNEL=chrome uses the installed Chrome instead of Playwright's Chromium.
 import { defineConfig, devices } from "@playwright/test";
 
-/** Specs that need the 0.7 and 0.8 configuration (admin, invites, logins, email): the third container. */
-const ACCOUNT_SPECS = /v0[78]\.spec\.ts$/;
+/** Specs that need the 0.7 to 0.9 configuration (admin, invites, logins, email, federation): the third container. */
+const ACCOUNT_SPECS = /v0[789]\.spec\.ts$/;
 
 export default defineConfig({
   testDir: ".",
@@ -34,9 +34,9 @@ export default defineConfig({
       testIgnore: ACCOUNT_SPECS,
       use: { baseURL: "http://localhost:3102" },
     },
-    // Admin, invites and accounts (0.7) and email (0.8) need their own configuration.
+    // Admin, invites and accounts (0.7), email (0.8) and federation (0.9) need their own configuration.
     {
-      name: "0.7 and 0.8 features",
+      name: "0.7 to 0.9 features",
       testMatch: ACCOUNT_SPECS,
       use: { baseURL: "http://localhost:3103" },
     },

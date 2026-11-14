@@ -23,6 +23,8 @@ interface Grant {
   redirectUri: string;
   challenge: string;
   nonce: string | null;
+  /** Who the OIDC provider approves: a person of the spec's own when it set the cookie. */
+  person: { sub: string; name: string };
 }
 const grants = new Map<string, Grant>();
 const tokens = new Set<string>();
@@ -39,8 +41,24 @@ async function formOf(request: IncomingMessage): Promise<URLSearchParams> {
   return new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
 }
 
+/**
+ * A spec that must not share the fixed OIDC person (another spec deletes that account while it
+ * runs) sets the cookie `e2e-oidc-person` (`sub`, letters, digits, - and _) on this server.
+ */
+function personOf(request: IncomingMessage) {
+  const sub = /(?:^|; )e2e-oidc-person=([A-Za-z0-9_-]{1,64})(?:;|$)/.exec(
+    request.headers.cookie ?? "",
+  )?.[1];
+  return sub === undefined ? OIDC_PERSON : { sub, name: `Person ${sub}` };
+}
+
 /** The person agrees at once: back to the redirect URI with a code. */
-function approve(url: URL, response: ServerResponse, withIssuer: boolean) {
+function approve(
+  url: URL,
+  request: IncomingMessage,
+  response: ServerResponse,
+  withIssuer: boolean,
+) {
   const redirectUri = url.searchParams.get("redirect_uri") ?? "";
   const code = base64url(randomBytes(24));
   grants.set(code, {
@@ -48,6 +66,7 @@ function approve(url: URL, response: ServerResponse, withIssuer: boolean) {
     redirectUri,
     challenge: url.searchParams.get("code_challenge") ?? "",
     nonce: url.searchParams.get("nonce"),
+    person: personOf(request),
   });
   const back = new URL(redirectUri);
   back.searchParams.set("code", code);
@@ -113,7 +132,7 @@ export async function handleIdentity(
       response.writeHead(400).end("invalid authorization request");
       return true;
     }
-    approve(url, response, true);
+    approve(url, request, response, true);
     return true;
   }
   if (path === "/oidc/token" && request.method === "POST") {
@@ -128,7 +147,7 @@ export async function handleIdentity(
       aud: OIDC_CLIENT.id,
       iat: now,
       exp: now + 300,
-      ...OIDC_PERSON,
+      ...grant.person,
       ...(grant.nonce === null ? {} : { nonce: grant.nonce }),
     };
     const input = `${base64url(JSON.stringify({ alg: "ES256", kid: "e2e", typ: "JWT" }))}.${base64url(JSON.stringify(claims))}`;
@@ -169,7 +188,7 @@ export async function handleIdentity(
       response.writeHead(400).end("invalid authorization request");
       return true;
     }
-    approve(url, response, false);
+    approve(url, request, response, false);
     return true;
   }
   if (path === "/oauth/token" && request.method === "POST") {

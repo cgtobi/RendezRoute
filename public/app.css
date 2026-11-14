@@ -293,29 +293,44 @@ main,
 
 .footer-menu-body {
   clear: both;
+  margin-top: var(--s3);
   padding-top: var(--s4);
+  border-top: 1px solid var(--line);
 }
 
+/* One line per setting: label, the select taking what is left, the button as wide as its text.
+   Below 340 px the label sits above the select and button instead. */
 .preference {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s2);
-  margin-bottom: var(--s3);
+  margin: 0 0 var(--s3);
 }
 
 .preference label {
-  min-width: 5.5rem;
+  flex: 0 0 5.5rem;
 }
 
-.preference select,
-.preference button {
+.preference select {
+  flex: 1 1 0;
+  min-width: 0;
   width: auto;
   font-size: inherit;
 }
 
-.preference select {
-  width: 10rem;
+.preference button {
+  flex: none;
+  min-width: 0;
+  padding: var(--s2) var(--s4);
+  font-size: inherit;
+  white-space: nowrap;
+}
+
+@media (max-width: 339.98px) {
+  .preference label {
+    flex: 1 0 100%;
+  }
 }
 
 .footer-links {
@@ -464,8 +479,14 @@ legend {
 
 .field-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr), not 1fr: native date and time inputs are wide on iOS and would stop the columns
+     from shrinking. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s3);
+}
+
+.field-row > * {
+  min-width: 0;
 }
 
 input:not([type="radio"], [type="checkbox"], [type="color"]),
@@ -483,6 +504,18 @@ textarea {
 
 textarea {
   min-height: 6rem;
+}
+
+input[type="date"],
+input[type="time"] {
+  min-width: 0;
+  max-width: 100%;
+  text-align: start;
+}
+
+input::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: start;
 }
 
 input[type="file"] {

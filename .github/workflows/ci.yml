@@ -85,6 +85,35 @@ jobs:
         with:
           path: ./homeassistant/rendezroute
 
+  # The Home Assistant app's AppArmor profile must parse (the Supervisor and the OS Agent refuse an
+  # app whose profile does not) and define exactly one profile, named like the slug the Supervisor
+  # rewrites it to. -Q and -K: syntax only, no kernel load and no cache. The rules themselves are
+  # checked on real devices (decision D60).
+  home-assistant-apparmor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the AppArmor parser
+        run: sudo apt-get update && sudo apt-get install -y apparmor
+      - name: Parse the profile
+        run: apparmor_parser -Q -K homeassistant/rendezroute/apparmor.txt
+      - name: Check the profile name
+        run: |
+          names="$(apparmor_parser --names -Q -K homeassistant/rendezroute/apparmor.txt 2>/dev/null)"
+          echo "profile names: $names"
+          test "$names" = rendezroute
+      # The parser of Home Assistant OS (buildroot ships AppArmor 3.1.7, as Alpine 3.20 does), in a
+      # container so that the Ubuntu runner's newer parser is not the only check.
+      - name: Parse the profile with the parser of Home Assistant OS
+        run: |
+          docker run --rm -v "$PWD/homeassistant/rendezroute:/p:ro" \
+            alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc sh -c '
+              apk add --no-cache apparmor apparmor-profiles >/dev/null &&
+              apparmor_parser -Q -K /p/apparmor.txt &&
+              test "$(apparmor_parser --names -Q -K --skip-cache /p/apparmor.txt 2>/dev/null)" = rendezroute'
+
   # The Home Assistant app's files against the Supervisor's own schemas (the code that validates
   # config.yaml, the translations and repository.yaml on a user's installation), by the script
   # scripts/validate-ha-app.py. The Supervisor is checked out at a pinned commit (98a2322, the

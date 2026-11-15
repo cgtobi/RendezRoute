@@ -1,0 +1,153 @@
+# AppArmor profile of the RendezRoute Home Assistant app (decision D60).
+#
+# COMPLAIN MODE for 0.11.0: the `complain` flag below makes the kernel log what the allow-list
+# would refuse instead of refusing it, so everything outside the explicit `deny` rules is only
+# logged for now. The explicit `deny` rules are NOT softened by `complain`: they are enforced
+# already (mount, ptrace, raw sockets, writes under /proc/sys and to the app's own files, ...),
+# and they are quiet: a plain `deny` writes no log line. (`audit deny` would be logged, but in
+# complain mode the kernel then turns it into a non-blocking ALLOWED line, so it is not used
+# until step 11c, when enforcement makes it block and log as DENIED.) If something breaks, look
+# for EACCES or EPERM in the app's log. Until enforcement the profile is not stricter than
+# Docker's default for ordinary access. Steps 11b and 11c fix the allow-list from real devices
+# and remove the flag.
+#
+# Reading the log on Home Assistant OS (host shell, not the Terminal app):
+#   journalctl _TRANSPORT="audit" -g 'apparmor="ALLOWED"'     (allow-list misses, complain mode)
+#   journalctl _TRANSPORT="audit" -g 'apparmor="DENIED"'      (enforce mode)
+#
+# The Supervisor rewrites the profile name on the `profile` line to the app's slug, and it loads
+# the file only on install and update (a version bump), not on rebuild. Keep exactly one
+# top-level `profile` line, and no nested profile.
+#
+# A custom profile REPLACES Docker's default profile (docker-default) instead of adding to it, so
+# the denies of docker-default are written out again below, followed by a few extra denies.
+# `deny` rules win over every allow rule: never deny a path the app writes.
+#
+# The container starts Docker's init (the Supervisor passes --init) which executes
+# `node dist/ha-start.js`; that process starts as root, hands /data and /config to the node user,
+# drops privileges and serves in the same process. The image has no s6, and no shell is used.
+#include <tunables/global>
+
+# Pinned ABI: the rules below were parsed with apparmor_parser 3.0.8, 3.1.7 and 4.0.1.
+abi <abi/3.0>,
+
+profile rendezroute flags=(attach_disconnected,mediate_deleted,complain) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/ssl_certs>
+
+  # Configuration files read by the C library and OpenSSL.
+  /etc/hosts r,
+  /etc/nsswitch.conf r,
+  /etc/passwd r,
+  /etc/group r,
+  /etc/ssl/openssl.cnf r,
+
+  # Node is executed by the container's init (and by the entrypoint). `ix` keeps it in this
+  # profile.
+  /usr/local/bin/node ix,
+
+  # The application: read only. Nothing in /app is written at runtime. The native addons
+  # (better-sqlite3, @resvg/resvg-js) are mapped as executable code.
+  /app/ r,
+  /app/** r,
+  /app/node_modules/**.node mr,
+
+  # The Supervisor's data and config folders. The SQLite database and its WAL need record locks
+  # (k).
+  /data/ rw,
+  /data/** rwk,
+  /config/ rw,
+  /config/** rwk,
+
+  # SQLite spills big sorts and indexes to temporary files.
+  owner /tmp/** rwk,
+  owner /var/tmp/** rwk,
+
+  # What V8 and libuv read about the host and the container's limits, and the process's own mounts
+  # (the key location check reads /proc/self/mountinfo after the drop to the node user). No
+  # `owner` here: after setuid the process is not dumpable and its /proc/<pid> files belong to
+  # root, so an owner rule would stop matching.
+  /proc/meminfo r,
+  @{PROC}/@{pid}/{mountinfo,cgroup,stat,statm,status,limits} r,
+  /sys/fs/cgroup/** r,
+
+  # The start as root (src/adapters/in/ha/start.ts, directories.ts) and the stop:
+  capability setuid,        # drop to the node user
+  capability setgid,        # drop the group and the supplementary groups
+  capability chown,         # hand /data and /config to the node user
+  capability fowner,        # chmod a directory root does not own
+  capability dac_override,  # walk and change directories the node user already owns (mode 700)
+  # config.yaml has no `init: false`, so Docker's init is PID 1 and runs as root. It forwards
+  # SIGTERM to node, which runs as uid 1000 after the drop: a signal across users needs CAP_KILL.
+  capability kill,
+
+  # TCP to the Supervisor and outbound https, SMTP and DNS.
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+
+  # The Supervisor's unix socket (SUPERVISOR_SOCKET).
+  # TODO(11b/11c): narrow to the socket's path or peer from the logs of real devices. A socket
+  # with a path in the filesystem needs a file rule for that path (write, `w`) in addition to
+  # this unix rule.
+  unix (connect, send, receive) type=stream,
+
+  # Denied as in docker-default (a custom profile replaces it; its network denies are alg, vsock
+  # and ax25, ipx, appletalk, netrom, rose, econet, atmsvc, irda, wanpipe, isdn, caif). These are enforced even in
+  # complain mode, and quiet: a hit is not logged (see the header).
+  deny mount,
+  deny umount,
+  deny network alg,
+  deny network vsock,
+  deny network ax25,
+  deny network ipx,
+  deny network appletalk,
+  deny network netrom,
+  deny network rose,
+  deny network econet,
+  deny network atmsvc,
+  deny network irda,
+  deny network wanpipe,
+  deny network isdn,
+  deny network caif,
+  deny @{PROC}/* w,
+  deny @{PROC}/sys/** w,
+  deny @{PROC}/sysrq-trigger rwklx,
+  deny @{PROC}/kcore rwklx,
+  deny /sys/firmware/** rwklx,
+  deny /sys/kernel/security/** rwklx,
+  deny /sys/devices/virtual/powercap/** rwklx,
+
+  # Extra denies that docker-default does not have: more obsolete or unused network families, and
+  # ptrace, pivot_root and raw and packet sockets.
+  deny network bridge,
+  deny network x25,
+  deny network netbeui,
+  deny network rds,
+  deny network sna,
+  deny network pppox,
+  deny network llc,
+  deny network ib,
+  deny network mpls,
+  deny network can,
+  deny network tipc,
+  deny network bluetooth,
+  deny network iucv,
+  deny network rxrpc,
+  deny network phonet,
+  deny network ieee802154,
+  deny network nfc,
+  deny network kcm,
+  deny network smc,
+  deny network xdp,
+  deny pivot_root,
+  deny ptrace,
+  deny network inet raw,
+  deny network inet6 raw,
+  deny network packet,
+
+  # The application files are never written.
+  deny /app/** w,
+}

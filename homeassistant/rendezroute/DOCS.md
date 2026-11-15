@@ -119,9 +119,13 @@ security policy of its own, never loads scripts from elsewhere, and opens the ad
 Assistant administrators only, so the exposure is limited to the people who already control the
 house. Keep the app up to date, and install it only on a Home Assistant you would trust it with.
 
-The app runs with Docker's default AppArmor profile for now. It asks for no extra capabilities, and
-it starts as root only to read its options, ask the Supervisor for its version and hand its folders
-to an unprivileged user, then continues without root. A stricter profile is planned.
+The app ships its own AppArmor profile. It runs in complain mode for now: a few things are blocked
+outright (mounting, tracing other processes, raw sockets, writes under `/proc/sys` and to the app's
+own files), and everything else is only logged. Until enforcement follows, once it has been tested
+on real devices, the profile is therefore not stricter than Docker's default for ordinary access. The
+app asks for no extra capabilities beyond its start as root: it starts as root only to read its
+options, ask the Supervisor for its version and hand its folders to an unprivileged user, then
+continues without root.
 
 ## Known limits
 

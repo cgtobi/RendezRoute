@@ -319,7 +319,7 @@ describe("config.yaml and the options mapper", () => {
   });
 
   it("ships the files the store shows", () => {
-    const files = ["README.md", "DOCS.md", "CHANGELOG.md", "icon.png", "logo.png"];
+    const files = ["README.md", "DOCS.md", "CHANGELOG.md", "apparmor.txt", "icon.png", "logo.png"];
     expect(files.filter((file) => !existsSync(join(APP, file)))).toEqual([]);
   });
 });

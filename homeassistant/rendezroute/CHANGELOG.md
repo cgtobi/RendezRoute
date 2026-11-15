@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0
+
+- The app now ships its own AppArmor profile, in learning mode: a few things are blocked outright
+  (mounting, tracing other processes, raw sockets, writes under `/proc/sys` and to the app's own
+  files) and everything else is only logged, so for ordinary access it is not stricter than
+  Docker's default yet.
+- Home Assistant loads the profile when you install or update the app.
+
 ## 0.10.1
 
 - The common options (contact email, imprint and privacy links, email server settings) are now

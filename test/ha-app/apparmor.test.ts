@@ -14,7 +14,7 @@ const FILE = join(APP, "apparmor.txt");
  * Step 11c (enforcement) sets this to false and removes `complain` from the profile's flags. It is
  * the only place a test assertion changes: the documentation expectations follow it too.
  */
-const COMPLAIN_MODE = true;
+const COMPLAIN_MODE = false;
 
 /** The prefix of an enforced deny: plain while complain mode would turn `audit deny` into ALLOWED. */
 const DENY = COMPLAIN_MODE ? "deny" : "audit deny";
@@ -88,6 +88,7 @@ function globToRegExp(glob: string): RegExp {
   const source = glob
     .replace("@{PROC}/", "/proc/")
     .replace("@{pid}", "123")
+    .replace("@{tid}", "123")
     .replace(/[.+^$()|\\]/g, (c) => `\\${c}`)
     .replace(/\*\*/g, "<<ANY>>")
     .replace(/\*/g, "[^/]*")
@@ -274,18 +275,88 @@ describe("the AppArmor profile", () => {
     const network = rules
       .filter((line) => /^(audit\s+)?(deny\s+)?network /.test(line))
       .filter((line) => !/deny /.test(line));
+    // netlink raw: the C library's address lookup (getaddrinfo, getifaddrs); not a packet socket.
     expect(network.sort()).toEqual([
       "network inet dgram,",
       "network inet stream,",
       "network inet6 dgram,",
       "network inet6 stream,",
+      "network netlink raw,",
     ]);
   });
 
-  it("allows the Supervisor's unix socket and says what is left to narrow", () => {
+  it("allows the Supervisor's unix socket by its path, and says what is left to narrow", () => {
     expect(hasRule("unix (connect, send, receive) type=stream,")).toBe(true);
-    expect(text).toMatch(/TODO\(11b\/11c\)/);
-    expect(text).toMatch(/file rule for that path/);
+    // Connecting to a socket with a path is checked as opening it: rw, under both names (the
+    // app's mount and the path the Supervisor bound), and nothing else in /run.
+    expect(hasRule("/{run/supervisor/api,run/os/supervisor/apps/*}/supervisor.sock rw,")).toBe(
+      true,
+    );
+    for (const path of [
+      "/run/supervisor/api/supervisor.sock",
+      "/run/os/supervisor/apps/f5d14dfb_rendezroute/supervisor.sock",
+    ]) {
+      expect([path, allowed(path, "r"), allowed(path, "w")]).toEqual([path, true, true]);
+      for (const permission of ["x", "m", "a", "k"]) {
+        expect([path, permission, allowed(path, permission)]).toEqual([path, permission, false]);
+      }
+    }
+    for (const path of [
+      "/run/other.sock",
+      "/run/supervisor/other.sock",
+      "/run/supervisor/api/other.sock",
+      "/run/os/supervisor/apps/a/b/supervisor.sock",
+      "/run/x/supervisor.sock",
+    ]) {
+      expect([path, allowed(path, "w")]).toEqual([path, false]);
+    }
+    expect(fileRules.filter((rule) => !rule.deny && /^\/(\{)?run/.test(rule.glob))).toHaveLength(1);
+    expect(text).toMatch(/TODO: narrow the unix rule/);
+  });
+
+  it("reads what Node, libuv and the C library read at runtime, and writes little", () => {
+    const reads = [
+      "/etc/localtime",
+      "/usr/share/zoneinfo/Europe/Berlin",
+      "/proc/stat",
+      "/proc/cpuinfo",
+      "/proc/uptime",
+      "/proc/loadavg",
+      "/proc/meminfo",
+      "/proc/sys/kernel/ngroups_max",
+      "/proc/123/maps",
+      "/proc/123/auxv",
+      "/sys/devices/system/cpu/online",
+      "/sys/fs/cgroup/cpu.max",
+      "/etc/passwd",
+      "/etc/group",
+      "/etc/hosts",
+      "/etc/nsswitch.conf",
+      "/etc/ssl/openssl.cnf",
+    ];
+    for (const path of reads) {
+      expect([path, "r", allowed(path, "r")]).toEqual([path, "r", true]);
+      for (const permission of ["w", "a", "x", "m"]) {
+        expect([path, permission, allowed(path, permission)]).toEqual([path, permission, false]);
+      }
+    }
+    // The one write outside /data, /config and the temp folders: Node naming its threads.
+    expect(allowed("/proc/123/task/123/comm", "w")).toBe(true);
+    expect(allowed("/proc/123/oom_score_adj", "w")).toBe(false);
+    expect(allowed("/proc/123/mem", "r")).toBe(false);
+    const writes = fileRules.filter((rule) => !rule.deny && /[wa]/.test(rule.perms));
+    expect(writes.map((rule) => rule.glob).sort()).toEqual(
+      [
+        "/config/",
+        "/config/**",
+        "/data/",
+        "/data/**",
+        "/tmp/**",
+        "/var/tmp/**",
+        "/{run/supervisor/api,run/os/supervisor/apps/*}/supervisor.sock",
+        "@{PROC}/@{pid}/task/@{tid}/comm",
+      ].sort(),
+    );
   });
 
   it("pins the AppArmor ABI", () => {
@@ -306,7 +377,7 @@ describe("the profile and the rest of the app", () => {
     expect(readFileSync(join(ROOT, ".dockerignore"), "utf8")).toMatch(/^homeassistant$/m);
   });
 
-  it("describes the profile honestly in the documentation, as long as it is in complain mode", () => {
+  it("describes the profile honestly in the documentation, as long as it says what it does", () => {
     const docs = readFileSync(join(APP, "DOCS.md"), "utf8").replace(/\s+/g, " ");
     const changelog = readFileSync(join(APP, "CHANGELOG.md"), "utf8").replace(/\s+/g, " ");
     // "Blocks nothing" is false in either mode: the deny rules are enforced even in complain mode.
@@ -315,10 +386,25 @@ describe("the profile and the rest of the app", () => {
     expect(text).not.toMatch(/blocks nothing/i);
     expect(docs).not.toContain("Docker's default AppArmor profile");
     expect(docs).toContain("AppArmor profile");
-    // The complain wording appears exactly while the profile is in complain mode.
-    expect(docs.includes("complain mode")).toBe(COMPLAIN_MODE);
-    expect(docs.includes("only logged")).toBe(COMPLAIN_MODE);
-    expect(docs.includes("not stricter than Docker's default")).toBe(COMPLAIN_MODE);
-    expect(docs.includes("blocked outright")).toBe(COMPLAIN_MODE);
+    // The complain wording appears exactly while the profile is in complain mode, the enforcing
+    // wording exactly when it is not.
+    const complainWords = ["complain mode", "only logged", "not stricter than Docker's default"];
+    const enforceWords = [
+      "enforces",
+      "DENIED",
+      "learning-mode version of this profile ran on one device",
+      "has not run anywhere yet",
+      "restore the backup",
+    ];
+    const present = (words: string[]) => words.map((word) => docs.includes(word));
+    expect(present(complainWords)).toEqual(complainWords.map(() => COMPLAIN_MODE));
+    expect(present(enforceWords)).toEqual(enforceWords.map(() => !COMPLAIN_MODE));
+    const section = changelog.slice(changelog.indexOf("## 0.11.1"), changelog.indexOf("## 0.11.0"));
+    expect(section.includes("enforces")).toBe(!COMPLAIN_MODE);
+  });
+
+  it("is version 0.11.1 (the version is part of the flip to enforcement) with its changelog", () => {
+    const config = parse(readFileSync(join(APP, "config.yaml"), "utf8")) as Record<string, unknown>;
+    expect(config.version).toBe("0.11.1");
   });
 });

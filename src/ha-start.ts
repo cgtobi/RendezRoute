@@ -22,6 +22,7 @@ const result = await haStart({
         ? { socketPath: endpoint.socketPath }
         : { url: new URL(endpoint.url), token: endpoint.token },
     ).version(),
+  notify: (message) => console.error(`RendezRoute: ${message}`),
   dropPrivileges(user) {
     // Supplementary groups first (root's), then the group, and the user last: after setuid the
     // process may no longer change either.

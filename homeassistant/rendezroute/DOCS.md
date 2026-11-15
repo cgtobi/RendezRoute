@@ -119,13 +119,20 @@ security policy of its own, never loads scripts from elsewhere, and opens the ad
 Assistant administrators only, so the exposure is limited to the people who already control the
 house. Keep the app up to date, and install it only on a Home Assistant you would trust it with.
 
-The app ships its own AppArmor profile. It runs in complain mode for now: a few things are blocked
-outright (mounting, tracing other processes, raw sockets, writes under `/proc/sys` and to the app's
-own files), and everything else is only logged. Until enforcement follows, once it has been tested
-on real devices, the profile is therefore not stricter than Docker's default for ordinary access. The
-app asks for no extra capabilities beyond its start as root: it starts as root only to read its
-options, ask the Supervisor for its version and hand its folders to an unprivileged user, then
-continues without root.
+The app ships its own AppArmor profile, and it enforces it: the profile limits which files the app
+may write (its `/data` and `/config` folders, temporary files, and a few system files such as the
+Supervisor's socket), which programs it may start (only Node), which network families it may use,
+and which capabilities it holds, and it blocks mounting, tracing other processes and raw sockets.
+A learning-mode version of this profile ran on one device; the enforcing version is new and has not
+run anywhere yet. If the app does not start or a feature fails after the update, restore the backup
+Home Assistant offers before the update (restoring brings back version 0.11.0, whose profile only
+logs; the store keeps offering 0.11.1 until a fixed version exists) and report it in an issue: the
+error message in the app's log is enough, and with a host shell the `apparmor="DENIED"` lines too
+(on Home Assistant OS: `journalctl _TRANSPORT="audit" -g 'apparmor="DENIED"'`), without secrets.
+There is no setting to switch the profile off. Home Assistant loads the profile on install, update
+and restore, and reloads it at every boot. The app asks for no extra capabilities beyond its start
+as root: it starts as root only to read its options, ask the Supervisor for its version and hand
+its folders to an unprivileged user, then continues without root.
 
 ## Known limits
 

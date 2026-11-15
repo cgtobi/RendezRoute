@@ -89,8 +89,14 @@ export function chooseSupervisorEndpoint(
 export interface HaStartPorts {
   readOptionsFile(): Promise<string>;
   findRunUser(): Promise<RunUser | undefined>;
-  /** Asks the Supervisor for its version, as root; throws when it cannot be reached or refuses. */
+  /**
+   * Asks the Supervisor for its version, as root; throws when it cannot be reached or refuses. An
+   * error that has `unreachable: true` means the connection itself failed (no answer of any kind):
+   * only then does the start step try the TCP API instead of the socket (decision I79).
+   */
   supervisorVersion(endpoint: HaSupervisorEndpoint): Promise<string>;
+  /** One line for the owner in the app's log (never a secret). */
+  notify(message: string): void;
   /** mkdir -p, chown and chmod as root (adapters/in/ha/directories.ts). */
   prepareDirectories(user: RunUser, directories: readonly HaDirectory[]): Promise<void>;
   /** Clears the supplementary groups, then setgid, then setuid. */
@@ -108,6 +114,12 @@ export interface HaStartPorts {
 export type HaStartResult = { ok: true } | { ok: false; message: string };
 
 const fail = (message: string): HaStartResult => ({ ok: false, message });
+
+/** The connection failed before any answer (the adapter marks the error). */
+const isUnreachable = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  (error as { unreachable?: unknown }).unreachable === true;
 
 /** The messages never carry the options file's content: it holds secrets. */
 function reason(error: unknown): string {
@@ -156,18 +168,42 @@ export async function haStart(ports: HaStartPorts): Promise<HaStartResult> {
   // A failure here ends the start with the server never started (the drop is irrelevant then).
   const endpoint = chooseSupervisorEndpoint(ports.environment);
   if ("error" in endpoint) return fail(`cannot ask the Supervisor: ${endpoint.error}`);
-  const checked = await checkSupervisorVersion(
-    {
-      version: () =>
-        ports.supervisorVersion(endpoint).catch((error: unknown) => {
-          const text = reason(error);
-          throw new Error(
-            text.includes("HTTP 403") ? `${text}; the app needs hassio_api: true` : text,
-          );
-        }),
-    },
-    { remedy: "The app asks the Supervisor once at start; it must be running and reachable." },
-  );
+  let connectionFailure = false;
+  const ask = (target: HaSupervisorEndpoint) => {
+    connectionFailure = false;
+    return checkSupervisorVersion(
+      {
+        version: () =>
+          ports.supervisorVersion(target).catch((error: unknown) => {
+            connectionFailure = isUnreachable(error);
+            const text = reason(error);
+            throw new Error(
+              text.includes("HTTP 403") ? `${text}; the app needs hassio_api: true` : text,
+            );
+          }),
+      },
+      { remedy: "The app asks the Supervisor once at start; it must be running and reachable." },
+    );
+  };
+  let checked = await ask(endpoint);
+  if (!checked.ok && endpoint.socketPath !== undefined && connectionFailure) {
+    // Decision I79: the socket could not even be connected (an AppArmor rule, a missing mount).
+    // With a token, ask once over TCP, with the same check; any answer on the socket, good or
+    // bad, never gets here.
+    const tcp = chooseSupervisorEndpoint({ ...ports.environment, SUPERVISOR_SOCKET: undefined });
+    if (!("error" in tcp)) {
+      ports.notify(
+        `The Supervisor's socket could not be reached (${checked.message}); asking its TCP API instead.`,
+      );
+      const second = await ask(tcp);
+      if (!second.ok) {
+        return fail(
+          `Over the Supervisor's socket: ${checked.message} Then over its TCP API: ${second.message}`,
+        );
+      }
+      checked = second;
+    }
+  }
   if (!checked.ok) return fail(checked.message);
 
   try {

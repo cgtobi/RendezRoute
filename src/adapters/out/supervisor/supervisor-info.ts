@@ -17,6 +17,15 @@ export type SupervisorEndpoint =
   | { url: URL; token: string; socketPath?: undefined }
   | { socketPath: string; url?: undefined; token?: undefined };
 
+/**
+ * The Supervisor's socket could not be connected (missing, refused, not permitted, reset or timed
+ * out before the connect). `unreachable` lets the start step tell it from any answer, however bad
+ * (decision I79); the message is the usual one and carries no secret.
+ */
+export class SupervisorUnreachableError extends Error {
+  readonly unreachable = true;
+}
+
 function failure(error: unknown): Error {
   // fetch only says "fetch failed"; the cause's code (ENOTFOUND, ECONNREFUSED, ETIMEDOUT) tells
   // the owner what to fix. Never the request: it may carry the token.
@@ -34,6 +43,9 @@ function overSocket(
   timeoutMs: number,
 ): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
+    // Set once the connection is up: an error or a timeout before that is "unreachable", one after
+    // it is the Supervisor's (or the network's) own answer.
+    let connected = false;
     const req = request(
       {
         socketPath,
@@ -74,7 +86,14 @@ function overSocket(
         response.on("error", (error) => reject(failure(error)));
       },
     );
-    req.on("error", (error) => reject(failure(error)));
+    req.on("socket", (socket) => {
+      if (socket.connecting) socket.once("connect", () => (connected = true));
+      else connected = true;
+    });
+    req.on("error", (error) => {
+      const cause = failure(error);
+      reject(connected ? cause : new SupervisorUnreachableError(cause.message));
+    });
     req.end();
   });
 }

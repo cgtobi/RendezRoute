@@ -1,23 +1,22 @@
 # AppArmor profile of the RendezRoute Home Assistant app (decision D60).
 #
-# COMPLAIN MODE for 0.11.0: the `complain` flag below makes the kernel log what the allow-list
-# would refuse instead of refusing it, so everything outside the explicit `deny` rules is only
-# logged for now. The explicit `deny` rules are NOT softened by `complain`: they are enforced
-# already (mount, ptrace, raw sockets, writes under /proc/sys and to the app's own files, ...),
-# and they are quiet: a plain `deny` writes no log line. (`audit deny` would be logged, but in
-# complain mode the kernel then turns it into a non-blocking ALLOWED line, so it is not used
-# until step 11c, when enforcement makes it block and log as DENIED.) If something breaks, look
-# for EACCES or EPERM in the app's log. Until enforcement the profile is not stricter than
-# Docker's default for ordinary access. Steps 11b and 11c fix the allow-list from real devices
-# and remove the flag.
+# ENFORCING since 0.11.1 (decision D60; 0.11.0 ran in complain mode, which only logs). Everything
+# this profile does not allow is refused, and every explicit `audit deny` is logged. The allow-list
+# was written from reading the code and what Node, libuv, SQLite, resvg and the C library read, and
+# it has been run on one real device only (in complain mode, without the audit log), so a missing
+# rule is possible. A refusal looks like EACCES or EPERM in the app log.
 #
 # Reading the log on Home Assistant OS (host shell, not the Terminal app):
-#   journalctl _TRANSPORT="audit" -g 'apparmor="ALLOWED"'     (allow-list misses, complain mode)
-#   journalctl _TRANSPORT="audit" -g 'apparmor="DENIED"'      (enforce mode)
+#   journalctl _TRANSPORT="audit" -g 'apparmor="DENIED"'
+# If the app fails after an update, report those lines (they hold paths and no secrets) in an issue.
+# The profile cannot be switched back to complain mode by configuration: the Supervisor loads
+# this file as it is, on install, update and restore, and Home Assistant OS reloads it at every
+# boot (not on rebuild or restart).
 #
-# The Supervisor rewrites the profile name on the `profile` line to the app's slug, and it loads
-# the file only on install and update (a version bump), not on rebuild. Keep exactly one
-# top-level `profile` line, and no nested profile.
+# The Supervisor rewrites the profile name on the `profile` line to the app's slug. It loads the
+# file on install, update (a version bump) and restore, and Home Assistant OS reloads it at every
+# boot, but not on rebuild or restart. Keep exactly one top-level `profile` line, and no nested
+# profile.
 #
 # A custom profile REPLACES Docker's default profile (docker-default) instead of adding to it, so
 # the denies of docker-default are written out again below, followed by a few extra denies.
@@ -31,7 +30,7 @@
 # Pinned ABI: the rules below were parsed with apparmor_parser 3.0.8, 3.1.7 and 4.0.1.
 abi <abi/3.0>,
 
-profile rendezroute flags=(attach_disconnected,mediate_deleted,complain) {
+profile rendezroute flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
   #include <abstractions/nameservice>
   #include <abstractions/ssl_certs>
@@ -69,8 +68,25 @@ profile rendezroute flags=(attach_disconnected,mediate_deleted,complain) {
   # `owner` here: after setuid the process is not dumpable and its /proc/<pid> files belong to
   # root, so an owner rule would stop matching.
   /proc/meminfo r,
-  @{PROC}/@{pid}/{mountinfo,cgroup,stat,statm,status,limits} r,
+  @{PROC}/@{pid}/{mountinfo,cgroup,stat,statm,status,limits,maps,auxv} r,
+  # glibc reads maps to find the main thread's stack (pthread_getattr_np, called by V8), libuv
+  # reads stat (memory use), cgroup and the cgroup files (memory and CPU limits).
+  # libuv's uptime, load and CPU count, os.cpus, and glibc's initgroups (group limit):
+  /proc/stat r,
+  /proc/cpuinfo r,
+  /proc/uptime r,
+  /proc/loadavg r,
+  @{PROC}/sys/kernel/ngroups_max r,
+  /sys/devices/system/cpu/ r,
+  /sys/devices/system/cpu/** r,
+  # Node names its threads (pthread_setname_np writes the thread's comm file).
+  @{PROC}/@{pid}/task/@{tid}/comm rw,
   /sys/fs/cgroup/** r,
+
+  # The time zone (Temporal and Intl read the system zone when TZ is not set).
+  /etc/localtime r,
+  /usr/share/zoneinfo/ r,
+  /usr/share/zoneinfo/** r,
 
   # The start as root (src/adapters/in/ha/start.ts, directories.ts) and the stop:
   capability setuid,        # drop to the node user
@@ -83,71 +99,80 @@ profile rendezroute flags=(attach_disconnected,mediate_deleted,complain) {
   capability kill,
 
   # TCP to the Supervisor and outbound https, SMTP and DNS.
+  # netlink raw: the C library's address lookup (getaddrinfo, getifaddrs) asks the kernel for the
+  # interface addresses; nscd lookups use it too. It is in abstractions/nameservice of newer
+  # AppArmor versions, written out here for the older parser on Home Assistant OS.
+  network netlink raw,
   network inet stream,
   network inet6 stream,
   network inet dgram,
   network inet6 dgram,
 
-  # The Supervisor's unix socket (SUPERVISOR_SOCKET).
-  # TODO(11b/11c): narrow to the socket's path or peer from the logs of real devices. A socket
-  # with a path in the filesystem needs a file rule for that path (write, `w`) in addition to
-  # this unix rule.
+  # The Supervisor's unix socket. SUPERVISOR_SOCKET is /run/supervisor/api/supervisor.sock in the
+  # app (a read-only bind mount). Connecting to a socket with a path is checked as opening the
+  # file, so it needs read and write (rw), and AppArmor checks the path of the listening socket as
+  # the Supervisor bound it: /run/os/supervisor/apps/<slug>/supervisor.sock (the host's
+  # /run/supervisor is /run/os inside the Supervisor's container). Both names are listed. The app
+  # connects as root, before it drops privileges. Without the socket (an older Supervisor) it
+  # would use TCP, which the network rules above cover.
+  /{run/supervisor/api,run/os/supervisor/apps/*}/supervisor.sock rw,
+  # TODO: narrow the unix rule to the Supervisor as peer once its label is known from a device.
   unix (connect, send, receive) type=stream,
 
   # Denied as in docker-default (a custom profile replaces it; its network denies are alg, vsock
-  # and ax25, ipx, appletalk, netrom, rose, econet, atmsvc, irda, wanpipe, isdn, caif). These are enforced even in
-  # complain mode, and quiet: a hit is not logged (see the header).
-  deny mount,
-  deny umount,
-  deny network alg,
-  deny network vsock,
-  deny network ax25,
-  deny network ipx,
-  deny network appletalk,
-  deny network netrom,
-  deny network rose,
-  deny network econet,
-  deny network atmsvc,
-  deny network irda,
-  deny network wanpipe,
-  deny network isdn,
-  deny network caif,
-  deny @{PROC}/* w,
-  deny @{PROC}/sys/** w,
-  deny @{PROC}/sysrq-trigger rwklx,
-  deny @{PROC}/kcore rwklx,
-  deny /sys/firmware/** rwklx,
-  deny /sys/kernel/security/** rwklx,
-  deny /sys/devices/virtual/powercap/** rwklx,
+  # and ax25, ipx, appletalk, netrom, rose, econet, atmsvc, irda, wanpipe, isdn, caif). Each hit is blocked
+  # and logged as DENIED (`audit`).
+  audit deny mount,
+  audit deny umount,
+  audit deny network alg,
+  audit deny network vsock,
+  audit deny network ax25,
+  audit deny network ipx,
+  audit deny network appletalk,
+  audit deny network netrom,
+  audit deny network rose,
+  audit deny network econet,
+  audit deny network atmsvc,
+  audit deny network irda,
+  audit deny network wanpipe,
+  audit deny network isdn,
+  audit deny network caif,
+  audit deny @{PROC}/* w,
+  audit deny @{PROC}/sys/** w,
+  audit deny @{PROC}/sysrq-trigger rwklx,
+  audit deny @{PROC}/kcore rwklx,
+  audit deny /sys/firmware/** rwklx,
+  audit deny /sys/kernel/security/** rwklx,
+  audit deny /sys/devices/virtual/powercap/** rwklx,
 
   # Extra denies that docker-default does not have: more obsolete or unused network families, and
   # ptrace, pivot_root and raw and packet sockets.
-  deny network bridge,
-  deny network x25,
-  deny network netbeui,
-  deny network rds,
-  deny network sna,
-  deny network pppox,
-  deny network llc,
-  deny network ib,
-  deny network mpls,
-  deny network can,
-  deny network tipc,
-  deny network bluetooth,
-  deny network iucv,
-  deny network rxrpc,
-  deny network phonet,
-  deny network ieee802154,
-  deny network nfc,
-  deny network kcm,
-  deny network smc,
-  deny network xdp,
-  deny pivot_root,
-  deny ptrace,
-  deny network inet raw,
-  deny network inet6 raw,
-  deny network packet,
+  audit deny network bridge,
+  audit deny network x25,
+  audit deny network netbeui,
+  audit deny network rds,
+  audit deny network sna,
+  audit deny network pppox,
+  audit deny network llc,
+  audit deny network ib,
+  audit deny network mpls,
+  audit deny network can,
+  audit deny network tipc,
+  audit deny network bluetooth,
+  audit deny network iucv,
+  audit deny network rxrpc,
+  audit deny network phonet,
+  audit deny network ieee802154,
+  audit deny network nfc,
+  audit deny network kcm,
+  audit deny network smc,
+  audit deny network xdp,
+  audit deny pivot_root,
+  audit deny ptrace,
+  audit deny network inet raw,
+  audit deny network inet6 raw,
+  audit deny network packet,
 
   # The application files are never written.
-  deny /app/** w,
+  audit deny /app/** w,
 }

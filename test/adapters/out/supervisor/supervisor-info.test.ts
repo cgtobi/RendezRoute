@@ -1,5 +1,5 @@
 // The Supervisor's version over its internal API (decision D56), against a fake Supervisor.
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -218,6 +218,71 @@ describe("asking the Supervisor over its unix socket", () => {
     await writeFile(stale, "");
     await expect(viaSocket(stale).version()).rejects.toThrow(/ENOTSOCK|ECONNREFUSED/);
   });
+
+  it("marks a socket that cannot be connected as unreachable, and nothing else", async () => {
+    const unreachable = async (promise: Promise<unknown>) =>
+      promise.then(
+        () => undefined,
+        (error: unknown) => (error as { unreachable?: unknown }).unreachable,
+      );
+    // missing socket (ENOENT) and a file nobody listens on (ECONNREFUSED or ENOTSOCK)
+    const socketPath = await fakeSocket((_request, response) => response.end());
+    await new Promise<void>((resolve) => server?.close(() => resolve()));
+    server = undefined;
+    expect(await unreachable(viaSocket(socketPath).version())).toBe(true);
+    const stale = join(directory ?? "", "stale.sock");
+    await writeFile(stale, "");
+    expect(await unreachable(viaSocket(stale).version())).toBe(true);
+    // every answer, however bad, is a connection that worked
+    for (const handle of [
+      (response: ServerResponse) => json(response, { message: "no" }, 403),
+      (response: ServerResponse) => json(response, { data: {} }),
+      (response: ServerResponse) => response.end("not json"),
+      (response: ServerResponse) => {
+        response.writeHead(302, { location: "/x" });
+        response.end();
+      },
+    ]) {
+      const path = await fakeSocket((_request, response) => handle(response));
+      expect(await unreachable(viaSocket(path).version())).toBeUndefined();
+      await new Promise<void>((resolve) => server?.close(() => resolve()));
+      server = undefined;
+    }
+    // connected, but never answered: a timeout after the connect is not "unreachable"
+    const silent = await fakeSocket(() => {
+      // never answers
+    });
+    expect(await unreachable(viaSocket(silent, { timeoutMs: 150 }).version())).toBeUndefined();
+  });
+
+  it("does not call a connection that was accepted and then dropped unreachable", async () => {
+    const socketPath = await fakeSocket((request) => request.socket.destroy());
+    const error = await viaSocket(socketPath)
+      .version()
+      .then(
+        () => undefined,
+        (caught: unknown) => caught,
+      );
+    expect(error).toBeInstanceOf(Error);
+    expect((error as { unreachable?: unknown }).unreachable).toBeUndefined();
+  });
+
+  it.skipIf(process.getuid?.() === 0)(
+    "marks a socket the user may not open (EACCES) as unreachable",
+    async () => {
+      const socketPath = await fakeSocket((_request, response) => response.end());
+      await chmod(socketPath, 0o000);
+      const error = await viaSocket(socketPath)
+        .version()
+        .then(
+          () => undefined,
+          (caught: unknown) => caught,
+        );
+      expect(error).toBeInstanceOf(Error);
+      expect((error as { unreachable?: unknown }).unreachable).toBe(true);
+      expect((error as Error).message).toMatch(/EACCES|EPERM/);
+    },
+  );
 
   it("keeps no connection open: it asks for close and uses no shared agent", async () => {
     let connection: string | undefined;

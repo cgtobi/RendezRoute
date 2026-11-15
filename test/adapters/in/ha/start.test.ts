@@ -21,6 +21,7 @@ function fakes(overrides: Partial<HaStartPorts> = {}) {
   const events: string[] = [];
   const served: { env: Record<string, string | undefined>; options: unknown }[] = [];
   const asked: { endpoint: HaSupervisorEndpoint; root: boolean }[] = [];
+  const notices: string[] = [];
   let dropped = false;
   const ports: HaStartPorts = {
     readOptionsFile: async () => {
@@ -38,6 +39,10 @@ function fakes(overrides: Partial<HaStartPorts> = {}) {
       events.push(`ask ${endpoint.socketPath !== undefined ? "socket" : "tcp"}`);
       asked.push({ endpoint, root: !dropped });
       return "2026.10.4";
+    },
+    notify: (message) => {
+      events.push("notice");
+      notices.push(message);
     },
     dropPrivileges: (user) => {
       events.push(`drop ${user.uid}:${user.gid}`);
@@ -68,7 +73,7 @@ function fakes(overrides: Partial<HaStartPorts> = {}) {
     },
     ...overrides,
   };
-  return { ports, events, served, asked };
+  return { ports, events, served, asked, notices };
 }
 
 describe("the start step", () => {
@@ -220,6 +225,191 @@ describe("the start step", () => {
     const other = await haStart(refused.ports);
     if (other.ok) throw new Error("started");
     expect(other.message).not.toContain("hassio_api");
+  });
+
+  describe("falling back to the Supervisor's TCP API (decision I79)", () => {
+    const unreachable = (message: string) =>
+      Object.assign(new Error(message), { unreachable: true });
+    const SOCKET_ENOENT = "connect ENOENT /run/supervisor/api/supervisor.sock";
+    /** The socket answers `socket` and TCP answers `tcp` (a version, or an error to throw). */
+    const scripted = (
+      socket: string | Error,
+      tcp: string | Error = "2026.10.4",
+      overrides: Partial<HaStartPorts> = {},
+    ) => {
+      const made = fakes(overrides);
+      made.ports.supervisorVersion = async (endpoint) => {
+        const answer = endpoint.socketPath !== undefined ? socket : tcp;
+        made.events.push(`ask ${endpoint.socketPath !== undefined ? "socket" : "tcp"}`);
+        made.asked.push({ endpoint, root: true });
+        if (answer instanceof Error) throw answer;
+        return answer;
+      };
+      return made;
+    };
+    const fallback = (
+      socketError: Error,
+      tcp: string | Error = "2026.10.4",
+      overrides: Partial<HaStartPorts> = {},
+    ) => scripted(socketError, tcp, overrides);
+
+    it("asks once over TCP with the token when the socket cannot be reached, then starts", async () => {
+      const { ports, events, notices, served, asked } = fallback(unreachable(SOCKET_ENOENT));
+      expect(await haStart(ports)).toEqual({ ok: true });
+      expect(asked.map((entry) => entry.endpoint)).toEqual([
+        { socketPath: "/run/supervisor/api/supervisor.sock" },
+        { url: "http://supervisor", token: "sup-token" },
+      ]);
+      expect(asked.every((entry) => entry.root)).toBe(true);
+      // One notice, between the two asks and before the drop, without the token.
+      expect(events.filter((e) => e === "notice")).toHaveLength(1);
+      expect(events.indexOf("notice")).toBeLessThan(events.indexOf("drop 1000:1000"));
+      expect(notices).toHaveLength(1);
+      expect(notices[0]).toMatch(/socket.*TCP/is);
+      expect(notices[0]).not.toContain("sup-token");
+      expect(notices[0]).toContain(SOCKET_ENOENT);
+      expect(served[0]?.options).toEqual({ ingressVersionVerified: true });
+    });
+
+    it("respects SUPERVISOR_URL for the TCP retry", async () => {
+      const environment = {
+        SUPERVISOR_TOKEN: "sup-token",
+        SUPERVISOR_SOCKET: "/run/supervisor/api/supervisor.sock",
+        SUPERVISOR_URL: "http://10.0.0.2:4000",
+      };
+      const { ports, asked } = fallback(unreachable(SOCKET_ENOENT), "2026.10.4", { environment });
+      expect(await haStart(ports)).toEqual({ ok: true });
+      expect(asked[1]?.endpoint).toEqual({ url: "http://10.0.0.2:4000", token: "sup-token" });
+      // A URL that is not an http origin is refused as today: no retry, today's message.
+      const bad = fallback(unreachable(SOCKET_ENOENT), "2026.10.4", {
+        environment: { ...environment, SUPERVISOR_URL: "ftp://x" },
+      });
+      const result = await haStart(bad.ports);
+      if (result.ok) throw new Error("started");
+      expect(result.message).toContain("ENOENT");
+      expect(bad.events).not.toContain("notice");
+      expect(bad.events).not.toContain("serve");
+    });
+
+    it("keeps today's failure when there is no token, and says nothing about TCP", async () => {
+      const { ports, events, notices } = fallback(unreachable(SOCKET_ENOENT), "2026.10.4", {
+        environment: { SUPERVISOR_SOCKET: "/run/supervisor/api/supervisor.sock" },
+      });
+      const result = await haStart(ports);
+      if (result.ok) throw new Error("started");
+      expect(result.message).toContain("Ingress mode could not ask the Supervisor");
+      expect(result.message).toContain(SOCKET_ENOENT);
+      expect(notices).toEqual([]);
+      expect(events.filter((e) => e.startsWith("ask"))).toEqual(["ask socket"]);
+      expect(events.some((e) => e.startsWith("drop") || e === "serve")).toBe(false);
+      // An empty token is no token.
+      const empty = fallback(unreachable(SOCKET_ENOENT), "2026.10.4", {
+        environment: {
+          SUPERVISOR_SOCKET: "/run/supervisor/api/supervisor.sock",
+          SUPERVISOR_TOKEN: "  ",
+        },
+      });
+      expect((await haStart(empty.ports)).ok).toBe(false);
+      expect(empty.events.filter((e) => e.startsWith("ask"))).toEqual(["ask socket"]);
+    });
+
+    it("does not retry after any answer: HTTP 403, 401, a redirect, a bad body", async () => {
+      for (const message of [
+        "the Supervisor answered HTTP 403",
+        "the Supervisor answered HTTP 401",
+        "the Supervisor answered HTTP 302",
+        "the Supervisor's answer has no version",
+        "Response too large.",
+      ]) {
+        // Not marked unreachable: the socket connected.
+        const { ports, events, notices } = fallback(new Error(message));
+        const result = await haStart(ports);
+        if (result.ok) throw new Error("started");
+        expect(result.message).toContain(message);
+        expect(events.filter((e) => e.startsWith("ask"))).toEqual(["ask socket"]);
+        expect(notices).toEqual([]);
+        expect(events).not.toContain("serve");
+      }
+    });
+
+    it("does not retry for a version the socket reported, old, dev or unreadable", async () => {
+      for (const version of ["2026.10.3", "dev", "banana"]) {
+        const { ports, events } = scripted(version, "2026.10.4");
+        const result = await haStart(ports);
+        if (result.ok) throw new Error("started");
+        expect(events.filter((e) => e.startsWith("ask"))).toEqual(["ask socket"]);
+        expect(events).not.toContain("serve");
+      }
+    });
+
+    it("applies the same check to the TCP answer: too old, dev and unreadable are refused", async () => {
+      for (const version of ["2026.10.3", "dev", "banana"]) {
+        const { ports, events, served } = fallback(unreachable(SOCKET_ENOENT), version);
+        const result = await haStart(ports);
+        if (result.ok) throw new Error("started");
+        expect(result.message).toContain("Ingress mode");
+        expect(events).not.toContain("serve");
+        expect(events.some((e) => e.startsWith("drop"))).toBe(false);
+        expect(served).toEqual([]);
+      }
+    });
+
+    it("names both failures when TCP fails too, and never the token", async () => {
+      for (const tcp of [
+        new Error("connect ECONNREFUSED 172.30.32.2:80, ECONNREFUSED"),
+        new Error("the Supervisor answered HTTP 401"),
+        new Error("the Supervisor answered HTTP 403"),
+      ]) {
+        const { ports, events, notices } = fallback(unreachable(SOCKET_ENOENT), tcp);
+        const result = await haStart(ports);
+        if (result.ok) throw new Error("started");
+        expect(result.message).toContain("ENOENT");
+        expect(result.message).toContain(tcp.message.replace(", ECONNREFUSED", ""));
+        expect(result.message).toMatch(/socket/i);
+        expect(result.message).toMatch(/TCP/);
+        expect(result.message).not.toContain("sup-token");
+        expect(notices.join(" ")).not.toContain("sup-token");
+        expect(events.filter((e) => e.startsWith("ask"))).toEqual(["ask socket", "ask tcp"]);
+        expect(events.some((e) => e.startsWith("drop") || e === "serve")).toBe(false);
+      }
+      // The 403 hint still applies to the TCP answer.
+      const forbidden = fallback(
+        unreachable(SOCKET_ENOENT),
+        new Error("the Supervisor answered HTTP 403"),
+      );
+      const result = await haStart(forbidden.ports);
+      if (result.ok) throw new Error("started");
+      expect(result.message).toContain("hassio_api: true");
+    });
+
+    it("asks over TCP only once, whatever happens, and never over the socket again", async () => {
+      const { ports, events } = fallback(
+        unreachable(SOCKET_ENOENT),
+        unreachable("connect refused"),
+      );
+      await haStart(ports);
+      expect(events.filter((e) => e.startsWith("ask"))).toEqual(["ask socket", "ask tcp"]);
+    });
+
+    it("serves exactly as without the fallback: same order after the check, same environment", async () => {
+      const plain = fakes();
+      await haStart(plain.ports);
+      const retried = fallback(unreachable(SOCKET_ENOENT));
+      await haStart(retried.ports);
+      const after = (events: string[]) => events.slice(events.indexOf("drop 1000:1000"));
+      expect(after(retried.events)).toEqual(after(plain.events));
+      expect(retried.served).toEqual(plain.served);
+      const env = retried.served[0]?.env ?? {};
+      for (const name of ["SUPERVISOR_TOKEN", "SUPERVISOR_SOCKET", "SUPERVISOR_URL"]) {
+        expect(env[name]).toBeUndefined();
+      }
+    });
+
+    it("the verified flag is only set after a verified answer", async () => {
+      const failing = fallback(unreachable(SOCKET_ENOENT), new Error("nope"));
+      await haStart(failing.ports);
+      expect(failing.served).toEqual([]);
+    });
   });
 
   const hostileOptions = JSON.stringify({

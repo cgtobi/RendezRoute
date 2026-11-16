@@ -23,7 +23,7 @@ interface LayoutProps {
   units: Units;
   /** The chosen theme; "system" renders no attribute (decision D64). */
   theme: Theme;
-  /** The footer language and units forms; left out of pages that cannot be loaded again (decision D15). */
+  /** The language, units and theme forms in the menu sheet; left out of pages that cannot be loaded again (decision D15). */
   languageSwitch?: { csrfToken: string; returnTo: string } | undefined;
   /**
    * Prefix for the app's own links: "/" on public pages; relative ("../") on instance admin pages,
@@ -83,11 +83,80 @@ export function Layout({
             {t("layout.devBanner")}
           </p>
         )}
-        <header class={widened("site-header")}>
+        <header class={widened(adminListener ? "site-header" : "site-header site-header-menu")}>
           <a href={adminListener ? `${pathBase}admin/` : pathBase}>
             <span class="logo" aria-hidden="true"></span>
             {config.instanceName}
           </a>
+          {/* A sheet that works without JavaScript: the popover attribute (decisions D27, D68). */}
+          {!adminListener && (
+            <>
+              <button
+                type="button"
+                class="burger"
+                popovertarget="site-menu"
+                aria-label={t("layout.menu")}
+              ></button>
+              <div id="site-menu" popover="auto">
+                <div class="site-menu-body">
+                  <nav class="site-menu-links" aria-label={t("layout.menu")}>
+                    <ul>
+                      {config.nearbyEnabled && (
+                        <li>
+                          <a href={`${pathBase}nearby`}>{t("layout.nearby")}</a>
+                        </li>
+                      )}
+                      <li>
+                        <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
+                      </li>
+                      {loginConfigured(config) && (
+                        <li>
+                          <a href={`${pathBase}account`}>{t("layout.account")}</a>
+                        </li>
+                      )}
+                    </ul>
+                  </nav>
+                  <div class="site-menu-preferences">
+                    {languageSwitch !== undefined && (
+                      <>
+                        <PreferenceForm
+                          t={t}
+                          {...languageSwitch}
+                          action="/language"
+                          field="language"
+                          label={t("layout.language")}
+                          options={SUPPORTED_LANGUAGES.map((value) => ({
+                            value,
+                            label: LANGUAGE_NAMES[value],
+                            lang: value,
+                          }))}
+                          selected={language}
+                        />
+                        <PreferenceForm
+                          t={t}
+                          {...languageSwitch}
+                          action="/units"
+                          field="units"
+                          label={t("layout.units")}
+                          options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
+                          selected={units}
+                        />
+                        <PreferenceForm
+                          t={t}
+                          {...languageSwitch}
+                          action="/theme"
+                          field="theme"
+                          label={t("layout.theme")}
+                          options={THEMES.map((value) => ({ value, label: t(`theme.${value}`) }))}
+                          selected={theme}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </header>
         <main class={widened()}>{children}</main>
         <footer class={widened("site-footer")}>
@@ -113,59 +182,6 @@ export function Layout({
               )}
             </p>
           )}
-          {/* A menu without JavaScript: the settings and own-data links one tap away (decision D27). */}
-          {!adminListener && (
-            <details class="footer-menu">
-              <summary>
-                <span class="icon icon-menu" aria-hidden="true"></span>
-                {t("layout.menu")}
-              </summary>
-              <div class="footer-menu-body">
-                {languageSwitch !== undefined && (
-                  <>
-                    <PreferenceForm
-                      t={t}
-                      {...languageSwitch}
-                      action="/language"
-                      field="language"
-                      label={t("layout.language")}
-                      options={SUPPORTED_LANGUAGES.map((value) => ({
-                        value,
-                        label: LANGUAGE_NAMES[value],
-                        lang: value,
-                      }))}
-                      selected={language}
-                    />
-                    <PreferenceForm
-                      t={t}
-                      {...languageSwitch}
-                      action="/units"
-                      field="units"
-                      label={t("layout.units")}
-                      options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
-                      selected={units}
-                    />
-                    <PreferenceForm
-                      t={t}
-                      {...languageSwitch}
-                      action="/theme"
-                      field="theme"
-                      label={t("layout.theme")}
-                      options={THEMES.map((value) => ({ value, label: t(`theme.${value}`) }))}
-                      selected={theme}
-                    />
-                  </>
-                )}
-                <p class="footer-links">
-                  {config.nearbyEnabled && <a href={`${pathBase}nearby`}>{t("layout.nearby")}</a>}
-                  <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
-                  {loginConfigured(config) && (
-                    <a href={`${pathBase}account`}>{t("layout.account")}</a>
-                  )}
-                </p>
-              </div>
-            </details>
-          )}
         </footer>
       </body>
     </html>
@@ -189,7 +205,7 @@ function PreferenceForm(props: {
       <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
       <input type="hidden" name={RETURN_FIELD} value={props.returnTo} />
       <label for={id}>{props.label}</label>
-      <select id={id} name={props.field}>
+      <select id={id} name={props.field} data-auto-submit>
         {props.options.map((option) => (
           <option
             value={option.value}

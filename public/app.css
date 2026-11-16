@@ -260,13 +260,59 @@ main,
   letter-spacing: -0.01em;
 }
 
-.site-header a {
+/* The logo link only; the menu sheet inside the header has its own link styles. */
+.site-header > a {
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
   /* The name in the logo's colour (decision D28). */
   color: var(--accent);
   text-decoration: none;
+}
+
+:root {
+  --header-h: calc(var(--target) + 2 * var(--s3) + 1px);
+}
+
+/* The header with the burger (decision D68): sticky, three columns (an empty 44 px spacer, the
+   logo centred, the burger), so the logo's centre is the page's centre. The admin listener's
+   header has no burger and keeps the plain header above. */
+.site-header-menu {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  anchor-name: --site-header;
+  display: grid;
+  grid-template-columns: var(--target) 1fr var(--target);
+  align-items: center;
+  column-gap: var(--s3);
+  min-height: var(--header-h);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+/* The spacer in column 1: no content, so it is neither focusable nor announced. */
+.site-header-menu::before {
+  content: "";
+  grid-column: 1;
+}
+
+.site-header-menu > a {
+  grid-column: 2;
+  justify-self: center;
+  min-width: 0;
+  min-height: var(--target);
+  /* A long name without spaces breaks inside the centre column instead of running under the burger. */
+  overflow-wrap: anywhere;
+}
+
+.site-header-menu > .burger {
+  grid-column: 3;
+}
+
+/* Focused controls and # targets stay clear of the sticky header. */
+html:has(.site-header-menu) {
+  scroll-padding-top: var(--header-h);
 }
 
 /* The mark before the site's name (decision D28), as a mask like the icons below. */
@@ -304,45 +350,8 @@ main,
   gap: var(--s2) var(--s4);
 }
 
-.footer-menu {
-  margin-left: auto;
-}
-
-.footer-menu summary {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
-  min-height: var(--target);
-  padding: 0 var(--s4);
-  border: 1px solid var(--control-line);
-  border-radius: var(--r-pill);
-  color: var(--fg);
-  font-weight: 600;
-  list-style: none;
-  cursor: pointer;
-}
-
-.footer-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.footer-menu[open] {
-  flex-basis: 100%;
-}
-
-.footer-menu[open] summary {
-  float: right;
-}
-
-.footer-menu-body {
-  clear: both;
-  margin-top: var(--s3);
-  padding-top: var(--s4);
-  border-top: 1px solid var(--line);
-}
-
-/* One line per setting: label, the select taking what is left, the button as wide as its text.
-   Below 340 px the label sits above the select and button instead. */
+/* One line per setting: label, the select taking what is left, the button as wide as its text;
+   the button is hidden when the script applies a choice at once. The row stays one line at 320 px. */
 .preference {
   display: flex;
   flex-wrap: wrap;
@@ -370,17 +379,136 @@ main,
   white-space: nowrap;
 }
 
-@media (max-width: 339.98px) {
-  .preference label {
-    flex: 1 0 100%;
+/* The menu sheet (decisions D68, I85): links first, a hairline, then the three preference rows. */
+.site-menu-body {
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.site-menu-links ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-menu-links a {
+  display: flex;
+  align-items: center;
+  min-height: var(--target);
+}
+
+.site-menu-preferences {
+  margin-top: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+.site-menu-preferences .preference:last-child {
+  margin-bottom: 0;
+}
+
+/* Without popover support the content is a plain block under the header, and there is no burger. */
+@supports not selector(:popover-open) {
+  .site-header-menu {
+    position: static;
+  }
+
+  .site-header-menu > #site-menu {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .burger {
+    display: none;
+  }
+
+  .site-menu-body {
+    padding: var(--s3) 0;
   }
 }
 
-.footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2) var(--s5);
-  margin: var(--s4) 0 0;
+@supports selector(:popover-open) {
+  #site-menu {
+    position: fixed;
+    inset: var(--header-h) 0 auto 0;
+    width: auto;
+    max-width: none;
+    height: auto;
+    max-height: calc(100dvh - var(--header-h));
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--fg);
+  }
+
+  /* The header is not at the top while the dev banner is above it, so the sheet starts at the
+     header's real bottom edge instead of the fixed --header-h, or it would cover the burger. */
+  @supports (top: anchor(bottom)) {
+    #site-menu {
+      position-anchor: --site-header;
+      top: anchor(bottom);
+    }
+  }
+
+  .site-menu-body {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: var(--s2) var(--s4) var(--s3);
+  }
+
+  .burger {
+    position: relative;
+    flex: none;
+    width: var(--target);
+    height: var(--target);
+    min-height: var(--target);
+    padding: 0;
+    border: 1px solid var(--control-line);
+    border-radius: var(--r-sm);
+    background: var(--bg);
+    color: var(--fg);
+  }
+
+  /* Three bars from gradients; an X while the sheet is open. */
+  .burger::before {
+    content: "";
+    width: 20px;
+    height: 14px;
+    background:
+      linear-gradient(currentColor, currentColor) top / 100% 2px no-repeat,
+      linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat,
+      linear-gradient(currentColor, currentColor) bottom / 100% 2px no-repeat;
+  }
+
+  .site-header:has(#site-menu:popover-open) .burger::before {
+    height: 20px;
+    background:
+      linear-gradient(
+          45deg,
+          transparent calc(50% - 1px),
+          currentColor calc(50% - 1px),
+          currentColor calc(50% + 1px),
+          transparent calc(50% + 1px)
+        )
+        center / 100% 100% no-repeat,
+      linear-gradient(
+          -45deg,
+          transparent calc(50% - 1px),
+          currentColor calc(50% - 1px),
+          currentColor calc(50% + 1px),
+          transparent calc(50% + 1px)
+        )
+        center / 100% 100% no-repeat;
+  }
+}
+
+@media (forced-colors: active) {
+  .burger::before {
+    forced-color-adjust: none;
+  }
 }
 
 .dev-banner {
@@ -437,10 +565,6 @@ main,
 
 .icon-lock {
   --icon: url("icons/lock.svg");
-}
-
-.icon-menu {
-  --icon: url("icons/menu.svg");
 }
 
 .icon-pin {
@@ -1422,6 +1546,9 @@ details > summary {
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   overflow: hidden;
+  /* Its own stacking context: Leaflet's panes (z-index up to 1000) stay inside the map instead of
+     painting over the sticky header. */
+  isolation: isolate;
 }
 
 /* Dark mode: the tiles darkened in the browser, so it works with any tile server; only the tiles,

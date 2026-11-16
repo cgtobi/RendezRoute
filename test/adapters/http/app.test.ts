@@ -89,25 +89,53 @@ describe("page layout", () => {
     );
   });
 
-  it("folds the settings and own-data links into a menu that works without JavaScript (decision D27)", async () => {
-    const html = await (await createApp({ config: config() }).request("/")).text();
-    const menu = /<details class="footer-menu">([\s\S]*?)<\/details>/.exec(html)?.[1] ?? "";
-    expect(menu).toMatch(/^<summary>[\s\S]*Menu<\/summary>/);
-    for (const part of ['action="/language"', 'action="/units"', 'href="/my-data"']) {
-      expect(menu).toContain(part);
+  it("puts a burger button in the header that opens the sheet with the links and preferences (decisions D68, I85)", async () => {
+    const html = await (
+      await createApp({ config: config({ NEARBY_ENABLED: "true" }) }).request("/")
+    ).text();
+    const header =
+      /<header class="site-header site-header-menu">([\s\S]*?)<\/header>/.exec(html)?.[1] ?? "";
+    expect(header).toMatch(
+      /<button type="button" class="burger" popovertarget="site-menu" aria-label="Menu">/,
+    );
+    const sheet = /<div id="site-menu" popover="auto">([\s\S]*)<\/div>$/.exec(header)?.[1] ?? "";
+    expect(header.indexOf("</button>")).toBeLessThan(header.indexOf('id="site-menu"'));
+    expect(sheet).not.toContain("Close");
+    for (const part of [
+      'action="/language"',
+      'action="/units"',
+      'action="/theme"',
+      'href="/my-data"',
+      'href="/nearby"',
+    ]) {
+      expect(sheet).toContain(part);
     }
+    // Each form keeps its Change button and the instant-apply marker.
+    expect(sheet.match(/<button type="submit" class="secondary">Change<\/button>/g)).toHaveLength(
+      3,
+    );
+    expect(sheet.match(/<select [^>]*data-auto-submit/g)).toHaveLength(3);
+    // The links come before the three preference rows.
+    const lastLink = sheet.lastIndexOf("<a ");
+    expect(lastLink).toBeGreaterThan(-1);
+    expect(lastLink).toBeLessThan(sheet.indexOf('action="/language"'));
+    expect(sheet.indexOf('action="/language"')).toBeLessThan(sheet.indexOf('action="/units"'));
+    expect(sheet.indexOf('action="/units"')).toBeLessThan(sheet.indexOf('action="/theme"'));
   });
 
-  it("keeps the privacy notice and the imprint visible outside the menu (legal notices)", async () => {
+  it("keeps only the legal links in the footer (decision D68)", async () => {
     const html = await (
       await createApp({
-        config: config({ IMPRINT_URL: "https://club.example.org/imprint" }),
+        config: config({ IMPRINT_URL: "https://club.example.org/imprint", NEARBY_ENABLED: "true" }),
       }).request("/")
     ).text();
     const footer = /<footer class="site-footer">([\s\S]*?)<\/footer>/.exec(html)?.[1] ?? "";
-    const outside = footer.replace(/<details class="footer-menu">[\s\S]*?<\/details>/, "");
-    expect(outside).toContain('href="/privacy"');
-    expect(outside).toContain('href="https://club.example.org/imprint"');
+    expect(footer).toContain('href="/privacy"');
+    expect(footer).toContain('href="https://club.example.org/imprint"');
+    for (const gone of ["footer-menu", "<form", "<select", "/my-data", "/nearby", "/account"]) {
+      expect(footer).not.toContain(gone);
+    }
+    expect(html).not.toContain("footer-menu");
   });
 
   it("loads the bundled font stylesheet before the app's own (decision D27)", async () => {

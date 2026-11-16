@@ -1,5 +1,5 @@
-// The theme switch in the footer menu (decisions D64, I82): System, Light or Dark, without
-// JavaScript, remembered in a cookie. Reads /, so no plan is created.
+// The theme switch in the header menu sheet (decisions D64, D68, I82): System, Light or Dark,
+// applied at once without a Change button, remembered in a cookie. Reads /, so no plan is created.
 import { expect, test, type Page } from "@playwright/test";
 import { person } from "./helpers.ts";
 
@@ -8,17 +8,16 @@ const DARK_BG = "rgb(18, 19, 22)";
 const LIGHT_BG = "rgb(255, 255, 255)";
 
 async function chooseTheme(page: Page, label: "System" | "Light" | "Dark") {
-  const menu = page.locator("details.footer-menu");
-  if ((await menu.getAttribute("open")) === null) {
-    await page.locator("details.footer-menu > summary").click();
+  const menu = page.locator("#site-menu");
+  if (!(await menu.evaluate("(el) => el.matches(':popover-open')"))) {
+    await page.locator("button.burger").click();
   }
   const form = menu.locator('form[action="/theme"]');
-  await form.locator("select").selectOption({ label });
-  // The form posts to /theme, which redirects back: wait for that navigation to finish.
+  // Picking a value submits the form at once (no Change button click); /theme redirects back.
   await Promise.all([
     page.waitForResponse((r) => new URL(r.url()).pathname === "/theme" && r.status() < 400),
     page.waitForEvent("load"),
-    form.locator("button").click(),
+    form.locator("select").selectOption({ label }),
   ]);
 }
 

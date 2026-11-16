@@ -17,7 +17,7 @@ async function messageOf(response: Response) {
   return {
     status: response.status,
     page: (response.headers.get("content-type") ?? "").startsWith("text/html"),
-    header: html.includes('<header class="site-header">'),
+    header: html.includes('<header class="site-header site-header-menu">'),
     heading: /<section class="message-page"><h1>([^<]*)<\/h1><\/section>/.exec(html)?.[1],
   };
 }

@@ -25,7 +25,7 @@ describe("units (spec 2 i18n, decision P5)", () => {
     expect(response.headers.getSetCookie().join()).not.toContain("rr-units");
   });
 
-  it("are chosen with a footer form that works without JavaScript", async () => {
+  it("are chosen with a menu form that works without JavaScript", async () => {
     const { client } = await setup();
     const page = await (await client.get("/new")).text();
     const form = /<form[^>]*action="\/units"[\s\S]*?<\/form>/.exec(page)?.[0] ?? "";

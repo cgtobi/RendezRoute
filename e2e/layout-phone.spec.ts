@@ -1,8 +1,8 @@
 // Real-layout checks on phone widths (Chromium): the date and time fields side by side on the create
-// form, and the footer menu's preference rows. Runs in the default and minimal projects.
-// Everything is checked on /new (the footer is on every page), so no plan is created: those
+// form, and the header menu sheet's preference rows. Runs in the default and minimal projects.
+// Everything is checked on /new (the header is on every page), so no plan is created: those
 // containers do not trust X-Forwarded-For, so one project shares one create limiter (5 burst).
-// 320 px exercises the stacked-label layout (label above the field), 390 px the one-line layout.
+// Rows stay on one line at 320 px: label and select, the Change button hidden by the script.
 import { expect, test } from "@playwright/test";
 import { person } from "./helpers.ts";
 
@@ -15,7 +15,7 @@ const WIDTHS = [
 const SLACK = 3;
 
 for (const viewport of WIDTHS) {
-  test(`Create form and footer menu fit a ${viewport.width} px phone`, async ({
+  test(`Create form and menu sheet fit a ${viewport.width} px phone`, async ({
     browser,
     baseURL,
   }) => {
@@ -49,40 +49,48 @@ for (const viewport of WIDTHS) {
       "date and time widths differ",
     ).toBeLessThanOrEqual(1);
 
-    // Footer menu, on the same page.
-    await page.locator("footer.site-footer").scrollIntoViewIfNeeded();
-    await page.locator("details.footer-menu > summary").click();
-    const rows = page.locator("details.footer-menu .preference");
+    // Menu sheet, on the same page, opened through the burger.
+    const burger = page.locator("button.burger");
+    const burgerBox = await burger.boundingBox();
+    expect(burgerBox?.width, "burger width").toBeGreaterThanOrEqual(44);
+    expect(burgerBox?.height, "burger height").toBeGreaterThanOrEqual(44);
+    await burger.click();
+    const sheet = page.locator("#site-menu");
+    await expect(sheet).toBeVisible();
+    const rows = sheet.locator(".preference");
     await expect(rows).toHaveCount(3);
+
+    const links = sheet.locator(".site-menu-links a");
+    expect(await links.count(), "navigation links in the sheet").toBeGreaterThan(0);
+    for (let index = 0; index < (await links.count()); index += 1) {
+      const box = await links.nth(index).boundingBox();
+      expect(box?.height, `link ${index} height`).toBeGreaterThanOrEqual(44);
+    }
 
     for (let index = 0; index < 3; index += 1) {
       const row = rows.nth(index);
+      const label = await row.locator("label").boundingBox();
       const select = await row.locator("select").boundingBox();
-      const button = await row.locator("button").boundingBox();
+      expect(label, `row ${index} label is rendered`).not.toBeNull();
       expect(select, `row ${index} select is rendered`).not.toBeNull();
-      expect(button, `row ${index} button is rendered`).not.toBeNull();
+      const l = label as NonNullable<typeof label>;
       const s = select as NonNullable<typeof select>;
-      const b = button as NonNullable<typeof button>;
       const where = `preference row ${index} at ${viewport.width} px`;
+      // The script hides the Change button; the row is label and select on one line.
+      await expect(row.locator("button"), `${where}: Change button hidden`).toBeHidden();
       expect(
-        Math.abs(s.y + s.height / 2 - (b.y + b.height / 2)),
-        `${where}: select and button share a line`,
+        Math.abs(s.y + s.height / 2 - (l.y + l.height / 2)),
+        `${where}: label and select share a line`,
       ).toBeLessThanOrEqual(SLACK);
-      expect(b.y + b.height, `${where}: button below the select`).toBeLessThanOrEqual(
-        s.y + s.height + SLACK,
-      );
       expect(s.width, `${where}: select width`).toBeGreaterThanOrEqual(80);
       expect(s.height, `${where}: select height`).toBeGreaterThanOrEqual(44);
-      expect(b.height, `${where}: button height`).toBeGreaterThanOrEqual(44);
-      const rowBox = await row.boundingBox();
-      expect(b.width, `${where}: button width`).toBeLessThan(((rowBox?.width ?? 0) * 40) / 100);
-      expect(b.x + b.width, `${where}: button right edge`).toBeLessThanOrEqual(viewport.width);
+      expect(s.x + s.width, `${where}: select right edge`).toBeLessThanOrEqual(viewport.width);
     }
 
     const menuWidths = await overflow();
     expect(
       menuWidths.scrollWidth,
-      "create page with open menu scrolls sideways",
+      "create page with open menu sheet scrolls sideways",
     ).toBeLessThanOrEqual(menuWidths.innerWidth);
     expect(problems).toEqual([]);
     await context.close();

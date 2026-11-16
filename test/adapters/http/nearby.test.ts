@@ -92,7 +92,8 @@ describe("the Nearby page (spec 7 Visibility and Nearby plans)", () => {
     const { client } = await setup();
     await createPlanViaUi(client(), { visibility: "public" });
     const plain = await (await client().get(`/nearby?${NEAR}`)).text();
-    expect(plain.indexOf('class="nearby-results"')).toBeLessThan(plain.indexOf("<form"));
+    const main = plain.slice(plain.indexOf("<main"));
+    expect(main.indexOf('class="nearby-results"')).toBeLessThan(main.indexOf("<form"));
     expect(plain).toContain('<details class="nearby-filters">');
     const filtered = await (await client().get(`/nearby?${NEAR}&activity=ride`)).text();
     expect(filtered).toContain('<details class="nearby-filters" open="">');

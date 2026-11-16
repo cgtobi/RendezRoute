@@ -58,7 +58,7 @@ describe(".field-row", () => {
   });
 });
 
-describe(".preference (footer menu)", () => {
+describe(".preference (menu sheet)", () => {
   it("lets the select take the remaining space and shrink", () => {
     const rule = declarationsFor(".preference select");
     expect(rule).toMatch(/flex: 1 1 0(?![.\w])/);
@@ -71,9 +71,39 @@ describe(".preference (footer menu)", () => {
     expect(rule).toMatch(/white-space: nowrap/);
   });
 
-  it("separates the open menu body with a hairline, not a box", () => {
-    const rule = declarationsFor(".footer-menu-body");
-    expect(rule).toMatch(/border-top: 1px solid var\(--line\)/);
-    expect(rule).not.toMatch(/background/);
+  it("keeps the label on one line with the select at 320 px (no stacking override)", () => {
+    expect(CSS).not.toMatch(/max-width: 339/);
+  });
+
+  it("makes the header sticky and the sheet fill the width under it", () => {
+    expect(declarationsFor(".site-header-menu")).toMatch(/position: sticky/);
+    expect(declarationsFor(".site-header-menu")).toMatch(/top: 0/);
+    expect(CSS).toMatch(/@supports selector\(:popover-open\)/);
+  });
+
+  it("keeps the sticky header, hairline and grid off the plain (admin) header", () => {
+    const plain = declarationsFor(".site-header");
+    expect(plain).not.toMatch(/position|border|display|background|grid/);
+  });
+
+  it("centres the logo with a three-column grid: 44 px spacer, logo, burger", () => {
+    const rule = declarationsFor(".site-header-menu");
+    expect(rule).toMatch(/grid-template-columns: var\(--target\) 1fr var\(--target\)/);
+    expect(declarationsFor(".site-header-menu > a")).toMatch(/justify-self: center/);
+    expect(declarationsFor(".site-header-menu > a")).toMatch(/min-height: var\(--target\)/);
+    expect(declarationsFor(".site-header-menu > a")).toMatch(/overflow-wrap: anywhere/);
+    expect(CSS).toMatch(/\.site-header-menu::before \{\s*content: "";/);
+  });
+
+  it("puts the menu in its own full-width row under the logo without popover support", () => {
+    const block =
+      /@supports not selector\(:popover-open\) \{(.*?)\} \} @supports/.exec(CSS)?.[1] ?? "";
+    expect(block).toMatch(/\.site-header-menu \{ position: static;/);
+    expect(block).toMatch(/#site-menu \{ grid-column: 1 \/ -1; grid-row: 2;/);
+    expect(block).toMatch(/\.burger \{ display: none;/);
+  });
+
+  it("makes every map its own stacking context so Leaflet panes stay below the header", () => {
+    expect(declarationsFor(".map")).toMatch(/isolation: isolate/);
   });
 });

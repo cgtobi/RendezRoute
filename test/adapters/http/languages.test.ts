@@ -93,7 +93,7 @@ describe("page language (decision D15)", () => {
 });
 
 describe("language switcher (decision D15)", () => {
-  it("is a form in the footer that works without JavaScript", async () => {
+  it("is a form in the menu sheet that works without JavaScript", async () => {
     const { client } = await setup();
     const page = await (await client.get("/new")).text();
     const form = /<form[^>]*action="\/language"[\s\S]*?<\/form>/.exec(page)?.[0] ?? "";
@@ -176,7 +176,7 @@ describe("link previews (decision I30)", () => {
   });
 });
 
-describe("private links and the footer forms (review fix: tokens stay out of redirects)", () => {
+describe("private links and the menu forms (review fix: tokens stay out of redirects)", () => {
   it("never put a secret link into the return address", async () => {
     const { client, app } = await setup();
     const { hostPath } = await createPlanViaUi(client);

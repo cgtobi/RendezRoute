@@ -167,7 +167,11 @@ describe("the admin-only app", () => {
       for (const path of ["/privacy", "/my-data", "/nearby", "/account"]) {
         expect(html).not.toMatch(new RegExp(`href="[^"]*${path}"`));
       }
-      expect(html).not.toContain("footer-menu");
+      expect(html).not.toContain("burger");
+      expect(html).not.toContain("site-menu");
+      expect(html).not.toContain("popover");
+      expect(html).toContain('<header class="site-header">');
+      expect(html).not.toContain("site-header-menu");
     }
     expect(await (await admin.get("/admin/")).text()).toContain('<a href="../admin/">');
   });

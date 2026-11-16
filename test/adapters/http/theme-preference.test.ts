@@ -26,7 +26,7 @@ describe("theme (decisions D64, I82)", () => {
     expect(response.headers.getSetCookie().join()).not.toContain("rr-theme");
   });
 
-  it("is chosen with a footer form that works without JavaScript", async () => {
+  it("is chosen with a menu form that works without JavaScript", async () => {
     const { client } = await setup();
     const page = await (await client.get("/new")).text();
     const form = /<form[^>]*action="\/theme"[\s\S]*?<\/form>/.exec(page)?.[0] ?? "";

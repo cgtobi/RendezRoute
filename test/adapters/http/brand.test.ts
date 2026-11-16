@@ -105,7 +105,7 @@ describe("logo and icons (decision D28)", () => {
     const { app } = await createTestApp({ env: { INSTANCE_NAME: "Lauftreff Süd" } });
     const html = await (await new TestClient(app).get("/")).text();
     expect(html).toContain(
-      '<header class="site-header"><a href="/"><span class="logo" aria-hidden="true"></span>Lauftreff Süd</a></header>',
+      '<header class="site-header site-header-menu"><a href="/"><span class="logo" aria-hidden="true"></span>Lauftreff Süd</a><button type="button" class="burger"',
     );
   });
 });

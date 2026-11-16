@@ -3,12 +3,17 @@
 // signed `Accept` or `Reject` through the job queue; `Undo` and an actor's `Delete` remove it; a
 // plan's `Update` and `Delete` reach these people whatever its visibility; unsigned, forged or
 // foreign activities change nothing.
-import { generateCryptoKeyPair, signRequest } from "@fedify/fedify";
+import { signRequest } from "@fedify/fedify";
+import type { generateCryptoKeyPair } from "@fedify/fedify";
 import { describe, expect, it } from "vite-plus/test";
 import { FakeOidcServer } from "../../fakes/oidc-server.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
-import { isNoteActivity } from "../../support/remote-people.ts";
+import {
+  isNoteActivity,
+  otherSharedRsaKeyPair,
+  sharedRsaKeyPair,
+} from "../../support/remote-people.ts";
 import { sampleGpx } from "../../support/gpx.ts";
 import {
   createPlanViaUi,
@@ -26,8 +31,14 @@ type Keys = Awaited<ReturnType<typeof generateCryptoKeyPair>>;
 type Remote = { id: string; keys: Keys };
 
 /** A remote person whose actor document the fake serves, with its own keys and inboxes. */
-async function remotePerson(test: TestApp, name: string, server = "social.example") {
-  const keys = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+async function remotePerson(
+  test: TestApp,
+  name: string,
+  server = "social.example",
+  /** Another pair than the shared one, where a test needs a signer with different keys. */
+  keyPair?: Keys,
+) {
+  const keys = keyPair ?? (await sharedRsaKeyPair());
   const id = `https://${server}/users/${name}`;
   const der = Buffer.from(await crypto.subtle.exportKey("spki", keys.publicKey));
   const pem = `-----BEGIN PUBLIC KEY-----\n${(der.toString("base64").match(/.{1,64}/g) ?? []).join("\n")}\n-----END PUBLIC KEY-----\n`;
@@ -50,7 +61,7 @@ async function remotePerson(test: TestApp, name: string, server = "social.exampl
 
 /** Many remote people of one server who share one key pair: generating keys is slow. */
 async function crowd(test: TestApp, server: string, count: number) {
-  const keys = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+  const keys = await sharedRsaKeyPair();
   const der = Buffer.from(await crypto.subtle.exportKey("spki", keys.publicKey));
   const pem = `-----BEGIN PUBLIC KEY-----\n${(der.toString("base64").match(/.{1,64}/g) ?? []).join("\n")}\n-----END PUBLIC KEY-----\n`;
   test.federationHttp.respond(`https://${server}/inbox`, { status: 202 });
@@ -74,7 +85,7 @@ async function crowd(test: TestApp, server: string, count: number) {
 
 /** Joins from `count` subdomains of one domain, one actor each, all signed with one key. */
 async function joinFromSubdomains(test: TestApp, planId: string, count: number) {
-  const keys = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+  const keys = await sharedRsaKeyPair();
   const der = Buffer.from(await crypto.subtle.exportKey("spki", keys.publicKey));
   const pem = `-----BEGIN PUBLIC KEY-----\n${(der.toString("base64").match(/.{1,64}/g) ?? []).join("\n")}\n-----END PUBLIC KEY-----\n`;
   for (let n = 0; n < count; n++) {
@@ -368,7 +379,12 @@ describe("a remote Join (decision D42)", () => {
     const { planId } = await createPlanViaUi(host, {});
     const ben = await remotePerson(test, "ben");
     // On the same server, so only the signature stands between mallory and ben's name.
-    const mallory = await remotePerson(test, "mallory");
+    const mallory = await remotePerson(
+      test,
+      "mallory",
+      "social.example",
+      await otherSharedRsaKeyPair(),
+    );
     const forged = await post(test, ben, joinOf(ben, planId), mallory);
     expect(forged.status).toBe(401);
     const unsigned = await test.app.request("/inbox", {
@@ -378,7 +394,7 @@ describe("a remote Join (decision D42)", () => {
     });
     expect(unsigned.status).toBe(401);
     // Signed with another key under ben's own key id.
-    const stranger = { id: ben.id, keys: await generateCryptoKeyPair("RSASSA-PKCS1-v1_5") };
+    const stranger = { id: ben.id, keys: await otherSharedRsaKeyPair() };
     expect((await post(test, ben, joinOf(ben, planId), stranger)).status).toBe(401);
     await test.runJobs();
     expect(responseCount(test)).toBe(0);
@@ -479,7 +495,7 @@ describe("leaving and being deleted", () => {
     const { planId } = await createPlanViaUi(host, {});
     const max = await remotePerson(test, "max");
     await post(test, max, joinOf(max, planId));
-    const other = { id: max.id, keys: await generateCryptoKeyPair("RSASSA-PKCS1-v1_5") };
+    const other = { id: max.id, keys: await otherSharedRsaKeyPair() };
     const deleteSelf = { id: `${max.id}#delete`, type: "Delete", object: max.id };
     expect((await post(test, max, deleteSelf, other)).status).toBe(401);
     expect(responseCount(test)).toBe(1);
@@ -657,7 +673,12 @@ describe("a remote Leave", () => {
     const { planId } = await createPlanViaUi(host, {});
     const other = (await createPlanViaUi(host, { title: "Other" })).planId;
     const ben = await remotePerson(test, "ben");
-    const mallory = await remotePerson(test, "mallory");
+    const mallory = await remotePerson(
+      test,
+      "mallory",
+      "social.example",
+      await otherSharedRsaKeyPair(),
+    );
     await post(test, ben, joinOf(ben, planId));
     await post(test, ben, joinOf(ben, other, 2));
     // Signed by someone on the same server, in ben's name: refused.
@@ -789,7 +810,7 @@ describe("limits on remote joins (spec 3.11, decision D42)", () => {
     expect(responseCount(test)).toBe(10);
 
     // An actor whose inbox is on another server is still ignored, as before.
-    const keys = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+    const keys = await sharedRsaKeyPair();
     const der = Buffer.from(await crypto.subtle.exportKey("spki", keys.publicKey));
     const pem = `-----BEGIN PUBLIC KEY-----\n${(der.toString("base64").match(/.{1,64}/g) ?? []).join("\n")}\n-----END PUBLIC KEY-----\n`;
     const id = "https://elsewhere.example/users/eve";

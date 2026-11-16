@@ -6,6 +6,16 @@ import type { createTestApp } from "./app.ts";
 export type TestApp = Awaited<ReturnType<typeof createTestApp>>;
 export type Remote = { id: string; keys: Awaited<ReturnType<typeof generateCryptoKeyPair>> };
 
+let rsa: Promise<CryptoKeyPair> | undefined;
+let otherRsa: Promise<CryptoKeyPair> | undefined;
+
+/** One RSA pair for the whole file: generating one takes 100 ms to over a second under load. */
+export const sharedRsaKeyPair = () => (rsa ??= generateCryptoKeyPair("RSASSA-PKCS1-v1_5"));
+
+/** A second pair, for tests that need a signer different from the shared one. */
+export const otherSharedRsaKeyPair = () =>
+  (otherRsa ??= generateCryptoKeyPair("RSASSA-PKCS1-v1_5"));
+
 export const HOST = "runs.example.org";
 export const INSTANCE = `https://${HOST}/actors/instance`;
 
@@ -16,7 +26,7 @@ export async function remotePerson(
   /** Keys made before, for suites with many people, where generating them is slow. */
   sharedKeys?: Remote["keys"],
 ) {
-  const keys = sharedKeys ?? (await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"));
+  const keys = sharedKeys ?? (await sharedRsaKeyPair());
   const id = `https://${server}/users/${name}`;
   const der = Buffer.from(await crypto.subtle.exportKey("spki", keys.publicKey));
   const pem = `-----BEGIN PUBLIC KEY-----\n${(der.toString("base64").match(/.{1,64}/g) ?? []).join("\n")}\n-----END PUBLIC KEY-----\n`;

@@ -2,7 +2,8 @@
 // `Follow` of the instance actor or a poster's actor is stored and answered with a signed `Accept`
 // through the job queue; `Undo` and an actor's `Delete` of itself forget the follower; the
 // followers collection shows a count only; retiring a profile tells its followers.
-import { generateCryptoKeyPair, signRequest, verifyRequest } from "@fedify/fedify";
+import { signRequest, verifyRequest } from "@fedify/fedify";
+import type { generateCryptoKeyPair } from "@fedify/fedify";
 import { describe, expect, it } from "vite-plus/test";
 import { outboundContextLoader } from "../../../src/adapters/out/federation/document-loader.ts";
 import { FakeOidcServer } from "../../fakes/oidc-server.ts";
@@ -10,6 +11,7 @@ import { FakeOutboundHttp } from "../../fakes/outbound-http.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
 import { escaped } from "../../support/html.ts";
+import { otherSharedRsaKeyPair, sharedRsaKeyPair } from "../../support/remote-people.ts";
 import { createPlanViaUi, editForm } from "../../support/plans.ts";
 import { translator } from "../../../src/adapters/i18n/i18n.ts";
 
@@ -27,7 +29,7 @@ async function remotePerson(
   server = "social.example",
   { inboxServer = server }: { inboxServer?: string } = {},
 ) {
-  const keys = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+  const keys = await sharedRsaKeyPair();
   const id = `https://${server}/users/${name}`;
   const der = Buffer.from(await crypto.subtle.exportKey("spki", keys.publicKey));
   const pem = `-----BEGIN PUBLIC KEY-----\n${(der.toString("base64").match(/.{1,64}/g) ?? []).join("\n")}\n-----END PUBLIC KEY-----\n`;
@@ -204,7 +206,7 @@ describe("following the instance actor (decision D38)", () => {
     await post(test, ben, followOf(ben, INSTANCE));
     // A Delete that does not verify (here: signed with another key) while the account exists
     // changes nothing.
-    const other = { id: ben.id, keys: await generateCryptoKeyPair("RSASSA-PKCS1-v1_5") };
+    const other = { id: ben.id, keys: await otherSharedRsaKeyPair() };
     const deleteSelf = { id: `${ben.id}#delete`, type: "Delete", object: ben.id };
     expect((await post(test, other, deleteSelf)).status).toBe(401);
     expect((await count(test, "/actors/instance")).totalItems).toBe(1);

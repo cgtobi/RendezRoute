@@ -121,5 +121,7 @@ export default defineConfig({
   test: {
     include: ["test/**/*.test.{ts,tsx}"],
     environment: "node",
+    // RSA key generation and real listeners are slow when the machine is loaded.
+    testTimeout: 15_000,
   },
 });

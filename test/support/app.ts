@@ -1,4 +1,4 @@
-import { actorKeyFactory } from "../../src/adapters/out/crypto/federation-keys.ts";
+import { serializeKeyPairs } from "../../src/adapters/out/crypto/federation-keys.ts";
 import { createFediverseDirectMessages } from "../../src/adapters/out/federation/direct-message.ts";
 import { createRemoteActorLookup } from "../../src/adapters/out/federation/remote-actor.ts";
 import { createFederationOutbound } from "../../src/adapters/out/federation/outbound.ts";
@@ -49,7 +49,11 @@ import { createResponseRepository } from "../../src/adapters/out/sqlite/response
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { adminConfigured, adminPagesOrigin, type Config, loadConfig } from "../../src/config.ts";
 import type { PlanDeps } from "../../src/application/plans.ts";
-import type { PreviewRenderer, WeatherProvider } from "../../src/application/ports.ts";
+import type {
+  ActorKeyFactory,
+  PreviewRenderer,
+  WeatherProvider,
+} from "../../src/application/ports.ts";
 import { createLookupHasher } from "../../src/adapters/out/crypto/lookup-hasher.ts";
 import { createOidcProvider } from "../../src/adapters/out/identity/oidc.ts";
 import {
@@ -88,6 +92,20 @@ export function testConfig(env: Record<string, string> = {}): Config {
 
 /** The instance actor's keys: generating RSA keys is slow, so all test apps share one pair. */
 let instanceKeys: Promise<CryptoKeyPair[]> | undefined;
+
+/**
+ * The keys of every poster actor (fediverse profile) the tests turn on: one RSA and one Ed25519
+ * pair, made once per test run and serialized as the real factory does, since generating them
+ * for each profile is slow under load.
+ */
+let profileKeys: Promise<string> | undefined;
+const sharedActorKeys: ActorKeyFactory = {
+  generate: () =>
+    (profileKeys ??= Promise.all([
+      generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+      generateCryptoKeyPair("Ed25519"),
+    ]).then(serializeKeyPairs)),
+};
 
 /** The real app on a fresh SQLite database (":memory:" unless a path is given) with a fake clock. */
 export async function createTestApp({
@@ -237,7 +255,7 @@ export async function createTestApp({
     publicPlansOffered: config.nearbyEnabled,
     posterActors: {
       profiles,
-      actorKeys: actorKeyFactory,
+      actorKeys: sharedActorKeys,
       followers: createFollowerRepository(database, cipher, lookupHasher, ids),
       publications: createPublicationRepository(database),
       notes: participantNotes,

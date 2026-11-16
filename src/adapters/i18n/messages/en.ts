@@ -342,6 +342,7 @@ export const en = {
   "links.hostLinkWarning":
     "Save it now. It is shown only once, and anyone with it can manage your plan. This browser stays linked as host.",
   "links.open": "Open your plan",
+  "links.addDetails": "Add route, pace and more",
   "links.deletion": "The plan and everything about it will be deleted on {date}.",
 
   "plan.gone": "This plan no longer exists.",

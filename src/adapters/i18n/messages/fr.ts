@@ -354,6 +354,7 @@ export const fr: Messages = {
   "links.hostLinkWarning":
     "Enregistrez-le maintenant. Il n’est affiché qu’une fois, et toute personne qui l’a peut gérer votre sortie. Ce navigateur reste associé en tant qu’organisateur·rice.",
   "links.open": "Ouvrir votre sortie",
+  "links.addDetails": "Ajouter un parcours, une allure et plus",
   "links.deletion": "La sortie et tout ce qui la concerne seront supprimés le {date}.",
 
   "plan.gone": "Cette sortie n’existe plus.",

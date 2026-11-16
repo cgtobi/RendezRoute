@@ -45,6 +45,14 @@ async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: str
   // Sharing: plain links to the public plan address, never the host link.
   const whatsApp = await host.getByRole("link", { name: "WhatsApp" }).getAttribute("href");
   expect(whatsApp).toContain(encodeURIComponent(planUrl));
+  // The secondary link opens the host page for this device, without any token (0.12-7). The later
+  // steps navigate by address, so leaving the one-time links page here is fine.
+  const more = host.getByRole("link", { name: "Add route, pace and more" });
+  await expect(more).toBeVisible();
+  await expect(more).toHaveAttribute("href", `${new URL(planUrl).pathname}/host`);
+  await more.click();
+  await expect(host.getByRole("heading", { name: "Manage your plan" })).toBeVisible();
+  await expect(host.locator('input[name="title"]')).toBeVisible();
   return { planUrl };
 }
 

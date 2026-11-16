@@ -355,6 +355,7 @@ export const de: Messages = {
   "links.hostLinkWarning":
     "Speichere ihn jetzt. Er wird nur einmal angezeigt, und alle, die ihn haben, können dein Treffen verwalten. Dieser Browser bleibt als Organisator:in verknüpft.",
   "links.open": "Dein Treffen öffnen",
+  "links.addDetails": "Route, Tempo und mehr hinzufügen",
   "links.deletion": "Das Treffen und alles dazu wird am {date} gelöscht.",
 
   "plan.gone": "Dieses Treffen gibt es nicht mehr.",

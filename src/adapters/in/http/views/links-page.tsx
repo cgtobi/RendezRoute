@@ -45,6 +45,12 @@ export function LinksPage(props: {
           {t("links.open")}
         </a>
       </p>
+      <p>
+        {/* No token: the creating device is already linked as host of the plan. */}
+        <a class="button secondary" href={`${props.planPath}/host`}>
+          {t("links.addDetails")}
+        </a>
+      </p>
     </section>
   );
 }

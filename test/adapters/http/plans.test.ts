@@ -66,6 +66,29 @@ describe("POST /new", () => {
     }
   });
 
+  it("offers a token-free, secondary link to the host page that works for the creating device only (0.12-7)", async () => {
+    const { client, app } = await setup();
+    const { html, planId, hostPath } = await createPlanViaUi(client);
+    const href = `/p/${planId}/host`;
+    expect(html).toContain(
+      `<a class="button secondary" href="${href}">${en["links.addDetails"]}</a>`,
+    );
+    expect(html).toContain(`<a class="button" href="/p/${planId}">${en["links.open"]}</a>`);
+    // The secret appears only in the shown host link, never in the new link.
+    const token = hostPath.slice("/a/".length);
+    expect(href).not.toContain(token);
+    expect(html.split(token)).toHaveLength(2);
+
+    const host = await client.get(href);
+    expect(host.status).toBe(200);
+    expect(await host.text()).toContain('name="title"');
+
+    const stranger = new TestClient(app);
+    const denied = await stranger.get(href);
+    expect(denied.status).toBe(303);
+    expect(denied.headers.get("location")).toBe(`/p/${planId}`);
+  });
+
   it("redirects a resubmitted form to the existing plan instead of creating another (decision I9)", async () => {
     const { client } = await setup();
     const { hidden, planId } = await createPlanViaUi(client);

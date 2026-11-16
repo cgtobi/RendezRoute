@@ -754,6 +754,62 @@ input[type="checkbox"] {
   border-width: 2px;
 }
 
+/* The title as the form's big heading, edited in place (D71): no box, a dashed underline as the
+   edit hint. `.plan-form` out-ranks the generic input rules above. */
+.plan-form .page-purpose {
+  margin-bottom: var(--s1);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+.field-title {
+  margin-top: 0;
+}
+
+.plan-form .title-input {
+  min-height: var(--target);
+  padding: var(--s2) 0;
+  border: 0;
+  /* The field's edge, so --field-border (the pale --line would fail WCAG 1.4.11 contrast). */
+  border-bottom: 2px dashed var(--field-border);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  /* The heading size scaled down: about 22 characters fit at 320 px; longer text scrolls inside. */
+  font-size: calc(var(--text-2xl) * 0.8);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.plan-form .title-input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.plan-form .title-input:hover,
+.plan-form .title-input:focus {
+  border-bottom-style: solid;
+  border-bottom-color: var(--accent);
+}
+
+.plan-form .field-invalid .title-input {
+  border-bottom-color: var(--danger);
+}
+
+@media (forced-colors: active) {
+  .plan-form .title-input,
+  .plan-form .title-input:hover,
+  .plan-form .title-input:focus {
+    border-bottom-color: CanvasText;
+  }
+}
+
 /* Messages */
 
 .warning {

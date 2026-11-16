@@ -152,6 +152,7 @@ export const de: Messages = {
   "form.posterNameHint": "Steht beim Treffen, gekennzeichnet als Organisator:in.",
   "form.activity": "Aktivität",
   "form.title": "Titel",
+  "form.defaultTitle": "Mein Treffen",
   "form.date": "Datum",
   "form.time": "Startzeit",
   "form.timeZone": "Zeitzone",

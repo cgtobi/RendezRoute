@@ -181,3 +181,36 @@ test("The who and exact summaries follow the join radios and the exact point", a
   expect(problems).toEqual([]);
   await context.close();
 });
+
+test("The title is the heading input: the first focus selects the default, a long one stays inside 320 px", async ({
+  browser,
+  baseURL,
+}) => {
+  const problems: string[] = [];
+  const { context, page } = await person(browser, baseURL ?? "", problems);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/new");
+  const title = page.locator("#field-title");
+  await expect(title).toHaveValue(/^(My plan|Mein Treffen|Ma sortie)$/);
+  // The first focus selects the whole default, so one key replaces it.
+  await title.focus();
+  await page.keyboard.press("x");
+  await expect(title).toHaveValue("x");
+  // A later focus does not select again: typing appends.
+  await page.locator("#field-activity").focus();
+  await title.focus();
+  await page.keyboard.press("y");
+  await expect(title).toHaveValue("xy");
+  // A 100-character title scrolls inside the field.
+  await title.fill("W".repeat(100));
+  const widths = await page.evaluate<{ scrollWidth: number; innerWidth: number }>(
+    "({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth })",
+  );
+  expect(widths.scrollWidth, "long title scrolls the page sideways").toBeLessThanOrEqual(
+    widths.innerWidth,
+  );
+  const box = await title.boundingBox();
+  expect(box?.height, "title input height").toBeGreaterThanOrEqual(44);
+  expect(problems).toEqual([]);
+  await context.close();
+});

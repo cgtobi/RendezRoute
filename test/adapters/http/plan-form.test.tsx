@@ -14,7 +14,7 @@ import type { FieldError, PlanField } from "../../../src/domain/plan-input.ts";
 import { escaped } from "../../support/html.ts";
 import { sampleInput } from "../../fixtures/plans.ts";
 import { createTestApp } from "../../support/app.ts";
-import { TestClient } from "../../support/client.ts";
+import { hiddenFields, TestClient } from "../../support/client.ts";
 import { createPlanViaUi } from "../../support/plans.ts";
 
 const t = translator("en");
@@ -570,6 +570,86 @@ describe("the three pages that share the form", () => {
   });
 });
 
+describe("the title on the three pages (decision D71)", () => {
+  const titleTag = (html: string) => /<input[^>]*name="title"[^>]*>/.exec(html)?.[0] ?? "";
+  const valueOf = (tag: string) => /\svalue="([^"]*)"/.exec(tag)?.[1];
+
+  it("GET /new prefills the default title in the request language, selected on first focus", async () => {
+    const test = await createTestApp();
+    for (const [language, header] of [
+      ["en", "en-US,en;q=0.9"],
+      ["de", "de-DE,de;q=0.9,en;q=0.8"],
+      ["fr", "fr-FR,fr;q=0.9,en;q=0.8"],
+    ] as const) {
+      const response = await new TestClient(test.app).request("/new", {
+        headers: { "accept-language": header },
+      });
+      const tag = titleTag(await response.text());
+      expect([language, valueOf(tag)]).toEqual([
+        language,
+        translator(language)("form.defaultTitle"),
+      ]);
+      expect(tag).toContain("data-select-on-focus");
+    }
+    expect(translator("en")("form.defaultTitle")).toBe("My plan");
+    expect(translator("de")("form.defaultTitle")).toBe("Mein Treffen");
+    expect(translator("fr")("form.defaultTitle")).toBe("Ma sortie");
+  });
+
+  it("POST /new with an empty title is refused and re-renders it empty, with its error", async () => {
+    const test = await createTestApp();
+    const client = new TestClient(test.app);
+    const hidden = await client.hiddenFields("/new");
+    const response = await client.postForm("/new", { ...hidden, ...sampleInput, title: "" });
+    expect(response.status).toBe(422);
+    const html = await response.text();
+    const tag = titleTag(html);
+    expect(valueOf(tag)).toBe("");
+    expect(tag).not.toContain("data-select-on-focus");
+    expect(tag).toContain('aria-describedby="field-title-error"');
+    expect(html).toContain('id="field-title-error"');
+    expect(html).not.toContain(en["form.defaultTitle"]);
+  });
+
+  it("host edit shows the stored title in the input and no separate title line", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const { planId } = await createPlanViaUi(host);
+    const html = await (await host.get(`/p/${planId}/host`)).text();
+    expect(valueOf(titleTag(html))).toBe("Easy Sunday run");
+    expect(titleTag(html)).not.toContain("data-select-on-focus");
+    expect(html).not.toContain('<p class="plan-context">');
+    expect(html.match(/<h1/g)).toHaveLength(1);
+  });
+
+  it("the retention form of a started plan keeps the static title line and has no title input", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const { planId } = await createPlanViaUi(host);
+    test.clock.set("2026-06-09T00:00:00Z");
+    const html = await (await host.get(`/p/${planId}/host`)).text();
+    expect(html).toContain('<p class="plan-context">Easy Sunday run</p>');
+    expect(titleTag(html)).toBe("");
+  });
+
+  it("the template edit form shows the stored title, and the repeat page names it as its heading", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const { planId } = await createPlanViaUi(host, { keepAsTemplate: "1", title: "Tuesday tempo" });
+    const confirm = await (await host.get(`/p/${planId}/host/delete`)).text();
+    await host.postForm(`/p/${planId}/host/delete`, hiddenFields(confirm));
+    const templateId = /\/templates\/([A-Za-z0-9_-]+)/.exec(
+      await (await host.get("/")).text(),
+    )?.[1];
+    const edit = await (await host.get(`/templates/${templateId}/edit`)).text();
+    expect(valueOf(titleTag(edit))).toBe("Tuesday tempo");
+    expect(titleTag(edit)).not.toContain("data-select-on-focus");
+    expect(edit.match(/name="title"/g)).toHaveLength(1);
+    const page = await (await host.get(`/templates/${templateId}`)).text();
+    expect(page).toContain("<h1>Tuesday tempo</h1>");
+  });
+});
+
 describe("further form behaviour", () => {
   it("shows an activity error with its message and the invalid class", () => {
     const { root, html } = render({ errors: [{ field: "activity", code: "choice_invalid" }] });
@@ -592,6 +672,80 @@ describe("further form behaviour", () => {
     expect(line.children.find((node) => node.tag === "summary")?.text).toBe(
       `Time zone, Europe/Berlin · ${en["layout.change"]}`,
     );
+  });
+});
+
+describe("inline title (decision D71, step 0.12-9)", () => {
+  const own = (node: Node, name: string) =>
+    new RegExp(`(?:^|\\s)${name}(?:="([^"]*)")?(?=\\s|/|$)`).exec(node.attributes)?.[1] ??
+    (new RegExp(`(?:^|\\s)${name}(?=\\s|/|$)`).test(node.attributes) ? "" : undefined);
+  const titleInput = (root: Node) => {
+    const [input] = named(root, "title");
+    if (input === undefined) throw new Error("no title input");
+    return input;
+  };
+
+  it("has exactly one control named title, no visible Title field and a hidden label", () => {
+    const { root, html } = render({ values: { title: "Sunday run" } });
+    expect(named(root, "title")).toHaveLength(1);
+    const labels = all(root).filter(
+      (node) => node.tag === "label" && own(node, "for") === "field-title",
+    );
+    expect(labels).toHaveLength(1);
+    expect(labels[0]?.text).toBe(en["form.title"]);
+    expect(classes(labels[0] as Node)).toEqual(["visually-hidden"]);
+    expect(html).not.toMatch(/<label for="field-title">/);
+    const field = labels[0]?.parent as Node;
+    expect(classes(field)).toEqual(["field", "field-title"]);
+  });
+
+  it("is the first control after the purpose line h1 and before the Activity select", () => {
+    const { root } = render({ values: { title: "Sunday run" } });
+    const form = all(root).find((node) => node.tag === "form") as Node;
+    const h1 = form.children.find((node) => node.tag === "h1") as Node;
+    expect(h1.text).toBe("Plan");
+    const names = controls(form)
+      .map((node) => own(node, "name"))
+      .filter((name) => name !== "_csrf" && name !== "nonce");
+    expect(names.slice(0, 2)).toEqual(["title", "activity"]);
+    expect(all(form).indexOf(h1)).toBeLessThan(all(form).indexOf(titleInput(root)));
+  });
+
+  it("is required, limited to 100 characters, without autocomplete, styled by title-input", () => {
+    const input = titleInput(render({ values: { title: "Sunday run" } }).root);
+    expect(own(input, "required")).toBe("");
+    expect(own(input, "maxlength")).toBe("100");
+    expect(own(input, "autocomplete")).toBe("off");
+    expect(own(input, "class")).toBe("title-input");
+    expect(own(input, "value")).toBe("Sunday run");
+  });
+
+  it("asks to select on focus only while the value is the default title", () => {
+    const withDefault = render({ values: { title: en["form.defaultTitle"] } }).root;
+    expect(own(titleInput(withDefault), "data-select-on-focus")).toBe("");
+    for (const title of ["", "Sunday run"]) {
+      expect(own(titleInput(render({ values: { title } }).root), "data-select-on-focus")).toBe(
+        undefined,
+      );
+    }
+  });
+
+  it("shows the error under the input, visible, with aria-invalid and aria-describedby", () => {
+    const { root, html } = render({ values: { title: "" }, errors: errorOn("title") });
+    const input = titleInput(root);
+    expect(own(input, "aria-invalid")).toBe("true");
+    expect(own(input, "aria-describedby")).toBe("field-title-error");
+    expect(html).toContain('id="field-title-error"');
+    const field = input.parent as Node;
+    expect(classes(field)).toEqual(["field", "field-title", "field-invalid"]);
+    expect(field.children.map((node) => node.tag)).toEqual(["label", "input", "p"]);
+    expect(own(field.children[2] as Node, "hidden")).toBeUndefined();
+  });
+
+  it("is there on the template form too", () => {
+    const { root } = render({ forTemplate: true, withGpx: false, values: { title: "Tempo" } });
+    expect(named(root, "title")).toHaveLength(1);
+    expect(own(titleInput(root), "class")).toBe("title-input");
   });
 });
 

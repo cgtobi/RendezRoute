@@ -86,8 +86,9 @@ export function HostPage(props: HostPageProps) {
   return (
     <section class="host sectioned">
       <BackLink href={`/p/${planId}`} label={t("host.back")} />
-      {/* Which plan this page manages; the form itself stays neutral (decision D11). */}
-      <p class="plan-context">{props.title}</p>
+      {/* Which plan this page manages (decision D11). The editable form shows the title in its own
+          input (decision D71), so the line stays only where the form is not editable. */}
+      {props.scope === "retention" && <p class="plan-context">{props.title}</p>}
       {props.saved && (
         <p class="notice" role="status">
           {t("host.saved")}

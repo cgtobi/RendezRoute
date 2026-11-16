@@ -147,6 +147,7 @@ export const en = {
   "form.posterNameHint": "Shown on the plan with a host badge.",
   "form.activity": "Activity",
   "form.title": "Title",
+  "form.defaultTitle": "My plan",
   "form.date": "Date",
   "form.time": "Start time",
   "form.timeZone": "Time zone",

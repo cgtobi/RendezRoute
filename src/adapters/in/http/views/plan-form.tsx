@@ -204,6 +204,7 @@ export function PlanForm({
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
   const id = (field: PlanField) => `field-${field}`;
+  const titleError = errorFor("title");
 
   const Field = ({
     field,
@@ -347,7 +348,7 @@ export function PlanForm({
       class="plan-form"
       enctype={withGpx ? "multipart/form-data" : undefined}
     >
-      <h1>{heading}</h1>
+      <h1 class="page-purpose">{heading}</h1>
       {notice !== undefined && <p class="warning">{notice}</p>}
       {errors.length > 0 && (
         <p class="error" role="alert">
@@ -357,9 +358,27 @@ export function PlanForm({
       <input type="hidden" name={CSRF_FIELD} value={csrfToken} />
       {nonce !== undefined && <input type="hidden" name="nonce" value={nonce} />}
 
-      <Field field="title" label={t("form.title")}>
-        {input("title", { required: true, maxlength: PLAN_LIMITS.title })}
-      </Field>
+      {/* The title is the big heading, edited in place (decision D71): a visually hidden label
+          keeps it a named field; the default title is selected on first focus. */}
+      <div
+        class={titleError === undefined ? "field field-title" : "field field-title field-invalid"}
+      >
+        <label class="visually-hidden" for={id("title")}>
+          {t("form.title")}
+        </label>
+        {input("title", {
+          class: "title-input",
+          required: true,
+          maxlength: PLAN_LIMITS.title,
+          autocomplete: "off",
+          ...(values.title === t("form.defaultTitle") ? { "data-select-on-focus": "" } : {}),
+        })}
+        {titleError !== undefined && (
+          <p class="error" id={`${id("title")}-error`}>
+            {fieldErrorMessage(titleError.code, t)}
+          </p>
+        )}
+      </div>
 
       <Field field="activity" label={t("form.activity")} class="field-compact">
         <select

@@ -97,8 +97,13 @@ describe("pages about a plan (design step 3)", () => {
     expect(primaries(await rating.text())).toEqual([en("rating.submit")]);
   });
 
-  it("name the plan above the host page's form, which stays neutral (decision D11)", async () => {
-    const { host, planId, html } = await setup();
+  it("name the plan above the host page's heading once started, when the form is not editable (D11, D71)", async () => {
+    const { host, planId, html, clock } = await setup();
+    const editable = await html(host, `/p/${planId}/host`);
+    // Before the start the title is the form's own input: no second, small title line (D71).
+    expect(editable).not.toContain('<p class="plan-context">');
+    expect(editable).toContain('name="title"');
+    clock.advance({ days: 7 });
     const page = await html(host, `/p/${planId}/host`);
     expect(page.indexOf('<p class="plan-context">Easy Sunday run</p>')).toBeLessThan(
       page.indexOf("<h1"),

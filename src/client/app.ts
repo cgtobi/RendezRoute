@@ -3,6 +3,7 @@
 import { initAutoSubmit } from "./auto-submit.ts";
 import { initFoldSummaries } from "./fold-summaries.ts";
 import { initPush } from "./push.ts";
+import { initSelectOnFocus } from "./select-on-focus.ts";
 import { initShare } from "./share.ts";
 import { initTimeDefault, initZones } from "./zone-fields.ts";
 
@@ -13,6 +14,7 @@ const start = () => {
   initZones();
   initTimeDefault();
   initFoldSummaries();
+  initSelectOnFocus();
 };
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);

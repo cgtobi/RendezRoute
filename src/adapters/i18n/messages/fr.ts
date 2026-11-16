@@ -154,6 +154,7 @@ export const fr: Messages = {
   "form.posterNameHint": "Affiché sur la sortie avec un badge d’organisateur·rice.",
   "form.activity": "Activité",
   "form.title": "Titre",
+  "form.defaultTitle": "Ma sortie",
   "form.date": "Date",
   "form.time": "Heure de départ",
   "form.timeZone": "Fuseau horaire",

@@ -11,6 +11,7 @@ import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import { previewImage } from "../../../../application/previews.ts";
 import { routeForDownload } from "../../../../application/routes.ts";
 import { toGeoJson, toGpx } from "../../../out/gpx/write-gpx.ts";
+import type { Translate } from "../../../i18n/i18n.ts";
 import type { AppEnv } from "../app.tsx";
 import { fileName } from "../file-names.ts";
 import { readDeviceToken, setDeviceToken } from "../device-cookie.ts";
@@ -42,8 +43,11 @@ import {
 
 export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
   const { config, planDeps, geocoder, previewRenderer, limits, accounts } = deps;
-  const emptyForm = (): PlanInput => ({
+  const emptyForm = (t: Translate): PlanInput => ({
     ...planInput(() => ""),
+    // A generic title in the request language, selected on first focus (decision D71); only the
+    // form has it, the domain still requires a title.
+    title: t("form.defaultTitle"),
     activity: "run",
     timeZone: config.defaultTimezone,
     dropPolicy: "no_drop",
@@ -98,7 +102,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         ? undefined
         : await viewAccount(accounts, { deviceToken: readDeviceToken(c, config) });
     const posterName = account?.kind === "account" ? (account.displayName ?? "") : "";
-    return renderForm(c, { ...emptyForm(), posterName }, [], newNonce());
+    return renderForm(c, { ...emptyForm(c.get("t")), posterName }, [], newNonce());
   });
 
   app.post("/new", async (c) => {

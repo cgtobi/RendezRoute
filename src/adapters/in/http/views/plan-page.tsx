@@ -183,10 +183,6 @@ export function PlanPage(props: {
               </p>
             </section>
           )}
-
-        {view.status !== "cancelled" && (
-          <ShareLinks t={t} url={props.planUrl} title={view.title} buttons={view.shareButtons} />
-        )}
       </div>
 
       <div class="plan-side">
@@ -291,6 +287,11 @@ export function PlanPage(props: {
             />
           )}
         </div>
+      )}
+
+      {/* The very last thing on the page, not the footer of the route section (D69). */}
+      {view.status !== "cancelled" && (
+        <ShareLinks t={t} url={props.planUrl} title={view.title} buttons={view.shareButtons} />
       )}
     </article>
   );

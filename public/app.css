@@ -1397,8 +1397,9 @@ input[type="checkbox"] {
     display: grid;
     grid-template-areas:
       "main side"
-      "after side";
-    grid-template-rows: auto 1fr;
+      "after side"
+      "share share";
+    grid-template-rows: auto 1fr auto;
     grid-template-columns: minmax(0, 1.6fr) minmax(20rem, 1fr);
     gap: 0 var(--s6);
     align-items: start;
@@ -1410,6 +1411,10 @@ input[type="checkbox"] {
 
   .plan-after {
     grid-area: after;
+  }
+
+  .plan .share {
+    grid-area: share;
   }
 
   .plan-side {

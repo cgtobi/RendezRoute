@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
+import { sampleGpx } from "../../support/gpx.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
-import { createPlanViaUi } from "../../support/plans.ts";
+import { createPlanViaUi, createPlanWithRouteViaUi } from "../../support/plans.ts";
 
 async function setup() {
   const test = await createTestApp();
@@ -43,6 +44,27 @@ describe("share helpers (spec 5 feature 4)", () => {
     expect(shareSection(html)).toContain(`data-url="https://runs.example.org/p/${planId}"`);
     const viewer = await (await new TestClient(app).get(`/p/${planId}`)).text();
     expect(shareSection(viewer)).not.toBe("");
+  });
+
+  it("come last on the plan page, after the route section and the plan-side block (decision D69)", async () => {
+    const { app, host } = await setup();
+    const { planId } = await createPlanWithRouteViaUi(host, { title: "Routed" }, sampleGpx());
+    const hostHtml = await (await host.get(`/p/${planId}`)).text();
+    const viewerHtml = await (await new TestClient(app).get(`/p/${planId}`)).text();
+    const at = (html: string, marker: string) => html.indexOf(marker);
+    expect(at(hostHtml, '<section class="route">')).toBeGreaterThan(-1);
+    for (const html of [hostHtml, viewerHtml]) {
+      const share = at(html, '<section class="share"');
+      expect(share).toBeGreaterThan(-1);
+      expect(share).toBeGreaterThan(at(html, '<div class="plan-side">'));
+      expect(html.match(/<section class="share"/g)).toHaveLength(1);
+      // No section of the page content follows it.
+      expect(html.slice(share)).not.toMatch(/<section class="(?:route|people|weather)"/);
+      expect(html.slice(share)).not.toContain('class="plan-after"');
+    }
+    expect(at(hostHtml, '<section class="share"')).toBeGreaterThan(
+      at(hostHtml, '<section class="route">'),
+    );
   });
 
   it("are gone once the plan is cancelled", async () => {

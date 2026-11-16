@@ -35,3 +35,45 @@ export const escapeHtml = (text: string): string =>
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+
+/**
+ * The public area's grid: 100 lines per degree (0.01°, about 1 km). Mirrors PUBLIC_GRID_PER_DEGREE
+ * in src/domain/geo.ts, which the client may not import; a test pins both to the same results.
+ */
+export const PUBLIC_GRID_PER_DEGREE = 100;
+
+/** One coordinate on the public grid. Mirrors `snapToGrid` in src/domain/geo.ts, rounding included. */
+export const snapPublicCoordinate = (value: number): number => {
+  const snapped = Number(
+    (Math.round(value * PUBLIC_GRID_PER_DEGREE) / PUBLIC_GRID_PER_DEGREE).toFixed(2),
+  );
+  return snapped === 0 ? 0 : snapped; // no negative zero
+};
+
+export interface Point {
+  lat: number;
+  lng: number;
+}
+
+/** The public point of a point. Mirrors `publicAreaFrom` in src/domain/geo.ts. */
+export const publicPointOf = (point: Point): Point => ({
+  lat: snapPublicCoordinate(point.lat),
+  lng: snapPublicCoordinate(point.lng),
+});
+
+/**
+ * Where the public area circle sits (spec 3.1): derived from the exact point when that is set,
+ * else from the area point, as `publicSource` does in src/domain/plan-input.ts. Never the exact
+ * point itself.
+ */
+export function publicCircleCenter(
+  exact: Point | undefined,
+  area: Point | undefined,
+): Point | undefined {
+  const source = exact ?? area;
+  return source === undefined ? undefined : publicPointOf(source);
+}
+
+/** Zoom for "Find my location": street level, or wider when the fix is coarser than 2 km. */
+export const zoomForAccuracy = (accuracyMeters: number): number =>
+  accuracyMeters > 2000 ? 13 : 15;

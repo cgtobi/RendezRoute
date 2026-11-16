@@ -20,7 +20,7 @@ export function MapAssets() {
   );
 }
 
-/** Place search, "Use my location" and the tap-to-pick map of the create and edit forms. */
+/** Place search and the tap-to-pick map (with its mode switch) of the create and edit forms. */
 export function MapTools({
   t,
   map,
@@ -53,9 +53,6 @@ export function MapTools({
           <ul class="place-results"></ul>
         </div>
       )}
-      <button type="button" class="secondary" data-locate="" hidden>
-        {t("map.locate")}
-      </button>
       {map !== undefined && (
         <div
           class="map-picker"
@@ -64,20 +61,45 @@ export function MapTools({
           data-attribution={map.attribution}
           data-zoom-in={t("map.zoomIn")}
           data-zoom-out={t("map.zoomOut")}
+          data-locate-title={t("map.findMe")}
+          data-locate-denied={t("map.locateDenied")}
+          data-locate-unavailable={t("map.locateUnavailable")}
           hidden
         >
-          <fieldset class="map-mode">
-            <legend>{t("map.pickLegend")}</legend>
-            <label class="choice">
-              <input type="radio" name="mapMode" value="exact" checked />
-              {t("map.pickExact")}
+          <div class="map" role="application" aria-label={t("map.pickLabel")}></div>
+          <fieldset class="mode-switch">
+            <legend class="visually-hidden">{t("map.pickLegend")}</legend>
+            <label>
+              <input type="radio" name="mapMode" value="area" checked />
+              <span>{t("map.modeArea")}</span>
             </label>
-            <label class="choice">
-              <input type="radio" name="mapMode" value="area" />
-              {t("map.pickArea")}
+            <label>
+              <input type="radio" name="mapMode" value="exact" />
+              <span>{t("map.modeExact")}</span>
             </label>
           </fieldset>
-          <div class="map" role="application" aria-label={t("map.pickLabel")}></div>
+          <p
+            class="hint map-caption"
+            data-map-caption=""
+            data-caption-area={t("map.captionArea")}
+            data-caption-exact={t("map.captionExact")}
+            data-caption-area-follows={t("map.captionAreaFollows")}
+            aria-live="polite"
+          >
+            {t("map.captionArea")}
+          </p>
+          <div class="point-readout" data-area-readout="" hidden>
+            <p data-area-set="" hidden>
+              {t("map.areaSet")}
+              {" · "}
+              <button type="button" class="secondary" data-area-remove="">
+                {t("map.areaRemove")}
+              </button>
+            </p>
+            <p data-area-none="" tabindex={-1}>
+              {t("map.areaNone")}
+            </p>
+          </div>
         </div>
       )}
     </div>

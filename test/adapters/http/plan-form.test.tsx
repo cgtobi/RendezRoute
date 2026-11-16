@@ -63,6 +63,7 @@ const attr = (node: Node, name: string): string | undefined =>
   new RegExp(`(?:^|\\s)${name}(?:="([^"]*)")?(?=\\s|$)`).exec(node.attributes.trim())?.[1] ??
   (new RegExp(`(?:^|\\s)${name}(?=\\s|$|=)`).test(node.attributes) ? "" : undefined);
 
+const hasAttr = (node: Node, name: string) => attr(node, name) !== undefined;
 const classes = (node: Node) => (attr(node, "class") ?? "").split(" ");
 const isOpen = (node: Node) => / open(=|\s|$)/.test(` ${node.attributes}`);
 const controls = (root: Node) =>
@@ -624,5 +625,58 @@ describe("start time step", () => {
     expect(onQuarterHour("09:07")).toBe(false);
     expect(onQuarterHour("09:16")).toBe(false);
     expect(onQuarterHour("nonsense")).toBe(false);
+  });
+});
+
+describe("exact point on the map (decision D66)", () => {
+  const map = { tileUrl: "https://tiles.example/{z}/{x}/{y}.png", attribution: "Test" };
+  const rowOf = (root: Node, name: string) =>
+    all(root).find(
+      (node) =>
+        attr(node, "data-exact-fields") !== undefined &&
+        all(node).some((child) => attr(child, "name") === name),
+    );
+
+  it("renders the readout hidden, with both lines and a Remove button, for the script to reveal", () => {
+    const { root, html } = render({ map });
+    const readout = all(root).find((node) => attr(node, "data-exact-readout") !== undefined);
+    expect(readout && hasAttr(readout, "hidden")).toBe(true);
+    expect(readout?.text).toContain(en["map.exactSet"]);
+    expect(readout?.text).toContain(en["map.exactNone"]);
+    const set = all(root).find((node) => attr(node, "data-exact-set") !== undefined);
+    expect(set && hasAttr(set, "hidden")).toBe(true);
+    expect(html).toContain('data-exact-remove=""');
+    expect(html).toContain(`>${en["map.exactRemove"]}</button>`);
+  });
+
+  it("keeps the latitude and longitude inputs rendered and visible in the markup", () => {
+    const { root } = render({ map, values: { exactLat: "48.1", exactLng: "11.5" } });
+    const row = rowOf(root, "exactLat");
+    expect(row && hasAttr(row, "hidden")).toBe(false);
+    expect(named(root, "exactLat")).toHaveLength(1);
+    expect(named(root, "exactLng")).toHaveLength(1);
+    expect(named(root, "areaLat")).toHaveLength(1);
+    // Hidden only by the script, after it has set itself up (progressive enhancement).
+    const area = all(root).find((node) => attr(node, "data-area-fields") !== undefined);
+    expect(area && hasAttr(area, "hidden")).toBe(false);
+  });
+
+  it("has no readout when maps are off, so nothing changes without the map", () => {
+    const { html } = render({});
+    expect(html).not.toContain("data-exact-readout");
+    expect(html).toContain('name="exactLat"');
+  });
+
+  it("keeps a coordinate error in the row it belongs to, which the script then leaves visible", () => {
+    const { root, html } = render({ map, errors: errorOn("exactLat") });
+    const row = rowOf(root, "exactLat");
+    expect(row && hasAttr(row, "hidden")).toBe(false);
+    expect(row && all(row).some((node) => classes(node).includes("field-invalid"))).toBe(true);
+    expect(html).toContain('aria-describedby="field-exactLat-error"');
+    expect(html).toContain('id="field-exactLat-error"');
+    const area = render({ map, errors: errorOn("areaLng") });
+    expect(area.html).toContain('id="field-areaLng-error"');
+    const details = all(area.root).find((node) => attr(node, "data-area-fields") !== undefined);
+    expect(details && isOpen(details)).toBe(true);
   });
 });

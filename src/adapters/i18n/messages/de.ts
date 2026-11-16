@@ -97,9 +97,9 @@ export const de: Messages = {
   "privacy.calendar":
     "Wenn du einen Kalender-Link erstellst, ruft der Server deiner Kalender-App ihn ab. Dieser Server sieht die öffentlichen Angaben deiner Treffen und dass du darauf geantwortet hast.",
   "privacy.location":
-    "„Meinen Standort verwenden“ fragt deinen Browser nach deiner Position und füllt nur das Formular aus; gesendet wird sie erst, wenn du das Formular abschickst.",
+    "„Meinen Standort finden“ auf der Karte fragt deinen Browser nach deiner Position, nur um die Karte zu verschieben; sie wird nicht an diesen Server gesendet, und es wird nichts ausgefüllt.",
   "privacy.locationMap":
-    "Bei eingeschalteten Karten springt die Karte danach zu deiner Position, sodass dein Browser Kartenbilder dieser Gegend vom Kartendienst lädt.",
+    "Die Karte zeigt dann deine Gegend, sodass dein Browser Kartenbilder dieser Gegend vom Kartendienst lädt.",
   "privacy.share": "WhatsApp wird nur kontaktiert, wenn du den Teilen-Link benutzt.",
   "privacy.previews":
     "Wird ein Link zu einem Treffen in einer Chat-App geteilt, ruft die App Titel, Zeit, Treffgebiet, Distanz, Pace und ein Vorschaubild ab. Chat-Apps können diese Vorschau auch nach dem Löschen des Treffens behalten.",
@@ -171,13 +171,27 @@ export const de: Messages = {
   "map.search": "Ort suchen",
   "map.searchButton": "Suchen",
   "map.searchHint":
-    "Suchergebnisse und dein Standort legen das Treffgebiet fest; tippe auf die Karte für den genauen Treffpunkt. Suchanfragen laufen über diese Website, der Suchdienst erfährt also nicht, wer du bist.",
+    "Suchergebnisse legen das Treffgebiet fest; schalte die Karte auf den genauen Start um und tippe auf die Karte. Suchanfragen laufen über diese Website, der Suchdienst erfährt also nicht, wer du bist.",
   "map.searchUnavailable": "Die Ortssuche ist gerade nicht verfügbar.",
   "map.noResults": "Keine Orte gefunden.",
-  "map.locate": "Meinen Standort verwenden",
+  "map.findMe": "Meinen Standort finden",
   "map.pickLegend": "Tippen auf die Karte setzt",
-  "map.pickExact": "den genauen Treffpunkt",
-  "map.pickArea": "das Treffgebiet",
+  "map.modeArea": "Öffentliches Gebiet",
+  "map.modeExact": "Genauer Start",
+  "map.captionArea":
+    "Tippe auf die Karte, um das öffentliche Treffgebiet (etwa 1 km) zu setzen. Alle sehen es.",
+  "map.captionExact":
+    "Tippe auf die Karte, um den genauen Start zu setzen. Nur wer mitmacht, sieht ihn.",
+  "map.captionAreaFollows":
+    "Das öffentliche Gebiet folgt dem genauen Start (etwa 1 km darum). Entferne den genauen Punkt, um ein anderes Gebiet zu wählen.",
+  "map.locateDenied": "Der Standortzugriff wurde verweigert",
+  "map.locateUnavailable": "Deine Position ist nicht verfügbar",
+  "map.areaSet": "Öffentliches Gebiet auf der Karte gesetzt",
+  "map.areaNone": "Kein öffentliches Gebiet auf der Karte gesetzt",
+  "map.areaRemove": "Entfernen",
+  "map.exactSet": "Punkt auf der Karte gesetzt",
+  "map.exactNone": "Kein Punkt auf der Karte gesetzt",
+  "map.exactRemove": "Entfernen",
   "map.pickLabel": "Karte zum Auswählen eines Punkts",
   "map.planLabel": "Karte des Treffgebiets",
   "map.zoomIn": "Vergrößern",

@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vite-plus/test";
+import { publicAreaFrom } from "../../src/domain/geo.ts";
 import { NEARBY_GRID_PER_DEGREE as DOMAIN_GRID, onGrid } from "../../src/domain/nearby.ts";
 import {
   escapeHtml,
   NEARBY_GRID_PER_DEGREE,
   nearbyCoordinate,
+  PUBLIC_GRID_PER_DEGREE,
+  publicCircleCenter,
+  publicPointOf,
   readCoordinate,
   roundCoordinate,
   shortLabel,
+  snapPublicCoordinate,
+  zoomForAccuracy,
 } from "../../src/client/geo.ts";
 
 describe("client helpers", () => {
@@ -45,5 +51,53 @@ describe("client helpers", () => {
 
   it("escapes text that a library would insert as HTML", () => {
     expect(escapeHtml('© OSM <a href="x">&')).toBe("© OSM &lt;a href=&quot;x&quot;&gt;&amp;");
+  });
+});
+
+describe("public circle (spec 3.1, mirrors src/domain/geo.ts)", () => {
+  // Negative values, zero and its negative neighbours, grid lines, half-way cases, the extremes.
+  const TABLE = [
+    0, -0.004, 0.004, 0.005, -0.005, 0.006, 48.16321, 48.16, 48.165, 48.1649999, 11.58911,
+    -122.4194, -0.0049, 179.999, -179.995, 90, -90, 89.995, 0.015, 0.025, 1.005, 33.335, -33.335,
+  ];
+
+  it("snaps every coordinate as the domain's public area does", () => {
+    for (const value of TABLE) {
+      const domain = publicAreaFrom({ lat: value, lng: -value });
+      expect({ value, snapped: snapPublicCoordinate(value) }).toEqual({
+        value,
+        snapped: domain.lat,
+      });
+      expect(snapPublicCoordinate(-value)).toBe(domain.lng);
+      expect(publicPointOf({ lat: value, lng: -value })).toEqual(domain);
+    }
+    expect(PUBLIC_GRID_PER_DEGREE).toBe(100);
+  });
+
+  it("has no negative zero", () => {
+    expect(Object.is(snapPublicCoordinate(-0.004), 0)).toBe(true);
+  });
+
+  it("draws the circle around the snapped exact point, else the snapped area point, never the exact point", () => {
+    const exact = { lat: 48.16321, lng: 11.58911 };
+    const area = { lat: 40, lng: 10 };
+    expect(publicCircleCenter(exact, area)).toEqual({ lat: 48.16, lng: 11.59 });
+    expect(publicCircleCenter(exact, undefined)).toEqual(publicAreaFrom(exact));
+    expect(publicCircleCenter(undefined, { lat: 48.15432, lng: 11.58861 })).toEqual({
+      lat: 48.15,
+      lng: 11.59,
+    });
+    expect(publicCircleCenter(undefined, undefined)).toBeUndefined();
+    expect(publicCircleCenter(exact, area)).not.toEqual(exact);
+  });
+});
+
+describe("zoomForAccuracy (decision D62)", () => {
+  it("is street level normally and wider for a fix coarser than 2 km", () => {
+    expect(zoomForAccuracy(20)).toBe(15);
+    expect(zoomForAccuracy(2000)).toBe(15);
+    expect(zoomForAccuracy(2000.1)).toBe(13);
+    expect(zoomForAccuracy(50_000)).toBe(13);
+    expect(zoomForAccuracy(Number.NaN)).toBe(15);
   });
 });

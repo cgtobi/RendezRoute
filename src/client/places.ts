@@ -1,4 +1,4 @@
-// Setting coordinates in the create/edit form, from the map, place search or geolocation.
+// Setting coordinates in the create/edit form, from the map or place search.
 import { roundCoordinate, shortLabel } from "./geo.ts";
 
 export interface PickedPlace {
@@ -11,8 +11,9 @@ export interface PickedPlace {
 export const PLACE_EVENT = "rendezroute:place";
 
 /**
- * Search results and the device location describe the meeting area, never the exact start: they
- * set the area point (like the area label) and centre the form map, if there is one.
+ * Search results describe the meeting area, never the exact start: they set the area point (like
+ * the area label) and centre the form map, if there is one. The map's "Find my location" control
+ * does not come through here: it only moves the view.
  */
 export function pickPlace(form: HTMLFormElement, place: PickedPlace): void {
   setField(form, "areaLat", roundCoordinate(place.lat));

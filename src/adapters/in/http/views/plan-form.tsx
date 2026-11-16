@@ -423,7 +423,10 @@ export function PlanForm({
           {input("areaLabel", { required: true, maxlength: PLAN_LIMITS.areaLabel })}
         </Field>
 
+        {/* With the map script the area point is set on the map; the script hides these fields,
+            except where one has an error (decision D66). */}
         <details
+          data-area-fields=""
           open={values.areaLat !== "" || values.areaLng !== "" || hasError("areaLat", "areaLng")}
         >
           <summary>{t("form.areaCoordinates")}</summary>
@@ -450,7 +453,23 @@ export function PlanForm({
           <Field field="exactDescription" label={t("form.exactDescription")}>
             {input("exactDescription", { maxlength: 200 })}
           </Field>
-          <div class="field-row">
+          {/* The map script shows this line and hides the coordinate fields below it (decision
+              D66); without the script or with maps off the fields stay. */}
+          {map !== undefined && (
+            <div class="point-readout" data-exact-readout="" hidden>
+              <p data-exact-set="" hidden>
+                {t("map.exactSet")}
+                {" · "}
+                <button type="button" class="secondary" data-exact-remove="">
+                  {t("map.exactRemove")}
+                </button>
+              </p>
+              <p data-exact-none="" tabindex={-1}>
+                {t("map.exactNone")}
+              </p>
+            </div>
+          )}
+          <div class="field-row" data-exact-fields="">
             <Field field="exactLat" label={t("form.latitude")}>
               {input("exactLat", { inputmode: "decimal" })}
             </Field>

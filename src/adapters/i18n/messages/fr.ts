@@ -99,9 +99,9 @@ export const fr: Messages = {
   "privacy.calendar":
     "Si vous créez un lien de calendrier, le serveur de votre application de calendrier le récupère. Ce serveur voit les informations publiques de vos sorties et que vous y avez répondu.",
   "privacy.location":
-    "« Utiliser ma position » demande votre position à votre navigateur et remplit seulement le formulaire, qui ne l’envoie que si vous le validez.",
+    "« Trouver ma position » sur la carte demande votre position à votre navigateur, uniquement pour déplacer la carte ; elle n’est pas envoyée à ce serveur et ne remplit rien.",
   "privacy.locationMap":
-    "Si les cartes sont activées, la carte se déplace ensuite vers votre position, et votre navigateur charge donc des images de cette zone depuis le service de cartes.",
+    "La carte montre ensuite votre région, et votre navigateur charge donc des images de cette zone depuis le service de cartes.",
   "privacy.share": "WhatsApp n’est contacté que si vous utilisez son lien de partage.",
   "privacy.previews":
     "Quand le lien d’une sortie est partagé dans une messagerie, celle-ci récupère le titre, l’heure, la zone de rendez-vous, la distance, l’allure et une image d’aperçu. Les messageries peuvent conserver cet aperçu après la suppression de la sortie.",
@@ -174,13 +174,27 @@ export const fr: Messages = {
   "map.search": "Chercher un lieu",
   "map.searchButton": "Chercher",
   "map.searchHint":
-    "Les résultats de recherche et votre position définissent la zone de rendez-vous ; touchez la carte pour le point de départ exact. Les recherches passent par ce site, le service de recherche ne sait donc pas qui vous êtes.",
+    "Les résultats de recherche définissent la zone de rendez-vous ; passez la carte sur le départ exact et touchez-la. Les recherches passent par ce site, le service de recherche ne sait donc pas qui vous êtes.",
   "map.searchUnavailable": "La recherche de lieux n’est pas disponible pour le moment.",
   "map.noResults": "Aucun lieu trouvé.",
-  "map.locate": "Utiliser ma position",
+  "map.findMe": "Trouver ma position",
   "map.pickLegend": "Toucher la carte définit",
-  "map.pickExact": "le point de départ exact",
-  "map.pickArea": "la zone de rendez-vous",
+  "map.modeArea": "Zone publique",
+  "map.modeExact": "Départ exact",
+  "map.captionArea":
+    "Touchez la carte pour définir la zone de rendez-vous publique (environ 1 km). Tout le monde la voit.",
+  "map.captionExact":
+    "Touchez la carte pour définir le départ exact. Seules les personnes qui participent le voient.",
+  "map.captionAreaFollows":
+    "La zone publique suit le départ exact (environ 1 km autour). Retirez le point exact pour choisir une autre zone.",
+  "map.locateDenied": "L’accès à la position a été refusé",
+  "map.locateUnavailable": "Votre position n’est pas disponible",
+  "map.areaSet": "Zone publique définie sur la carte",
+  "map.areaNone": "Aucune zone publique définie sur la carte",
+  "map.areaRemove": "Retirer",
+  "map.exactSet": "Point défini sur la carte",
+  "map.exactNone": "Aucun point défini sur la carte",
+  "map.exactRemove": "Retirer",
   "map.pickLabel": "Carte pour choisir un point",
   "map.planLabel": "Carte de la zone de rendez-vous",
   "map.zoomIn": "Zoom avant",

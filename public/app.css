@@ -1806,10 +1806,134 @@ details > summary {
   text-align: left;
 }
 
-.plan-form .map-mode {
-  margin: var(--s2) 0;
+/* "Find my location" (decision D62): a 44 px square in the zoom buttons' look, the target drawn
+   with borders so it takes the text colour. */
+.map .leaflet-bar button.map-locate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--target);
+  min-height: var(--target);
+  height: var(--target);
   padding: 0;
   border: 0;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.map .leaflet-bar button.map-locate:hover,
+.map .leaflet-bar button.map-locate:focus {
+  background: var(--line);
+}
+
+.map .leaflet-bar button.map-locate[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.map-locate-icon {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.map-locate-icon::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* The map's mode switch (decision D66): two segments, the active one in the accent. The radios
+   stay in the page for keyboards and screen readers. */
+.plan-form .mode-switch {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mode-switch label {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: var(--target);
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--field-border);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.mode-switch label:first-of-type {
+  border-radius: var(--r-sm) 0 0 var(--r-sm);
+}
+
+.mode-switch label:last-of-type {
+  margin-left: -1px;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+
+.mode-switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.mode-switch label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mode-switch label:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The form map's zoom buttons as large as the locate button under them. */
+.map-picker .map .leaflet-bar a {
+  width: var(--target);
+  height: var(--target);
+  line-height: var(--target);
+}
+
+/* Forced colours drop the background that shows the checked segment: mark it by outline too,
+   except while it has the keyboard focus, whose own outline must stay visible. */
+@media (forced-colors: active) {
+  .mode-switch label:has(input:checked):not(:has(input:focus-visible)) {
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
+  }
+}
+
+.map-caption {
+  margin: var(--s2) 0 var(--s3);
+}
+
+/* A point set on the map as one line (exact start, public area), where the map script replaces the coordinate fields. */
+.point-readout p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: center;
+  margin: var(--s3) 0;
 }
 
 .share-actions {

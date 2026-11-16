@@ -44,15 +44,17 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect(text(html)).toContain(en("privacy.devices", { unlinkedDays: 30, unusedDays: 365 }));
   });
 
-  it("says that place searches are cached, and that “Use my location” moves the map", async () => {
+  it("says that place searches are cached, and that “Find my location” only moves the map", async () => {
     const { html } = await page();
     expect(text(html)).toContain(
       en("privacy.geocoder", { host: "nominatim.openstreetmap.org", days: 7 }),
     );
+    expect(text(html)).toContain(en("privacy.location"));
     expect(text(html)).toContain(en("privacy.locationMap"));
-    expect(text((await page({ MAPS_ENABLED: "false" })).html)).not.toContain(
-      en("privacy.locationMap"),
-    );
+    expect(en("privacy.location")).toContain("not sent to this server");
+    const withoutMaps = text((await page({ MAPS_ENABLED: "false" })).html);
+    expect(withoutMaps).not.toContain(en("privacy.location"));
+    expect(withoutMaps).not.toContain(en("privacy.locationMap"));
   });
 
   it("states that pre-update backups are deleted after 7 days (spec 11)", async () => {

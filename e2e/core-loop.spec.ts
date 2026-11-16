@@ -17,6 +17,8 @@ async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: str
     await host.getByRole("button", { name: "Search" }).click();
     await host.getByRole("button", { name: /Flaucher/ }).click();
     await expect(host.locator("#field-areaLabel")).toHaveValue(/Flaucher/);
+    // The map starts on the public area; the exact start is its second mode (decision D66).
+    await host.getByRole("radio", { name: "Exact start" }).check();
     await host.locator(".map-picker .map").click();
     // Setting the exact point on the map opens its fold by itself, so its notice is in view.
     await expect(

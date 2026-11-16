@@ -1,6 +1,7 @@
-// Form map (decision D12): tap to set the public area or the exact start, depending on the mode.
+// Form map (decisions D12, D62, D66): tap to set the public area or the exact start, depending on
+// the mode switch; a control finds the device's place (view only).
 import L from "leaflet";
-import { readCoordinate, roundCoordinate } from "./geo.ts";
+import { publicCircleCenter, readCoordinate, roundCoordinate, zoomForAccuracy } from "./geo.ts";
 import { PLACE_EVENT, type PickedPlace, setField } from "./places.ts";
 import { AREA_RADIUS_M, createMap, themeColor, tileLayer } from "./tiles.ts";
 
@@ -9,6 +10,50 @@ const FIELDS: Record<Mode, [string, string]> = {
   area: ["areaLat", "areaLng"],
   exact: ["exactLat", "exactLng"],
 };
+
+/**
+ * "Find my location" (decision D62): a button under the zoom buttons that only moves the view. It
+ * never writes a field and never sets a point; a refusal or failure disables it and says why.
+ */
+function addLocateControl(map: L.Map, picker: HTMLElement): void {
+  const title = picker.dataset.locateTitle ?? "Find my location";
+  if (!("geolocation" in navigator)) return;
+  const control = new L.Control({ position: "topleft" });
+  control.onAdd = () => {
+    const container = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+    const button = L.DomUtil.create("button", "map-locate", container);
+    button.type = "button";
+    button.title = title;
+    button.setAttribute("aria-label", title);
+    L.DomUtil.create("span", "map-locate-icon", button).setAttribute("aria-hidden", "true");
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.on(button, "click", () => {
+      if (button.getAttribute("aria-disabled") === "true") return;
+      navigator.geolocation.getCurrentPosition(
+        (position) =>
+          map.setView(
+            [position.coords.latitude, position.coords.longitude],
+            zoomForAccuracy(position.coords.accuracy),
+          ),
+        (error) => {
+          // Any failure (refused, no position, timeout) ends the control for the page's life.
+          // aria-disabled, not disabled, so focus stays on the button instead of dropping to the
+          // page; the click handler ignores it.
+          const why =
+            error.code === error.PERMISSION_DENIED
+              ? (picker.dataset.locateDenied ?? "Location access was refused")
+              : (picker.dataset.locateUnavailable ?? "Your position is not available");
+          button.setAttribute("aria-disabled", "true");
+          button.title = why;
+          button.setAttribute("aria-label", why);
+        },
+        { timeout: 10_000, maximumAge: 300_000 },
+      );
+    });
+    return container;
+  };
+  control.addTo(map);
+}
 
 export function initPickMaps(): void {
   for (const picker of document.querySelectorAll<HTMLElement>("[data-map-picker]")) {
@@ -19,8 +64,10 @@ export function initPickMaps(): void {
 
     const map = createMap(container, picker).setView([20, 0], 2);
     tileLayer(picker).addTo(map);
-    const markers: Record<Mode, L.Circle | L.CircleMarker> = {
-      area: L.circle([0, 0], {
+    addLocateControl(map, picker);
+    const markers: Record<"public" | "exact", L.Circle | L.CircleMarker> = {
+      // The public area circle: around the exact point's grid cell when that is set (spec 3.1).
+      public: L.circle([0, 0], {
         radius: AREA_RADIUS_M,
         color: themeColor("--plan-secondary", "#ff7a45"),
       }),
@@ -44,20 +91,57 @@ export function initPickMaps(): void {
       return lat === undefined || lng === undefined ? undefined : L.latLng(lat, lng);
     };
 
-    const sync = () => {
-      for (const mode of ["area", "exact"] as const) {
-        const at = point(mode);
-        if (at === undefined) markers[mode].remove();
-        else markers[mode].setLatLng(at).addTo(map);
-      }
-    };
+    const readout = form.querySelector<HTMLElement>("[data-exact-readout]");
+    const readoutSet = readout?.querySelector<HTMLElement>("[data-exact-set]") ?? undefined;
+    const readoutNone = readout?.querySelector<HTMLElement>("[data-exact-none]") ?? undefined;
+    const areaReadout = picker.querySelector<HTMLElement>("[data-area-readout]");
+    const areaSet = areaReadout?.querySelector<HTMLElement>("[data-area-set]") ?? undefined;
+    const areaNone = areaReadout?.querySelector<HTMLElement>("[data-area-none]") ?? undefined;
 
     const currentMode = (): Mode =>
-      picker.querySelector<HTMLInputElement>('input[name="mapMode"]:checked')?.value === "area"
-        ? "area"
-        : "exact";
+      picker.querySelector<HTMLInputElement>('input[name="mapMode"]:checked')?.value === "exact"
+        ? "exact"
+        : "area";
 
-    const set = (mode: Mode, lat: number, lng: number) => {
+    const caption = picker.querySelector<HTMLElement>("[data-map-caption]");
+    // In area mode with an exact point set, the public area follows that point (spec 3.1), so a
+    // tap would change nothing the server uses: the caption says so instead.
+    const updateCaption = () => {
+      if (caption === null) return;
+      const text =
+        currentMode() === "exact"
+          ? caption.dataset.captionExact
+          : point("exact") === undefined
+            ? caption.dataset.captionArea
+            : caption.dataset.captionAreaFollows;
+      if (text !== undefined && caption.textContent !== text) caption.textContent = text;
+    };
+
+    // The area line is revealed with the rest, at the end of the setup.
+    let revealed = false;
+    const sync = () => {
+      const exact = point("exact");
+      const center = publicCircleCenter(exact, point("area"));
+      if (center === undefined) markers.public.remove();
+      else markers.public.setLatLng(center).addTo(map);
+      if (exact === undefined) markers.exact.remove();
+      else markers.exact.setLatLng(exact).addTo(map);
+      if (readoutSet !== undefined) readoutSet.hidden = exact === undefined;
+      if (readoutNone !== undefined) readoutNone.hidden = exact !== undefined;
+      // The area line is for an area set on its own: with an exact point the public area follows
+      // that point and the caption says so.
+      if (revealed && areaReadout !== null) areaReadout.hidden = exact !== undefined;
+      const area = point("area");
+      if (areaSet !== undefined) areaSet.hidden = area === undefined;
+      if (areaNone !== undefined) areaNone.hidden = area !== undefined;
+      updateCaption();
+    };
+
+    const set = (mode: Mode, at: L.LatLng) => {
+      // The public area follows an exact point: a tap in area mode is ignored (the caption says why).
+      if (mode === "area" && point("exact") !== undefined) return;
+      // A tap on a repeated world copy has a longitude beyond 180: wrap it into -180 to 180.
+      const { lat, lng } = at.wrap();
       const [latName, lngName] = FIELDS[mode];
       setField(form, latName, roundCoordinate(lat));
       setField(form, lngName, roundCoordinate(lng));
@@ -69,18 +153,40 @@ export function initPickMaps(): void {
       sync();
     };
 
-    map.on("click", (event: L.LeafletMouseEvent) =>
-      set(currentMode(), event.latlng.lat, event.latlng.lng),
-    );
+    map.on("click", (event: L.LeafletMouseEvent) => set(currentMode(), event.latlng));
     // pickPlace already set the area fields; the map only follows.
     picker.addEventListener(PLACE_EVENT, (event) => {
       const place = (event as CustomEvent<PickedPlace>).detail;
       map.setView([place.lat, place.lng], 14);
     });
     form.addEventListener("input", sync);
+    picker.addEventListener("change", updateCaption);
+    form.querySelector("[data-exact-remove]")?.addEventListener("click", () => {
+      for (const name of FIELDS.exact) setField(form, name, "");
+      // The button disappears with the point: keep focus on the line that replaces it.
+      readoutNone?.focus();
+    });
+    form.querySelector("[data-area-remove]")?.addEventListener("click", () => {
+      for (const name of FIELDS.area) setField(form, name, "");
+      areaNone?.focus();
+    });
+    // Browsers restore radios and values on reload and history navigation.
+    window.addEventListener("pageshow", sync);
 
     sync();
     const start = point("exact") ?? point("area");
     if (start !== undefined) map.setView(start, 15);
+
+    // Last, so a failure above leaves the form as without the map: with the map, the exact point
+    // is set by a tap and shown as one line; the typed coordinates stay in the form, submitted,
+    // but out of sight unless one has an error to show.
+    if (readout !== null) readout.hidden = false;
+    revealed = true;
+    sync();
+    for (const row of form.querySelectorAll<HTMLElement>(
+      "[data-exact-fields], [data-area-fields]",
+    )) {
+      row.hidden = row.querySelector(".field-invalid") === null;
+    }
   }
 }

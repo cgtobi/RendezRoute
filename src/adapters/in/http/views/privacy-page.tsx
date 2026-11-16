@@ -131,10 +131,11 @@ export function PrivacyPage({
               {t("privacy.weather", { host: weather.url.host, minutes: WEATHER_CACHE_MINUTES })}
             </li>
           )}
-          <li>
-            {t("privacy.location")}
-            {maps.enabled && ` ${t("privacy.locationMap")}`}
-          </li>
+          {maps.enabled && (
+            <li>
+              {t("privacy.location")} {t("privacy.locationMap")}
+            </li>
+          )}
           <li>{t("privacy.push")}</li>
           <li>{t("privacy.calendar")}</li>
           <li>{t("privacy.share")}</li>

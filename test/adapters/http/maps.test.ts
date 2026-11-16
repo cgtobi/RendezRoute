@@ -14,17 +14,69 @@ async function page(env: Record<string, string> = {}, path = "/new") {
 }
 
 describe("form map and place search (spec 3.9, decision D12)", () => {
-  it("adds the map picker, place search and geolocation, loaded from bundled files", async () => {
+  it("adds the map picker, place search and the locate control's title, loaded from bundled files", async () => {
     const html = await page();
     expect(html).toContain(`data-tile-url="${TILE_URL}"`);
     expect(html).toContain('data-attribution="© OpenStreetMap contributors"');
     expect(html).toMatch(/<div[^>]*data-map-picker=""[^>]*hidden=""/);
-    expect(html).toContain('name="mapMode" value="area"');
-    expect(html).toContain('name="mapMode" value="exact"');
     expect(html).toMatch(/<div[^>]*data-place-search=""[^>]*data-endpoint="\/geocode"/);
-    expect(html).toMatch(/<button[^>]*data-locate=""/);
+    expect(html).toMatch(/<div[^>]*data-map-picker=""[^>]*data-locate-title="Find my location"/);
+    expect(html).not.toContain("data-locate=");
     expect(html).toContain('<script src="/static/build/map.js" type="module"></script>');
     expect(html).toContain('<link rel="stylesheet" href="/static/build/map.css"/>');
+  });
+
+  it("offers a two-segment mode switch under the map, on the public area by default (D66)", async () => {
+    const html = await page();
+    expect(html).toMatch(/<input[^>]*type="radio"[^>]*name="mapMode"[^>]*value="area"[^>]*checked/);
+    expect(html).toMatch(
+      /<input[^>]*type="radio"[^>]*name="mapMode"[^>]*value="exact"(?![^>]*checked)/,
+    );
+    expect(html).toContain("<span>Public area</span>");
+    expect(html).toContain("<span>Exact start</span>");
+    expect(html).toContain('<legend class="visually-hidden">Tapping the map sets</legend>');
+    // The caption is server-rendered for the default mode and swapped by the script.
+    const caption = /<p[^>]*data-map-caption=""[^>]*>[^<]*<\/p>/.exec(html)?.[0] ?? "";
+    expect(caption).toContain('aria-live="polite"');
+    expect(caption).toContain(
+      "Tap the map to set the public meeting area (about 1 km). Everyone sees it.",
+    );
+    expect(caption).toContain(
+      'data-caption-exact="Tap the map to set the exact start. Only people who join can see it."',
+    );
+    expect(caption).not.toContain("accept");
+    expect(caption).toContain(
+      'data-caption-area-follows="The public area follows the exact start (about 1 km around it). Remove the exact point to choose another area."',
+    );
+    // A refused locate control says why from these texts.
+    expect(html).toMatch(
+      /<div[^>]*data-map-picker=""[^>]*data-locate-denied="Location access was refused"/,
+    );
+    expect(html).toMatch(
+      /<div[^>]*data-map-picker=""[^>]*data-locate-unavailable="Your position is not available"/,
+    );
+    expect(html.indexOf('class="map"')).toBeLessThan(html.indexOf('name="mapMode"'));
+  });
+
+  it("renders an area readout with Remove under the caption, hidden until the script reveals it", async () => {
+    const html = await page();
+    const readout = /<div[^>]*data-area-readout=""[^>]*>[\s\S]*?<\/div>/.exec(html)?.[0] ?? "";
+    expect(readout).toMatch(/^<div[^>]*hidden/);
+    expect(readout).toMatch(/<p[^>]*data-area-set=""[^>]*hidden[^>]*>/);
+    expect(readout).toContain("Public area set on the map");
+    expect(readout).toMatch(/<button[^>]*data-area-remove=""[^>]*>Remove<\/button>/);
+    expect(readout).toMatch(
+      /<p[^>]*data-area-none=""[^>]*tabindex="-1"[^>]*>No public area set on the map<\/p>/,
+    );
+    expect(html.indexOf("data-map-caption")).toBeLessThan(html.indexOf("data-area-readout"));
+    expect(html.indexOf("data-area-readout")).toBeLessThan(html.indexOf('id="field-areaLabel"'));
+    // The coordinate inputs stay in the markup, visible until the script hides them.
+    expect(html).toMatch(/<input[^>]*name="areaLat"/);
+    expect(html).not.toMatch(/<details[^>]*data-area-fields=""[^>]*hidden/);
+  });
+
+  it("has no area readout when maps are disabled", async () => {
+    expect(await page({ MAPS_ENABLED: "false" })).not.toContain("data-area-readout");
   });
 
   it("offers area coordinates as form fields, so they work without JavaScript and survive edits", async () => {
@@ -33,12 +85,17 @@ describe("form map and place search (spec 3.9, decision D12)", () => {
     expect(html).toContain('name="areaLng"');
   });
 
-  it("leaves out the map when maps are disabled, keeping geolocation and typed coordinates", async () => {
+  it("leaves out the map, switch and locate control when maps are disabled, keeping typed coordinates", async () => {
     const html = await page({ MAPS_ENABLED: "false" });
     expect(html).not.toContain("data-map-picker");
     expect(html).not.toContain("tile.openstreetmap.org");
-    expect(html).toMatch(/<button[^>]*data-locate=""/);
+    expect(html).not.toContain("data-locate");
+    expect(html).not.toContain("mapMode");
+    expect(html).not.toContain("data-map-caption");
+    expect(html).not.toContain("data-exact-readout");
     expect(html).toContain('name="areaLat"');
+    expect(html).toContain('name="exactLat"');
+    expect(html).toContain('name="exactLng"');
   });
 
   it("leaves out place search when the geocoder is disabled", async () => {

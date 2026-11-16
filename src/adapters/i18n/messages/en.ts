@@ -96,9 +96,9 @@ export const en = {
   "privacy.calendar":
     "If you create a calendar link, your calendar app’s server fetches it. That server sees the public details of your plans and that you responded to them.",
   "privacy.location":
-    "“Use my location” asks your browser for your position and only fills in the form; it is sent only when you submit the form.",
+    "“Find my location” on the map asks your browser for your position only to move the map; it is not sent to this server and fills in nothing.",
   "privacy.locationMap":
-    "With maps on, the map then moves to your position, so your browser loads map images of that area from the map service.",
+    "The map then shows your area, so your browser loads map images of that area from the map service.",
   "privacy.share": "WhatsApp is contacted only when you use its share link.",
   "privacy.previews":
     "When a plan link is shared in a chat app, the app fetches the plan’s title, time, meeting area, distance, pace and a preview image. Chat apps may keep this preview after the plan is deleted.",
@@ -166,13 +166,25 @@ export const en = {
   "map.search": "Find a place",
   "map.searchButton": "Search",
   "map.searchHint":
-    "Search results and your location set the meeting area; tap the map for the exact start. Searches go through this site, so the search service does not see who you are.",
+    "Search results set the meeting area; switch the map to the exact start and tap the map. Searches go through this site, so the search service does not see who you are.",
   "map.searchUnavailable": "Place search is not available right now.",
   "map.noResults": "No places found.",
-  "map.locate": "Use my location",
+  "map.findMe": "Find my location",
   "map.pickLegend": "Tapping the map sets",
-  "map.pickExact": "the exact start",
-  "map.pickArea": "the meeting area",
+  "map.modeArea": "Public area",
+  "map.modeExact": "Exact start",
+  "map.captionArea": "Tap the map to set the public meeting area (about 1 km). Everyone sees it.",
+  "map.captionExact": "Tap the map to set the exact start. Only people who join can see it.",
+  "map.captionAreaFollows":
+    "The public area follows the exact start (about 1 km around it). Remove the exact point to choose another area.",
+  "map.locateDenied": "Location access was refused",
+  "map.locateUnavailable": "Your position is not available",
+  "map.areaSet": "Public area set on the map",
+  "map.areaNone": "No public area set on the map",
+  "map.areaRemove": "Remove",
+  "map.exactSet": "Point set on the map",
+  "map.exactNone": "No point set on the map",
+  "map.exactRemove": "Remove",
   "map.pickLabel": "Map for choosing a point",
   "map.planLabel": "Map of the meeting area",
   "map.zoomIn": "Zoom in",

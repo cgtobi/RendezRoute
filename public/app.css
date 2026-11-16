@@ -579,6 +579,10 @@ html:has(.site-header-menu) {
   --icon: url("icons/users.svg");
 }
 
+.icon-pencil {
+  --icon: url("icons/pencil.svg");
+}
+
 /* Buttons: one primary per page, quiet secondaries, red for deleting. */
 
 .button,
@@ -754,7 +758,7 @@ input[type="checkbox"] {
   border-width: 2px;
 }
 
-/* The title as the form's big heading, edited in place (D71): no box, a dashed underline as the
+/* The title as the form's big heading, edited in place (D71): no box, a pencil icon as the
    edit hint. `.plan-form` out-ranks the generic input rules above. */
 .plan-form .page-purpose {
   margin-bottom: var(--s1);
@@ -769,12 +773,37 @@ input[type="checkbox"] {
   margin-top: 0;
 }
 
+/* The pencil icon at the field's end is the edit hint; the input has no underline at rest. */
+.title-field {
+  position: relative;
+}
+
+.title-field .title-edit-icon {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 1.25em;
+  height: 1.25em;
+  margin: 0;
+  /* The icon's em is the body size, whatever the input's font size. */
+  font-size: 1rem;
+  color: var(--muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.title-field:hover .title-edit-icon,
+.title-field:focus-within .title-edit-icon {
+  color: var(--accent);
+}
+
 .plan-form .title-input {
   min-height: var(--target);
-  padding: var(--s2) 0;
+  /* Right padding keeps the text from running under the pencil (1.25rem wide). */
+  padding: var(--s2) calc(1.25rem + var(--s2)) var(--s2) 0;
   border: 0;
-  /* The field's edge, so --field-border (the pale --line would fail WCAG 1.4.11 contrast). */
-  border-bottom: 2px dashed var(--field-border);
+  /* Transparent at rest so the height stays the same when the underline appears. */
+  border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
   color: inherit;
@@ -792,9 +821,7 @@ input[type="checkbox"] {
   opacity: 1;
 }
 
-.plan-form .title-input:hover,
 .plan-form .title-input:focus {
-  border-bottom-style: solid;
   border-bottom-color: var(--accent);
 }
 
@@ -803,9 +830,12 @@ input[type="checkbox"] {
 }
 
 @media (forced-colors: active) {
-  .plan-form .title-input,
-  .plan-form .title-input:hover,
-  .plan-form .title-input:focus {
+  .plan-form .title-input {
+    border-bottom-color: Canvas;
+  }
+
+  .plan-form .title-input:focus,
+  .plan-form .field-invalid .title-input {
     border-bottom-color: CanvasText;
   }
 }

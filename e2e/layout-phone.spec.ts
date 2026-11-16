@@ -211,6 +211,17 @@ test("The title is the heading input: the first focus selects the default, a lon
   );
   const box = await title.boundingBox();
   expect(box?.height, "title input height").toBeGreaterThanOrEqual(44);
+  // The pencil is the edit hint: visible at the end of the field, and a click on it reaches the input.
+  const pencil = page.locator(".title-field .icon-pencil");
+  await expect(pencil).toBeVisible();
+  await page.locator("#field-activity").focus();
+  await expect(title).not.toBeFocused();
+  const pencilBox = await pencil.boundingBox();
+  expect(pencilBox, "pencil box").not.toBeNull();
+  if (pencilBox !== null) {
+    await page.mouse.click(pencilBox.x + pencilBox.width / 2, pencilBox.y + pencilBox.height / 2);
+  }
+  await expect(title).toBeFocused();
   expect(problems).toEqual([]);
   await context.close();
 });

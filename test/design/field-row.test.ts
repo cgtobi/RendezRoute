@@ -5,7 +5,7 @@
 //    native date and time inputs. iOS Safari gives them a large min-content width; with a plain
 //    `1fr` track (minmax(auto, 1fr)) the columns stop shrinking and the second input overflows.
 // 2. The footer menu's preference rows (.preference) keep select and button on one line.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -105,5 +105,40 @@ describe(".preference (menu sheet)", () => {
 
   it("makes every map its own stacking context so Leaflet panes stay below the header", () => {
     expect(declarationsFor(".map")).toMatch(/isolation: isolate/);
+  });
+});
+
+describe("the title field's pencil (decision D71)", () => {
+  it("shows no dashed edit hint: the pencil is the hint, the input has no resting underline", () => {
+    const rule = declarationsFor(".plan-form .title-input");
+    expect(rule).not.toContain("dashed");
+    expect(rule).toMatch(/border-bottom: 2px solid transparent/);
+  });
+
+  it("underlines solidly only on focus and, in the danger colour, on an error", () => {
+    expect(declarationsFor(".plan-form .title-input:focus")).toMatch(
+      /border-bottom-color: var\(--accent\)/,
+    );
+    expect(declarationsFor(".plan-form .field-invalid .title-input")).toMatch(
+      /border-bottom-color: var\(--danger\)/,
+    );
+    expect(CSS).not.toMatch(/\.title-input:hover/);
+  });
+
+  it("draws the pencil over the field's end, not catching clicks, from the pencil mask", () => {
+    const pencil = declarationsFor(".title-field .title-edit-icon");
+    expect(pencil).toContain("pointer-events: none");
+    expect(pencil).toContain("position: absolute");
+    expect(declarationsFor(".title-field")).toContain("position: relative");
+    expect(declarationsFor(".icon-pencil")).toContain('--icon: url("icons/pencil.svg")');
+  });
+
+  it("has a small valid pencil SVG like the other icons", () => {
+    const file = join(import.meta.dirname, "../../public/icons/pencil.svg");
+    expect(existsSync(file)).toBe(true);
+    const svg = readFileSync(file, "utf8");
+    expect(svg).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 24 24"/);
+    expect(svg.trim().endsWith("</svg>")).toBe(true);
+    expect(svg.length).toBeLessThan(600);
   });
 });

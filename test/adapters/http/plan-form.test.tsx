@@ -736,10 +736,30 @@ describe("inline title (decision D71, step 0.12-9)", () => {
     expect(own(input, "aria-invalid")).toBe("true");
     expect(own(input, "aria-describedby")).toBe("field-title-error");
     expect(html).toContain('id="field-title-error"');
-    const field = input.parent as Node;
+    const field = (input.parent as Node).parent as Node;
     expect(classes(field)).toEqual(["field", "field-title", "field-invalid"]);
-    expect(field.children.map((node) => node.tag)).toEqual(["label", "input", "p"]);
+    expect(field.children.map((node) => node.tag)).toEqual(["label", "div", "p"]);
     expect(own(field.children[2] as Node, "hidden")).toBeUndefined();
+  });
+
+  it("wraps the input in .title-field with one decorative pencil icon after it", () => {
+    const { root } = render({ values: { title: "Sunday run" } });
+    const input = titleInput(root);
+    const wrap = input.parent as Node;
+    expect(classes(wrap)).toEqual(["title-field"]);
+    expect(classes(wrap.parent as Node)).toEqual(["field", "field-title"]);
+    expect(wrap.children.map((node) => node.tag)).toEqual(["input", "span"]);
+    const pencil = wrap.children[1] as Node;
+    expect(classes(pencil)).toEqual(["icon", "icon-pencil", "title-edit-icon"]);
+    expect(own(pencil, "aria-hidden")).toBe("true");
+    expect(pencil.text).toBe("");
+    expect(
+      all(root).filter((node) => classes(node).includes("icon-pencil")),
+      "one pencil per form",
+    ).toHaveLength(1);
+    // The label stays outside the wrapper, before it.
+    const field = wrap.parent as Node;
+    expect(field.children.map((node) => node.tag)).toEqual(["label", "div"]);
   });
 
   it("is there on the template form too", () => {

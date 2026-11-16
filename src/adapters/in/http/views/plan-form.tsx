@@ -366,13 +366,16 @@ export function PlanForm({
         <label class="visually-hidden" for={id("title")}>
           {t("form.title")}
         </label>
-        {input("title", {
-          class: "title-input",
-          required: true,
-          maxlength: PLAN_LIMITS.title,
-          autocomplete: "off",
-          ...(values.title === t("form.defaultTitle") ? { "data-select-on-focus": "" } : {}),
-        })}
+        <div class="title-field">
+          {input("title", {
+            class: "title-input",
+            required: true,
+            maxlength: PLAN_LIMITS.title,
+            autocomplete: "off",
+            ...(values.title === t("form.defaultTitle") ? { "data-select-on-focus": "" } : {}),
+          })}
+          <span class="icon icon-pencil title-edit-icon" aria-hidden="true"></span>
+        </div>
         {titleError !== undefined && (
           <p class="error" id={`${id("title")}-error`}>
             {fieldErrorMessage(titleError.code, t)}

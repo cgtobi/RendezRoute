@@ -17,6 +17,12 @@ configuration:
   default_timezone:
     name: "Standard-Zeitzone"
     description: "Die Zeitzone, wenn der Browser keine mitteilt, zum Beispiel Europe/Berlin. Standard ist UTC."
+  default_map_center:
+    name: "Standard-Kartenmitte"
+    description: "Wo sich die Karte im Formular öffnet, solange noch kein Ort gewählt ist, als Breiten- und Längengrad durch ein Komma getrennt, zum Beispiel 48.1374,11.5755. Leer lassen, dann öffnet sie sich auf der Zeitzone des Besuchers oder auf Berlin, wenn diese keinen Ort hat."
+  default_map_zoom:
+    name: "Standard-Kartenzoom"
+    description: "Wie stark die Karte im Formular auf die Standard-Kartenmitte vergrößert ist: eine ganze Zahl von 2 (ein Kontinent) bis 12 (eine Region). Wirkt nur zusammen mit der Kartenmitte. Leer lassen für 6."
   maps_enabled:
     name: "Karten anzeigen"
     description: "Karten mit Routen anzeigen. Ausschalten, damit gar keine Kartenkacheln geladen werden."

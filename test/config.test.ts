@@ -686,6 +686,84 @@ describe("DEFAULT_TIMEZONE", () => {
   });
 });
 
+describe("DEFAULT_MAP_CENTER and DEFAULT_MAP_ZOOM (decision D63)", () => {
+  const center = (value: string) => ok({ ...minimal, DEFAULT_MAP_CENTER: value }).config.defaultMap;
+
+  it("has no center and zoom 6 by default", () => {
+    expect(ok(minimal).config.defaultMap).toEqual({ center: undefined, zoom: 6 });
+  });
+
+  it("accepts a center and a zoom", () => {
+    const { defaultMap } = ok({
+      ...minimal,
+      DEFAULT_MAP_CENTER: "48.1374,11.5755",
+      DEFAULT_MAP_ZOOM: "9",
+    }).config;
+    expect(defaultMap).toEqual({ center: { lat: 48.1374, lng: 11.5755 }, zoom: 9 });
+  });
+
+  it("accepts spaces around the comma, negative numbers and whole numbers", () => {
+    expect(center(" 48.1374 , 11.5755 ").center).toEqual({ lat: 48.1374, lng: 11.5755 });
+    expect(center("-33.87,151.21").center).toEqual({ lat: -33.87, lng: 151.21 });
+    expect(center("90,-180").center).toEqual({ lat: 90, lng: -180 });
+    expect(center("0,0").center).toEqual({ lat: 0, lng: 0 });
+  });
+
+  it("accepts the zoom limits 2 and 12", () => {
+    for (const zoom of [2, 12]) {
+      const { defaultMap } = ok({ ...minimal, DEFAULT_MAP_ZOOM: String(zoom) }).config;
+      expect(defaultMap.zoom).toBe(zoom);
+    }
+  });
+
+  it("treats an empty center as not set", () => {
+    expect(center("").center).toBeUndefined();
+    expect(center("   ").center).toBeUndefined();
+  });
+
+  it("accepts a zoom without a center, which is then not used", () => {
+    // The zoom only goes with the operator's center: without one the form follows the browser's
+    // time zone at zoom 6 (the client ignores the zoom then).
+    const { defaultMap } = ok({ ...minimal, DEFAULT_MAP_ZOOM: "9" }).config;
+    expect(defaultMap).toEqual({ center: undefined, zoom: 9 });
+  });
+
+  it("rejects a center that is not exactly two numbers in range, naming the setting", () => {
+    for (const bad of [
+      "Berlin",
+      "48.1374",
+      "48.1,11.5,100",
+      "91,0",
+      "-91,0",
+      "0,181",
+      "0,-181",
+      "48.1374;11.5755",
+      "48.1374 11.5755",
+      "48.1374,11.5755 east",
+      "lat 48.1,11.5",
+      "48.1,",
+      ",11.5",
+      "1e1,5",
+    ]) {
+      expect(errors({ ...minimal, DEFAULT_MAP_CENTER: bad })).toEqual([
+        expect.stringContaining("DEFAULT_MAP_CENTER"),
+      ]);
+    }
+  });
+
+  it("rejects a zoom that is not a whole number from 2 to 12, naming the setting", () => {
+    for (const bad of ["1", "13", "6.5", "abc", "0", "-3"]) {
+      expect(errors({ ...minimal, DEFAULT_MAP_ZOOM: bad })).toEqual([
+        expect.stringContaining("DEFAULT_MAP_ZOOM"),
+      ]);
+    }
+  });
+
+  it("treats an empty zoom as not set", () => {
+    expect(ok({ ...minimal, DEFAULT_MAP_ZOOM: "" }).config.defaultMap.zoom).toBe(6);
+  });
+});
+
 describe("INSTANCE_NAME", () => {
   it("is trimmed", () => {
     expect(ok({ ...minimal, INSTANCE_NAME: "  Isar Runners " }).config.instanceName).toBe(

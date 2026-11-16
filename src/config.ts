@@ -27,6 +27,11 @@ export interface Config {
   maxRetentionDays: number;
   maxPlanHorizonDays: number;
   defaultTimezone: string;
+  /**
+   * Where the form map opens when the browser's time zone is not enough (decision D63). The zoom
+   * goes only with a center: without a center it is accepted but unused.
+   */
+  defaultMap: { center: { lat: number; lng: number } | undefined; zoom: number };
   maps: {
     enabled: boolean;
     tileUrl: string;
@@ -139,6 +144,7 @@ const DEFAULTS = {
   MAX_RETENTION_DAYS: 30,
   MAX_PLAN_HORIZON_DAYS: 180,
   DEFAULT_TIMEZONE: "UTC",
+  DEFAULT_MAP_ZOOM: 6,
   MAP_TILE_URL: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   MAP_ATTRIBUTION: "© OpenStreetMap contributors",
   GEOCODER_URL: "https://nominatim.openstreetmap.org",
@@ -170,6 +176,17 @@ function isLocalOrPrivateHost(hostname: string): boolean {
     (a === 192 && b === 168) ||
     (a === 169 && b === 254)
   );
+}
+
+const DECIMAL = String.raw`[+-]?\d{1,3}(?:\.\d{1,10})?`;
+const MAP_CENTER = new RegExp(`^(${DECIMAL})\\s*,\\s*(${DECIMAL})$`);
+
+/** "lat,lng": exactly two decimal numbers in range and nothing else; undefined otherwise. */
+function parseMapCenter(text: string): { lat: number; lng: number } | undefined {
+  const match = MAP_CENTER.exec(text);
+  const lat = Number(match?.[1]);
+  const lng = Number(match?.[2]);
+  return match !== null && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : undefined;
 }
 
 export interface LoadConfigOptions {
@@ -307,6 +324,25 @@ export function loadConfig(
     );
   }
   const defaultTimezone = timezone.ok ? timezone.value : DEFAULTS.DEFAULT_TIMEZONE;
+
+  // DEFAULT_MAP_CENTER and DEFAULT_MAP_ZOOM (decision D63)
+  const rawMapCenter = read("DEFAULT_MAP_CENTER") ?? "";
+  let mapCenter: { lat: number; lng: number } | undefined;
+  if (rawMapCenter !== "") {
+    mapCenter = parseMapCenter(rawMapCenter);
+    if (mapCenter === undefined) {
+      errors.push(
+        `DEFAULT_MAP_CENTER must be a latitude (-90 to 90) and a longitude (-180 to 180), such as "48.1374,11.5755", got "${rawMapCenter}".`,
+      );
+    }
+  }
+  const rawMapZoom = read("DEFAULT_MAP_ZOOM") ?? "";
+  let mapZoom: number = DEFAULTS.DEFAULT_MAP_ZOOM;
+  if (rawMapZoom !== "") {
+    const zoom = /^\d{1,2}$/.test(rawMapZoom) ? Number(rawMapZoom) : Number.NaN;
+    if (zoom >= 2 && zoom <= 12) mapZoom = zoom;
+    else errors.push(`DEFAULT_MAP_ZOOM must be a whole number from 2 to 12, got "${rawMapZoom}".`);
+  }
 
   // Maps
   const mapsEnabled = bool("MAPS_ENABLED", true);
@@ -706,6 +742,7 @@ export function loadConfig(
       maxRetentionDays,
       maxPlanHorizonDays,
       defaultTimezone,
+      defaultMap: { center: mapCenter, zoom: mapZoom },
       maps: {
         enabled: mapsEnabled,
         tileUrl,

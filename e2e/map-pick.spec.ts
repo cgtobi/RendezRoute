@@ -140,9 +140,9 @@ test("Find my location moves the view only: no field changes, no point is set", 
   const f = fields(page);
   const locate = page.getByRole("button", { name: "Find my location" });
 
-  // The opening view is the world (tile zoom 2), not the device's place.
+  // The opening view is the browser zone's region or Berlin (tile zoom 6), not the device's place.
   await expect(
-    page.locator(".map-picker img.leaflet-tile[src*='/tiles/2/']").first(),
+    page.locator(".map-picker img.leaflet-tile[src*='/tiles/6/']").first(),
   ).toBeAttached();
   await expect(locate).toBeEnabled();
   const box = await locate.boundingBox();
@@ -177,6 +177,34 @@ test("Find my location disables itself when the browser refuses", async ({
   await expect(locate).toBeFocused();
   for (const field of Object.values(fields(page))) await expect(field).toHaveValue("");
 });
+
+// The tiles around a zone's center at zoom 6: the center's tile and its neighbours (the map is
+// wider than one tile). Tokyo (35.65, 139.74) is tile 56/25, Berlin (52.52, 13.405) is 34/20.
+for (const [zone, tiles, place] of [
+  ["Asia/Tokyo", /\/tiles\/6\/5[567]\/2[456]\.png/, "Tokyo"],
+  ["UTC", /\/tiles\/6\/3[345]\/(19|20|21)\.png/, "Berlin"],
+] as const) {
+  test(`The map opens on ${place} at zoom 6 for a browser in ${zone}, with no saved point`, async ({
+    browser,
+    baseURL,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "default settings",
+      "needs the map, which the other project turns off",
+    );
+    const problems: string[] = [];
+    const { page } = await person(browser, baseURL ?? "", problems, {
+      context: { timezoneId: zone },
+    });
+    const tile = page.waitForRequest((request) => tiles.test(request.url()));
+    await page.goto("/new");
+    await tile;
+    await expect(map(page)).toBeVisible();
+    // Opening the form sets no point.
+    for (const field of Object.values(fields(page))) await expect(field).toHaveValue("");
+    expect(problems).toEqual([]);
+  });
+}
 
 test("Without maps the coordinate fields stay and there is no map, switch or locate control", async ({
   browser,

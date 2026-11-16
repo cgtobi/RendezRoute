@@ -17,6 +17,12 @@ configuration:
   default_timezone:
     name: "Fuseau horaire par défaut"
     description: "Le fuseau horaire utilisé quand le navigateur n’en indique aucun, par exemple Europe/Paris. UTC par défaut."
+  default_map_center:
+    name: "Centre par défaut de la carte"
+    description: "Où la carte du formulaire s’ouvre tant qu’aucun lieu n’est choisi, sous la forme latitude et longitude séparées par une virgule, par exemple 48.1374,11.5755. Laissez vide pour ouvrir la carte sur le fuseau horaire du visiteur, ou sur Berlin si celui-ci n’a pas de lieu."
+  default_map_zoom:
+    name: "Zoom par défaut de la carte"
+    description: "Niveau de zoom de la carte du formulaire sur le centre par défaut : un nombre entier de 2 (un continent) à 12 (une région). Utilisé uniquement avec le centre. Laissez vide pour 6."
   maps_enabled:
     name: "Afficher les cartes"
     description: "Afficher des cartes avec les parcours. Désactivez pour ne charger aucune tuile de carte."

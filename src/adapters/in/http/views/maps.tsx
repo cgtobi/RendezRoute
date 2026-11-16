@@ -7,6 +7,9 @@ import type { GeoPoint } from "../../../../domain/geo.ts";
 export interface MapSettings {
   tileUrl: string;
   attribution: string;
+  /** Where the form map opens when the operator set a place (decision D63); the plan map ignores it. */
+  defaultCenter?: GeoPoint | undefined;
+  defaultZoom: number;
 }
 
 /** The bundled map script and stylesheet, served by the instance (spec 2). */
@@ -59,6 +62,12 @@ export function MapTools({
           data-map-picker=""
           data-tile-url={map.tileUrl}
           data-attribution={map.attribution}
+          data-default-center={
+            map.defaultCenter === undefined
+              ? undefined
+              : `${map.defaultCenter.lat},${map.defaultCenter.lng}`
+          }
+          data-default-zoom={map.defaultCenter === undefined ? undefined : String(map.defaultZoom)}
           data-zoom-in={t("map.zoomIn")}
           data-zoom-out={t("map.zoomOut")}
           data-locate-title={t("map.findMe")}

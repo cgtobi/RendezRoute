@@ -48,7 +48,7 @@ The Configuration tab always shows the options most people set first: the public
 name, contact email, imprint and privacy links, the email server and the limits. An empty field means
 "not set". The form does not check the email and link syntax of these fields; the app does when it
 starts and names the setting in the log (for example CONTACT_EMAIL). The advanced options (single sign-on, ntfy, Telegram, map,
-geocoder and weather addresses, Fediverse login servers, the email port) are hidden until you open
+geocoder and weather addresses, the default map center and zoom (`default_map_center` such as `48.1374,11.5755`, `default_map_zoom` 2 to 12), Fediverse login servers, the email port) are hidden until you open
 the **⋮** menu of the Configuration tab and choose **Show unused optional configuration options**.
 
 ### Reverse proxy and `trust_proxy`

@@ -17,6 +17,12 @@ configuration:
   default_timezone:
     name: "Default time zone"
     description: "The time zone used when a visitor's browser does not tell one, for example Europe/Berlin. Defaults to UTC."
+  default_map_center:
+    name: "Default map center"
+    description: "Where the map of the plan form opens until a place is chosen, as latitude and longitude separated by a comma, for example 48.1374,11.5755. Leave empty to open on the visitor's time zone, or on Berlin when that has no place."
+  default_map_zoom:
+    name: "Default map zoom"
+    description: "How far the map of the plan form is zoomed in on the default map center: a whole number from 2 (a continent) to 12 (a region). Used only together with the center. Leave empty for 6."
   maps_enabled:
     name: "Show maps"
     description: "Show maps with route lines. Turn off to load no map tiles at all."

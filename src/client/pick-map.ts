@@ -3,6 +3,7 @@
 import L from "leaflet";
 import { publicCircleCenter, readCoordinate, roundCoordinate, zoomForAccuracy } from "./geo.ts";
 import { createLabelSuggester } from "./label-suggestion.ts";
+import { browserZone, openingView, operatorView } from "./map-view.ts";
 import { PLACE_EVENT, type PickedPlace, setField } from "./places.ts";
 import { AREA_RADIUS_M, createMap, themeColor, tileLayer } from "./tiles.ts";
 
@@ -63,7 +64,11 @@ export function initPickMaps(): void {
     if (form === null || container === null) continue;
     picker.hidden = false;
 
-    const map = createMap(container, picker).setView([20, 0], 2);
+    // Opens on the default place; the saved point (if any) replaces it once the form is read.
+    const map = createMap(container, picker);
+    const operator = operatorView(picker.dataset.defaultCenter, picker.dataset.defaultZoom);
+    const opening = openingView({ saved: undefined, operator, zone: browserZone() });
+    map.setView(opening.center, opening.zoom);
     tileLayer(picker).addTo(map);
     addLocateControl(map, picker);
     const markers: Record<"public" | "exact", L.Circle | L.CircleMarker> = {
@@ -183,7 +188,10 @@ export function initPickMaps(): void {
 
     sync();
     const start = point("exact") ?? point("area");
-    if (start !== undefined) map.setView(start, 15);
+    if (start !== undefined) {
+      const saved = openingView({ saved: [start.lat, start.lng], operator, zone: undefined });
+      map.setView(saved.center, saved.zoom);
+    }
 
     // Last, so a failure above leaves the form as without the map: with the map, the exact point
     // is set by a tap and shown as one line; the typed coordinates stay in the form, submitted,

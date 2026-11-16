@@ -99,6 +99,33 @@ describe("form map and place search (spec 3.9, decision D12)", () => {
     expect(html).toContain('name="exactLng"');
   });
 
+  it("renders no default center or zoom unless the operator set a center (D63)", async () => {
+    const html = await page();
+    expect(html).toMatch(/<div[^>]*data-map-picker=""/);
+    expect(html).not.toContain("data-default-center");
+    expect(html).not.toContain("data-default-zoom");
+    // A zoom alone is accepted but unused: the client then follows the browser's time zone.
+    const zoomOnly = await page({ DEFAULT_MAP_ZOOM: "9" });
+    expect(zoomOnly).not.toContain("data-default-center");
+    expect(zoomOnly).not.toContain("data-default-zoom");
+  });
+
+  it("carries the operator's default center and zoom on the picker (D63)", async () => {
+    const html = await page({ DEFAULT_MAP_CENTER: "48.1374,11.5755", DEFAULT_MAP_ZOOM: "9" });
+    const picker = /<div[^>]*data-map-picker=""[^>]*>/.exec(html)?.[0] ?? "";
+    expect(picker).toContain('data-default-center="48.1374,11.5755"');
+    expect(picker).toContain('data-default-zoom="9"');
+    // With only a center, the zoom is the default 6.
+    const centerOnly = await page({ DEFAULT_MAP_CENTER: "48.1374, 11.5755" });
+    expect(centerOnly).toContain('data-default-center="48.1374,11.5755"');
+    expect(centerOnly).toContain('data-default-zoom="6"');
+  });
+
+  it("leaves out the default center without maps (D63)", async () => {
+    const html = await page({ MAPS_ENABLED: "false", DEFAULT_MAP_CENTER: "48.1374,11.5755" });
+    expect(html).not.toContain("data-default-center");
+  });
+
   it("leaves out place search when the geocoder is disabled", async () => {
     expect(await page({ GEOCODER_ENABLED: "false" })).not.toContain("data-place-search");
     expect(await page({ CONTACT_EMAIL: "" })).not.toContain("data-place-search");
@@ -127,6 +154,17 @@ describe("plan map (spec 3.6, decision D12)", () => {
     expect(tag).toContain('data-area-lng="11.6"');
     expect(tag).not.toContain("data-exact");
     expect(tag).not.toContain("data-route-url");
+  });
+
+  it("does not carry the default center or zoom of the form map (D63)", async () => {
+    const { planId, newClient } = await setup({
+      DEFAULT_MAP_CENTER: "48.1374,11.5755",
+      DEFAULT_MAP_ZOOM: "9",
+    });
+    const html = await (await newClient().get(`/p/${planId}`)).text();
+    expect(mapTag(html)).not.toBe("");
+    expect(html).not.toContain("data-default-center");
+    expect(html).not.toContain("data-default-zoom");
   });
 
   it("gives participants and the host the exact start and the route", async () => {

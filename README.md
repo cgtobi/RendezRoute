@@ -115,18 +115,24 @@ Both are in days and can only be lowered: 1 to 30 and 1 to 180.
 
 ### Maps and services
 
-| Setting            | What it does (default)              |
-| ------------------ | ----------------------------------- |
-| `MAPS_ENABLED`     | Show maps (`true`)                  |
-| `MAP_TILE_URL`     | Tile address (OpenStreetMap)        |
-| `MAP_ATTRIBUTION`  | Attribution on maps (OpenStreetMap) |
-| `GEOCODER_ENABLED` | Place search (`true`)               |
-| `GEOCODER_URL`     | Place search server (Nominatim)     |
-| `WEATHER_ENABLED`  | Show weather (`true`)               |
-| `WEATHER_URL`      | Weather API (Open-Meteo)            |
+| Setting              | What it does (default)              |
+| -------------------- | ----------------------------------- |
+| `MAPS_ENABLED`       | Show maps (`true`)                  |
+| `MAP_TILE_URL`       | Tile address (OpenStreetMap)        |
+| `MAP_ATTRIBUTION`    | Attribution on maps (OpenStreetMap) |
+| `DEFAULT_MAP_CENTER` | Where the form map opens (unset)    |
+| `DEFAULT_MAP_ZOOM`   | Zoom at that center, 2 to 12 (`6`)  |
+| `GEOCODER_ENABLED`   | Place search (`true`)               |
+| `GEOCODER_URL`       | Place search server (Nominatim)     |
+| `WEATHER_ENABLED`    | Show weather (`true`)               |
+| `WEATHER_URL`        | Weather API (Open-Meteo)            |
 
 - `MAP_TILE_URL` has `{z}`, `{x}` and `{y}`, and may use `{s}` in its first host name label only.
 - `MAP_ATTRIBUTION` must not be empty while maps are on.
+- `DEFAULT_MAP_CENTER` is latitude and longitude, such as `48.1374,11.5755`: where the map of the
+  plan form opens until a place is set. `DEFAULT_MAP_ZOOM` applies only together with it. Unset:
+  the map opens on the centre of the visitor's browser time zone at zoom 6, or on Berlin at zoom 6
+  when that zone has no entry (such as `UTC`).
 - `GEOCODER_ENABLED` also needs `CONTACT_EMAIL`.
 - The defaults are OpenStreetMap, `https://nominatim.openstreetmap.org` (OpenStreetMap Nominatim)
   and `https://api.open-meteo.com`.

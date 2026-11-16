@@ -189,6 +189,19 @@ describe("config.yaml and the options mapper", () => {
     expect(typeOf("smtp_tls")).toBe("list(starttls|tls)");
   });
 
+  it("keeps the default map center and zoom advanced: optional, no default, limits of the configuration (D63)", () => {
+    expect(HA_OPTION_KINDS.default_map_center).toBe("text");
+    expect(HA_OPTION_KINDS.default_map_zoom).toBe("integer");
+    expect(typeOf("default_map_center")).toBe("str?");
+    expect(typeOf("default_map_zoom")).toBe("int(2,12)?");
+    expect(options).not.toHaveProperty("default_map_center");
+    expect(options).not.toHaveProperty("default_map_zoom");
+    const set = (given: Record<string, string>) =>
+      loadConfig({ BASE_URL: "https://x.example", ...given });
+    expect(set({ DEFAULT_MAP_ZOOM: "2" }).ok && set({ DEFAULT_MAP_ZOOM: "12" }).ok).toBe(true);
+    expect(set({ DEFAULT_MAP_ZOOM: "1" }).ok || set({ DEFAULT_MAP_ZOOM: "13" }).ok).toBe(false);
+  });
+
   it("keeps secrets as password fields, and only secrets", () => {
     const passwords = Object.keys(schema).filter((name) => typeOf(name).startsWith("password"));
     expect(passwords.toSorted()).toEqual([...SECRETS].sort());

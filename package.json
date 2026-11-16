@@ -18,7 +18,8 @@
     "test": "vp test",
     "check": "vp check --deny-warnings && npm run typecheck && vp test",
     "e2e": "playwright test -c e2e/playwright.config.ts",
-    "icons": "node scripts/brand-icons.ts"
+    "icons": "node scripts/brand-icons.ts",
+    "zones": "node scripts/zone-centres.ts"
   },
   "dependencies": {
     "@fedify/fedify": "2.4.5",

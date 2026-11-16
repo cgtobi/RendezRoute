@@ -60,6 +60,8 @@ schema:
   imprint_url: str
   privacy_url: str
   default_timezone: str
+  default_map_center: str?
+  default_map_zoom: int(2,12)?
   maps_enabled: bool
   map_tile_url: str?
   map_attribution: str?

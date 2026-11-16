@@ -16,6 +16,8 @@ const OPTIONS: Readonly<Record<string, readonly [string, HaOptionKind]>> = {
   imprint_url: ["IMPRINT_URL", "text"],
   privacy_url: ["PRIVACY_URL", "text"],
   default_timezone: ["DEFAULT_TIMEZONE", "text"],
+  default_map_center: ["DEFAULT_MAP_CENTER", "text"],
+  default_map_zoom: ["DEFAULT_MAP_ZOOM", "integer"],
   maps_enabled: ["MAPS_ENABLED", "flag"],
   map_tile_url: ["MAP_TILE_URL", "text"],
   map_attribution: ["MAP_ATTRIBUTION", "text"],

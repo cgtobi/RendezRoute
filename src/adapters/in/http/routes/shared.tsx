@@ -53,7 +53,12 @@ export function tooManyRequests(c: Context<AppEnv>, retryAfterSeconds: number) {
 /** Tile settings for browser maps, or undefined when maps are disabled (spec 3.9). */
 export const mapSettings = (config: Config): MapSettings | undefined =>
   config.maps.enabled
-    ? { tileUrl: config.maps.tileUrl, attribution: config.maps.attribution }
+    ? {
+        tileUrl: config.maps.tileUrl,
+        attribution: config.maps.attribution,
+        defaultCenter: config.defaultMap.center,
+        defaultZoom: config.defaultMap.zoom,
+      }
     : undefined;
 
 /** One-time form value (decision I9). */

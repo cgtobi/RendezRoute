@@ -38,6 +38,8 @@ const FULL: [option: string, value: unknown, name: string, text: string][] = [
   ["privacy_url", "https://example.org/privacy", "PRIVACY_URL", "https://example.org/privacy"],
   ["default_timezone", "Europe/Berlin", "DEFAULT_TIMEZONE", "Europe/Berlin"],
   ["maps_enabled", false, "MAPS_ENABLED", "false"],
+  ["default_map_center", "48.1374,11.5755", "DEFAULT_MAP_CENTER", "48.1374,11.5755"],
+  ["default_map_zoom", 9, "DEFAULT_MAP_ZOOM", "9"],
   [
     "map_tile_url",
     "https://tiles.example/{z}/{x}/{y}.png",
@@ -94,8 +96,8 @@ describe("mapping the options", () => {
   });
 
   it("covers every option of the spec exactly once", () => {
-    expect(FULL.map(([option]) => option).length).toBe(36);
-    expect(new Set(FULL.map(([, , name]) => name)).size).toBe(36);
+    expect(FULL.map(([option]) => option).length).toBe(38);
+    expect(new Set(FULL.map(([, , name]) => name)).size).toBe(38);
     expect([...HA_OPTION_ENVIRONMENT_NAMES].sort()).toEqual(FULL.map(([, , name]) => name).sort());
   });
 
@@ -254,6 +256,8 @@ describe("what the configuration makes of the mapped environment", () => {
       imprint_url: "https://example.org/imprint",
       privacy_url: "https://example.org/privacy",
       default_timezone: "Europe/Berlin",
+      default_map_center: "48.1374,11.5755",
+      default_map_zoom: 9,
       maps_enabled: true,
       geocoder_enabled: true,
       weather_enabled: true,
@@ -284,6 +288,7 @@ describe("what the configuration makes of the mapped environment", () => {
     expect(result.config.instanceName).toBe("Run Club");
     expect(result.config.postingMode).toBe("invite");
     expect(result.config.maxRetentionDays).toBe(14);
+    expect(result.config.defaultMap).toEqual({ center: { lat: 48.1374, lng: 11.5755 }, zoom: 9 });
   });
 
   it("fails with the configuration's own error for an http base_url", () => {
@@ -304,6 +309,6 @@ describe("what the configuration makes of the mapped environment", () => {
     const known = new Set(source.match(/"[A-Z][A-Z0-9_]{2,}"/g)?.map((name) => name.slice(1, -1)));
     const written = [...HA_OPTION_ENVIRONMENT_NAMES, ...Object.keys(FIXED_ENVIRONMENT)];
     expect(written.filter((name) => !known.has(name))).toEqual([]);
-    expect(written.length).toBe(36 + 5);
+    expect(written.length).toBe(38 + 5);
   });
 });

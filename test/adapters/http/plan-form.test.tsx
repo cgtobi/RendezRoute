@@ -783,7 +783,11 @@ describe("start time step", () => {
 });
 
 describe("exact point on the map (decision D66)", () => {
-  const map = { tileUrl: "https://tiles.example/{z}/{x}/{y}.png", attribution: "Test" };
+  const map = {
+    tileUrl: "https://tiles.example/{z}/{x}/{y}.png",
+    attribution: "Test",
+    defaultZoom: 6,
+  };
   const rowOf = (root: Node, name: string) =>
     all(root).find(
       (node) =>

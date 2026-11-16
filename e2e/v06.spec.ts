@@ -2,7 +2,7 @@
 // that has really started, the host closes the recap and sees the counts with the signed note.
 // The image runs on the real clock, so the plan starts about two minutes after it is created.
 import { expect, test } from "@playwright/test";
-import { openZoneLine, person } from "./helpers.ts";
+import { fillTimeOffGrid, openZoneLine, person } from "./helpers.ts";
 
 test("Participants rate a plan; the host sees the result once the recap is closed", async ({
   browser,
@@ -22,7 +22,7 @@ test("Participants rate a plan; the host sees the result once the recap is close
   await openZoneLine(host);
   await host.getByLabel("Time zone").selectOption("UTC");
   await host.getByLabel("Date").fill(iso.slice(0, 10));
-  await host.getByLabel("Start time").fill(iso.slice(11, 16));
+  await fillTimeOffGrid(host, iso.slice(11, 16));
   await host.locator("#field-areaLabel").fill("Flaucher, north end");
   await host.getByRole("button", { name: "Create plan" }).click();
   await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();

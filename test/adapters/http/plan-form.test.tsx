@@ -5,6 +5,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { translator } from "../../../src/adapters/i18n/i18n.ts";
 import { en } from "../../../src/adapters/i18n/messages/en.ts";
 import {
+  onQuarterHour,
   PlanForm,
   type PlanFormProps,
   type VisibilityChoice,
@@ -590,5 +591,38 @@ describe("further form behaviour", () => {
     expect(line.children.find((node) => node.tag === "summary")?.text).toBe(
       `Time zone, Europe/Berlin · ${en["layout.change"]}`,
     );
+  });
+});
+
+describe("start time step", () => {
+  const timeStep = (overrides: Parameters<typeof render>[0]) => {
+    const [time] = named(render(overrides).root, "time");
+    expect(time).toBeDefined();
+    // Own pattern: `attr` misses a last attribute that is followed by the self-closing slash.
+    return /\sstep="([^"]*)"/.exec((time as Node).attributes)?.[1];
+  };
+
+  it("offers 15-minute steps on a new form, a host edit on the grid and a template form", () => {
+    expect(timeStep({})).toBe("900");
+    expect(timeStep({ values: { time: "09:15" } })).toBe("900");
+    expect(timeStep({ forTemplate: true, withGpx: false })).toBe("900");
+    expect(timeStep({ forTemplate: true, withGpx: false, values: { time: "18:45" } })).toBe("900");
+  });
+
+  it("leaves the step off for a time that is not on the grid, so it stays editable", () => {
+    expect(timeStep({ values: { time: "09:07" } })).toBeUndefined();
+    expect(
+      timeStep({ forTemplate: true, withGpx: false, values: { time: "09:07" } }),
+    ).toBeUndefined();
+  });
+
+  it("decides by the quarter hour, an empty value counting as on the grid", () => {
+    expect(onQuarterHour("")).toBe(true);
+    expect(onQuarterHour("00:00")).toBe(true);
+    expect(onQuarterHour("09:15")).toBe(true);
+    expect(onQuarterHour("23:45")).toBe(true);
+    expect(onQuarterHour("09:07")).toBe(false);
+    expect(onQuarterHour("09:16")).toBe(false);
+    expect(onQuarterHour("nonsense")).toBe(false);
   });
 });

@@ -9,7 +9,8 @@ const LIGHT_BG = "rgb(255, 255, 255)";
 
 async function chooseTheme(page: Page, label: "System" | "Light" | "Dark") {
   const menu = page.locator("#site-menu");
-  if (!(await menu.evaluate("(el) => el.matches(':popover-open')"))) {
+  // A plain expression: a function written as a string is never called, so it would read undefined.
+  if (!(await page.evaluate(`document.getElementById("site-menu").matches(":popover-open")`))) {
     await page.locator("button.burger").click();
   }
   const form = menu.locator('form[action="/theme"]');

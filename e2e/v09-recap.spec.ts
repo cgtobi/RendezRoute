@@ -8,6 +8,7 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   adminLogIn,
   fillHostName,
+  fillTimeOffGrid,
   inFiveDays,
   newInvite,
   oidcLogIn,
@@ -79,7 +80,7 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
   await openZoneLine(host);
   await host.getByLabel("Time zone").selectOption("UTC");
   await host.getByLabel("Date").fill(iso.slice(0, 10));
-  await host.getByLabel("Start time").fill(iso.slice(11, 16));
+  await fillTimeOffGrid(host, iso.slice(11, 16));
   await host.locator("#field-areaLabel").fill("Flaucher");
   await openFold(host, "Exact meeting point");
   await host.getByLabel("Where exactly?").fill(START);

@@ -1,4 +1,5 @@
 // Applies the time zone logic to the page (decision P6).
+import { nextQuarterHour } from "./time-default.ts";
 import { browserZone, detectedZone } from "./zones.ts";
 
 /** Fills the create form's zone and hides plan zone labels that match the viewer's zone. */
@@ -31,4 +32,17 @@ function followZoneSelects(): void {
     show();
     select.addEventListener("change", show);
   }
+}
+
+/**
+ * Prefills an empty start time with the next quarter hour in the zone the form shows, so the
+ * browser's picker does not open on an off-grid minute. Leaves filled, restored or flagged fields.
+ * It runs once: picking another zone afterwards keeps the time the host sees.
+ */
+export function initTimeDefault(): void {
+  const input = document.querySelector<HTMLInputElement>("form.plan-form #field-time");
+  if (input === null || input.value !== "" || input.getAttribute("aria-invalid") === "true") return;
+  const select = input.form?.querySelector<HTMLSelectElement>("#field-timeZone");
+  const zone = select?.value || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  input.value = nextQuarterHour(new Date(), zone);
 }

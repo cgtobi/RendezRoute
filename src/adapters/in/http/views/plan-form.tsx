@@ -37,6 +37,19 @@ const COLOR_PRESETS = [
   "#3C4043",
 ];
 
+/** Seconds in the start time's step: the picker offers quarter hours. */
+const TIME_STEP_SECONDS = 900;
+
+/**
+ * Whether a start time ("HH:MM") sits on the 15-minute grid. An empty value counts as on it (a new
+ * form); text that is not a time does not, so the step is left off and nothing is made worse.
+ * Browsers refuse to submit a time off the step grid, so the form only asks for the step when the
+ * stored or submitted time already fits it. The server accepts any minute.
+ */
+export function onQuarterHour(time: string): boolean {
+  return time === "" || /^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/.test(time);
+}
+
 export interface PlanFormProps {
   t: Translate;
   values: PlanInput;
@@ -372,7 +385,11 @@ export function PlanForm({
           </Field>
         )}
         <Field field="time" label={t("form.time")}>
-          {input("time", { type: "time", required: true })}
+          {input("time", {
+            type: "time",
+            required: true,
+            ...(onQuarterHour(values.time) ? { step: TIME_STEP_SECONDS } : {}),
+          })}
         </Field>
       </div>
 

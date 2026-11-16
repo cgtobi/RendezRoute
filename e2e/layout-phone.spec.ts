@@ -31,6 +31,10 @@ for (const viewport of WIDTHS) {
 
     // Create form: date and time side by side, inside the screen, equally wide.
     await page.goto("/new");
+    // The start time offers quarter hours.
+    await expect(page.locator("#field-time")).toHaveAttribute("step", "900");
+    // The page script prefills the next quarter hour.
+    await expect(page.locator("#field-time")).toHaveValue(/^\d{2}:(00|15|30|45)$/);
     const date = await page.locator("#field-date").boundingBox();
     const time = await page.locator("#field-time").boundingBox();
     expect(date, "date input is rendered").not.toBeNull();

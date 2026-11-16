@@ -123,6 +123,17 @@ export async function fillHostName(page: Page, name: string) {
   await page.getByLabel("Your name").fill(name);
 }
 
+/**
+ * Fills the start time with any minute. The field asks for 15-minute steps and Chromium refuses to
+ * submit a time off that grid, so the step is removed from this one input first (written as a
+ * string, as the e2e project has no DOM types, like the other in-page work here).
+ */
+export async function fillTimeOffGrid(page: Page, time: string): Promise<void> {
+  // A plain expression: Playwright runs it, while a function written as a string is not called.
+  await page.evaluate(`document.querySelector("#field-time").removeAttribute("step")`);
+  await page.getByLabel("Start time").fill(time);
+}
+
 /** Creates a plan from the create form the page is on; returns the plan's address. */
 export async function createPlan(page: Page, title: string): Promise<string> {
   await fillHostName(page, "Anna");

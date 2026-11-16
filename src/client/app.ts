@@ -4,13 +4,14 @@ import { initAutoSubmit } from "./auto-submit.ts";
 import { initFoldSummaries } from "./fold-summaries.ts";
 import { initPush } from "./push.ts";
 import { initShare } from "./share.ts";
-import { initZones } from "./zone-fields.ts";
+import { initTimeDefault, initZones } from "./zone-fields.ts";
 
 const start = () => {
   initAutoSubmit();
   initShare();
   initPush();
   initZones();
+  initTimeDefault();
   initFoldSummaries();
 };
 

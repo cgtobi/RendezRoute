@@ -23,7 +23,7 @@ describe("form map and place search (spec 3.9, decision D12)", () => {
     expect(html).toContain('name="mapMode" value="exact"');
     expect(html).toMatch(/<div[^>]*data-place-search=""[^>]*data-endpoint="\/geocode"/);
     expect(html).toMatch(/<button[^>]*data-locate=""/);
-    expect(html).toContain('<script src="/static/build/map.js" defer=""></script>');
+    expect(html).toContain('<script src="/static/build/map.js" type="module"></script>');
     expect(html).toContain('<link rel="stylesheet" href="/static/build/map.css"/>');
   });
 

@@ -1,7 +1,7 @@
 // The v0.1 core loop in a real browser against the built image (spec 5 acceptance criteria, 2b).
 // Runs once per project: default settings (fake providers) and maps, geocoder and weather disabled.
 import { expect, type Page, test } from "@playwright/test";
-import { inFiveDays, person } from "./helpers.ts";
+import { inFiveDays, openFold, person } from "./helpers.ts";
 
 async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: string }> {
   await host.goto("/");
@@ -18,15 +18,22 @@ async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: str
     await host.getByRole("button", { name: /Flaucher/ }).click();
     await expect(host.locator("#field-areaLabel")).toHaveValue(/Flaucher/);
     await host.locator(".map-picker .map").click();
+    // Setting the exact point on the map opens its fold by itself, so its notice is in view.
+    await expect(
+      host.locator("details.fold", {
+        has: host.locator(".fold-title", { hasText: "Exact meeting point" }),
+      }),
+    ).toHaveAttribute("open", "");
   } else {
     await expect(host.locator("[data-map-picker]")).toHaveCount(0);
     await expect(host.locator("[data-place-search]")).toHaveCount(0);
     await host.locator("#field-areaLabel").fill("Flaucher, north end");
-    await host.getByText("Coordinates (optional)").click();
+    await openFold(host, "Exact meeting point");
     // The exact start's coordinates (the area has its own, optional pair).
     await host.locator("#field-exactLat").fill("48.11070");
     await host.locator("#field-exactLng").fill("11.55820");
   }
+  await openFold(host, "Exact meeting point");
   await host.getByLabel("Where exactly?").fill("North gate, by the bike racks");
   await host.getByRole("button", { name: "Create plan" }).click();
 

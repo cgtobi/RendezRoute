@@ -134,11 +134,11 @@ describe("time zones in the browser (decision P6)", () => {
 });
 
 describe("app script (spec 2: small scripts only where needed)", () => {
-  it("is loaded from this site on every page, deferred", async () => {
+  it("is loaded from this site on every page, as a module of its own scope", async () => {
     const { host, planId } = await setup();
     for (const path of ["/", "/new", `/p/${planId}`]) {
       expect(await (await host.get(path)).text()).toContain(
-        '<script src="/static/build/app.js" defer=""></script>',
+        '<script src="/static/build/app.js" type="module"></script>',
       );
     }
   });

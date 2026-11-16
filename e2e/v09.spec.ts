@@ -5,7 +5,17 @@
 // in the "0.7 to 0.9 features" project; every name here carries the run, since the fakes container
 // keeps its state across runs with E2E_KEEP.
 import { expect, test } from "@playwright/test";
-import { adminLogIn, inFiveDays, newInvite, oidcLogIn, person, useInvite } from "./helpers.ts";
+import {
+  adminLogIn,
+  fillHostName,
+  inFiveDays,
+  newInvite,
+  oidcLogIn,
+  openFold,
+  openZoneLine,
+  person,
+  useInvite,
+} from "./helpers.ts";
 import {
   addresses,
   APP,
@@ -92,18 +102,22 @@ test("Federation: follow, a plan for followers, a remote join, a private exact s
   // aborted one), so only what arrives after this point counts.
   const oldLength = (await received(fan)).length;
   await host.goto("/new");
-  await host.getByLabel("Your name").fill("Anna");
+  await fillHostName(host, "Anna");
   await host.getByLabel("Title").fill(title);
+  await openZoneLine(host);
   await host.getByLabel("Time zone").selectOption("UTC");
   await host.getByLabel("Date").fill(inFiveDays());
   await host.getByLabel("Start time").fill("08:30");
   await host.locator("#field-areaLabel").fill("Flaucher");
+  await openFold(host, "Exact meeting point");
   await host.getByLabel("Where exactly?").fill(START);
+  await openFold(host, "Route, pace and note");
   await host.getByLabel("Route (GPX file, optional)").setInputFiles({
     name: "run.gpx",
     mimeType: "application/gpx+xml",
     buffer: Buffer.from(gpx),
   });
+  await openFold(host, "Who can join and find it");
   await host.getByLabel(/Followers of .* in the fediverse/).check();
   await host.getByRole("button", { name: "Create plan" }).click();
   await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();

@@ -61,6 +61,11 @@ export function initPickMaps(): void {
       const [latName, lngName] = FIELDS[mode];
       setField(form, latName, roundCoordinate(lat));
       setField(form, lngName, roundCoordinate(lng));
+      // The exact start sits in a fold that may be closed: open it, so its notice about who sees
+      // the point is in view.
+      if (mode === "exact") {
+        form.querySelector(`[name="${lngName}"]`)?.closest("details")?.setAttribute("open", "");
+      }
       sync();
     };
 

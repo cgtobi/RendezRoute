@@ -1538,6 +1538,158 @@ details > summary {
   cursor: pointer;
 }
 
+/* Creation form (decision D61): the time zone and host name as quiet lines, the "Where" block, and
+   folds divided by hairlines, no card boxes. */
+
+.field-compact select {
+  width: auto;
+  max-width: 100%;
+}
+
+.zone-line,
+.host-name {
+  margin: var(--s2) 0 var(--s4);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.zone-line > summary,
+.host-name > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1);
+  min-height: var(--target);
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+
+.zone-line > summary::-webkit-details-marker,
+.host-name > summary::-webkit-details-marker,
+.fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.host-name {
+  font-size: var(--text-md);
+}
+
+.zone-change {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.zone-line .field,
+.host-name .field {
+  margin-top: var(--s1);
+  color: var(--fg);
+  font-size: var(--text-md);
+}
+
+.where {
+  margin: var(--s5) 0 var(--s4);
+}
+
+.where h2 {
+  margin: 0 0 var(--s2);
+}
+
+.folds {
+  margin: var(--s5) 0;
+  border-top: 1px solid var(--line);
+}
+
+.where .fold {
+  margin-top: var(--s4);
+  border-top: 1px solid var(--line);
+}
+
+.fold {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+}
+
+.fold > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: var(--target);
+  padding: var(--s3) 0;
+  list-style: none;
+}
+
+.fold > summary::after {
+  content: "";
+  flex: none;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin: -6px var(--s2) 0 0;
+  border-right: 3px solid var(--fg);
+  border-bottom: 3px solid var(--fg);
+  transform: rotate(45deg);
+}
+
+.fold[open] > summary::after {
+  margin: 6px var(--s2) 0 0;
+  transform: rotate(-135deg);
+}
+
+.fold-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fold-value {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.fold-strong .fold-title {
+  font-weight: 600;
+}
+
+/* The bar sits in the page margin, so the titles stay aligned with the other folds. */
+.fold-strong::before {
+  content: "";
+  position: absolute;
+  top: var(--s2);
+  bottom: var(--s2);
+  left: calc(var(--s3) * -1);
+  width: 3px;
+  background: var(--accent);
+}
+
+.fold-warning .fold-value {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.fold-body {
+  padding: 0 0 var(--s3);
+}
+
+.fold fieldset {
+  min-width: 0;
+  margin: var(--s4) 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.fold fieldset > legend {
+  padding: 0;
+}
+
+.fold-body > .field:first-child,
+.fold-body > fieldset:first-child {
+  margin-top: var(--s1);
+}
+
 /* Maps (spec 3.9, decision D12) */
 
 .map {

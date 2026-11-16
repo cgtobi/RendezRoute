@@ -5,7 +5,17 @@
 // `Flag` reaches the admin as a report. Runs only in the "0.7 to 0.9 features" project, in a worker
 // of its own; every name carries the run, since the fakes container keeps its state with E2E_KEEP.
 import { expect, type Page, test } from "@playwright/test";
-import { adminLogIn, inFiveDays, newInvite, oidcLogIn, person, useInvite } from "./helpers.ts";
+import {
+  adminLogIn,
+  fillHostName,
+  inFiveDays,
+  newInvite,
+  oidcLogIn,
+  openFold,
+  openZoneLine,
+  person,
+  useInvite,
+} from "./helpers.ts";
 import {
   addresses,
   APP,
@@ -64,13 +74,16 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
   const startsAt = Math.ceil((Date.now() + 90_000) / 60_000) * 60_000;
   const iso = new Date(startsAt).toISOString();
   await host.goto("/new");
-  await host.getByLabel("Your name").fill("Anna");
+  await fillHostName(host, "Anna");
   await host.getByLabel("Title").fill(title);
+  await openZoneLine(host);
   await host.getByLabel("Time zone").selectOption("UTC");
   await host.getByLabel("Date").fill(iso.slice(0, 10));
   await host.getByLabel("Start time").fill(iso.slice(11, 16));
   await host.locator("#field-areaLabel").fill("Flaucher");
+  await openFold(host, "Exact meeting point");
   await host.getByLabel("Where exactly?").fill(START);
+  await openFold(host, "Who can join and find it");
   await host.getByLabel(/Followers of .* in the fediverse/).check();
   await host.getByRole("button", { name: "Create plan" }).click();
   await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
@@ -230,7 +243,7 @@ test("Flag: a remote report of a plan reaches the admin without its sender", asy
   const { page: host } = await person(browser, base, problems);
   await adminLogIn(admin);
   await useInvite(host, await newInvite(admin));
-  await host.getByLabel("Your name").fill("Anna");
+  await fillHostName(host, "Anna");
   await host.getByLabel("Title").fill(title);
   await host.getByLabel("Date").fill(inFiveDays());
   await host.getByLabel("Start time").fill("08:30");

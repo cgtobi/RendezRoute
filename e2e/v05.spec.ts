@@ -1,7 +1,7 @@
 // v0.5 flows in a real browser against the built image (spec 6 acceptance criteria, plan step 11):
 // approval with a note, push permission denied, and a calendar feed following the plan.
 import { expect, type Page, test } from "@playwright/test";
-import { inFiveDays, person } from "./helpers.ts";
+import { inFiveDays, openFold, person } from "./helpers.ts";
 
 /** A plan without maps, so both projects fill the same fields. */
 async function createPlan(host: Page, title: string, approval = false): Promise<string> {
@@ -11,8 +11,12 @@ async function createPlan(host: Page, title: string, approval = false): Promise<
   await host.getByLabel("Date").fill(inFiveDays());
   await host.getByLabel("Start time").fill("08:30");
   await host.locator("#field-areaLabel").fill("Flaucher, north end");
+  await openFold(host, "Exact meeting point");
   await host.getByLabel("Where exactly?").fill("North gate, by the bike racks");
-  if (approval) await host.getByLabel("Only people I accept").check();
+  if (approval) {
+    await openFold(host, "Who can join and find it");
+    await host.getByLabel("Only people I accept").check();
+  }
   await host.getByRole("button", { name: "Create plan" }).click();
   await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
   return (await host.locator(".links .link-box a").textContent()) ?? "";

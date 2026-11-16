@@ -4,7 +4,7 @@
 // containers do not trust X-Forwarded-For, so one project shares one create limiter (5 burst).
 // Rows stay on one line at 320 px: label and select, the Change button hidden by the script.
 import { expect, test } from "@playwright/test";
-import { person } from "./helpers.ts";
+import { openFold, person } from "./helpers.ts";
 
 const WIDTHS = [
   { width: 320, height: 640 },
@@ -48,6 +48,36 @@ for (const viewport of WIDTHS) {
       Math.abs(dateBox.width - timeBox.width),
       "date and time widths differ",
     ).toBeLessThanOrEqual(1);
+
+    // Every fold, the zone line and (when a name is known) the host name open: nothing scrolls
+    // sideways and each summary is a 44 px tap target (decision D61).
+    const summaries = page.locator(
+      "details.fold > summary, details.zone-line > summary, details.host-name > summary",
+    );
+    expect(await page.locator("details.fold").count(), "five folds").toBe(5);
+    for (const summary of await summaries.all()) {
+      const box = await summary.boundingBox();
+      expect(box?.height, "summary height").toBeGreaterThanOrEqual(44);
+      await summary.click();
+    }
+    for (const details of await page.locator("details.fold, details.zone-line").all()) {
+      await expect(details).toHaveAttribute("open", "");
+    }
+    const unfolded = await overflow();
+    expect(
+      unfolded.scrollWidth,
+      "create form with everything open scrolls sideways",
+    ).toBeLessThanOrEqual(unfolded.innerWidth);
+    for (const control of await page
+      .locator(
+        "details[open] input:not([type=hidden]), details[open] select, details[open] textarea",
+      )
+      .all()) {
+      const box = await control.boundingBox();
+      if (box !== null) {
+        expect(box.x + box.width, "control right edge").toBeLessThanOrEqual(viewport.width);
+      }
+    }
 
     // Menu sheet, on the same page, opened through the burger.
     const burger = page.locator("button.burger");
@@ -96,3 +126,54 @@ for (const viewport of WIDTHS) {
     await context.close();
   });
 }
+
+test("The time zone line shows the zone the select holds, and follows a new pick", async ({
+  browser,
+  baseURL,
+}) => {
+  const problems: string[] = [];
+  const { context, page } = await person(browser, baseURL ?? "", problems);
+  await page.goto("/new");
+  const select = page.locator("#field-timeZone");
+  const name = page.locator("details.zone-line [data-zone-name]");
+  const summary = page.locator("details.zone-line > summary");
+  // The script may have preselected the browser's zone: the line shows whatever the select holds.
+  await expect(async () => {
+    expect(await name.textContent()).toBe(await select.inputValue());
+  }).toPass();
+  await expect(summary).toContainText("Change");
+  await summary.click();
+  const other = (await select.inputValue()) === "UTC" ? "Europe/Berlin" : "UTC";
+  await select.selectOption(other);
+  await expect(name).toHaveText(other);
+  expect(problems).toEqual([]);
+  await context.close();
+});
+
+test("The who and exact summaries follow the join radios and the exact point", async ({
+  browser,
+  baseURL,
+}) => {
+  const problems: string[] = [];
+  const { context, page } = await person(browser, baseURL ?? "", problems);
+  await page.goto("/new");
+  const value = (title: string) =>
+    page
+      .locator("details.fold", { has: page.locator(".fold-title", { hasText: title }) })
+      .locator(".fold-value");
+  await expect(value("Who can join and find it")).toContainText("Join: anyone with the link");
+  await expect(value("Exact meeting point")).toHaveText("Optional · anyone who joins sees it");
+
+  await openFold(page, "Who can join and find it");
+  await page.getByLabel("Only people I accept").check();
+  await expect(value("Who can join and find it")).toContainText("Join: after your approval");
+  await expect(value("Exact meeting point")).toHaveText("Optional · only people you accept see it");
+
+  await openFold(page, "Exact meeting point");
+  await page.getByLabel("Where exactly?").fill("North gate");
+  await expect(value("Exact meeting point")).toHaveText("Set · only people you accept see it");
+  await page.getByLabel("Anyone with the link").check();
+  await expect(value("Exact meeting point")).toHaveText("Set · anyone who joins sees it");
+  expect(problems).toEqual([]);
+  await context.close();
+});

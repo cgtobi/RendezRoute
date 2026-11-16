@@ -95,9 +95,37 @@ export async function oidcLogIn(page: Page) {
   await expect(page.getByText("You are logged in.")).toBeVisible();
 }
 
+/**
+ * Opens a fold of the plan form ("Exact meeting point", "Route, pace and note", "Who can join and
+ * find it", "Look and sharing", "After the run") unless it is open already.
+ */
+export async function openFold(page: Page, title: string) {
+  const fold = page.locator("details.fold", {
+    has: page.locator(".fold-title", { hasText: title }),
+  });
+  if ((await fold.getAttribute("open")) === null) await fold.locator("> summary").click();
+  await expect(fold).toHaveAttribute("open", "");
+}
+
+/** Opens the muted time zone line, so the select inside it can be used. */
+export async function openZoneLine(page: Page) {
+  const line = page.locator("details.zone-line");
+  if ((await line.getAttribute("open")) === null) await line.locator("> summary").click();
+  await expect(line).toHaveAttribute("open", "");
+}
+
+/** Fills "Your name", opening the collapsed "Hosting as ..." line first when the name is prefilled. */
+export async function fillHostName(page: Page, name: string) {
+  const line = page.locator("details.host-name");
+  if ((await line.count()) > 0 && (await line.getAttribute("open")) === null) {
+    await line.locator("> summary").click();
+  }
+  await page.getByLabel("Your name").fill(name);
+}
+
 /** Creates a plan from the create form the page is on; returns the plan's address. */
 export async function createPlan(page: Page, title: string): Promise<string> {
-  await page.getByLabel("Your name").fill("Anna");
+  await fillHostName(page, "Anna");
   await page.getByLabel("Title").fill(title);
   await page.getByLabel("Date").fill(inFiveDays());
   await page.getByLabel("Start time").fill("08:30");

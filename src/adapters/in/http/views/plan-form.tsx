@@ -2,7 +2,8 @@
 // PlanInput keys.
 import type { Child } from "hono/jsx";
 import type { Translate } from "../../../i18n/i18n.ts";
-import { ACTIVITY_TYPES } from "../../../../domain/activity.ts";
+import { ACTIVITY_TYPES, type ActivityType, paceStyleFor } from "../../../../domain/activity.ts";
+import { DEFAULT_COLORS } from "../../../../domain/color.ts";
 import {
   CHOOSABLE_VISIBILITIES,
   DROP_POLICIES,
@@ -11,7 +12,12 @@ import {
 } from "../../../../domain/plan.ts";
 import type { FieldError, PlanField, PlanInput } from "../../../../domain/plan-input.ts";
 import { PLAN_LIMITS, SHARE_BUTTON_FIELDS } from "../../../../domain/plan-input.ts";
-import { defaultRecapWindow, defaultRetentionDays } from "../../../../domain/schedule.ts";
+import {
+  defaultRecapWindow,
+  defaultRetentionDays,
+  RECAP_WINDOWS,
+  recapWindowDays,
+} from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
 import { MapTools, type MapSettings } from "./maps.tsx";
@@ -87,6 +93,80 @@ export interface VisibilityChoice {
 
 type Choosable = (typeof CHOOSABLE_VISIBILITIES)[number];
 
+function isActivity(value: string): value is ActivityType {
+  return (ACTIVITY_TYPES as readonly string[]).includes(value);
+}
+
+/** One group of optional fields: title, a one-line value summary and a chevron (decision D61). */
+function Fold({
+  title,
+  value,
+  open,
+  strong = false,
+  warning = false,
+  kind,
+  summaries,
+  children,
+}: {
+  title: string;
+  value: string;
+  open: boolean;
+  strong?: boolean;
+  warning?: boolean;
+  /** Which summary the browser script keeps in step with the fields, with every variant text. */
+  kind?: "who" | "exact";
+  summaries?: Record<string, string>;
+  children: Child;
+}) {
+  const classes = [
+    "fold",
+    strong ? "fold-strong" : undefined,
+    warning ? "fold-warning" : undefined,
+  ];
+  return (
+    <details
+      class={classes.filter(Boolean).join(" ")}
+      open={open}
+      data-summary-kind={kind}
+      data-summaries={summaries === undefined ? undefined : JSON.stringify(summaries)}
+    >
+      <summary>
+        <span class="fold-text">
+          <span class="fold-title">{title}</span>
+          <span class="visually-hidden">, </span>
+          <span class="fold-value">{value}</span>
+        </span>
+      </summary>
+      <div class="fold-body">{children}</div>
+    </details>
+  );
+}
+
+/** Which choices of "Who can find this plan" exist, and whether each may be made. */
+function visibilityAvailability(choice: VisibilityChoice, value: string) {
+  const options: Record<Choosable, { shown: boolean; allowed: boolean }> = {
+    link: { shown: true, allowed: true },
+    followers: {
+      shown: choice.followers !== undefined,
+      allowed: choice.followers?.allowed === true,
+    },
+    public: {
+      // Public that nothing would find, and logging in would not help: not offered (I59).
+      shown: choice.publicAllowed || choice.loginHref !== undefined,
+      allowed: choice.publicAllowed,
+    },
+  };
+  const shown = CHOOSABLE_VISIBILITIES.filter((visibility) => options[visibility].shown);
+  const chosen = shown.find((visibility) => visibility === value && options[visibility].allowed);
+  return { options, shown, chosen };
+}
+
+/** What the visibility fieldset will show as chosen; link-only where it is not offered. */
+function effectiveVisibilityOf(choice: VisibilityChoice, value: string): Choosable {
+  const { shown, chosen } = visibilityAvailability(choice, value);
+  return shown.length === 1 ? "link" : (chosen ?? "link");
+}
+
 export function PlanForm({
   t,
   values,
@@ -116,16 +196,19 @@ export function PlanForm({
     field,
     label,
     hint,
+    class: extraClass,
     children,
   }: {
     field: PlanField;
     label: string;
     hint?: string;
+    class?: string;
     children: Child;
   }) => {
     const error = errorFor(field);
+    const classes = ["field", extraClass, error === undefined ? undefined : "field-invalid"];
     return (
-      <div class={error === undefined ? "field" : "field field-invalid"}>
+      <div class={classes.filter(Boolean).join(" ")}>
         <label for={id(field)}>{label}</label>
         {children}
         {hint !== undefined && <p class="hint">{hint}</p>}
@@ -154,6 +237,96 @@ export function PlanForm({
       ? String(defaultRetentionDays(maxRetentionDays))
       : values.retentionDays;
 
+  const hasError = (...fields: readonly (PlanField | "gpx")[]) =>
+    errors.some((error) => fields.includes(error.field));
+
+  const recapWindow = values.recapWindow || defaultRecapWindow(Number(retentionDays));
+  const joinMode = values.joinMode === "approval" ? "approval" : "open";
+  const effectiveVisibility =
+    visibility === undefined ? "link" : effectiveVisibilityOf(visibility, values.visibility);
+  const exactSummaries = {
+    "open:none": t("fold.exactNoneOpen"),
+    "open:set": t("fold.exactSetOpen"),
+    "approval:none": t("fold.exactNone"),
+    "approval:set": t("fold.exactSet"),
+  };
+  const exactSet =
+    values.exactDescription.trim() !== "" ||
+    values.exactLat.trim() !== "" ||
+    values.exactLng.trim() !== "";
+  const shownZone = timeZones.includes(values.timeZone) ? values.timeZone : (timeZones[0] ?? "");
+  const hostNameCollapsed = values.posterName.trim() !== "" && errorFor("posterName") === undefined;
+
+  const hostNameField = (
+    <Field field="posterName" label={t("form.posterName")} hint={t("form.posterNameHint")}>
+      {input("posterName", {
+        required: true,
+        maxlength: PLAN_LIMITS.posterName,
+        autocomplete: "nickname",
+      })}
+    </Field>
+  );
+
+  const unitLabel = t(
+    isActivity(values.activity) && paceStyleFor(values.activity) === "speed"
+      ? units === "imperial"
+        ? "unit.mph"
+        : "unit.kmh"
+      : units === "imperial"
+        ? "unit.minPerMi"
+        : "unit.minPerKm",
+  );
+  const routeParts = [
+    withGpx ? t("fold.routeNone") : undefined,
+    ...(values.distanceKm.trim() === "" &&
+    values.paceFrom.trim() === "" &&
+    values.paceTo.trim() === ""
+      ? [t("fold.routeUnset")]
+      : [
+          values.distanceKm.trim() === ""
+            ? undefined
+            : `${values.distanceKm.trim()} ${t(units === "imperial" ? "unit.mi" : "unit.km")}`,
+          values.paceFrom.trim() === "" && values.paceTo.trim() === ""
+            ? undefined
+            : `${[values.paceFrom.trim(), values.paceTo.trim()].filter((part) => part !== "").join("–")} ${unitLabel}`,
+        ]),
+    values.note.trim() === "" ? t("fold.noteNone") : t("fold.noteAdded"),
+  ];
+  const routeText = routeParts.filter((part) => part !== undefined).join(" · ");
+  const routeSummary = routeText.charAt(0).toUpperCase() + routeText.slice(1);
+
+  const whoSummaries: Record<string, string> = {};
+  for (const join of ["open", "approval"] as const) {
+    const joinText = t(join === "approval" ? "fold.joinApproval" : "fold.joinAnyone");
+    whoSummaries[`${join}:public`] = t("fold.whoPublic", { join: joinText });
+    whoSummaries[`${join}:link`] = t("fold.whoSummary", {
+      join: joinText,
+      find: t("fold.findLink"),
+    });
+    whoSummaries[`${join}:followers`] = t("fold.whoSummary", {
+      join: joinText,
+      find: t("fold.findFollowers"),
+    });
+  }
+  const whoSummary = whoSummaries[`${joinMode}:${effectiveVisibility}`] ?? "";
+
+  const sharesOn = SHARE_BUTTONS.some((button) => values[SHARE_BUTTON_FIELDS[button]] === "1");
+  const sameColor = (value: string, fallback: string) =>
+    value === "" || value.toUpperCase() === fallback.toUpperCase();
+  const colorsDefault =
+    sameColor(values.primaryColor, DEFAULT_COLORS.primary) &&
+    sameColor(values.secondaryColor, DEFAULT_COLORS.secondary);
+  const lookSummary = t("fold.lookSummary", {
+    buttons: t(sharesOn ? "fold.on" : "fold.off"),
+    colors: t(colorsDefault ? "fold.colorsDefault" : "fold.colorsCustom"),
+  });
+
+  const recapDays = recapWindowDays[RECAP_WINDOWS.find((w) => w === recapWindow) ?? "1d"];
+  const afterSummary = t("fold.afterSummary", {
+    days: t("fold.days", { count: Number(retentionDays) }),
+    recap: recapDays === 0 ? t("fold.recapNone") : t("fold.recapDays", { count: recapDays }),
+  });
+
   return (
     <form
       method="post"
@@ -171,26 +344,25 @@ export function PlanForm({
       <input type="hidden" name={CSRF_FIELD} value={csrfToken} />
       {nonce !== undefined && <input type="hidden" name="nonce" value={nonce} />}
 
-      <Field field="posterName" label={t("form.posterName")} hint={t("form.posterNameHint")}>
-        {input("posterName", {
-          required: true,
-          maxlength: PLAN_LIMITS.posterName,
-          autocomplete: "nickname",
-        })}
+      <Field field="title" label={t("form.title")}>
+        {input("title", { required: true, maxlength: PLAN_LIMITS.title })}
       </Field>
 
-      <Field field="activity" label={t("form.activity")}>
-        <select id={id("activity")} name="activity">
+      <Field field="activity" label={t("form.activity")} class="field-compact">
+        <select
+          id={id("activity")}
+          name="activity"
+          aria-invalid={errorFor("activity") !== undefined ? "true" : undefined}
+          aria-describedby={
+            errorFor("activity") !== undefined ? `${id("activity")}-error` : undefined
+          }
+        >
           {ACTIVITY_TYPES.map((activity) => (
             <option value={activity} selected={values.activity === activity}>
               {t(`activity.${activity}`)}
             </option>
           ))}
         </select>
-      </Field>
-
-      <Field field="title" label={t("form.title")}>
-        {input("title", { required: true, maxlength: PLAN_LIMITS.title })}
       </Field>
 
       <div class="field-row">
@@ -204,48 +376,63 @@ export function PlanForm({
         </Field>
       </div>
 
-      <Field field="timeZone" label={t("form.timeZone")}>
-        <select id={id("timeZone")} name="timeZone" data-detect-zone={detectZoneFrom}>
-          {timeZones.map((zone) => (
-            <option value={zone} selected={values.timeZone === zone}>
-              {zone}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <Field
-        field="areaLabel"
-        label={t("form.areaLabel")}
-        hint={`${t("form.areaLabelHint")} ${t("form.publicHint")}`}
-      >
-        {input("areaLabel", { required: true, maxlength: PLAN_LIMITS.areaLabel })}
-      </Field>
-
-      <MapTools t={t} map={map} placeSearch={placeSearch} />
-
-      <details open={values.areaLat !== "" || values.areaLng !== ""}>
-        <summary>{t("form.areaCoordinates")}</summary>
-        <p class="hint">{t("form.areaCoordinatesHint")}</p>
-        <div class="field-row">
-          <Field field="areaLat" label={t("form.latitude")}>
-            {input("areaLat", { inputmode: "decimal" })}
-          </Field>
-          <Field field="areaLng" label={t("form.longitude")}>
-            {input("areaLng", { inputmode: "decimal" })}
-          </Field>
-        </div>
+      <details class="zone-line" open={errorFor("timeZone") !== undefined}>
+        <summary>
+          <span class="visually-hidden">{`${t("form.timeZone")}, `}</span>
+          <span data-zone-name>{shownZone}</span>
+          {" · "}
+          <span class="zone-change">{t("layout.change")}</span>
+        </summary>
+        <Field field="timeZone" label={t("form.timeZone")}>
+          <select id={id("timeZone")} name="timeZone" data-detect-zone={detectZoneFrom}>
+            {timeZones.map((zone) => (
+              <option value={zone} selected={values.timeZone === zone}>
+                {zone}
+              </option>
+            ))}
+          </select>
+        </Field>
       </details>
 
-      <fieldset>
-        <legend>{t("form.exactStart")}</legend>
-        <p class="hint">{t("form.exactStartHint")}</p>
-        <p class="hint">{t("form.openModeWarning")}</p>
-        <Field field="exactDescription" label={t("form.exactDescription")}>
-          {input("exactDescription", { maxlength: 200 })}
+      <section class="where">
+        <h2>{t("form.where")}</h2>
+        <MapTools t={t} map={map} placeSearch={placeSearch} />
+
+        <Field
+          field="areaLabel"
+          label={t("form.areaLabel")}
+          hint={`${t("form.areaLabelHint")} ${t("form.publicHint")}`}
+        >
+          {input("areaLabel", { required: true, maxlength: PLAN_LIMITS.areaLabel })}
         </Field>
-        <details open={values.exactLat !== "" || values.exactLng !== ""}>
-          <summary>{t("form.coordinates")}</summary>
+
+        <details
+          open={values.areaLat !== "" || values.areaLng !== "" || hasError("areaLat", "areaLng")}
+        >
+          <summary>{t("form.areaCoordinates")}</summary>
+          <p class="hint">{t("form.areaCoordinatesHint")}</p>
+          <div class="field-row">
+            <Field field="areaLat" label={t("form.latitude")}>
+              {input("areaLat", { inputmode: "decimal" })}
+            </Field>
+            <Field field="areaLng" label={t("form.longitude")}>
+              {input("areaLng", { inputmode: "decimal" })}
+            </Field>
+          </div>
+        </details>
+
+        <Fold
+          title={t("fold.exact")}
+          value={exactSummaries[`${joinMode}:${exactSet ? "set" : "none"}`]}
+          kind="exact"
+          summaries={exactSummaries}
+          open={exactSet || hasError("exactDescription", "exactLat", "exactLng")}
+        >
+          <p class="hint">{t("form.exactStartHint")}</p>
+          <p class="hint">{t("form.openModeWarning")}</p>
+          <Field field="exactDescription" label={t("form.exactDescription")}>
+            {input("exactDescription", { maxlength: 200 })}
+          </Field>
           <div class="field-row">
             <Field field="exactLat" label={t("form.latitude")}>
               {input("exactLat", { inputmode: "decimal" })}
@@ -254,145 +441,206 @@ export function PlanForm({
               {input("exactLng", { inputmode: "decimal" })}
             </Field>
           </div>
+        </Fold>
+      </section>
+
+      {hostNameCollapsed ? (
+        <details class="host-name">
+          <summary>
+            {t("form.hostingAs", { name: values.posterName })}
+            {" · "}
+            <span class="zone-change">{t("layout.change")}</span>
+          </summary>
+          {hostNameField}
         </details>
-      </fieldset>
-
-      <div class="field-row">
-        <Field
-          field="distanceKm"
-          label={t("form.distance", { unit: t(units === "imperial" ? "unit.mi" : "unit.km") })}
-        >
-          {input("distanceKm", { inputmode: "decimal" })}
-        </Field>
-        <Field
-          field="elevationGainM"
-          label={t("form.elevation", { unit: t(units === "imperial" ? "unit.ft" : "unit.m") })}
-        >
-          {input("elevationGainM", { inputmode: "numeric" })}
-        </Field>
-      </div>
-
-      <fieldset>
-        <legend>{t("form.pace")}</legend>
-        <p class="hint">{t(units === "imperial" ? "form.paceHintImperial" : "form.paceHint")}</p>
-        <div class="field-row">
-          <Field field="paceFrom" label={t("form.paceFrom")}>
-            {input("paceFrom")}
-          </Field>
-          <Field field="paceTo" label={t("form.paceTo")}>
-            {input("paceTo")}
-          </Field>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>{t("form.dropPolicy")}</legend>
-        {DROP_POLICIES.map((policy) => (
-          <label class="choice">
-            <input
-              type="radio"
-              name="dropPolicy"
-              value={policy}
-              checked={values.dropPolicy === policy}
-            />
-            {t(`drop.${policy}`)}
-          </label>
-        ))}
-        {errorFor("dropPolicy") !== undefined && (
-          <p class="error">{fieldErrorMessage("choice_invalid", t)}</p>
-        )}
-      </fieldset>
-
-      <fieldset>
-        <legend>{t("form.joinMode")}</legend>
-        <p class="hint">{t("form.joinModeHint")}</p>
-        {JOIN_MODES.map((mode) => (
-          <label class="choice">
-            <input
-              type="radio"
-              name="joinMode"
-              value={mode}
-              checked={(values.joinMode === "" ? "open" : values.joinMode) === mode}
-            />
-            {t(mode === "open" ? "form.joinOpen" : "form.joinApproval")}
-          </label>
-        ))}
-        {errorFor("joinMode") !== undefined && (
-          <p class="error">{fieldErrorMessage("choice_invalid", t)}</p>
-        )}
-      </fieldset>
-
-      {visibility !== undefined && (
-        <VisibilityFieldset
-          t={t}
-          choice={visibility}
-          value={values.visibility}
-          error={errorFor("visibility")}
-        />
+      ) : (
+        hostNameField
       )}
 
-      <ShareFieldset
-        t={t}
-        values={values}
-        error={SHARE_BUTTONS.map((button) => errorFor(SHARE_BUTTON_FIELDS[button])).find(Boolean)}
-      />
+      <div class="folds">
+        <Fold
+          title={t("fold.route")}
+          value={routeSummary}
+          open={hasError(
+            "distanceKm",
+            "elevationGainM",
+            "paceFrom",
+            "paceTo",
+            "dropPolicy",
+            "gpx",
+            "note",
+          )}
+        >
+          <div class="field-row">
+            <Field
+              field="distanceKm"
+              label={t("form.distance", {
+                unit: t(units === "imperial" ? "unit.mi" : "unit.km"),
+              })}
+            >
+              {input("distanceKm", { inputmode: "decimal" })}
+            </Field>
+            <Field
+              field="elevationGainM"
+              label={t("form.elevation", {
+                unit: t(units === "imperial" ? "unit.ft" : "unit.m"),
+              })}
+            >
+              {input("elevationGainM", { inputmode: "numeric" })}
+            </Field>
+          </div>
 
-      <Field field="note" label={t("form.note")} hint={t("form.publicHint")}>
-        <textarea id={id("note")} name="note" rows={4} maxlength={PLAN_LIMITS.note}>
-          {values.note}
-        </textarea>
-      </Field>
+          <fieldset>
+            <legend>{t("form.pace")}</legend>
+            <p class="hint">
+              {t(units === "imperial" ? "form.paceHintImperial" : "form.paceHint")}
+            </p>
+            <div class="field-row">
+              <Field field="paceFrom" label={t("form.paceFrom")}>
+                {input("paceFrom")}
+              </Field>
+              <Field field="paceTo" label={t("form.paceTo")}>
+                {input("paceTo")}
+              </Field>
+            </div>
+          </fieldset>
 
-      <fieldset>
-        <legend>{t("form.colors")}</legend>
-        <datalist id="color-presets">
-          {COLOR_PRESETS.map((color) => (
-            <option value={color} />
-          ))}
-        </datalist>
-        <div class="field-row">
-          <Field field="primaryColor" label={t("form.primaryColor")}>
-            {input("primaryColor", { type: "color", list: "color-presets" })}
-          </Field>
-          <Field field="secondaryColor" label={t("form.secondaryColor")}>
-            {input("secondaryColor", { type: "color", list: "color-presets" })}
-          </Field>
-        </div>
-      </fieldset>
-
-      {withGpx && (
-        <div class={errors.some((e) => e.field === "gpx") ? "field field-invalid" : "field"}>
-          <label for="field-gpx">{t("form.gpx")}</label>
-          <input id="field-gpx" type="file" name="gpx" accept=".gpx,application/gpx+xml" />
-          <p class="hint">{t("form.gpxHint")}</p>
-          {errors
-            .filter((e) => e.field === "gpx")
-            .map((e) => (
-              <p class="error">{fieldErrorMessage(e.code, t)}</p>
+          <fieldset>
+            <legend>{t("form.dropPolicy")}</legend>
+            {DROP_POLICIES.map((policy) => (
+              <label class="choice">
+                <input
+                  type="radio"
+                  name="dropPolicy"
+                  value={policy}
+                  checked={values.dropPolicy === policy}
+                />
+                {t(`drop.${policy}`)}
+              </label>
             ))}
-        </div>
-      )}
-      {withGpx && <RouteTrimField t={t} id="field-gpxTrim" selected={routeTrim} units={units} />}
+            {errorFor("dropPolicy") !== undefined && (
+              <p class="error">{fieldErrorMessage("choice_invalid", t)}</p>
+            )}
+          </fieldset>
 
-      <Field field="retentionDays" label={t("form.retention")}>
-        <select id={id("retentionDays")} name="retentionDays">
-          {retentionOptions(maxRetentionDays, retentionDays).map((days) => (
-            <option value={days} selected={retentionDays === days}>
-              {t("form.retentionDays", { count: Number(days) })}
-            </option>
-          ))}
-        </select>
-      </Field>
+          {withGpx && (
+            <div class={errors.some((e) => e.field === "gpx") ? "field field-invalid" : "field"}>
+              <label for="field-gpx">{t("form.gpx")}</label>
+              <input id="field-gpx" type="file" name="gpx" accept=".gpx,application/gpx+xml" />
+              <p class="hint">{t("form.gpxHint")}</p>
+              {errors
+                .filter((e) => e.field === "gpx")
+                .map((e) => (
+                  <p class="error">{fieldErrorMessage(e.code, t)}</p>
+                ))}
+            </div>
+          )}
+          {withGpx && (
+            <RouteTrimField t={t} id="field-gpxTrim" selected={routeTrim} units={units} />
+          )}
 
-      <Field field="recapWindow" label={t("form.recapWindow")} hint={t("form.recapWindowHint")}>
-        <RecapWindowSelect
-          t={t}
-          id={id("recapWindow")}
-          selected={values.recapWindow || defaultRecapWindow(Number(retentionDays))}
-        />
-      </Field>
+          <Field field="note" label={t("form.note")} hint={t("form.publicHint")}>
+            <textarea id={id("note")} name="note" rows={4} maxlength={PLAN_LIMITS.note}>
+              {values.note}
+            </textarea>
+          </Field>
+        </Fold>
 
-      {!forTemplate && <TemplateOptions t={t} values={values} errors={errors} />}
+        <Fold
+          title={t("fold.who")}
+          value={whoSummary}
+          kind="who"
+          summaries={whoSummaries}
+          strong
+          warning={effectiveVisibility === "public"}
+          open={hasError("joinMode", "visibility") || confirmAcceptPending !== undefined}
+        >
+          <fieldset>
+            <legend>{t("form.joinMode")}</legend>
+            <p class="hint">{t("form.joinModeHint")}</p>
+            {JOIN_MODES.map((mode) => (
+              <label class="choice">
+                <input type="radio" name="joinMode" value={mode} checked={joinMode === mode} />
+                {t(mode === "open" ? "form.joinOpen" : "form.joinApproval")}
+              </label>
+            ))}
+            {errorFor("joinMode") !== undefined && (
+              <p class="error">{fieldErrorMessage("choice_invalid", t)}</p>
+            )}
+          </fieldset>
+
+          {visibility !== undefined && (
+            <VisibilityFieldset
+              t={t}
+              choice={visibility}
+              value={values.visibility}
+              error={errorFor("visibility")}
+            />
+          )}
+        </Fold>
+
+        <Fold
+          title={t("fold.look")}
+          value={lookSummary}
+          open={hasError(
+            ...SHARE_BUTTONS.map((button) => SHARE_BUTTON_FIELDS[button]),
+            "primaryColor",
+            "secondaryColor",
+          )}
+        >
+          <ShareFieldset
+            t={t}
+            values={values}
+            error={SHARE_BUTTONS.map((button) => errorFor(SHARE_BUTTON_FIELDS[button])).find(
+              Boolean,
+            )}
+          />
+
+          <fieldset>
+            <legend>{t("form.colors")}</legend>
+            <datalist id="color-presets">
+              {COLOR_PRESETS.map((color) => (
+                <option value={color} />
+              ))}
+            </datalist>
+            <div class="field-row">
+              <Field field="primaryColor" label={t("form.primaryColor")}>
+                {input("primaryColor", { type: "color", list: "color-presets" })}
+              </Field>
+              <Field field="secondaryColor" label={t("form.secondaryColor")}>
+                {input("secondaryColor", { type: "color", list: "color-presets" })}
+              </Field>
+            </div>
+          </fieldset>
+        </Fold>
+
+        <Fold
+          title={t("fold.after")}
+          value={afterSummary}
+          open={hasError(
+            "retentionDays",
+            "recapWindow",
+            "keepAsTemplate",
+            "templateIncludePrivate",
+          )}
+        >
+          <Field field="retentionDays" label={t("form.retention")}>
+            <select id={id("retentionDays")} name="retentionDays">
+              {retentionOptions(maxRetentionDays, retentionDays).map((days) => (
+                <option value={days} selected={retentionDays === days}>
+                  {t("form.retentionDays", { count: Number(days) })}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field field="recapWindow" label={t("form.recapWindow")} hint={t("form.recapWindowHint")}>
+            <RecapWindowSelect t={t} id={id("recapWindow")} selected={recapWindow} />
+          </Field>
+
+          {!forTemplate && <TemplateOptions t={t} values={values} errors={errors} />}
+        </Fold>
+      </div>
 
       {confirmAcceptPending !== undefined && (
         <>
@@ -456,31 +704,21 @@ function VisibilityFieldset({
 }) {
   const { followers, sharedBy } = choice;
   const handle = { handle: sharedBy ?? "" };
-  const options: Record<Choosable, { shown: boolean; allowed: boolean; label: string }> = {
-    link: { shown: true, allowed: true, label: t("form.visibilityLink") },
-    followers: {
-      shown: followers !== undefined,
-      allowed: followers?.allowed === true,
-      label:
-        sharedBy === undefined
-          ? t("form.visibilityFollowersNone")
-          : t("form.visibilityFollowers", handle),
-    },
-    public: {
-      // Public that nothing would find, and logging in would not help: not offered (I59).
-      shown: choice.publicAllowed || choice.loginHref !== undefined,
-      allowed: choice.publicAllowed,
-      label:
-        sharedBy === undefined
-          ? t("form.visibilityPublic")
-          : choice.nearby
-            ? t("form.visibilityPublicShared", handle)
-            : t("form.visibilityPublicProfile", handle),
-    },
+  const { options, shown, chosen } = visibilityAvailability(choice, value);
+  const labels: Record<Choosable, string> = {
+    link: t("form.visibilityLink"),
+    followers:
+      sharedBy === undefined
+        ? t("form.visibilityFollowersNone")
+        : t("form.visibilityFollowers", handle),
+    public:
+      sharedBy === undefined
+        ? t("form.visibilityPublic")
+        : choice.nearby
+          ? t("form.visibilityPublicShared", handle)
+          : t("form.visibilityPublicProfile", handle),
   };
-  const shown = CHOOSABLE_VISIBILITIES.filter((visibility) => options[visibility].shown);
   if (shown.length === 1) return null;
-  const chosen = shown.find((visibility) => visibility === value && options[visibility].allowed);
   return (
     <fieldset>
       <legend>{t("form.visibility")}</legend>
@@ -494,7 +732,7 @@ function VisibilityFieldset({
             checked={(chosen ?? "link") === visibility}
             disabled={!options[visibility].allowed}
           />
-          {options[visibility].label}
+          {labels[visibility]}
         </label>
       ))}
       {choice.fediverse === "shared" && <p class="warning">{t("form.fediverseShared")}</p>}

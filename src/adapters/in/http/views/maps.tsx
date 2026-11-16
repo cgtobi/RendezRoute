@@ -14,7 +14,8 @@ export function MapAssets() {
   return (
     <>
       <link rel="stylesheet" href="/static/build/map.css" />
-      <script src="/static/build/map.js" defer></script>
+      {/* A module for its own scope: see the app.js tag in layout.tsx. */}
+      <script src="/static/build/map.js" type="module"></script>
     </>
   );
 }

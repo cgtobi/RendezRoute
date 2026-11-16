@@ -7,9 +7,11 @@ import { expect, test } from "@playwright/test";
 import {
   adminLogIn,
   createPlan,
+  fillHostName,
   inFiveDays,
   newInvite,
   oidcLogIn,
+  openFold,
   person,
   useInvite,
 } from "./helpers.ts";
@@ -245,7 +247,7 @@ test("Nearby: a public plan found from the device's location and from a typed pl
   // Public plans need an account here (PUBLIC_REQUIRES_LOGIN, decision D35).
   await oidcLogIn(host);
   await host.goto("/new");
-  await host.getByLabel("Your name").fill("Anna");
+  await fillHostName(host, "Anna");
   await host.getByLabel("Title").fill(title);
   await host.getByLabel("Date").fill(inFiveDays());
   await host.getByLabel("Start time").fill("08:30");
@@ -254,6 +256,7 @@ test("Nearby: a public plan found from the device's location and from a typed pl
   await host.getByLabel("Find a place").fill("Flaucher");
   await host.locator(".place-search").getByRole("button", { name: "Search" }).click();
   await host.getByRole("button", { name: "Flaucher, Isar, Munich" }).click();
+  await openFold(host, "Who can join and find it");
   await host.getByLabel("Anyone: listed in Nearby on this site").check();
   await host.getByRole("button", { name: "Create plan" }).click();
   await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();

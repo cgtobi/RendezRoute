@@ -74,7 +74,8 @@ export function Layout({
         <link rel="apple-touch-icon" href={`${pathBase}static/brand/apple-touch-icon.png`} />
         <link rel="stylesheet" href={`${pathBase}static/build/fonts.css`} />
         <link rel="stylesheet" href={`${pathBase}static/app.css`} />
-        <script src={`${pathBase}static/build/app.js`} defer></script>
+        {/* A module, not a classic script: classic bundles share one global scope and the minified map.js overwrote names of app.js. */}
+        <script src={`${pathBase}static/build/app.js`} type="module"></script>
         {head}
       </head>
       <body>

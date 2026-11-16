@@ -2,7 +2,7 @@
 // that has really started, the host closes the recap and sees the counts with the signed note.
 // The image runs on the real clock, so the plan starts about two minutes after it is created.
 import { expect, test } from "@playwright/test";
-import { person } from "./helpers.ts";
+import { openZoneLine, person } from "./helpers.ts";
 
 test("Participants rate a plan; the host sees the result once the recap is closed", async ({
   browser,
@@ -19,6 +19,7 @@ test("Participants rate a plan; the host sees the result once the recap is close
   await host.goto("/new");
   await host.getByLabel("Your name").fill("Anna");
   await host.getByLabel("Title").fill("Rated run");
+  await openZoneLine(host);
   await host.getByLabel("Time zone").selectOption("UTC");
   await host.getByLabel("Date").fill(iso.slice(0, 10));
   await host.getByLabel("Start time").fill(iso.slice(11, 16));

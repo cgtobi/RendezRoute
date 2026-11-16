@@ -3,7 +3,7 @@ import { en } from "../../../src/adapters/i18n/messages/en.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
 import { escaped } from "../../support/html.ts";
-import { createPlanViaUi, planForm } from "../../support/plans.ts";
+import { createPlanViaUi, planForm, respondViaUi } from "../../support/plans.ts";
 
 const DEVICE_COOKIE = "__Host-rr-device";
 
@@ -47,6 +47,56 @@ describe("GET /new (spec 5 feature 1)", () => {
   it("warns that public fields must not contain the exact meeting point (decision D2)", async () => {
     const { client } = await setup();
     expect(await (await client.get("/new")).text()).toContain(escaped(en["form.publicHint"]));
+  });
+});
+
+describe("GET /new host name from the device (D67, I83)", () => {
+  const closedLine = (name: string) =>
+    new RegExp(
+      `<details class="host-name"><summary>${en["form.hostingAs"].replace("{name}", name)}`,
+    );
+
+  it("shows the collapsed 'Hosting as' line to a browser that hosted a plan", async () => {
+    const { client } = await setup();
+    await createPlanViaUi(client, { posterName: "Tobias" });
+    const html = await (await client.get("/new")).text();
+    expect(html).toMatch(closedLine("Tobias"));
+    expect(html).not.toMatch(/<details class="host-name" open/);
+    expect(html).toContain('name="posterName"');
+    expect(html).toContain('value="Tobias"');
+  });
+
+  it("shows the open, empty field to a fresh browser and does not create a device", async () => {
+    const { client, app, database } = await setup();
+    await createPlanViaUi(new TestClient(app), { posterName: "Tobias" });
+    const html = await (await client.get("/new")).text();
+    expect(html).not.toContain('class="host-name"');
+    expect(html).toMatch(/name="posterName"[^>]*value=""/);
+    expect(client.cookies.has(DEVICE_COOKIE)).toBe(false);
+    expect(database.sqlite.prepare("select count(*) from devices").pluck().get()).toBe(1);
+  });
+
+  it("gives nothing to a browser that only responded to someone's plan", async () => {
+    const { client, app } = await setup();
+    const { planId } = await createPlanViaUi(new TestClient(app), { posterName: "Tobias" });
+    await respondViaUi(client, planId, "Carla", "joined");
+    const html = await (await client.get("/new")).text();
+    expect(html).not.toContain('class="host-name"');
+    expect(html).not.toContain("Tobias");
+    expect(html).not.toContain("Carla");
+  });
+
+  it("uses a kept template once the plan is gone", async () => {
+    const { client } = await setup();
+    const { planId } = await createPlanViaUi(client, {
+      posterName: "Tobias",
+      keepAsTemplate: "1",
+    });
+    const hidden = await client.hiddenFields(`/p/${planId}/host/delete`);
+    const deleted = await client.postForm(`/p/${planId}/host/delete`, hidden);
+    expect(deleted.status).toBeLessThan(400);
+    expect((await client.get(`/p/${planId}`)).status).toBe(404);
+    expect(await (await client.get("/new")).text()).toMatch(closedLine("Tobias"));
   });
 });
 

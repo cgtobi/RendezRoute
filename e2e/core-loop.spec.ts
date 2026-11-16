@@ -53,6 +53,10 @@ async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: str
   await more.click();
   await expect(host.getByRole("heading", { name: "Manage your plan" })).toBeVisible();
   await expect(host.locator('input[name="title"]')).toBeVisible();
+  // The device remembers whom it hosted as (D67): the next form shows the name collapsed.
+  await host.goto("/new");
+  await expect(host.locator("details.host-name > summary")).toContainText("Hosting as Anna");
+  await expect(host.locator("details.host-name")).not.toHaveAttribute("open", "");
   return { planUrl };
 }
 

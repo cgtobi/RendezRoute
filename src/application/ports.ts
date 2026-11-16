@@ -774,6 +774,12 @@ export interface DeviceRepository {
   /** Idempotent. */
   link(deviceId: string, target: DeviceLinkTarget, now: Date): Promise<void>;
   hasLink(deviceId: string, target: DeviceLinkTarget, scope?: AccessScope): Promise<boolean>;
+  /**
+   * The poster name of the plan the device hosts that was created last, else of the template
+   * linked to it that changed last; never a blank name, never a response's display name (D67).
+   * Read-only.
+   */
+  lastHostName(deviceId: string): Promise<string | undefined>;
   /** What the device links to that no account owns yet, which claiming would move. */
   claimable(deviceId: string): Promise<ClaimCounts>;
   /**

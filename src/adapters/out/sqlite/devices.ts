@@ -4,7 +4,7 @@ import type {
   DeviceLinkTarget,
   DeviceRepository,
 } from "../../../application/ports.ts";
-import type { Kysely } from "kysely";
+import { type Kysely, sql } from "kysely";
 import { accessSource } from "./access.ts";
 import { checkpoint, type Database } from "./database.ts";
 import type { DatabaseSchema } from "./schema.ts";
@@ -207,6 +207,35 @@ export function createDeviceRepository(database: Database): DeviceRepository {
         .set({ token_hash: tokenHash })
         .where("id", "=", deviceId)
         .execute();
+    },
+
+    async lastHostName(deviceId) {
+      const hosted = await database.db
+        .selectFrom("device_links")
+        .innerJoin("plans", "plans.id", "device_links.plan_id")
+        .select("plans.poster_name as name")
+        .where("device_links.device_id", "=", deviceId)
+        // The table CHECKs already tie role to the target column; kept as extra safety.
+        .where("device_links.role", "=", "host")
+        .where(sql<boolean>`trim(plans.poster_name) <> ''`)
+        .orderBy("plans.created_at", "desc")
+        .orderBy("plans.id", "desc")
+        .limit(1)
+        .executeTakeFirst();
+      if (hosted !== undefined) return hosted.name;
+      const kept = await database.db
+        .selectFrom("device_links")
+        .innerJoin("plan_templates", "plan_templates.id", "device_links.template_id")
+        .select("plan_templates.poster_name as name")
+        .where("device_links.device_id", "=", deviceId)
+        // The table CHECKs already tie role to the target column; kept as extra safety.
+        .where("device_links.role", "=", "template")
+        .where(sql<boolean>`trim(plan_templates.poster_name) <> ''`)
+        .orderBy("plan_templates.updated_at", "desc")
+        .orderBy("plan_templates.id", "desc")
+        .limit(1)
+        .executeTakeFirst();
+      return kept?.name;
     },
 
     async claimable(deviceId) {

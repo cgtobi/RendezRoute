@@ -3,6 +3,7 @@ import { visibilityChoices } from "../../../../application/public-plans.ts";
 import type { Context, Hono } from "hono";
 import { createPlan, viewPlan, viewPlanTheme } from "../../../../application/plans.ts";
 import { viewAccount } from "../../../../application/accounts.ts";
+import { suggestHostName } from "../../../../application/host-name.ts";
 import { postingNeed } from "../../../../application/posting-rules.ts";
 import { DEFAULT_COLORS } from "../../../../domain/color.ts";
 import { SHARE_BUTTONS } from "../../../../domain/plan.ts";
@@ -101,7 +102,12 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       accounts === undefined
         ? undefined
         : await viewAccount(accounts, { deviceToken: readDeviceToken(c, config) });
-    const posterName = account?.kind === "account" ? (account.displayName ?? "") : "";
+    // Otherwise the name of this device's last plan or template (D67); nothing is created or set.
+    const posterName =
+      (await suggestHostName(planDeps, {
+        deviceToken: readDeviceToken(c, config),
+        accountName: account?.kind === "account" ? account.displayName : undefined,
+      })) ?? "";
     return renderForm(c, { ...emptyForm(c.get("t")), posterName }, [], newNonce());
   });
 

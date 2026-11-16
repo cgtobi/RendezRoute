@@ -66,7 +66,7 @@ export const en = {
   "privacy.retentionLowered":
     "Plans created before this maximum was lowered may keep their longer period, up to {max} days.",
   "privacy.devices":
-    "The link between your browser and your plans or responses is deleted {unlinkedDays} days after its last use once nothing is linked to it anymore, and in any case after {unusedDays} days without use.",
+    "The link between your browser and your plans or responses is deleted {unlinkedDays} days after its last use once nothing is linked to it anymore, and in any case after {unusedDays} days without use. The name of your last plan or template fills the plan form again on this device; nothing more is stored for it.",
   "privacy.backups":
     "Automatic database backups made before software updates are deleted after {days} days.",
   "privacy.operatorHeading": "Who can access the data",

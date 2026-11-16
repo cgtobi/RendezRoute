@@ -666,6 +666,35 @@ export function createFakeRepositories(): {
       async hasLink(deviceId, target, scope) {
         return access(deviceId, scope).has(linkKey(deviceId, target));
       },
+      async lastHostName(deviceId) {
+        const named = (name: string) => (name.trim() === "" ? undefined : name);
+        const linked = (role: string) =>
+          [...links].flatMap((key) => {
+            const [device, linkRole, id = ""] = key.split("|");
+            return device === deviceId && linkRole === role ? [id] : [];
+          });
+        const byLatest = <T extends { at: Date; id: string }>(a: T, b: T) =>
+          b.at.getTime() - a.at.getTime() || b.id.localeCompare(a.id);
+        const hosted = linked("host")
+          .flatMap((id) => {
+            const plan = plans.get(id)?.plan;
+            return plan === undefined ? [] : [{ id, at: plan.createdAt, name: plan.posterName }];
+          })
+          .sort(byLatest);
+        const fromTemplates = linked("template")
+          .flatMap((id) => {
+            const template = templates.get(id)?.template;
+            return template === undefined
+              ? []
+              : [{ id, at: template.updatedAt, name: template.posterName }];
+          })
+          .sort(byLatest);
+        for (const entry of [...hosted, ...fromTemplates]) {
+          const name = named(entry.name);
+          if (name !== undefined) return name;
+        }
+        return undefined;
+      },
       async claimable(deviceId) {
         return countClaims(claimableKeys(deviceId));
       },

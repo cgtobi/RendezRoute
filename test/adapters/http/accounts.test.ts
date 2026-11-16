@@ -261,6 +261,16 @@ describe("the account page (spec 7 Identity)", () => {
     await logIn(client, oidc);
     expect(await (await client.get("/new")).text()).toContain('value="Anna Example"');
   });
+
+  it("puts the account's name before the name of a plan this browser hosted (D67)", async () => {
+    const { app, oidc } = await setup();
+    const client = new TestClient(app);
+    await createPlanViaUi(client, { posterName: "Guest alias" });
+    await logIn(client, oidc);
+    const html = await (await client.get("/new")).text();
+    expect(html).toContain('value="Anna Example"');
+    expect(html).not.toContain("Guest alias");
+  });
 });
 
 describe("My data of a logged-in browser (spec 3.7)", () => {

@@ -69,7 +69,7 @@ export const fr: Messages = {
   "privacy.retentionLowered":
     "Les sorties créées avant que ce maximum soit abaissé peuvent garder leur durée plus longue, jusqu’à {max} jours.",
   "privacy.devices":
-    "Le lien entre votre navigateur et vos sorties ou réponses est supprimé {unlinkedDays} jours après sa dernière utilisation dès que plus rien n’y est associé, et dans tous les cas après {unusedDays} jours sans utilisation.",
+    "Le lien entre votre navigateur et vos sorties ou réponses est supprimé {unlinkedDays} jours après sa dernière utilisation dès que plus rien n’y est associé, et dans tous les cas après {unusedDays} jours sans utilisation. Le nom de votre dernière sortie ou de votre dernier modèle remplit à nouveau le formulaire sur cet appareil ; rien d’autre n’est conservé pour cela.",
   "privacy.backups":
     "Les sauvegardes automatiques de la base faites avant les mises à jour du logiciel sont supprimées après {days} jours.",
   "privacy.operatorHeading": "Qui peut accéder aux données",

@@ -67,7 +67,7 @@ export const de: Messages = {
   "privacy.retentionLowered":
     "Treffen, die erstellt wurden, bevor dieses Maximum gesenkt wurde, können ihren längeren Zeitraum behalten, höchstens {max} Tage.",
   "privacy.devices":
-    "Die Verknüpfung deines Browsers mit deinen Treffen oder Antworten wird {unlinkedDays} Tage nach der letzten Nutzung gelöscht, sobald nichts mehr damit verknüpft ist, und in jedem Fall nach {unusedDays} Tagen ohne Nutzung.",
+    "Die Verknüpfung deines Browsers mit deinen Treffen oder Antworten wird {unlinkedDays} Tage nach der letzten Nutzung gelöscht, sobald nichts mehr damit verknüpft ist, und in jedem Fall nach {unusedDays} Tagen ohne Nutzung. Der Name deines letzten Treffens oder deiner letzten Vorlage füllt das Formular auf diesem Gerät wieder aus; dafür wird nichts weiter gespeichert.",
   "privacy.backups":
     "Automatische Datenbanksicherungen vor Software-Updates werden nach {days} Tagen gelöscht.",
   "privacy.operatorHeading": "Wer auf die Daten zugreifen kann",

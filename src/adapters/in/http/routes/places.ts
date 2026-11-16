@@ -1,7 +1,7 @@
 // Place search endpoint (spec 3.9, decision D12): same-origin JSON behind the CSRF middleware,
 // so it cannot serve as an open geocoding proxy.
 import type { Hono } from "hono";
-import { searchPlaces } from "../../../../application/places.ts";
+import { searchPlaces, suggestPlaceName } from "../../../../application/places.ts";
 import type { Geocoder } from "../../../../application/ports.ts";
 import type { AppEnv } from "../app.tsx";
 import type { RateLimits } from "../rate-limit.ts";
@@ -34,6 +34,44 @@ export function registerPlaceRoutes(
     switch (result.kind) {
       case "results":
         return c.json({ places: result.places });
+      case "invalid":
+        return c.json({ error: "bad_request" }, 400);
+      case "unavailable":
+        return c.json({ error: "unavailable" }, 503);
+    }
+  });
+
+  // Label suggestion for a point picked on the form map (decision D70). The application snaps
+  // the point to the public grid before the geocoder (and its cache) sees it.
+  app.post("/geocode/reverse", async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      body = undefined;
+    }
+    const point =
+      typeof body === "object" && body !== null && "lat" in body && "lng" in body
+        ? { lat: body.lat, lng: body.lng }
+        : undefined;
+    c.header("cache-control", "no-store");
+    if (point === undefined || typeof point.lat !== "number" || typeof point.lng !== "number") {
+      return c.json({ error: "bad_request" }, 400);
+    }
+    const allowed = limits.geocode.take(clientOf(c));
+    if (!allowed.ok) {
+      c.header("retry-after", String(allowed.retryAfterSeconds));
+      return c.json({ error: "rate_limited" }, 429);
+    }
+    const result = await suggestPlaceName(
+      { geocoder },
+      { lat: point.lat, lng: point.lng, language: c.get("language") },
+    );
+    switch (result.kind) {
+      case "found":
+        return c.json({ label: result.label });
+      case "none":
+        return c.json({ label: null });
       case "invalid":
         return c.json({ error: "bad_request" }, 400);
       case "unavailable":

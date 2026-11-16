@@ -55,6 +55,168 @@ describe("Nominatim geocoder (spec 3.9)", () => {
   });
 });
 
+describe("Nominatim reverse lookup (decision D70)", () => {
+  const reverseBody = (address: Record<string, string> | undefined, extra = {}) =>
+    JSON.stringify({
+      place_id: 1,
+      display_name: "12, Some Road, Sendling, München, Bayern, Deutschland",
+      name: "Some Cafe",
+      ...(address === undefined ? {} : { address }),
+      ...extra,
+    });
+
+  async function lookup(body: string, language = "de") {
+    const http = new FakeOutboundHttp().respond("https://geo.example.org/nominatim/reverse", {
+      body,
+    });
+    const geocoder = createNominatimGeocoder({
+      http,
+      baseUrl: BASE,
+      throttle: async (run) => run(),
+    });
+    return { http, label: await geocoder.reverse({ lat: 48.11, lng: 11.56 }, { language }) };
+  }
+
+  it("asks for a neighbourhood-level answer with the address parts, and sends only the point", async () => {
+    const { http } = await lookup(reverseBody({ suburb: "Sendling", city: "München" }));
+    const url = http.requests[0];
+    expect(url?.pathname).toBe("/nominatim/reverse");
+    expect(Object.fromEntries(url?.searchParams ?? [])).toEqual({
+      lat: "48.11",
+      lon: "11.56",
+      format: "jsonv2",
+      zoom: "14",
+      addressdetails: "1",
+      "accept-language": "de",
+    });
+  });
+
+  it("names the district and the city", async () => {
+    expect((await lookup(reverseBody({ suburb: "Sendling", city: "München" }))).label).toBe(
+      "Sendling, München",
+    );
+    expect(
+      (await lookup(reverseBody({ city_district: "Bezirk 6", city: "München", suburb: "" }))).label,
+    ).toBe("Bezirk 6, München");
+    expect((await lookup(reverseBody({ quarter: "Altstadt", town: "Bamberg" }))).label).toBe(
+      "Altstadt, Bamberg",
+    );
+    expect(
+      (await lookup(reverseBody({ borough: "Mitte", quarter: "Q", city: "Berlin" }))).label,
+    ).toBe("Mitte, Berlin");
+  });
+
+  it("does not use a neighbourhood, which can be a single housing estate", async () => {
+    expect(
+      (await lookup(reverseBody({ neighbourhood: "Siedlung X", city: "München" }))).label,
+    ).toBe("München");
+    expect((await lookup(reverseBody({ neighbourhood: "Siedlung X" }))).label).toBeUndefined();
+  });
+
+  it("cleans the name: no control or bidi characters, collapsed spaces", async () => {
+    const dirty = "Send\tling\u0085  \u202Eevil\u202C";
+    const { label } = await lookup(reverseBody({ suburb: dirty, city: " Mün\nchen " }));
+    expect(label).toBe("Send ling evil, Mün chen");
+    expect((await lookup(reverseBody({ city: "\t\u202E \u0085" }))).label).toBeUndefined();
+  });
+
+  it("cuts a long name on a code point without a dangling separator", async () => {
+    const district = "d".repeat(99);
+    const cut = (await lookup(reverseBody({ suburb: district, city: "München" }))).label;
+    expect(cut).toBe(district);
+    const emoji = (await lookup(reverseBody({ city: "😀".repeat(150) }))).label;
+    expect(Array.from(emoji ?? "")).toHaveLength(100);
+    const spaced = (await lookup(reverseBody({ suburb: "d".repeat(98), city: "x y" }))).label;
+    expect(spaced).toBe("d".repeat(98));
+  });
+
+  it("names only the city, town, village or municipality when there is no district", async () => {
+    expect((await lookup(reverseBody({ city: "München" }))).label).toBe("München");
+    expect((await lookup(reverseBody({ village: "Oberammergau", state: "Bayern" }))).label).toBe(
+      "Oberammergau",
+    );
+    expect((await lookup(reverseBody({ municipality: "Gemeinde X" }))).label).toBe("Gemeinde X");
+  });
+
+  it("does not repeat a district that is named like the city", async () => {
+    expect((await lookup(reverseBody({ suburb: "München", city: "München" }))).label).toBe(
+      "München",
+    );
+  });
+
+  it("never uses the road, house number, building names or the display name", async () => {
+    const street = await lookup(
+      reverseBody({ road: "Some Road", house_number: "12", postcode: "81369", state: "Bayern" }),
+    );
+    expect(street.label).toBeUndefined();
+    const amenity = await lookup(reverseBody({ amenity: "Some Cafe", building: "B", shop: "S" }));
+    expect(amenity.label).toBeUndefined();
+    const full = (
+      await lookup(
+        reverseBody({
+          road: "Some Road",
+          house_number: "12",
+          amenity: "Some Cafe",
+          suburb: "Sendling",
+          city: "München",
+        }),
+      )
+    ).label;
+    expect(full).toBe("Sendling, München");
+    expect(full).not.toMatch(/Road|12|Cafe|Bayern/);
+  });
+
+  it("finds nothing for an error answer or an answer without an address", async () => {
+    expect((await lookup(JSON.stringify({ error: "Unable to geocode" }))).label).toBeUndefined();
+    expect(
+      (await lookup(reverseBody({ city: "München" }, { error: "Unable to geocode" }))).label,
+    ).toBeUndefined();
+    expect((await lookup(reverseBody(undefined))).label).toBeUndefined();
+  });
+
+  it("limits the name to the length of the meeting-area field", async () => {
+    const { label } = await lookup(reverseBody({ city: "x".repeat(300) }));
+    expect(Array.from(label ?? "")).toHaveLength(100);
+  });
+
+  it("fails on errors and unexpected responses, so callers can say the service is unavailable", async () => {
+    for (const http of [
+      new FakeOutboundHttp().fail("https://geo.example.org/", new Error("timed out")),
+      new FakeOutboundHttp().respond("https://geo.example.org/", { status: 503, body: "busy" }),
+      new FakeOutboundHttp().respond("https://geo.example.org/", { body: "<html>" }),
+      new FakeOutboundHttp().respond("https://geo.example.org/", { body: "[]" }),
+      new FakeOutboundHttp().respond("https://geo.example.org/", { body: "null" }),
+      new FakeOutboundHttp().respond("https://geo.example.org/", {
+        body: '{"address": "Sendling"}',
+      }),
+    ]) {
+      const geocoder = createNominatimGeocoder({
+        http,
+        baseUrl: BASE,
+        throttle: async (run) => run(),
+      });
+      await expect(
+        geocoder.reverse({ lat: 48.11, lng: 11.56 }, { language: "en" }),
+      ).rejects.toBeInstanceOf(Error);
+    }
+  });
+
+  it("goes through the same throttle as the search", async () => {
+    const http = new FakeOutboundHttp().respond("https://geo.example.org/", { body: "{}" });
+    let throttled = 0;
+    const geocoder = createNominatimGeocoder({
+      http,
+      baseUrl: BASE,
+      throttle: async (run) => {
+        throttled += 1;
+        return run();
+      },
+    });
+    await geocoder.reverse({ lat: 1, lng: 2 }, { language: "en" });
+    expect(throttled).toBe(1);
+  });
+});
+
 describe("throttle (spec 3.9: max 1 request per second)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -126,5 +288,55 @@ describe("cache (spec 3.10: public data, at most 7 days)", () => {
     await expect(cached.search("a", { language: "en" })).rejects.toThrow("unavailable");
     inner.failing = false;
     await expect(cached.search("a", { language: "en" })).resolves.toEqual([]);
+  });
+
+  it("answers reverse lookups from the cache by language and 0.01 degree cell", async () => {
+    const inner = new FakeGeocoder({}, { "48.11,11.56": "Sendling, München" });
+    const cached = createCachedGeocoder(inner, {
+      clock: new FakeClock(),
+      ttlMs: 1000,
+      maxEntries: 10,
+    });
+    const en = { language: "en" };
+    expect(await cached.reverse({ lat: 48.11, lng: 11.56 }, en)).toBe("Sendling, München");
+    expect(await cached.reverse({ lat: 48.114, lng: 11.556 }, en)).toBe("Sendling, München");
+    expect(inner.reverseCalls).toHaveLength(1);
+    await cached.reverse({ lat: 48.11, lng: 11.56 }, { language: "de" });
+    await cached.reverse({ lat: 48.1204, lng: 11.56 }, en);
+    expect(inner.reverseCalls).toHaveLength(3);
+    // The wrapped geocoder only ever sees the grid cell, whatever the caller passed.
+    expect(inner.reverseCalls[2]).toEqual({ lat: 48.12, lng: 11.56, language: "en" });
+  });
+
+  it("caches a not-found cell for the same time, but not a failure", async () => {
+    const inner = new FakeGeocoder();
+    const clock = new FakeClock();
+    const cached = createCachedGeocoder(inner, { clock, ttlMs: 1000, maxEntries: 10 });
+    const point = { lat: 1, lng: 2 };
+    expect(await cached.reverse(point, { language: "en" })).toBeUndefined();
+    expect(await cached.reverse(point, { language: "en" })).toBeUndefined();
+    expect(inner.reverseCalls).toHaveLength(1);
+    clock.advance({ seconds: 2 });
+    await cached.reverse(point, { language: "en" });
+    expect(inner.reverseCalls).toHaveLength(2);
+    inner.failing = true;
+    const other = { lat: 3, lng: 4 };
+    await expect(cached.reverse(other, { language: "en" })).rejects.toThrow("unavailable");
+    inner.failing = false;
+    await expect(cached.reverse(other, { language: "en" })).resolves.toBeUndefined();
+    expect(inner.reverseCalls).toHaveLength(4);
+  });
+
+  it("keeps search and reverse entries apart", async () => {
+    const inner = new FakeGeocoder();
+    const cached = createCachedGeocoder(inner, {
+      clock: new FakeClock(),
+      ttlMs: 1000,
+      maxEntries: 10,
+    });
+    await cached.search("48.11,11.56", { language: "en" });
+    await cached.reverse({ lat: 48.11, lng: 11.56 }, { language: "en" });
+    expect(inner.calls).toHaveLength(1);
+    expect(inner.reverseCalls).toHaveLength(1);
   });
 });

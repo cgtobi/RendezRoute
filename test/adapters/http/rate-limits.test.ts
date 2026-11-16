@@ -186,6 +186,53 @@ describe("rate limits on place search (decision I32)", () => {
   });
 });
 
+describe("rate limits on the label suggestion (decision D70)", () => {
+  it("allows 10 lookups per client in a burst", async () => {
+    const { at, geocoder } = await setup();
+    const client = at("203.0.113.6");
+    const csrf = (await client.hiddenFields("/new"))._csrf ?? "";
+    const lookup = () =>
+      client.request("/geocode/reverse", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify({ lat: 48.11, lng: 11.56 }),
+      });
+    for (let i = 0; i < 10; i++) expect((await lookup()).status).toBe(200);
+    const refused = await lookup();
+    expect(refused.status).toBe(429);
+    expect(await refused.json()).toEqual({ error: "rate_limited" });
+    expect(refused.headers.get("retry-after")).toBe("6");
+    expect(geocoder.reverseCalls).toHaveLength(10);
+  });
+});
+
+describe("the place search and the label suggestion share one budget (decision D70)", () => {
+  async function mixed(first: "search" | "reverse") {
+    const { at, geocoder } = await setup();
+    const client = at("203.0.113.7");
+    const csrf = (await client.hiddenFields("/new"))._csrf ?? "";
+    const post = (path: string, body: unknown) =>
+      client.request(path, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify(body),
+      });
+    const search = () => post("/geocode", { q: "Flaucher" });
+    const reverse = () => post("/geocode/reverse", { lat: 48.11, lng: 11.56 });
+    const [burst, other] = first === "search" ? [search, reverse] : [reverse, search];
+    for (let i = 0; i < 10; i++) expect((await burst()).status).toBe(200);
+    expect((await other()).status).toBe(429);
+    return geocoder.calls.length + geocoder.reverseCalls.length;
+  }
+
+  it("refuses a lookup after 10 searches", async () => {
+    expect(await mixed("search")).toBe(10);
+  });
+  it("refuses a search after 10 lookups", async () => {
+    expect(await mixed("reverse")).toBe(10);
+  });
+});
+
 describe("rate limits on preview rendering (spec 6 abuse, decision I32)", () => {
   it("count only renders, so cached cards stay available to chat apps", async () => {
     const { at, previewRenderer } = await setup();

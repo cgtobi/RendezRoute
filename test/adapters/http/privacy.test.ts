@@ -57,6 +57,18 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect(withoutMaps).not.toContain(en("privacy.locationMap"));
   });
 
+  it("says that picking a place on the map sends the rounded point, never the exact start (D70)", () => {
+    for (const lang of ["en", "de", "fr"] as const) {
+      const text = translator(lang)("privacy.geocoder", { host: "geo.example", days: 7 });
+      expect(text).toContain("geo.example");
+      expect(text).toContain("7");
+      expect(text).toMatch(/1 km/);
+    }
+    expect(en("privacy.geocoder", { host: "h", days: 7 })).toMatch(
+      /map and the meeting area is empty or still holds the earlier suggestion.*rounded.*about 1 km.*never the exact start/,
+    );
+  });
+
   it("states that pre-update backups are deleted after 7 days (spec 11)", async () => {
     expect(text((await page()).html)).toContain(en("privacy.backups", { days: 7 }));
   });

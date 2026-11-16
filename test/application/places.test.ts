@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { searchPlaces } from "../../src/application/places.ts";
+import { searchPlaces, suggestPlaceName } from "../../src/application/places.ts";
 import { FakeGeocoder } from "../fakes/geocoder.ts";
 
 describe("searchPlaces (spec 3.9)", () => {
@@ -30,5 +30,52 @@ describe("searchPlaces (spec 3.9)", () => {
     expect(await searchPlaces({ geocoder }, { query: "Park", language: "en" })).toEqual({
       kind: "unavailable",
     });
+  });
+});
+
+describe("suggestPlaceName (decision D70)", () => {
+  const geocoder = () => new FakeGeocoder({}, { "48.11,11.56": "Sendling, München" });
+
+  it("snaps the point to the 0.01 degree grid before the geocoder sees it", async () => {
+    const fake = geocoder();
+    expect(
+      await suggestPlaceName(
+        { geocoder: fake },
+        { lat: 48.113456, lng: 11.561234, language: "de" },
+      ),
+    ).toEqual({ kind: "found", label: "Sendling, München" });
+    expect(fake.reverseCalls).toEqual([{ lat: 48.11, lng: 11.56, language: "de" }]);
+  });
+
+  it("says none when the geocoder names nothing there", async () => {
+    const fake = geocoder();
+    expect(await suggestPlaceName({ geocoder: fake }, { lat: 1, lng: 2, language: "en" })).toEqual({
+      kind: "none",
+    });
+  });
+
+  it("rejects coordinates that are not finite or out of range, without calling the service", async () => {
+    const fake = geocoder();
+    for (const [lat, lng] of [
+      [91, 0],
+      [-90.5, 0],
+      [0, 180.5],
+      [0, -181],
+      [Number.NaN, 0],
+      [0, Number.POSITIVE_INFINITY],
+    ] as const) {
+      expect(await suggestPlaceName({ geocoder: fake }, { lat, lng, language: "en" })).toEqual({
+        kind: "invalid",
+      });
+    }
+    expect(fake.reverseCalls).toHaveLength(0);
+  });
+
+  it("reports an unavailable service", async () => {
+    const fake = geocoder();
+    fake.failing = true;
+    expect(
+      await suggestPlaceName({ geocoder: fake }, { lat: 48.11, lng: 11.56, language: "en" }),
+    ).toEqual({ kind: "unavailable" });
   });
 });

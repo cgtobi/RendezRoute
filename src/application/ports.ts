@@ -886,9 +886,17 @@ export interface Place {
   lng: number;
 }
 
-/** Place name → coordinates (spec 3.9). Throws when the service is unavailable. */
+/**
+ * Place name → coordinates (spec 3.9) and, for the label suggestion (decision D70), the point of
+ * the public grid → a locality-level name. Throws when the service is unavailable.
+ */
 export interface Geocoder {
   search(query: string, options: { language: string }): Promise<Place[]>;
+  /** A locality name (district and/or city) for the point, never a street; undefined if none. */
+  reverse(
+    point: { lat: number; lng: number },
+    options: { language: string },
+  ): Promise<string | undefined>;
 }
 
 /** Pre-migration database backups (spec 11), deleted after 7 days by housekeeping. */

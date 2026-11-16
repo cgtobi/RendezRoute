@@ -88,7 +88,7 @@ export const en = {
   "privacy.tilesServer":
     "For link preview images, this server also loads map images of the rough meeting area; this sends nothing about you.",
   "privacy.geocoder":
-    "Place search goes through this server to {host}. That service sees what you search for, but not who you are. Searches and their results are kept in this server’s memory for up to {days} days, so repeated searches need no new request.",
+    "Place search goes through this server to {host}. That service sees what you search for, but not who you are. When you pick a place on the map and the meeting area is empty or still holds the earlier suggestion, the rounded point of that place (about 1 km) is sent to the service the same way, to suggest a name; never the exact start. Searches and their results are kept in this server’s memory for up to {days} days, so repeated searches need no new request.",
   "privacy.push":
     "If you turn on notifications, your browser’s push service (from Google, Mozilla, Apple or Microsoft) delivers them. The messages are encrypted; the service only sees that one was sent. To send them, this server stores your browser’s push address and keys, encrypted, and deletes them when you turn notifications off, or with the plan or your response.",
   "privacy.weather":
@@ -152,6 +152,7 @@ export const en = {
   "form.timeZone": "Time zone",
   "form.areaLabel": "Meeting area",
   "form.areaLabelHint": "Shown to everyone, for example “Englischer Garten, north end”.",
+  "form.areaLabelSuggested": "Suggested from the map. Change it if you like.",
   "form.publicHint":
     "Don't put the exact meeting point here; it's public. Use “Exact meeting point” instead.",
   "form.exactStartHint": "Only you and people who join can see this.",

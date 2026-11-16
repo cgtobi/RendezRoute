@@ -89,7 +89,7 @@ export const de: Messages = {
   "privacy.tilesServer":
     "Für Vorschaubilder von Links lädt dieser Server außerdem Kartenbilder des ungefähren Treffgebiets; dabei wird nichts über dich übermittelt.",
   "privacy.geocoder":
-    "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Suchanfragen und Ergebnisse bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit wiederholte Suchen keine neue Anfrage brauchen.",
+    "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Wenn du einen Ort auf der Karte wählst und das Treffgebiet leer ist oder noch den früheren Vorschlag enthält, wird der gerundete Punkt dieses Ortes (etwa 1 km) auf dem gleichen Weg an den Dienst geschickt, um einen Namen vorzuschlagen; nie der genaue Start. Suchanfragen und Ergebnisse bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit wiederholte Suchen keine neue Anfrage brauchen.",
   "privacy.push":
     "Wenn du Benachrichtigungen einschaltest, stellt der Push-Dienst deines Browsers (von Google, Mozilla, Apple oder Microsoft) sie zu. Die Nachrichten sind verschlüsselt; der Dienst sieht nur, dass eine verschickt wurde. Dafür speichert dieser Server die Push-Adresse und die Schlüssel deines Browsers verschlüsselt und löscht sie, wenn du Benachrichtigungen ausschaltest, oder mit dem Treffen oder deiner Antwort.",
   "privacy.weather":
@@ -157,6 +157,7 @@ export const de: Messages = {
   "form.timeZone": "Zeitzone",
   "form.areaLabel": "Treffgebiet",
   "form.areaLabelHint": "Für alle sichtbar, zum Beispiel „Englischer Garten, Nordende“.",
+  "form.areaLabelSuggested": "Vorschlag von der Karte. Ändere ihn, wenn du magst.",
   "form.publicHint":
     "Gib hier nicht den genauen Treffpunkt an, dieses Feld ist öffentlich. Dafür gibt es „Genauer Treffpunkt“.",
   "form.exactStartHint": "Nur du und alle, die zusagen, sehen ihn.",

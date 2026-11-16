@@ -91,7 +91,7 @@ export const fr: Messages = {
   "privacy.tilesServer":
     "Pour les images d’aperçu des liens, ce serveur charge aussi des images de carte de la zone de rendez-vous approximative, sans rien transmettre vous concernant.",
   "privacy.geocoder":
-    "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Les recherches et leurs résultats restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes.",
+    "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Lorsque vous choisissez un lieu sur la carte et que la zone de rendez-vous est vide ou contient encore la suggestion précédente, le point arrondi de ce lieu (environ 1 km) est envoyé au service de la même manière, pour suggérer un nom ; jamais le départ exact. Les recherches et leurs résultats restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes.",
   "privacy.push":
     "Si vous activez les notifications, le service push de votre navigateur (de Google, Mozilla, Apple ou Microsoft) les distribue. Les messages sont chiffrés ; le service voit seulement qu’un message a été envoyé. Pour les envoyer, ce serveur enregistre l’adresse push et les clés de votre navigateur, chiffrées, et les supprime quand vous désactivez les notifications, ou avec la sortie ou votre réponse.",
   "privacy.weather":
@@ -160,6 +160,7 @@ export const fr: Messages = {
   "form.areaLabel": "Zone de rendez-vous",
   "form.areaLabelHint":
     "Visible par tout le monde, par exemple « Parc de la Tête d’Or, entrée nord ».",
+  "form.areaLabelSuggested": "Suggestion issue de la carte. Modifiez-la si vous le souhaitez.",
   "form.publicHint":
     "N’indiquez pas ici le point de rendez-vous exact, ce champ est public. Utilisez plutôt « Point de départ exact ».",
   "form.exactStartHint": "Visible seulement par vous et les personnes inscrites.",

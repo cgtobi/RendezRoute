@@ -28,6 +28,13 @@ export function readCoordinate(value: string | undefined, axis: "lat" | "lng"): 
 /** "Englischer Garten, Schwabing, Munich" → "Englischer Garten". */
 export const shortLabel = (label: string): string => (label.split(",")[0] ?? "").trim();
 
+/**
+ * Whether a map tap may fill the meeting-area field (decision D70): it is empty, or still holds our
+ * own earlier suggestion, unchanged. The host's own text is never replaced.
+ */
+export const shouldSuggest = (label: string, lastSuggestion: string | undefined): boolean =>
+  label.trim() === "" || label === lastSuggestion;
+
 /** For text that Leaflet inserts as HTML (the configured tile attribution). */
 export const escapeHtml = (text: string): string =>
   text

@@ -1,5 +1,5 @@
 // Fake external services for end-to-end tests (spec 2b): map tiles, a Nominatim-style place
-// search, an Open-Meteo-style forecast, an OIDC provider and a Mastodon-API server (identity.ts),
+// search and reverse lookup, an Open-Meteo-style forecast, an OIDC provider and a Mastodon-API server (identity.ts),
 // a mail server (smtp.ts), an ntfy server (ntfy.ts), a Telegram Bot API (telegram.ts) and remote
 // fediverse people (fediverse.ts) and a Home Assistant Supervisor with its Ingress proxy
 // (supervisor.ts), so E2E runs never touch real providers.
@@ -56,6 +56,31 @@ function tile(): Buffer {
 const TILE = tile();
 const PLACES = [{ display_name: "Flaucher, Isar, Munich", lat: "48.1107", lon: "11.5582" }];
 
+/** Every `lat,lon` the reverse route got, for tests that check what reaches the geocoder. */
+const REVERSE_REQUESTS: string[] = [];
+
+/**
+ * A Nominatim-style jsonv2 reverse answer (decision D70): a full street address inside the
+ * Munich box, so tests prove only the district and city are used; "nothing found" elsewhere.
+ */
+function reverseAnswer(lat: number, lon: number): unknown {
+  const inMunich = lat >= 48 && lat <= 48.2 && lon >= 11.4 && lon <= 11.7;
+  if (!inMunich) return { error: "Unable to geocode" };
+  const sendling = Math.round(lat * 100) === 4811 && Math.round(lon * 100) === 1156;
+  return {
+    place_id: 1,
+    display_name: `12, Some Road, ${sendling ? "Sendling" : "Giesing"}, München, Bayern, Deutschland`,
+    address: {
+      road: "Some Road",
+      house_number: "12",
+      suburb: sendling ? "Sendling" : "Giesing",
+      city: "München",
+      state: "Bayern",
+      country: "Deutschland",
+    },
+  };
+}
+
 async function handle(request: IncomingMessage, response: ServerResponse) {
   const url = new URL(request.url ?? "/", "http://fakes");
   if (await handleIdentity(request, response, url)) return;
@@ -71,6 +96,15 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
     const query = url.searchParams.get("q") ?? "";
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify(query.toLowerCase().includes("flaucher") ? PLACES : []));
+  } else if (url.pathname === "/reverse") {
+    const lat = url.searchParams.get("lat") ?? "";
+    const lon = url.searchParams.get("lon") ?? "";
+    REVERSE_REQUESTS.push(`${lat},${lon}`);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(reverseAnswer(Number(lat), Number(lon))));
+  } else if (url.pathname === "/reverse-requests") {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(REVERSE_REQUESTS));
   } else if (url.pathname === "/v1/forecast") {
     // Partly cloudy, 14 °C, for whichever hour is asked.
     const hour = url.searchParams.get("start_hour") ?? "";

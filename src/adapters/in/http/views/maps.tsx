@@ -64,6 +64,7 @@ export function MapTools({
           data-locate-title={t("map.findMe")}
           data-locate-denied={t("map.locateDenied")}
           data-locate-unavailable={t("map.locateUnavailable")}
+          data-suggest-endpoint={placeSearch ? "/geocode/reverse" : undefined}
           hidden
         >
           <div class="map" role="application" aria-label={t("map.pickLabel")}></div>

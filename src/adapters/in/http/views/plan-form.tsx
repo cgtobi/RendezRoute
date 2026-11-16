@@ -421,6 +421,11 @@ export function PlanForm({
           hint={`${t("form.areaLabelHint")} ${t("form.publicHint")}`}
         >
           {input("areaLabel", { required: true, maxlength: PLAN_LIMITS.areaLabel })}
+          {map !== undefined && placeSearch && (
+            <p class="hint" data-label-suggested="" role="status" hidden>
+              {t("form.areaLabelSuggested")}
+            </p>
+          )}
         </Field>
 
         {/* With the map script the area point is set on the map; the script hides these fields,

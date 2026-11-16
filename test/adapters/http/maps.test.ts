@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { FakeGeocoder } from "../../fakes/geocoder.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
 import { sampleGpx } from "../../support/gpx.ts";
@@ -207,6 +208,128 @@ describe("POST /geocode (spec 3.9, decision D12)", () => {
     expect(
       (await search({ q: "Flaucher" }, { env: { GEOCODER_ENABLED: "false" } })).response.status,
     ).toBe(404);
+  });
+});
+
+describe("POST /geocode/reverse (decision D70)", () => {
+  async function reverse(body: unknown, { env = {}, withCsrf = true, failing = false } = {}) {
+    const test = await createTestApp({
+      env,
+      geocoder: new FakeGeocoder({}, { "48.11,11.56": "Sendling, München" }),
+    });
+    test.geocoder.failing = failing;
+    const client = new TestClient(test.app);
+    const csrf = (await client.hiddenFields("/new"))._csrf ?? "";
+    const response = await client.request("/geocode/reverse", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(withCsrf ? { "x-csrf-token": csrf } : {}),
+      },
+      body: typeof body === "string" ? body : JSON.stringify(body),
+    });
+    return { response, geocoder: test.geocoder };
+  }
+
+  it("answers with a label and never caches the response", async () => {
+    const { response, geocoder } = await reverse({ lat: 48.11, lng: 11.56 });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ label: "Sendling, München" });
+    expect(geocoder.reverseCalls).toEqual([{ lat: 48.11, lng: 11.56, language: "en" }]);
+  });
+
+  it("snaps raw coordinates to the grid, so the geocoder never sees them", async () => {
+    const { response, geocoder } = await reverse({ lat: 48.113456, lng: 11.561234 });
+    expect(await response.json()).toEqual({ label: "Sendling, München" });
+    expect(geocoder.reverseCalls).toEqual([{ lat: 48.11, lng: 11.56, language: "en" }]);
+    expect(JSON.stringify(geocoder.reverseCalls)).not.toMatch(/48\.113|11\.561/);
+  });
+
+  it("answers null for a place without a name", async () => {
+    const { response } = await reverse({ lat: 10, lng: 10 });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ label: null });
+  });
+
+  it("requires the CSRF token, with no geocoder call without it", async () => {
+    const { response, geocoder } = await reverse({ lat: 48.11, lng: 11.56 }, { withCsrf: false });
+    expect(response.status).toBe(403);
+    expect(geocoder.reverseCalls).toHaveLength(0);
+  });
+
+  it("rejects out-of-range, non-number and missing coordinates", async () => {
+    for (const body of [
+      { lat: 91, lng: 0 },
+      { lat: 0, lng: -181 },
+      { lat: "48.11", lng: "11.56" },
+      { lat: 48.11 },
+      { lng: 11.56 },
+      { lat: null, lng: 11.56 },
+      "not json",
+      "[]",
+      '"text"',
+    ]) {
+      const { response, geocoder } = await reverse(body);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "bad_request" });
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(geocoder.reverseCalls).toHaveLength(0);
+    }
+  });
+
+  it("reports an unavailable service", async () => {
+    const { response } = await reverse({ lat: 48.11, lng: 11.56 }, { failing: true });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable" });
+  });
+
+  it("does not exist when the geocoder is disabled", async () => {
+    const { response } = await reverse(
+      { lat: 48.11, lng: 11.56 },
+      { env: { GEOCODER_ENABLED: "false" } },
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("label suggestion markup (decision D70)", () => {
+  it("offers the lookup endpoint and a hidden hint only with maps and the geocoder", async () => {
+    const html = await page();
+    expect(html).toMatch(
+      /<div[^>]*data-map-picker=""[^>]*data-suggest-endpoint="\/geocode\/reverse"/,
+    );
+    const hint = /<p[^>]*data-label-suggested=""[^>]*>[^<]*<\/p>/.exec(html)?.[0] ?? "";
+    expect(hint).toMatch(/^<p[^>]*class="hint"/);
+    expect(hint).toContain("hidden");
+    expect(hint).toContain('role="status"');
+    expect(hint).toContain("Suggested from the map. Change it if you like.");
+    expect(html.indexOf('id="field-areaLabel"')).toBeLessThan(html.indexOf("data-label-suggested"));
+  });
+
+  it("has neither without a geocoder", async () => {
+    for (const env of [{ GEOCODER_ENABLED: "false" }, { CONTACT_EMAIL: "" }]) {
+      const html = await page(env);
+      expect(html).toContain("data-map-picker");
+      expect(html).not.toContain("data-suggest-endpoint");
+      expect(html).not.toContain("data-label-suggested");
+      expect(html).not.toContain("Suggested from the map");
+    }
+  });
+
+  it("has neither with maps disabled", async () => {
+    const html = await page({ MAPS_ENABLED: "false" });
+    expect(html).not.toContain("data-suggest-endpoint");
+    expect(html).not.toContain("data-label-suggested");
+  });
+
+  it("has the hint on the edit form too", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const { planId } = await createPlanViaUi(host);
+    const html = await (await host.get(`/p/${planId}/host`)).text();
+    expect(html).toContain("data-label-suggested");
+    expect(html).toContain('data-suggest-endpoint="/geocode/reverse"');
   });
 });
 

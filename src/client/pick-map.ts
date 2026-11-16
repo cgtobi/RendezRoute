@@ -2,6 +2,7 @@
 // the mode switch; a control finds the device's place (view only).
 import L from "leaflet";
 import { publicCircleCenter, readCoordinate, roundCoordinate, zoomForAccuracy } from "./geo.ts";
+import { createLabelSuggester } from "./label-suggestion.ts";
 import { PLACE_EVENT, type PickedPlace, setField } from "./places.ts";
 import { AREA_RADIUS_M, createMap, themeColor, tileLayer } from "./tiles.ts";
 
@@ -137,6 +138,9 @@ export function initPickMaps(): void {
       updateCaption();
     };
 
+    // Undefined without the endpoint attribute (no geocoder): then a tap never looks anything up.
+    const suggestLabel = createLabelSuggester(picker, form);
+
     const set = (mode: Mode, at: L.LatLng) => {
       // The public area follows an exact point: a tap in area mode is ignored (the caption says why).
       if (mode === "area" && point("exact") !== undefined) return;
@@ -151,6 +155,10 @@ export function initPickMaps(): void {
         form.querySelector(`[name="${lngName}"]`)?.closest("details")?.setAttribute("open", "");
       }
       sync();
+      // After a tap only (not typing, search, Remove or pageshow): the public point, already
+      // snapped, is the only thing a lookup may send (decision D70).
+      const center = publicCircleCenter(point("exact"), point("area"));
+      if (center !== undefined) suggestLabel?.(center);
     };
 
     map.on("click", (event: L.LeafletMouseEvent) => set(currentMode(), event.latlng));

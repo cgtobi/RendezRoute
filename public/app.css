@@ -89,8 +89,12 @@
   color-scheme: light dark;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #121316;
     --fg: #e8eaed;
     --muted: #a3a9b2;
@@ -125,6 +129,45 @@
     --avatar-7-bg: #3b4214;
     --avatar-7-fg: #e9eec8;
   }
+}
+
+/* The same colours again for a chosen dark theme: CSS cannot share one rule between a media
+   query and an attribute. test/design/tokens.test.ts keeps the two blocks identical. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121316;
+  --fg: #e8eaed;
+  --muted: #a3a9b2;
+  --line: #2c2f35;
+  --control-line: #464b53;
+  --field-border: #737a85;
+  --surface: #1d2024;
+  --accent: #8bb8ea;
+  --on-accent: #111111;
+  --focus: #8bb8ea;
+  --danger: #f2b8b5;
+  --on-danger: #111111;
+  --warning-bg: #3a2c12;
+  --warning-line: #6b5120;
+  --ok: #8fd9a8;
+  --ok-bg: #15271c;
+  --ok-line: #2b5a3c;
+  --avatar-0-bg: #5a1d26;
+  --avatar-0-fg: #ffd6db;
+  --avatar-1-bg: #1f3463;
+  --avatar-1-fg: #d5e3ff;
+  --avatar-2-bg: #174a2c;
+  --avatar-2-fg: #c9f0d7;
+  --avatar-3-bg: #3f2566;
+  --avatar-3-fg: #e7d9ff;
+  --avatar-4-bg: #5a3608;
+  --avatar-4-fg: #ffe2bf;
+  --avatar-5-bg: #124549;
+  --avatar-5-fg: #c8f1f4;
+  --avatar-6-bg: #57203f;
+  --avatar-6-fg: #ffd6ef;
+  --avatar-7-bg: #3b4214;
+  --avatar-7-fg: #e9eec8;
 }
 
 *,
@@ -1384,34 +1427,63 @@ details > summary {
 /* Dark mode: the tiles darkened in the browser, so it works with any tile server; only the tiles,
    so the area circle, pins and route keep their colours. Controls in the page's dark colours. */
 @media (prefers-color-scheme: dark) {
-  .map.leaflet-container {
+  :root:not([data-theme="light"]) .map.leaflet-container {
     background: var(--surface);
   }
 
-  .map .leaflet-tile-pane {
+  :root:not([data-theme="light"]) .map .leaflet-tile-pane {
     filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
   }
 
-  .map .leaflet-bar a {
+  :root:not([data-theme="light"]) .map .leaflet-bar a {
     border-color: var(--line);
     background: var(--surface);
     color: var(--fg);
   }
 
-  .map .leaflet-bar a:hover,
-  .map .leaflet-bar a:focus {
+  :root:not([data-theme="light"]) .map .leaflet-bar a:hover,
+  :root:not([data-theme="light"]) .map .leaflet-bar a:focus {
     background: var(--line);
   }
 
   /* As specific as Leaflet's own rule, which comes later. */
-  .map.leaflet-container .leaflet-control-attribution {
+  :root:not([data-theme="light"]) .map.leaflet-container .leaflet-control-attribution {
     background: color-mix(in srgb, var(--bg) 85%, transparent);
     color: var(--muted);
   }
 
-  .map.leaflet-container .leaflet-control-attribution a {
+  :root:not([data-theme="light"]) .map.leaflet-container .leaflet-control-attribution a {
     color: var(--accent);
   }
+}
+
+:root[data-theme="dark"] .map.leaflet-container {
+  background: var(--surface);
+}
+
+:root[data-theme="dark"] .map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}
+
+:root[data-theme="dark"] .map .leaflet-bar a {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--fg);
+}
+
+:root[data-theme="dark"] .map .leaflet-bar a:hover,
+:root[data-theme="dark"] .map .leaflet-bar a:focus {
+  background: var(--line);
+}
+
+/* As specific as Leaflet's own rule, which comes later. */
+:root[data-theme="dark"] .map.leaflet-container .leaflet-control-attribution {
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  color: var(--muted);
+}
+
+:root[data-theme="dark"] .map.leaflet-container .leaflet-control-attribution a {
+  color: var(--accent);
 }
 
 .map-tools {

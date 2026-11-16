@@ -53,9 +53,9 @@ for (const viewport of WIDTHS) {
     await page.locator("footer.site-footer").scrollIntoViewIfNeeded();
     await page.locator("details.footer-menu > summary").click();
     const rows = page.locator("details.footer-menu .preference");
-    await expect(rows).toHaveCount(2);
+    await expect(rows).toHaveCount(3);
 
-    for (let index = 0; index < 2; index += 1) {
+    for (let index = 0; index < 3; index += 1) {
       const row = rows.nth(index);
       const select = await row.locator("select").boundingBox();
       const button = await row.locator("button").boundingBox();

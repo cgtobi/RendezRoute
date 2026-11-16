@@ -15,6 +15,7 @@ import type {
   WeatherProvider,
 } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
+import type { Theme } from "../../../domain/theme.ts";
 import type { Units } from "../../../domain/units.ts";
 import type { Language, Translate } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
@@ -112,6 +113,7 @@ export type AppEnv = {
     language: Language;
     t: Translate;
     units: Units;
+    theme: Theme;
     csrfToken: () => string;
     clientIp: string;
     /** Pages outside /admin/ link relative to the request path (Ingress admin listener). */

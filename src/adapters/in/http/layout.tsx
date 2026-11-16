@@ -8,6 +8,7 @@ import {
 } from "../../i18n/i18n.ts";
 import { CSRF_FIELD } from "./csrf.ts";
 import { RETURN_FIELD } from "./routes/preferences.ts";
+import { type Theme, THEMES } from "../../../domain/theme.ts";
 import { type Units, UNITS } from "../../../domain/units.ts";
 
 const SOFTWARE_NAME = "RendezRoute";
@@ -20,6 +21,8 @@ interface LayoutProps {
   /** Extra head elements, e.g. robots or Open Graph tags. */
   head?: Child | undefined;
   units: Units;
+  /** The chosen theme; "system" renders no attribute (decision D64). */
+  theme: Theme;
   /** The footer language and units forms; left out of pages that cannot be loaded again (decision D15). */
   languageSwitch?: { csrfToken: string; returnTo: string } | undefined;
   /**
@@ -44,6 +47,7 @@ export function Layout({
   title,
   head,
   units,
+  theme,
   languageSwitch,
   pathBase = "/",
   adminListener = false,
@@ -54,7 +58,7 @@ export function Layout({
   const widened = (base?: string) => (wide ? [base, "wide"].filter(Boolean).join(" ") : base);
   const pageTitle = title === undefined ? config.instanceName : `${title} · ${config.instanceName}`;
   return (
-    <html lang={language}>
+    <html lang={language} data-theme={theme === "system" ? undefined : theme}>
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -140,6 +144,15 @@ export function Layout({
                       label={t("layout.units")}
                       options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
                       selected={units}
+                    />
+                    <PreferenceForm
+                      t={t}
+                      {...languageSwitch}
+                      action="/theme"
+                      field="theme"
+                      label={t("layout.theme")}
+                      options={THEMES.map((value) => ({ value, label: t(`theme.${value}`) }))}
+                      selected={theme}
                     />
                   </>
                 )}

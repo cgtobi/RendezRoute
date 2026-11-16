@@ -11,8 +11,12 @@ export const en = {
   "layout.change": "Change",
   "layout.menu": "Menu",
   "layout.units": "Units",
+  "layout.theme": "Theme",
   "units.metric": "Metric (km)",
   "units.imperial": "Imperial (mi)",
+  "theme.system": "System",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
 
   "privacy.title": "Privacy",
   "privacy.intro":
@@ -44,7 +48,7 @@ export const en = {
   "privacy.cookieCsrf":
     "A session cookie that protects forms against forged submissions. Browsers delete it when you close them, unless they restore your previous session.",
   "privacy.cookiePreferences":
-    "Language and units cookies, only when you choose a language or units at the bottom of a page, kept for {days} days.",
+    "Language, units and theme cookies, only when you choose a language, units or theme at the bottom of a page, kept for {days} days.",
   "privacy.cookieAdmin":
     "The instance admin, after logging in, gets a separate login cookie that lasts {hours} hours. Visitors never get it.",
   "privacy.cookieOthers": "No other cookies, and none from other sites.",

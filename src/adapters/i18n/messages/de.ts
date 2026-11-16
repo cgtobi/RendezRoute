@@ -12,8 +12,12 @@ export const de: Messages = {
   "layout.change": "Ändern",
   "layout.menu": "Menü",
   "layout.units": "Einheiten",
+  "layout.theme": "Darstellung",
   "units.metric": "Metrisch (km)",
   "units.imperial": "Imperial (Meilen)",
+  "theme.system": "System",
+  "theme.light": "Hell",
+  "theme.dark": "Dunkel",
 
   "privacy.title": "Datenschutz",
   "privacy.intro":
@@ -45,7 +49,7 @@ export const de: Messages = {
   "privacy.cookieCsrf":
     "Ein Sitzungs-Cookie, das Formulare vor gefälschten Absendungen schützt. Browser löschen es beim Schließen, außer sie stellen deine letzte Sitzung wieder her.",
   "privacy.cookiePreferences":
-    "Cookies für Sprache und Einheiten, nur wenn du unten auf einer Seite eine Sprache oder Einheiten wählst, {days} Tage lang gespeichert.",
+    "Cookies für Sprache, Einheiten und Darstellung (hell oder dunkel), nur wenn du unten auf einer Seite eine Sprache, Einheiten oder eine Darstellung wählst, {days} Tage lang gespeichert.",
   "privacy.cookieAdmin":
     "Die Administration erhält nach der Anmeldung ein eigenes Login-Cookie, das {hours} Stunden gilt. Besucher:innen erhalten es nie.",
   "privacy.cookieOthers": "Keine anderen Cookies und keine von anderen Websites.",

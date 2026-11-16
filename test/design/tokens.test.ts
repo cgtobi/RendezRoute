@@ -25,9 +25,9 @@ function ruleFor(css: string, selector: string): string {
   return match === null ? "" : css.slice(match.index, css.indexOf("}", match.index));
 }
 
-/** The colour tokens of the first `:root { … }` block after `from`, written as #rrggbb. */
-function tokens(from: number): Record<string, string> {
-  const start = CSS.indexOf(":root {", from);
+/** The colour tokens of the first rule written for `selector` after `from`, written as #rrggbb. */
+function tokens(selector: string, from = 0): Record<string, string> {
+  const start = CSS.indexOf(`${selector} {`, from);
   if (from < 0 || start < 0) return {};
   const block = CSS.slice(start, CSS.indexOf("}", start));
   return Object.fromEntries(
@@ -35,10 +35,24 @@ function tokens(from: number): Record<string, string> {
   );
 }
 
+/** Every custom property declaration (`--name: value;`) of the first rule for `selector`. */
+function declarations(selector: string, from = 0): Record<string, string> {
+  const start = CSS.indexOf(`${selector} {`, from);
+  if (from < 0 || start < 0) return {};
+  const block = CSS.slice(start, CSS.indexOf("}", start));
+  return Object.fromEntries(
+    [...block.matchAll(/(--[a-z0-9-]+):\s*([^;]+?)\s*;/gi)].map((m) => [m[1], m[2]]),
+  );
+}
+
 // Each scheme states every tested colour itself: a dark value that is missing, or written in a
-// form this test cannot read, fails instead of falling back to the light one.
-const light = tokens(0);
-const dark = tokens(CSS.indexOf(DARK));
+// form this test cannot read, fails instead of falling back to the light one. Dark exists twice
+// (decision I82): in the media query for the system, and under the attribute for a chosen theme.
+const MEDIA_SELECTOR = ':root:not([data-theme="light"])';
+const ATTRIBUTE_SELECTOR = ':root[data-theme="dark"]';
+const light = tokens(":root");
+const dark = tokens(MEDIA_SELECTOR, CSS.indexOf(DARK));
+const darkChosen = tokens(ATTRIBUTE_SELECTOR);
 
 /** [foreground, background, minimum ratio] */
 const PAIRS: readonly [string, string, number][] = [
@@ -71,6 +85,7 @@ const NAMES = [...new Set(PAIRS.flatMap(([fg, bg]) => [fg, bg]))];
 describe.each([
   ["light", light],
   ["dark", dark],
+  ["dark (chosen, data-theme)", darkChosen],
 ])("design tokens in %s mode", (_mode, scheme) => {
   it("defines every tested colour itself, as #rrggbb", () => {
     expect(NAMES.filter((name) => scheme[name] === undefined)).toEqual([]);
@@ -79,6 +94,38 @@ describe.each([
   it.each(PAIRS)("%s on %s reaches %s:1", (fg, bg, minimum) => {
     const ratio = contrastRatio(scheme[fg] ?? "#000000", scheme[bg] ?? "#000000");
     expect(ratio).toBeGreaterThanOrEqual(minimum);
+  });
+});
+
+describe("the two dark token blocks (decision I82)", () => {
+  it("define the same token names with the same values", () => {
+    const media = declarations(MEDIA_SELECTOR, CSS.indexOf(DARK));
+    const chosen = declarations(ATTRIBUTE_SELECTOR);
+    expect(Object.keys(chosen).length).toBeGreaterThan(20);
+    const names = [...new Set([...Object.keys(media), ...Object.keys(chosen)])];
+    const differs = names.find((name) => media[name] !== chosen[name]);
+    // The first difference goes into the failure itself, not into a second argument.
+    expect(
+      differs === undefined
+        ? undefined
+        : `${differs}: media "${media[differs]}" vs attribute "${chosen[differs]}"`,
+    ).toBeUndefined();
+  });
+
+  it("scope every selector in the dark media queries to pages where Light was not chosen", () => {
+    const bodies = [...CSS.matchAll(/@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n\}/g)];
+    expect(bodies.length).toBeGreaterThan(0);
+    const selectors = bodies.flatMap(([, body = ""]) =>
+      [...body.matchAll(/(?:^|\n)[ \t]*([^\s@}][^{}\n]*?)\s*\{/g)].map(([, s = ""]) => s),
+    );
+    expect(selectors.length).toBeGreaterThan(5);
+    expect(selectors.filter((s) => !s.startsWith(MEDIA_SELECTOR))).toEqual([]);
+  });
+
+  it("set color-scheme per theme", () => {
+    expect(ruleFor(CSS, ":root")).toContain("color-scheme: light dark");
+    expect(ruleFor(CSS, ':root[data-theme="light"]')).toContain("color-scheme: light");
+    expect(ruleFor(CSS, ATTRIBUTE_SELECTOR)).toContain("color-scheme: dark");
   });
 });
 
@@ -106,6 +153,7 @@ const hex = (value: string) => {
 describe.each([
   ["light", light],
   ["dark", dark],
+  ["dark (chosen, data-theme)", darkChosen],
 ])("text on plan tints in %s mode", (_mode, scheme) => {
   const page = hex(scheme["--bg"] ?? "#000000");
   it.each(PLAN_COLOURS)("stays legible with %s as the plan colour", (colour) => {
@@ -131,16 +179,24 @@ describe.each([
 
 // Maps follow dark mode (user request after D30): the tiles darkened in the browser, so it works
 // with any tile server, and only the tiles, so the area circle, pins and route keep their colours.
-describe("maps in dark mode", () => {
+describe.each([
+  ["the system is dark", MEDIA_SELECTOR],
+  ["dark is chosen", ATTRIBUTE_SELECTOR],
+])("maps when %s", (_when, scope) => {
   /** The rules inside the dark-mode media queries, without the token blocks. */
   const darkRules = [...CSS.matchAll(/@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n\}/g)]
     .map(([, body = ""]) => body)
     .join("\n");
-  const darkRule = (selector: string) => ruleFor(darkRules, selector);
+  // The media rules are indented; the attribute rules stand at the top level.
+  const darkRule = (selector: string) =>
+    scope === MEDIA_SELECTOR
+      ? ruleFor(darkRules, `${scope} ${selector}`)
+      : ruleFor(CSS, `${scope} ${selector}`);
 
   it("darkens the tiles, and only the tiles", () => {
     expect(darkRule(".map .leaflet-tile-pane")).toContain("filter: invert(1) hue-rotate(180deg)");
     expect(darkRules).not.toMatch(/\.leaflet-(overlay|marker)-pane[^{]*\{[^}]*filter/);
+    expect(CSS).not.toMatch(/data-theme="dark"\][^{]*\.leaflet-(overlay|marker)-pane/);
   });
 
   it("gives the zoom buttons and the attribution the page's dark colours", () => {

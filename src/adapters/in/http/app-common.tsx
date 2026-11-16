@@ -9,6 +9,7 @@ import { jsxRenderer } from "hono/jsx-renderer";
 import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config } from "../../../config.ts";
+import { isTheme } from "../../../domain/theme.ts";
 import { isUnits } from "../../../domain/units.ts";
 import { type Language, resolveLanguage, type Translate, translator } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
@@ -98,6 +99,8 @@ export function composeCommonStack(
     c.set("t", translator(language));
     const units = readPreference(c, config, "units");
     c.set("units", isUnits(units) ? units : "metric");
+    const theme = readPreference(c, config, "theme");
+    c.set("theme", isTheme(theme) ? theme : "system");
     c.set("relativeLinks", relativeLinks);
     await next();
     // Pages and plain-text errors are in the request's language; images, scripts and feeds are not.
@@ -122,6 +125,8 @@ export function composeCommonStack(
           title={title}
           head={head}
           units={c.get("units")}
+          // The admin pages keep following the system (decision D64).
+          theme={adminListener ? "system" : c.get("theme")}
           languageSwitch={
             // Pages answering a form post (e.g. links shown once) cannot be loaded again; admin
             // pages keep only relative links, and the switch posts to absolute paths.

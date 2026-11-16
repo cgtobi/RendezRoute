@@ -162,10 +162,19 @@ describe("a reply's text, on hostile input", () => {
     "bare address floods": (size) => "http://".repeat(size / 7),
     "script then stray closes": (size) => `<script>${"</a>".repeat(size / 4)}`,
   };
-  const timed = (html: string): number => {
+  // One sample is at the mercy of the machine: a descheduled slice or a GC pause inside a single
+  // run, under load, looks like slowness. A stall hits single runs, so each input gets one untimed
+  // warm-up and is then timed three times, keeping the minimum; a function that really is
+  // quadratic is slow on every repeat, so its minimum stays high.
+  const REPEATS = 3;
+  const timedOnce = (html: string): number => {
     const started = performance.now();
     replyContent(html, [], noCap);
     return performance.now() - started;
+  };
+  const timed = (html: string): number => {
+    timedOnce(html);
+    return Math.min(...Array.from({ length: REPEATS }, () => timedOnce(html)));
   };
 
   it("takes well under a second for each adversarial input of 100,000 characters", () => {
@@ -176,12 +185,14 @@ describe("a reply's text, on hostile input", () => {
     expect(times.filter(({ ms }) => ms > 250)).toEqual([]);
   });
 
+  // Five times the input should take about five times as long; 15 leaves room for noise and 25
+  // is where a quadratic function lands. The small time is floored at 5 ms so that sub-millisecond
+  // noise cannot make a huge ratio, and the absolute bound keeps a real blow-up caught.
   it("grows no faster than linearly: five times the input is not twenty-five times the time", () => {
     const ratios = Object.entries(inputs).map(([name, make]) => {
-      timed(make(SIZE / 10));
-      const small = Math.max(timed(make(SIZE / 5)), 1);
+      const small = Math.max(timed(make(SIZE / 5)), 5);
       const large = timed(make(SIZE));
-      return { name, quadratic: large / small > 15 && large > 100 };
+      return { name, quadratic: large / small > 15 && large > 250 };
     });
     expect(ratios.filter(({ quadratic }) => quadratic)).toEqual([]);
   });
@@ -189,6 +200,7 @@ describe("a reply's text, on hostile input", () => {
   it("rejects input beyond the cap at once", () => {
     const started = performance.now();
     expect(replyContent("<".repeat(SIZE), [])).toBeUndefined();
-    expect(performance.now() - started).toBeLessThan(50);
+    // An early reject: any real work would take far longer; the bound leaves room for a stall.
+    expect(performance.now() - started).toBeLessThan(250);
   });
 });

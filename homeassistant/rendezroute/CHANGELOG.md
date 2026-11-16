@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.12.0
+
+- The plan form is shorter. Optional parts are folded away, each with a one-line summary: route,
+  pace and note; who can join and find it; look and sharing; after the run.
+- The title is the big editable heading, with a pencil. It starts as "My plan" (in your language),
+  selected on the first tap. The start time offers 15-minute steps and starts at the next quarter hour.
+- The meeting area can be set on the map. A switch chooses between the public area (the default)
+  and the exact start. "Find my location" only moves the map to your device and sends nothing. The
+  chosen point shows as a line with "Remove".
+- Privacy: when the meeting-area field is empty, its name is suggested from the map. For this the
+  rounded point (about 1 km, never the exact start) is sent through the app to the place-search
+  service, if a geocoder is on.
+- The map opens on the region of the browser's time zone, or on the new advanced options **Default
+  map center** (`default_map_center`, for example `48.1374,11.5755`) and **Default map zoom**
+  (`default_map_zoom`, 2 to 12).
+- The menu is now a button in the header. Language, units and a new theme (system, light, dark)
+  apply at once.
+- On the plan page the share row is now at the end.
+- The "Your plan is ready" page offers "Add route, pace and more".
+- The host name is filled in again from this device's last plan or template.
+- Nothing needs to be configured for this update.
+
 ## 0.11.1
 
 - The AppArmor profile now enforces instead of only logging. It limits what the app may do:

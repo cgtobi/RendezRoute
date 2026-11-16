@@ -101,7 +101,10 @@ matter most for what leaves your server:
   Fediverse servers, which means data is sent to those servers. Turn **Federation (Fediverse)** off
   to stay entirely on your server.
 - **Maps, place search and weather** call outside services (OpenStreetMap, Nominatim, Open-Meteo
-  by default). Each has a switch, and the addresses can be changed.
+  by default). Each has a switch, and the addresses can be changed. Picking a place on the map also
+  asks the place-search service, through the app, for a name of the rounded point (about 1 km, never
+  the exact start), and only while the meeting-area field is empty or still holds the earlier
+  suggestion.
 
 You are responsible for your instance: if people other than you use it, add an imprint and a
 privacy link in the options if the law where you live requires them.

@@ -448,7 +448,8 @@ Node 26 and npm. Install with `npm ci`, then:
 - `npm run css:snapshot:write` and `npm run css:snapshot:compare` store and check the computed
   styles of `/styleguide` (all projects, light and dark, 320 and 390 px) under the git-ignored
   `.css-snapshots/current` (`CSS_SNAPSHOT_DIR` for another folder). Take one before a CSS refactor
-  and compare after; details in `e2e/css-snapshot.spec.ts`.
+  and compare after; it also covers hover, keyboard focus and forced colors (Chromium); details in
+  `e2e/css-snapshot.spec.ts`.
 - `npm run icons -- <folder>` rebuilds the logo and icons in `public/` from the Inkscape exports of
   the logo (`RendezRoute_AppIcon.svg`, `RendezRoute_icon.svg`).
 

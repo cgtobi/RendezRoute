@@ -444,6 +444,7 @@ Node 26 and npm. Install with `npm ci`, then:
   `BASE_URL=http://localhost:3000 ALLOW_INSECURE_DEV=true DATA_DIR=$PWD/data`.
 - `npm run e2e` uses fake map, search, weather and login services. `E2E_CHANNEL=chrome npm run e2e`
   uses an installed Chrome instead of Playwright's Chromium.
+- The `webkit iPhone` project of `npm run e2e` needs WebKit once: `npx playwright install webkit`.
 - `npm run icons -- <folder>` rebuilds the logo and icons in `public/` from the Inkscape exports of
   the logo (`RendezRoute_AppIcon.svg`, `RendezRoute_icon.svg`).
 

@@ -23,6 +23,33 @@ const ALLOWED_HOSTS = new Set([
   "fakes:8080",
 ]);
 
+/** A 1x1 transparent PNG, standing in for every map tile in WebKit. */
+const TILE_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/**
+ * WebKit cannot resolve the test host `fakes` (Chromium gets a --host-resolver-rules launch flag
+ * in playwright.config.ts), so its tile requests would fail with a console error. Fulfil them
+ * with a transparent pixel. Does nothing in other browsers.
+ */
+export async function stubTileHost(context: BrowserContext): Promise<void> {
+  if (context.browser()?.browserType().name() !== "webkit") return;
+  await context.route("http://fakes:8080/**", (route) =>
+    route.fulfill({ status: 200, contentType: "image/png", body: TILE_PNG }),
+  );
+}
+
+/**
+ * WebKit alone logs this for every native <select> (measured: a bare select with no author CSS
+ * does it): its own control behaviour, not an inline style of our markup. The default Chromium
+ * projects run the same specs with this message counted, so a real inline-style violation of ours
+ * still fails there.
+ */
+const WEBKIT_SELECT_CSP =
+  /Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear in the style-src directive/;
+
 /** Counts people in this worker, for their addresses. */
 let people = 0;
 
@@ -43,10 +70,12 @@ export async function person(
       "x-forwarded-for": `10.${test.info().parallelIndex}.${Math.floor(++people / 250)}.${(people % 250) + 1}`,
     },
   });
+  await stubTileHost(context);
+  const webkit = browser.browserType().name() === "webkit";
   if (options.initScript !== undefined) await context.addInitScript(options.initScript);
   const page = await context.newPage();
   page.on("console", (message) => {
-    if (message.type() === "error") {
+    if (message.type() === "error" && !(webkit && WEBKIT_SELECT_CSP.test(message.text()))) {
       problems.push(`console: ${message.text()} @ ${message.location().url}`);
     }
   });

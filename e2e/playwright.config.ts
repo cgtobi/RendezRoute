@@ -11,6 +11,12 @@ const ADMIN_SPLIT_SPECS = /v10-admin-split\.spec\.ts$/;
 /** The admin listener behind a fake Home Assistant Ingress (0.10 step 10b): the fifth container. */
 const ADMIN_INGRESS_SPECS = /v10-admin-ingress\.spec\.ts$/;
 
+/**
+ * The layout specs, the only ones that also run in WebKit (D72). Step 13c adds
+ * `styleguide.spec.ts` here. They create no plan, so they can share the default containers.
+ */
+const LAYOUT_SPECS = /(?:layout-phone)\.spec\.ts$/;
+
 export default defineConfig({
   testDir: ".",
   globalSetup: "./global-setup.ts",
@@ -39,6 +45,20 @@ export default defineConfig({
       name: "maps, geocoder and weather disabled",
       testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS, ADMIN_INGRESS_SPECS],
       use: { baseURL: "http://localhost:3102" },
+    },
+    // The layout specs again on WebKit (iPhone 13 viewport and user agent) against the default
+    // containers. Needs `npx playwright install webkit` once. Playwright's WebKit is the desktop
+    // engine, so iOS-native control quirks still need a phone (D72).
+    {
+      name: "webkit iPhone",
+      testMatch: LAYOUT_SPECS,
+      use: {
+        ...devices["iPhone 13"],
+        baseURL: "http://localhost:3101",
+        // The Chromium-only launch arguments and channel do not apply; "fakes" is not used by the layout specs.
+        channel: undefined,
+        launchOptions: {},
+      },
     },
     // Admin, invites and accounts (0.7), email (0.8) and federation (0.9) need their own configuration.
     {

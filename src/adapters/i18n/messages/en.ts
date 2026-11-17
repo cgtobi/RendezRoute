@@ -168,14 +168,15 @@ export const en = {
   "form.areaCoordinatesHint":
     "Shown to everyone, rounded to about 1 km. Not needed when the exact start has coordinates.",
   "map.searchButton": "Search",
-  "map.searchHint": "Press Enter or Search to look a place up; the one you pick sets the area.",
+  "map.searchHint":
+    "Press Enter or tap the magnifier to look a place up; the one you pick sets the area.",
   "map.searchUnavailable": "Place search is not available right now.",
   "map.noResults": "No places found.",
   "map.findMe": "Find my location",
   "map.pickLegend": "Tapping the map sets",
   "map.modeArea": "Public area",
   "map.modeExact": "Exact start",
-  "map.captionArea": "Tap the map to set the public meeting area (about 1 km). Everyone sees it.",
+  "map.captionArea": "Tap the map to set the public area (about 1 km). Everyone sees it.",
   "map.captionExact": "Tap the map to set the exact start. Only people who join can see it.",
   "map.captionAreaFollows":
     "The public area follows the exact start (about 1 km around it). Remove the exact point to choose another area.",

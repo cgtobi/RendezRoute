@@ -56,7 +56,7 @@ export const de: Messages = {
   "privacy.contact": "Fragen zu deinen Daten:",
   "privacy.storedHeading": "Was gespeichert wird",
   "privacy.storedPlans":
-    "Wenn du ein Treffen erstellst: dein Name, die Angaben zum Treffen und optional eine Route. Name, Titel, Notiz, Treffgebiet, Zeit, Distanz und Pace sieht jede Person mit dem Link. Den genauen Treffpunkt und die Route sehen nur du und alle, die zusagen; sie werden verschlüsselt gespeichert.",
+    "Wenn du ein Treffen erstellst: dein Name, die Angaben zum Treffen und optional eine Route. Name, Titel, Notiz, Gebiet, Zeit, Distanz und Pace sieht jede Person mit dem Link. Den genauen Treffpunkt und die Route sehen nur du und alle, die zusagen; sie werden verschlüsselt gespeichert.",
   "privacy.storedResponses":
     "Wenn du antwortest: der Name, den du angibst, deine Antwort und die Sprache der Seite, für Nachrichten zum Treffen. Dein Name wird verschlüsselt gespeichert; die Organisator:in sieht ihn und, wenn du zusagst, auch die anderen Teilnehmer:innen. Wenn du um Teilnahme bittest, wird deine optionale Nachricht an die Organisator:in ebenfalls verschlüsselt gespeichert, nur ihr gezeigt und gelöscht, sobald sie entschieden hat.",
   "privacy.storedRecap":
@@ -88,13 +88,13 @@ export const de: Messages = {
   "privacy.tiles":
     "Karten lädt dein Browser direkt von {host}. Dieser Dienst sieht deine IP-Adresse und welchen Kartenausschnitt du ansiehst.",
   "privacy.tilesServer":
-    "Für Vorschaubilder von Links lädt dieser Server außerdem Kartenbilder des ungefähren Treffgebiets; dabei wird nichts über dich übermittelt.",
+    "Für Vorschaubilder von Links lädt dieser Server außerdem Kartenbilder des ungefähren Gebiets; dabei wird nichts über dich übermittelt.",
   "privacy.geocoder":
     "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Wenn du einen Ort auf der Karte wählst und das Gebiet leer ist oder noch den früheren Vorschlag enthält, wird der gerundete Punkt dieses Ortes (etwa 1 km) auf dem gleichen Weg an den Dienst geschickt, um einen Namen vorzuschlagen. Wenn du auf der Karte einen genauen Treffpunkt setzt und dessen Beschreibung leer ist oder noch den früheren Vorschlag enthält, wird dieser genaue Punkt ebenfalls über diesen Server an den Dienst geschickt, um eine Beschreibung wie eine Straße oder einen benannten Ort vorzuschlagen; der Dienst erfährt nicht, wer du bist. Suchanfragen und die Gebietsnamen bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit Wiederholungen keine neue Anfrage brauchen; Anfragen mit genauen Punkten werden nicht im Arbeitsspeicher dieses Servers gehalten.",
   "privacy.push":
     "Wenn du Benachrichtigungen einschaltest, stellt der Push-Dienst deines Browsers (von Google, Mozilla, Apple oder Microsoft) sie zu. Die Nachrichten sind verschlüsselt; der Dienst sieht nur, dass eine verschickt wurde. Dafür speichert dieser Server die Push-Adresse und die Schlüssel deines Browsers verschlüsselt und löscht sie, wenn du Benachrichtigungen ausschaltest, oder mit dem Treffen oder deiner Antwort.",
   "privacy.weather":
-    "Für die Wettervorhersage auf den Seiten der Treffen fragt dieser Server bei {host} nach dem ungefähren Treffgebiet und der Startzeit. Über dich wird nichts gesendet. Vorhersagen bleiben bis zu {minutes} Minuten im Speicher dieses Servers.",
+    "Für die Wettervorhersage auf den Seiten der Treffen fragt dieser Server bei {host} nach dem ungefähren Gebiet und der Startzeit. Über dich wird nichts gesendet. Vorhersagen bleiben bis zu {minutes} Minuten im Speicher dieses Servers.",
   "privacy.calendar":
     "Wenn du einen Kalender-Link erstellst, ruft der Server deiner Kalender-App ihn ab. Dieser Server sieht die öffentlichen Angaben deiner Treffen und dass du darauf geantwortet hast.",
   "privacy.location":
@@ -103,7 +103,7 @@ export const de: Messages = {
     "Die Karte zeigt dann deine Gegend, sodass dein Browser Kartenbilder dieser Gegend vom Kartendienst lädt.",
   "privacy.share": "WhatsApp wird nur kontaktiert, wenn du den Teilen-Link benutzt.",
   "privacy.previews":
-    "Wird ein Link zu einem Treffen in einer Chat-App geteilt, ruft die App Titel, Zeit, Treffgebiet, Distanz, Pace und ein Vorschaubild ab. Chat-Apps können diese Vorschau auch nach dem Löschen des Treffens behalten.",
+    "Wird ein Link zu einem Treffen in einer Chat-App geteilt, ruft die App Titel, Zeit, Gebiet, Distanz, Pace und ein Vorschaubild ab. Chat-Apps können diese Vorschau auch nach dem Löschen des Treffens behalten.",
   "privacy.logsHeading": "Protokolle und Schutz vor Missbrauch",
   "privacy.logs":
     "Die Software protokolliert, welche Art von Seite aufgerufen wurde und ob es geklappt hat, nie Namen, private Links, genaue Orte oder IP-Adressen.",
@@ -169,12 +169,12 @@ export const de: Messages = {
   "form.exactDescriptionSuggested": "Vorschlag vom Kartenpunkt. Ändere ihn, wenn du magst.",
   "form.latitude": "Breitengrad",
   "form.longitude": "Längengrad",
-  "form.areaCoordinates": "Kartenpunkt des Treffgebiets (optional)",
+  "form.areaCoordinates": "Kartenpunkt des Gebiets (optional)",
   "form.areaCoordinatesHint":
     "Für alle sichtbar, auf etwa 1 km gerundet. Nicht nötig, wenn der genaue Treffpunkt Koordinaten hat.",
   "map.searchButton": "Suchen",
   "map.searchHint":
-    "Drücke Enter oder Suchen, um einen Ort zu finden; der gewählte legt das Gebiet fest.",
+    "Drücke Enter oder tippe auf die Lupe, um einen Ort zu finden; der gewählte legt das Gebiet fest.",
   "map.searchUnavailable": "Die Ortssuche ist gerade nicht verfügbar.",
   "map.noResults": "Keine Orte gefunden.",
   "map.findMe": "Meinen Standort finden",
@@ -182,9 +182,9 @@ export const de: Messages = {
   "map.modeArea": "Öffentliches Gebiet",
   "map.modeExact": "Genauer Start",
   "map.captionArea":
-    "Tippe auf die Karte, um das öffentliche Treffgebiet (etwa 1 km) zu setzen. Alle sehen es.",
+    "Tippe auf die Karte, um das öffentliche Gebiet (etwa 1 km) zu setzen. Alle sehen es.",
   "map.captionExact":
-    "Tippe auf die Karte, um den genauen Start zu setzen. Nur wer mitmacht, sieht ihn.",
+    "Tippe auf die Karte, um den genauen Start zu setzen. Nur wer teilnimmt, sieht ihn.",
   "map.captionAreaFollows":
     "Das öffentliche Gebiet folgt dem genauen Start (etwa 1 km darum). Entferne den genauen Punkt, um ein anderes Gebiet zu wählen.",
   "map.locateDenied": "Der Standortzugriff wurde verweigert",
@@ -196,7 +196,7 @@ export const de: Messages = {
   "map.exactNone": "Kein Punkt auf der Karte gesetzt",
   "map.exactRemove": "Entfernen",
   "map.pickLabel": "Karte zum Auswählen eines Punkts",
-  "map.planLabel": "Karte des Treffgebiets",
+  "map.planLabel": "Karte des Gebiets",
   "map.zoomIn": "Vergrößern",
   "map.zoomOut": "Verkleinern",
   "form.distance": "Distanz ({unit}, optional)",
@@ -218,7 +218,7 @@ export const de: Messages = {
   "form.visibilityLink": "Nur, wer den Link hat",
   "form.visibilityPublic": "Alle: gelistet unter „In der Nähe“ auf dieser Seite",
   "form.visibilityPublicHint":
-    "Ein öffentliches Treffen können alle finden und sehen dann, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Treffgebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
+    "Ein öffentliches Treffen können alle finden und sehen dann, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Gebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
   "form.publicNeedsLogin": "Öffentliche Treffen brauchen ein Konto auf dieser Seite.",
   "form.publicLogIn": "Anmelden",
   "field.public_needs_login":
@@ -275,7 +275,7 @@ export const de: Messages = {
   "actorProfile.gone": "Dieses Fediverse-Profil wurde ausgeschaltet.",
   "privacy.profiles":
     "Wenn du ein Fediverse-Profil einschaltest, können alle im Fediverse den gewählten Namen, deinen Anzeigenamen und deine kommenden öffentlichen Treffen sehen, und andere Server können Kopien behalten. Seine Signaturschlüssel werden verschlüsselt gespeichert. Treffen für deine Follower:innen und öffentliche Treffen, gespeichert nach dem Einschalten, werden mit ihren öffentlichen Angaben an die Server deiner Follower:innen geschickt, die Kopien behalten können; Änderungen werden auch geschickt, und löschst du ein Treffen oder machst es für weniger Leute auffindbar, werden sie gebeten, es zu entfernen. Alle im Fediverse können ihm folgen: Adresse und Posteingänge einer Follower:in werden verschlüsselt gespeichert, bis sie nicht mehr folgt, ihr Konto gelöscht wird, das Profil ausgeschaltet wird oder diese Seite nicht mehr am Fediverse teilnimmt, und gezeigt wird nur, wie viele es sind. Nachrichten an Follower:innen warten mit den Adressen ihrer Posteingänge höchstens 12 Stunden in einer Warteschlange; die letzte, die sagt, dass das Profil weg ist, behält bis dahin den Signaturschlüssel, den sie braucht. Schaltest du es aus oder löschst du dein Konto, wird der Name stillgelegt: Nur ein verschlüsselter Prüfwert bleibt, damit er nie wieder verwendet wird.",
-  "form.joinMode": "Wer mitkommen kann",
+  "form.joinMode": "Wer teilnehmen kann",
   "form.joinOpen": "Alle mit dem Link",
   "form.joinApproval": "Nur, wen ich annehme",
   "form.joinModeHint":
@@ -426,7 +426,7 @@ export const de: Messages = {
   "respond.note": "Nachricht an die Organisator:in (optional)",
   "respond.noteHint": "Nur die Organisator:in sieht sie.",
   "respond.approvalNote":
-    "Die Organisator:in entscheidet, wer mitkommt. Sobald du angenommen bist, siehst du den genauen Treffpunkt und wer sonst noch kommt.",
+    "Die Organisator:in entscheidet, wer teilnimmt. Sobald du angenommen bist, siehst du den genauen Treffpunkt und wer sonst noch kommt.",
   "respond.closed": "Für dieses Treffen sind keine Antworten mehr möglich.",
   "respond.blocked": "Du kannst auf dieses Treffen nicht antworten.",
 
@@ -493,7 +493,7 @@ export const de: Messages = {
   "weather.thunderstorm": "Gewitter",
   "weather.rainChance": "Regenwahrscheinlichkeit {percent}",
   "weather.wind": "Wind {speed}",
-  "weather.hint": "Für die Startzeit, in der Nähe des Treffgebiets.",
+  "weather.hint": "Für die Startzeit, in der Nähe des Gebiets.",
   "weather.source": "Wetterdaten:",
 
   "recap.heading": "Rückblick",
@@ -606,9 +606,9 @@ export const de: Messages = {
   "ntfyLink.confirmed": "ntfy-Benachrichtigungen sind eingeschaltet.",
   "ntfyLink.turnedOff": "ntfy-Benachrichtigungen sind abgeschaltet.",
   "privacy.publicPlans":
-    "Wer ein Treffen organisiert, kann es öffentlich machen. Dann finden es alle unter „In der Nähe“ und sehen, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Treffgebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
+    "Wer ein Treffen organisiert, kann es öffentlich machen. Dann finden es alle unter „In der Nähe“ und sehen, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Gebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
   "privacy.publicPlansProfile":
-    "Wer ein Treffen organisiert und ein Fediverse-Profil hat, kann es öffentlich machen. Dann finden es alle auf diesem Profil und im Fediverse und sehen, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Treffgebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
+    "Wer ein Treffen organisiert und ein Fediverse-Profil hat, kann es öffentlich machen. Dann finden es alle auf diesem Profil und im Fediverse und sehen, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Gebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
   "privacy.ntfy":
     "Wenn du ntfy einschaltest, werden Benachrichtigungen an den ntfy-Server {server} unter einem zufälligen Thema gesendet, das die App erzeugt; wer das Thema kennt, kann sie lesen. Das Thema wird verschlüsselt gespeichert und mit deiner Antwort, dem Treffen oder dem Konto gelöscht.",
   "channelLink.invalid":
@@ -682,7 +682,7 @@ export const de: Messages = {
   "calendar.intro":
     "Deine Kalender-App kann alle Treffen zeigen, die du in diesem Browser organisierst oder auf die du geantwortet hast. Sie aktualisiert sie selbst, wenn ein Treffen geändert, abgesagt oder gelöscht wird.",
   "calendar.contents":
-    "Der Kalender enthält nur öffentliche Angaben: Titel, Zeit, Treffgebiet und den Link. Nie den genauen Treffpunkt, die Route oder Namen. Der Server deiner Kalender-App ruft ihn ab und sieht daher diese Angaben und dass du geantwortet hast.",
+    "Der Kalender enthält nur öffentliche Angaben: Titel, Zeit, Gebiet und den Link. Nie den genauen Treffpunkt, die Route oder Namen. Der Server deiner Kalender-App ruft ihn ab und sieht daher diese Angaben und dass du geantwortet hast.",
   "calendar.create": "Kalender-Link erstellen",
   "calendar.active": "Dieser Browser hat einen Kalender-Link.",
   "calendar.renew": "Neuen Link erstellen",

@@ -15,7 +15,7 @@ export const fr: Messages = {
   "layout.done": "Terminé",
   "form.where": "Où",
   "form.hostingAs": "Vous organisez en tant que {name}",
-  "fold.exact": "Point de départ exact",
+  "fold.exact": "Point de rendez-vous exact",
   "fold.exactNone": "Facultatif · seules les personnes que vous acceptez le voient",
   "fold.exactNoneOpen": "Facultatif · toute personne qui s’inscrit le voit",
   "fold.exactSetOpen": "Défini · toute personne qui s’inscrit le voit",
@@ -185,7 +185,7 @@ export const fr: Messages = {
   "map.modeArea": "Zone publique",
   "map.modeExact": "Départ exact",
   "map.captionArea":
-    "Touchez la carte pour définir la zone de rendez-vous publique (environ 1 km). Tout le monde la voit.",
+    "Touchez la carte pour définir la zone publique (environ 1 km). Tout le monde la voit.",
   "map.captionExact":
     "Touchez la carte pour définir le départ exact. Seules les personnes qui participent le voient.",
   "map.captionAreaFollows":

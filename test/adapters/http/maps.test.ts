@@ -131,9 +131,7 @@ describe("form map and place search (spec 3.9, decision D12)", () => {
     // The caption is server-rendered for the default mode and swapped by the script.
     const caption = /<p[^>]*data-map-caption=""[^>]*>[^<]*<\/p>/.exec(html)?.[0] ?? "";
     expect(caption).toContain('aria-live="polite"');
-    expect(caption).toContain(
-      "Tap the map to set the public meeting area (about 1 km). Everyone sees it.",
-    );
+    expect(caption).toContain("Tap the map to set the public area (about 1 km). Everyone sees it.");
     expect(caption).toContain(
       'data-caption-exact="Tap the map to set the exact start. Only people who join can see it."',
     );

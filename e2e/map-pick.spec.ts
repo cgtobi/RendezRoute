@@ -35,7 +35,7 @@ test("The switch starts on the public area; a tap sets the area, then the exact 
   await expect(area).toBeChecked();
   await expect(page.locator(".mode-switch")).toBeVisible();
   await expect(page.getByText("Public area", { exact: true })).toBeVisible();
-  await expect(caption).toHaveText(/public meeting area \(about 1 km\)\. Everyone sees it\./);
+  await expect(caption).toHaveText(/public area \(about 1 km\)\. Everyone sees it\./);
 
   // A tap in the default mode sets the area point only.
   await map(page).click({ position: { x: 250, y: 200 } });
@@ -75,7 +75,7 @@ test("The switch starts on the public area; a tap sets the area, then the exact 
   // Remove clears both fields, shows the empty line and keeps focus on it.
   await readout.getByRole("button", { name: "Remove" }).click();
   await expect(readout.locator("[data-exact-none]")).toBeFocused();
-  await expect(caption).toHaveText(/set the public meeting area/);
+  await expect(caption).toHaveText(/set the public area/);
   await expect(f.exactLat).toHaveValue("");
   await expect(f.exactLng).toHaveValue("");
   await expect(readout).toContainText("No point set on the map");

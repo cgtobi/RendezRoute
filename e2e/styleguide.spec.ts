@@ -13,6 +13,12 @@ import { person } from "./helpers.ts";
 const WIDTHS = [320, 390] as const;
 const SCHEMES = ["light", "dark"] as const;
 
+// No trace for this spec: the Tab walk presses a few hundred keys on a page with thousands of
+// nodes, and a trace snapshots the DOM around every press. Under a parallel run that made each
+// WebKit press take about 1.5 s (measured from a trace of a timed-out run) and the walk blow its
+// budget. The failure messages name the section and the last focused element instead.
+test.use({ trace: "off" });
+
 /** Pixels of tolerance for sub-pixel rounding. */
 const SLACK = 1;
 
@@ -275,17 +281,64 @@ for (const scheme of SCHEMES) {
       // macOS WebKit tabs through form fields only; Option+Tab also stops on links, buttons
       // and radios, like Tab in Chromium (Safari's own convention).
       const key = webkit ? "Alt+Tab" : "Tab";
-      // One evaluate per press records the stop and returns how many elements were seen. The walk
-      // ends after 15 presses in a row that reach no new element (the end of the page, where
-      // focus wraps; a date or time field takes a few presses), bounded at 1500 presses.
+      // One evaluate per press records the stop and returns how many elements were seen, whether
+      // focus came back to the first stop (a wrap: the end of the page), and where it is now.
+      // The walk is bounded without relying on timing: it ends at a wrap, after 15 presses in a
+      // row that reach no new element (focus left to the browser, or cycles between two), or at
+      // twice the page's focusable elements plus a margin (a date or time field takes a few
+      // presses each). Each press has its own deadline and the walk a wall-clock budget, so a
+      // stuck browser fails with the last element named instead of hanging to the test timeout.
+      const focusable = await page.evaluate<number>(
+        `document.querySelectorAll("a[href], button, summary, input:not([type=hidden]), select, textarea, [tabindex]").length`,
+      );
+      const maxPresses = focusable * 2 + 30;
+      const PRESS_DEADLINE_MS = 20_000;
+      const WALK_BUDGET_MS = 150_000;
+      const started = Date.now();
+      const step = () =>
+        page.evaluate<{ seen: number; wrapped: boolean; now: string }>(
+          `(() => {
+             const before = window.__last;
+             window.__record();
+             const el = document.activeElement;
+             if (window.__first === undefined && window.__last) window.__first = window.__last;
+             const wrapped = before !== null && window.__last === window.__first && before !== window.__first;
+             return { seen: window.__seen.size, wrapped, now: el ? describe(el) : "none" };
+           })()`.replace("(() => {", `(() => { ${BROWSER_HELPERS}`),
+        );
       let stale = 0;
       let seen = 0;
-      for (let pressed = 0; pressed < 1500 && stale < 15; pressed += 1) {
-        await page.keyboard.press(key);
-        const now = await page.evaluate<number>("(window.__record(), window.__seen.size)");
-        stale = now === seen ? stale + 1 : 0;
-        seen = now;
+      let last = "none";
+      let pressed = 0;
+      for (; pressed < maxPresses && stale < 15; pressed += 1) {
+        if (Date.now() - started > WALK_BUDGET_MS) {
+          throw new Error(
+            `Tab walk over its ${WALK_BUDGET_MS} ms budget after ${pressed} presses; stops by section ${JSON.stringify(await page.evaluate("Object.fromEntries(window.__stops.reduce((m, s) => m.set(s.id, (m.get(s.id) || 0) + 1), new Map()))"))}; last focused ${last}`,
+          );
+        }
+        const state = await Promise.race([
+          page.keyboard.press(key).then(step),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    `Tab walk stuck: press ${pressed} took over ${PRESS_DEADLINE_MS} ms; last focused ${last}`,
+                  ),
+                ),
+              PRESS_DEADLINE_MS,
+            ).unref(),
+          ),
+        ]);
+        last = state.now;
+        stale = state.seen === seen ? stale + 1 : 0;
+        seen = state.seen;
+        if (state.wrapped) break;
       }
+      expect(
+        pressed,
+        `Tab walk hit its press cap (${maxPresses}) without ending; last focused ${last}`,
+      ).toBeLessThan(maxPresses);
       const recorded =
         await page.evaluate<{ id: string; cue: boolean; what: string }[]>("window.__stops");
       const missing: Problem[] = recorded

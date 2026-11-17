@@ -130,7 +130,7 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
           visibility={visibilityChoice(config, result.visibility)}
         />
       </section>,
-      { title: t("template.editHeading"), head: <MapAssets /> },
+      { title: t("template.editHeading"), head: <MapAssets pathBase="/" /> },
     );
   };
 

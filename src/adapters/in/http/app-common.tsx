@@ -6,14 +6,13 @@ import type { Context, Hono } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { bodyLimit } from "hono/body-limit";
 import { jsxRenderer } from "hono/jsx-renderer";
-import { relative } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Config } from "../../../config.ts";
 import { isTheme } from "../../../domain/theme.ts";
 import { isUnits } from "../../../domain/units.ts";
 import { type Language, resolveLanguage, type Translate, translator } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
 import type { AppEnv } from "./app.tsx";
+import { currentVersion, STATIC_ROOT } from "./asset-url.ts";
 import { clientIp } from "./client-ip.ts";
 import { csrf, type CsrfOptions } from "./csrf.ts";
 import { ingressCsrfGuard, type IngressCsrfOptions } from "./ingress-guard.ts";
@@ -24,11 +23,7 @@ import { messagePage } from "./routes/shared.tsx";
 import { isSecretLinkPath } from "./routes/secret-links.tsx";
 import { securityHeaders } from "./security-headers.ts";
 
-/** Bundled assets, relative to the working directory as serveStatic expects (same from src/ and dist/). */
-export const STATIC_ROOT = relative(
-  process.cwd(),
-  fileURLToPath(new URL("../../../../public", import.meta.url)),
-);
+export { STATIC_ROOT };
 
 /** Form posts; generous for the largest text fields (note: 2,000 characters). */
 const MAX_BODY_BYTES = 100 * 1024;
@@ -186,7 +181,21 @@ export function composeCommonStack(
     "/static/*",
     async (c, next) => {
       await next();
-      if (c.res.ok) c.res.headers.set("cache-control", "public, max-age=3600");
+      // Immutable only for the file's current hash (?v=<hash>, decision D82); any other or no
+      // version could meet different bytes later.
+      if (c.res.ok) {
+        const version = c.req.query("v");
+        const current =
+          version === undefined || version === ""
+            ? undefined
+            : currentVersion(c.req.path.replace(/^\/static\//, ""));
+        c.res.headers.set(
+          "cache-control",
+          current !== undefined && current === version
+            ? "public, max-age=31536000, immutable"
+            : "public, max-age=3600",
+        );
+      }
     },
     serveStatic({ root: STATIC_ROOT, rewriteRequestPath: (path) => path.replace(/^\/static/, "") }),
   );

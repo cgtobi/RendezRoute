@@ -23,8 +23,12 @@ describe("form map and place search (spec 3.9, decision D12)", () => {
     expect(html).toMatch(/<div[^>]*data-place-search=""[^>]*data-endpoint="\/geocode"/);
     expect(html).toMatch(/<div[^>]*data-map-picker=""[^>]*data-locate-title="Find my location"/);
     expect(html).not.toContain("data-locate=");
-    expect(html).toContain('<script src="/static/build/map.js" type="module"></script>');
-    expect(html).toContain('<link rel="stylesheet" href="/static/build/map.css"/>');
+    expect(html).toMatch(
+      /<script src="\/static\/build\/map\.js(\?v=[0-9a-f]{10})?" type="module">/,
+    );
+    expect(html).toMatch(
+      /<link rel="stylesheet" href="\/static\/build\/map\.css(\?v=[0-9a-f]{10})?"\/>/,
+    );
   });
 
   it("merges the place search into the area field: one input, no separate search field (D77)", async () => {

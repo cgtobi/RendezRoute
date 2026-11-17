@@ -3,6 +3,7 @@
 import type { Translate } from "../../../i18n/i18n.ts";
 import type { Child } from "hono/jsx";
 import type { GeoPoint } from "../../../../domain/geo.ts";
+import { assetUrl } from "../asset-url.ts";
 
 /** Tile settings for the browser; undefined when maps are disabled. */
 export interface MapSettings {
@@ -14,12 +15,12 @@ export interface MapSettings {
 }
 
 /** The bundled map script and stylesheet, served by the instance (spec 2). */
-export function MapAssets() {
+export function MapAssets({ pathBase }: { pathBase: string }) {
   return (
     <>
-      <link rel="stylesheet" href="/static/build/map.css" />
+      <link rel="stylesheet" href={assetUrl(pathBase, "build/map.css")} />
       {/* A module for its own scope: see the app.js tag in layout.tsx. */}
-      <script src="/static/build/map.js" type="module"></script>
+      <script src={assetUrl(pathBase, "build/map.js")} type="module"></script>
     </>
   );
 }

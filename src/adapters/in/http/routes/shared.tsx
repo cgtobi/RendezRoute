@@ -229,7 +229,7 @@ export async function renderPlanPage(
             rel="stylesheet"
             href={`/p/${result.view.id}/theme.css?v=${themeVersion(result.view.colors)}`}
           />
-          {map !== undefined && result.view.area.point !== undefined && <MapAssets />}
+          {map !== undefined && result.view.area.point !== undefined && <MapAssets pathBase="/" />}
           <PreviewTags
             preview={result.preview}
             baseUrl={config.baseUrl}

@@ -101,7 +101,9 @@ describe("instance pages (design step 5)", () => {
   it("keep the admin's error pages under the admin directory's relative links, unstored", async () => {
     const { admin } = await adminSetup();
     const response = await admin.get("/admin/plans/AAAAAAAAAAAAAAAAAAAAAA/missing");
-    expect(await response.text()).toContain('href="../../../static/app.css"');
+    expect(await response.text()).toMatch(
+      /href="\.\.\/\.\.\/\.\.\/static\/app\.css\?v=[0-9a-f]{10}"/,
+    );
     // Like every admin response (decision I46).
     expect({
       cache: response.headers.get("cache-control"),

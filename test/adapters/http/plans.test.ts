@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { en } from "../../../src/adapters/i18n/messages/en.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
+import { currentVersion } from "../../../src/adapters/in/http/asset-url.ts";
 import { escaped } from "../../support/html.ts";
 import { createPlanViaUi, planForm, respondViaUi } from "../../support/plans.ts";
 
@@ -315,6 +316,21 @@ describe("static assets (spec 2: served by the instance, never from a CDN)", () 
     expect(response.headers.get("content-type")).toContain("text/css");
     expect(response.headers.get("cache-control")).toBe("public, max-age=3600");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  it("serves a versioned URL as immutable and an unversioned one for an hour (D82)", async () => {
+    const { client } = await setup();
+    const hash = currentVersion("app.css") ?? "";
+    expect(hash).toMatch(/^[0-9a-f]{10}$/);
+    const versioned = await client.get(`/static/app.css?v=${hash}`);
+    expect(versioned.status).toBe(200);
+    expect(versioned.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+    const stale = await client.get("/static/app.css?v=x");
+    expect(stale.status).toBe(200);
+    expect(stale.headers.get("content-type")).toContain("text/css");
+    for (const path of ["/static/app.css?v=x", "/static/app.css?v=", "/static/app.css"]) {
+      expect((await client.get(path)).headers.get("cache-control")).toBe("public, max-age=3600");
+    }
   });
 
   it("does not serve files outside the public directory", async () => {

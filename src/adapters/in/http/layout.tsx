@@ -6,6 +6,7 @@ import {
   SUPPORTED_LANGUAGES,
   type Translate,
 } from "../../i18n/i18n.ts";
+import { assetUrl } from "./asset-url.ts";
 import { CSRF_FIELD } from "./csrf.ts";
 import { RETURN_FIELD } from "./routes/preferences.ts";
 import { type Theme, THEMES } from "../../../domain/theme.ts";
@@ -72,10 +73,10 @@ export function Layout({
         />
         <link rel="icon" href={`${pathBase}static/brand/tab-icon.svg`} type="image/svg+xml" />
         <link rel="apple-touch-icon" href={`${pathBase}static/brand/apple-touch-icon.png`} />
-        <link rel="stylesheet" href={`${pathBase}static/build/fonts.css`} />
-        <link rel="stylesheet" href={`${pathBase}static/app.css`} />
+        <link rel="stylesheet" href={assetUrl(pathBase, "build/fonts.css")} />
+        <link rel="stylesheet" href={assetUrl(pathBase, "app.css")} />
         {/* A module, not a classic script: classic bundles share one global scope and the minified map.js overwrote names of app.js. */}
-        <script src={`${pathBase}static/build/app.js`} type="module"></script>
+        <script src={assetUrl(pathBase, "build/app.js")} type="module"></script>
         {head}
       </head>
       <body>

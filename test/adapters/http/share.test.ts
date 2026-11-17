@@ -159,8 +159,8 @@ describe("app script (spec 2: small scripts only where needed)", () => {
   it("is loaded from this site on every page, as a module of its own scope", async () => {
     const { host, planId } = await setup();
     for (const path of ["/", "/new", `/p/${planId}`]) {
-      expect(await (await host.get(path)).text()).toContain(
-        '<script src="/static/build/app.js" type="module"></script>',
+      expect(await (await host.get(path)).text()).toMatch(
+        /<script src="\/static\/build\/app\.js(\?v=[0-9a-f]{10})?" type="module"><\/script>/,
       );
     }
   });

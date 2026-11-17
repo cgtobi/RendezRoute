@@ -89,7 +89,7 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         routeTrim={routeTrim}
         visibility={visibilityChoice(config, choices)}
       />,
-      { title: c.get("t")("form.heading"), head: <MapAssets /> },
+      { title: c.get("t")("form.heading"), head: <MapAssets pathBase="/" /> },
     );
   };
 

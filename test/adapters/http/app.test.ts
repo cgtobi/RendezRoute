@@ -140,9 +140,9 @@ describe("page layout", () => {
 
   it("loads the bundled font stylesheet before the app's own (decision D27)", async () => {
     const html = await (await createApp({ config: config() }).request("/")).text();
-    const fonts = html.indexOf('<link rel="stylesheet" href="/static/build/fonts.css"/>');
+    const fonts = html.indexOf('<link rel="stylesheet" href="/static/build/fonts.css');
     expect(fonts).toBeGreaterThan(-1);
-    expect(fonts).toBeLessThan(html.indexOf('<link rel="stylesheet" href="/static/app.css"/>'));
+    expect(fonts).toBeLessThan(html.indexOf('<link rel="stylesheet" href="/static/app.css?v='));
   });
 
   it("sets the page language from Accept-Language", async () => {

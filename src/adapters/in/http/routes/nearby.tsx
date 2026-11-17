@@ -111,7 +111,7 @@ export function registerNearbyRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       />,
       {
         title: t("nearby.title"),
-        head: <MapAssets />,
+        head: <MapAssets pathBase="/" />,
         returnTo: nearbyPath(kept, UNIT_FIELDS),
       },
     );

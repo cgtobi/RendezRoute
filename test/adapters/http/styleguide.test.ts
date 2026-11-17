@@ -179,8 +179,10 @@ describe("the style guide with ALLOW_INSECURE_DEV on", () => {
     expect(html).not.toMatch(/<style[\s>]/);
     // Scripts only with a src.
     expect([...html.matchAll(/<script\b[^>]*>/g)].every((m) => /\ssrc="/.test(m[0]))).toBe(true);
-    expect(html).toContain('<link rel="stylesheet" href="/static/styleguide.css"/>');
-    expect(html).toContain('<link rel="stylesheet" href="/static/app.css"/>');
+    expect(html).toMatch(
+      /<link rel="stylesheet" href="\/static\/styleguide\.css\?v=[0-9a-f]{10}"\/>/,
+    );
+    expect(html).toMatch(/<link rel="stylesheet" href="\/static\/app\.css\?v=[0-9a-f]{10}"\/>/);
   });
 
   it("shows the real create form in four states", async () => {

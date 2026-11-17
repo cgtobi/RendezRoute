@@ -118,7 +118,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       {
         title: c.get("t")("host.heading"),
         // Map tools exist only in the full edit form; the form stays neutral (decision D11).
-        head: page.scope === "all" ? <MapAssets /> : undefined,
+        head: page.scope === "all" ? <MapAssets pathBase="/" /> : undefined,
       },
     );
   };

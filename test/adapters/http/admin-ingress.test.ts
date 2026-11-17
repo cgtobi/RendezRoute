@@ -173,7 +173,7 @@ describe("who gets in", () => {
         ]);
         targets.push(new URL(value, requestUrl).href);
       }
-      expect(targets).toContain(`${prefix}/static/app.css`);
+      expect(targets.some((target) => target.startsWith(`${prefix}/static/app.css?v=`))).toBe(true);
       expect(targets).toContain(`${prefix}/admin/`);
     }
   });

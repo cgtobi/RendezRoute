@@ -14,6 +14,9 @@
 //   -320, -390          resting state, light and dark (the original snapshot).
 //   -320-forced, -390-forced   the same with `forcedColors: "active"` emulated: Chromium projects
 //                       only (Playwright's WebKit has no forced-colors emulation, those tests skip).
+//   -390-theme-<theme>-on-<scheme>   resting state with `<html data-theme="light|dark">` set on top
+//                       of the emulated colour scheme (the file name's own scheme is the emulated one;
+//                       4 combinations per project, 390 px only).
 //   -390-hover          hover state, 390 px only (hover does not depend on the width).
 //   -390-focus          keyboard focus state, 390 px only.
 // Resting files: for every element of `header`, `main` and `footer` (plus the elements themselves)
@@ -34,8 +37,10 @@
 // per-press deadline, wall-clock budget, trace off); entries are the focused element, its
 // descendants, ` +parent`, ` +wrapper` (`.inline-input`, label or `.field`) and its descendants
 // (for a label or `.inline-input`), and ` +label`. Radios are reached by Tab only for one per
-// group, the others are not walked. Not covered by the style guide's markup: see the report of the
-// run that added this (no [readonly], aria-expanded/current/selected, explicit data-theme, map).
+// group, the others are not walked. Which states the style guide's markup shows is guarded by
+// css-state-coverage.spec.ts (every state selector of app.css must match an element, except the
+// documented map, theme-attribute and header-popover rules). Not covered: the map, and the
+// `[data-theme]` attribute at load (see the theme files above).
 // `compare` fails with a report of added, removed and changed elements and properties (the first
 // 100 differences per file, then the totals).
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -485,6 +490,36 @@ test.describe("computed style snapshot of the style guide", () => {
         await context.close();
         expect(Object.keys(current).length, "elements collected").toBeGreaterThan(500);
         finish(fileName(testInfo.project.name, scheme, width, "forced"), current);
+      });
+    }
+
+    // Explicit theme (`<html data-theme>`, the theme preference) on both emulated colour schemes:
+    // `:root[data-theme]` must win over the `prefers-color-scheme` media query, so each of the four
+    // combinations is its own file. Resting state at 390 px only.
+    for (const theme of SCHEMES) {
+      test(`${MODE ?? "skipped"} snapshot, theme ${theme} on ${scheme}, 390 px`, async ({
+        browser,
+        baseURL,
+      }, testInfo) => {
+        const { context, page } = await openStyleGuide(browser, baseURL ?? "", scheme, 390, false);
+        await page.evaluate(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`);
+        await settle(page);
+        // The attribute really decides: the page background is light or dark whatever the scheme.
+        const luminance = await page.evaluate<number>(
+          `(() => { const m = getComputedStyle(document.body).backgroundColor.match(/[\\d.]+/g).map(Number); return (m[0] + m[1] + m[2]) / 3; })()`,
+        );
+        expect(luminance > 128, `page background is light under data-theme=${theme}`).toBe(
+          theme === "light",
+        );
+        const current = await page.evaluate<Snapshot>(COLLECT);
+        // Determinism guard: a second read of the same page gives the same snapshot.
+        expect(differences(current, await page.evaluate<Snapshot>(COLLECT))).toEqual([]);
+        await context.close();
+        expect(Object.keys(current).length, "elements collected").toBeGreaterThan(500);
+        finish(
+          fileName(testInfo.project.name, scheme, 390, `theme-${theme}-on-${scheme}`),
+          current,
+        );
       });
     }
 

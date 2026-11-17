@@ -11,7 +11,9 @@ import type { Units } from "../../../../domain/units.ts";
 import type { Language, Translate } from "../../../i18n/i18n.ts";
 import { MenuSheetBody } from "../layout.tsx";
 import { Initial, PersonName } from "./avatar.tsx";
-import { ModeSwitch } from "./maps.tsx";
+import { BackLink } from "./back-link.tsx";
+import { LinkTools } from "./link-tools.tsx";
+import { AreaSearch, ModeSwitch } from "./maps.tsx";
 import { ExactStartSection } from "./plan-page.tsx";
 import { RequiredHint } from "./line-field.tsx";
 import { Fold, PlanForm, type VisibilityChoice } from "./plan-form.tsx";
@@ -51,6 +53,7 @@ export const SECTION_IDS = [
   "sg-folds",
   "sg-title",
   "sg-lines",
+  "sg-states",
   "sg-plan-form",
   "sg-header-sheet",
   "sg-footer",
@@ -104,6 +107,15 @@ const ERRORS: readonly FieldError[] = [
   { field: "areaLabel", code: "required" },
 ];
 
+const AREA_STATES = [
+  "rest",
+  "required",
+  "filled",
+  "error",
+  "error-empty",
+  "no-script",
+] as const satisfies readonly AreaState[];
+
 const ZONES = ["Europe/Berlin", "UTC"];
 
 const VISIBILITY: VisibilityChoice = {
@@ -127,14 +139,40 @@ const SAMPLE_KINDS = [
   "color",
 ] as const;
 type SampleKind = (typeof SAMPLE_KINDS)[number];
-type SampleState = "rest" | "filled" | "required" | "error" | "disabled";
+type SampleState =
+  | "rest"
+  | "filled"
+  | "required"
+  | "error"
+  | "disabled"
+  | "readonly"
+  | "readonly-empty"
+  | "readonly-required";
 
 /** The states each kind shows: a file field has no value to show, a colour is never empty. */
 const SAMPLE_STATES: Record<SampleKind, readonly SampleState[]> = {
-  text: ["rest", "filled", "required", "error", "disabled"],
+  text: [
+    "rest",
+    "filled",
+    "required",
+    "error",
+    "disabled",
+    "readonly",
+    "readonly-empty",
+    "readonly-required",
+  ],
   email: ["rest", "filled", "required", "error", "disabled"],
   search: ["rest", "filled", "required", "error", "disabled"],
-  textarea: ["rest", "filled", "required", "error", "disabled"],
+  textarea: [
+    "rest",
+    "filled",
+    "required",
+    "error",
+    "disabled",
+    "readonly",
+    "readonly-empty",
+    "readonly-required",
+  ],
   select: ["rest", "filled", "required", "error", "disabled"],
   date: ["rest", "filled", "required", "error", "disabled"],
   time: ["rest", "filled", "required", "error", "disabled"],
@@ -157,13 +195,17 @@ const SAMPLE_VALUE: Record<SampleKind, string> = {
 /** One field of the inputs section in one state, built like the real forms build theirs. */
 function FieldSample({ t, kind, state }: { t: Translate; kind: SampleKind; state: SampleState }) {
   const id = `sg-${kind}-${state}`;
-  const required = state === "required";
+  // A read-only required field keeps its attributes and shows no red hint (app.css `:not([readonly])`).
+  const required = state === "required" || state === "readonly-required";
   const invalid = state === "error";
-  const value = state === "filled" || invalid ? SAMPLE_VALUE[kind] : undefined;
+  const value =
+    state === "filled" || state === "readonly" || invalid ? SAMPLE_VALUE[kind] : undefined;
   const disabled = state === "disabled";
+  const readonly = state.startsWith("readonly");
   const props = {
     id,
     disabled,
+    readonly,
     required,
     "aria-required": required ? "true" : undefined,
     "aria-invalid": invalid ? "true" : undefined,
@@ -176,7 +218,7 @@ function FieldSample({ t, kind, state }: { t: Translate; kind: SampleKind; state
     ? undefined
     : required
       ? " "
-      : state === "rest" || disabled
+      : state === "rest" || state === "readonly-empty" || disabled
         ? "An example"
         : undefined;
   const control =
@@ -212,6 +254,52 @@ function FieldSample({ t, kind, state }: { t: Translate; kind: SampleKind; state
           This field cannot be changed here, because the sample is switched off.
         </p>
       )}
+      {invalid && (
+        <p class="error" id={`${id}-error`}>
+          {t("field.required")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+type AreaState = "rest" | "required" | "filled" | "error" | "error-empty" | "no-script";
+
+/**
+ * The area field with its place search, as the real form builds it (decision D77): the real
+ * AreaSearch row with the magnifier revealed (as the script does; "no-script" keeps it hidden).
+ * The real area input is required and has a real placeholder, so it counts as empty to CSS.
+ * "error-empty" also keeps the "Required" hint a failed submit would not render, so the rule that
+ * hides it under `.field-invalid` has an element to act on.
+ */
+function AreaRowSample({ t, state }: { t: Translate; state: AreaState }) {
+  const id = `sg-area-${state}`;
+  const required = state !== "rest";
+  const invalid = state === "error" || state === "error-empty";
+  const filled = state === "filled" || state === "error";
+  const control = (
+    <input
+      id={id}
+      type="text"
+      value={filled ? "Englischer Garten, north end" : undefined}
+      required={required}
+      placeholder={t("placeholder.areaLabel")}
+      aria-required={required ? "true" : undefined}
+      aria-invalid={invalid ? "true" : undefined}
+      aria-describedby={invalid ? `${id}-error` : undefined}
+    />
+  );
+  return (
+    <div class={invalid ? "field field-invalid" : "field"}>
+      <label for={id}>{`Area, ${state}`}</label>
+      <AreaSearch
+        t={t}
+        control={control}
+        requiredHint={
+          required && state !== "error" ? <RequiredHint t={t} controlId={id} /> : undefined
+        }
+        searchVisible={state !== "no-script"}
+      />
       {invalid && (
         <p class="error" id={`${id}-error`}>
           {t("field.required")}
@@ -521,6 +609,78 @@ export function StyleGuide(props: StyleGuideProps) {
       </Section>
 
       <Section
+        id="sg-states"
+        title="More states"
+        note="States of the real components that the other sections do not reach: the area row with its place search (real AreaSearch) empty and required, filled, with an error, with the magnifier hidden (no script); the two suggestion hints empty and filled; an opened fold inside .item-actions (real LinkTools); the back link."
+      >
+        <h3>Area row</h3>
+        {AREA_STATES.map((state) => (
+          <AreaRowSample t={t} state={state} />
+        ))}
+        <h3>Suggestion hints</h3>
+        <div class="field">
+          <label for="sg-suggest-label-empty">Area label, no suggestion yet</label>
+          <input id="sg-suggest-label-empty" type="text" value="Englischer Garten" />
+          <p
+            class="hint"
+            data-label-suggested=""
+            data-text={t("form.areaLabelSuggested")}
+            role="status"
+          ></p>
+        </div>
+        <div class="field">
+          <label for="sg-suggest-label-filled">Area label, suggested</label>
+          <input id="sg-suggest-label-filled" type="text" value="Englischer Garten" />
+          <p
+            class="hint"
+            data-label-suggested=""
+            data-text={t("form.areaLabelSuggested")}
+            role="status"
+          >
+            {t("form.areaLabelSuggested")}
+          </p>
+        </div>
+        <div class="field">
+          <label for="sg-suggest-description-empty">Start description, no suggestion yet</label>
+          <input id="sg-suggest-description-empty" type="text" value="North gate" />
+          <p
+            class="hint"
+            data-description-suggested=""
+            data-text={t("form.exactDescriptionSuggested")}
+            role="status"
+          ></p>
+        </div>
+        <div class="field">
+          <label for="sg-suggest-description-filled">Start description, suggested</label>
+          <input id="sg-suggest-description-filled" type="text" value="North gate" />
+          <p
+            class="hint"
+            data-description-suggested=""
+            data-text={t("form.exactDescriptionSuggested")}
+            role="status"
+          >
+            {t("form.exactDescriptionSuggested")}
+          </p>
+        </div>
+        <h3>Item actions with an opened fold</h3>
+        <div class="item-actions">
+          <a href="#sg-states">Export</a>
+          <LinkTools
+            t={t}
+            base="/styleguide"
+            csrfToken={csrfToken}
+            signedOut={undefined}
+            notifications
+            nonce="sample-nonce"
+            compact
+            returnToMyData
+          />
+        </div>
+        <h3>Back link</h3>
+        <BackLink href="#sg-states" label="Back to the plan" />
+      </Section>
+
+      <Section
         id="sg-plan-form"
         title="Plan form"
         note="The real PlanForm in four states: empty create, create with errors, create with values and public visibility, host edit. Each form has its own id prefix (sg-create, sg-errors, sg-filled, sg-host). The page scripts only act on the real prefix, so these samples stay static."
@@ -595,12 +755,15 @@ export function StyleGuide(props: StyleGuideProps) {
             description: "North gate, by the bike racks",
           }}
         />
-        <ShareLinks
-          t={t}
-          url="https://runs.example.org/p/sample-plan"
-          title="Easy Sunday run"
-          buttons={["copy", "native", "whatsApp"]}
-        />
+        {/* The plan page's own wrapper: the share rules are scoped to `.plan .share`. */}
+        <article class="plan">
+          <ShareLinks
+            t={t}
+            url="https://runs.example.org/p/sample-plan"
+            title="Easy Sunday run"
+            buttons={["copy", "native", "whatsApp"]}
+          />
+        </article>
       </Section>
 
       <Section

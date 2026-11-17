@@ -52,12 +52,15 @@ export function AreaSearch({
   t,
   control,
   requiredHint,
+  searchVisible = false,
 }: {
   t: Translate;
   /** The area text input (it keeps its own id, name and aria attributes). */
   control: Child;
   /** The "Required" hint that belongs to the control; a sibling of the row, so CSS can show it. */
   requiredHint: Child;
+  /** Show the search button without the script (the style guide shows the revealed state). */
+  searchVisible?: boolean;
 }) {
   return (
     <div
@@ -70,7 +73,7 @@ export function AreaSearch({
     >
       <div class="inline-input line-action">
         {control}
-        <button type="button" class="line-action-button" hidden>
+        <button type="button" class="line-action-button" hidden={!searchVisible}>
           <span class="icon icon-search" aria-hidden="true"></span>
           <span class="visually-hidden">{t("map.searchButton")}</span>
         </button>

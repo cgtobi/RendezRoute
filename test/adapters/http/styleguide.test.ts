@@ -13,6 +13,7 @@ const SECTIONS = [
   "sg-folds",
   "sg-title",
   "sg-lines",
+  "sg-states",
   "sg-plan-form",
   "sg-header-sheet",
   "sg-footer",
@@ -83,6 +84,35 @@ describe("the style guide with ALLOW_INSECURE_DEV on", () => {
     expect(new Set(ids).size).toBe(ids.length);
     // No pencil and no line wrapper on any sample.
     expect(section).not.toMatch(/pencil|line-pen|line-field/);
+  });
+
+  it("shows read-only samples that CSS can tell from disabled ones (plan I100)", async () => {
+    const { html } = await guide();
+    const section = html.slice(html.indexOf('id="sg-inputs"'), html.indexOf('id="sg-choices"'));
+    for (const kind of ["text", "textarea"]) {
+      for (const state of ["readonly", "readonly-empty", "readonly-required"]) {
+        const id = `sg-${kind}-${state}`;
+        const tag = new RegExp(`<(?:input|textarea)\\b[^>]*\\bid="${id}"[^>]*>`).exec(section)?.[0];
+        expect(`${id}: ${tag}`).toMatch(/\sreadonly(?:=""|\s|\/|>)/);
+        expect(`${id}: ${tag}`).not.toMatch(/\sdisabled/);
+      }
+    }
+  });
+
+  it("shows the merged area row, the suggestion hints and an open-able item action fold (plan I100)", async () => {
+    const { html } = await guide();
+    const section = html.slice(html.indexOf('id="sg-states"'), html.indexOf('id="sg-plan-form"'));
+    for (const state of ["rest", "required", "filled", "error", "error-empty", "no-script"]) {
+      expect(section.includes(`id="sg-area-${state}"`)).toBe(true);
+    }
+    expect(section.match(/<div class="field field-invalid">/g)?.length).toBe(2);
+    // The magnifier is revealed in every state but "no-script".
+    expect(section.match(/class="line-action-button" hidden/g)?.length).toBe(1);
+    expect(section.match(/data-label-suggested/g)?.length).toBe(2);
+    expect(section.match(/data-description-suggested/g)?.length).toBe(2);
+    expect(section).toMatch(/<p class="hint" data-label-suggested="" [^>]*><\/p>/);
+    expect(section).toMatch(/<div class="item-actions">[\s\S]*<details class="link-tools">/);
+    expect(section).toContain('<p class="back-link">');
   });
 
   it("shows the icon button on a line in the lines section (D75)", async () => {

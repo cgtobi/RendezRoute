@@ -58,7 +58,7 @@ export const fr: Messages = {
   "privacy.contact": "Questions sur vos données :",
   "privacy.storedHeading": "Ce qui est enregistré",
   "privacy.storedPlans":
-    "Quand vous créez une sortie : votre nom, les informations de la sortie et un parcours facultatif. Le nom, le titre, la remarque, la zone de rendez-vous, l’heure, la distance et l’allure sont visibles par toute personne ayant le lien. Le point de départ exact et le parcours ne sont visibles que par vous et les personnes inscrites, et sont enregistrés chiffrés.",
+    "Quand vous créez une sortie : votre nom, les informations de la sortie et un parcours facultatif. Le nom, le titre, la remarque, la zone, l’heure, la distance et l’allure sont visibles par toute personne ayant le lien. Le point de départ exact et le parcours ne sont visibles que par vous et les personnes inscrites, et sont enregistrés chiffrés.",
   "privacy.storedResponses":
     "Quand vous répondez : le nom que vous indiquez, votre choix et la langue de la page, pour les messages concernant la sortie. Votre nom est enregistré chiffré et visible par l’organisateur·rice, ainsi que par les autres participant·e·s si vous vous inscrivez. Si vous demandez à participer, votre message facultatif à l’organisateur·rice est aussi enregistré chiffré, visible seulement par l’organisateur·rice et supprimé dès sa décision.",
   "privacy.storedRecap":
@@ -90,13 +90,13 @@ export const fr: Messages = {
   "privacy.tiles":
     "Les cartes sont chargées par votre navigateur directement depuis {host}. Ce service voit votre adresse IP et la zone de carte que vous consultez.",
   "privacy.tilesServer":
-    "Pour les images d’aperçu des liens, ce serveur charge aussi des images de carte de la zone de rendez-vous approximative, sans rien transmettre vous concernant.",
+    "Pour les images d’aperçu des liens, ce serveur charge aussi des images de carte de la zone approximative, sans rien transmettre vous concernant.",
   "privacy.geocoder":
     "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Lorsque vous choisissez un lieu sur la carte et que la zone est vide ou contient encore la suggestion précédente, le point arrondi de ce lieu (environ 1 km) est envoyé au service de la même manière, pour suggérer un nom. Lorsque vous placez un point de rendez-vous exact sur la carte et que sa description est vide ou contient encore la suggestion précédente, ce point exact est lui aussi envoyé au service par ce serveur, pour suggérer une description comme une rue ou un lieu nommé ; le service ne sait pas qui vous êtes. Les recherches et les noms de zone restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes ; les requêtes portant sur des points exacts ne sont pas conservées dans la mémoire de ce serveur.",
   "privacy.push":
     "Si vous activez les notifications, le service push de votre navigateur (de Google, Mozilla, Apple ou Microsoft) les distribue. Les messages sont chiffrés ; le service voit seulement qu’un message a été envoyé. Pour les envoyer, ce serveur enregistre l’adresse push et les clés de votre navigateur, chiffrées, et les supprime quand vous désactivez les notifications, ou avec la sortie ou votre réponse.",
   "privacy.weather":
-    "Pour les prévisions météo sur les pages des sorties, ce serveur interroge {host} sur la zone de rendez-vous approximative et l’heure de départ. Rien vous concernant n’est envoyé. Les prévisions restent jusqu’à {minutes} minutes dans la mémoire de ce serveur.",
+    "Pour les prévisions météo sur les pages des sorties, ce serveur interroge {host} sur la zone approximative et l’heure de départ. Rien vous concernant n’est envoyé. Les prévisions restent jusqu’à {minutes} minutes dans la mémoire de ce serveur.",
   "privacy.calendar":
     "Si vous créez un lien de calendrier, le serveur de votre application de calendrier le récupère. Ce serveur voit les informations publiques de vos sorties et que vous y avez répondu.",
   "privacy.location":
@@ -105,7 +105,7 @@ export const fr: Messages = {
     "La carte montre ensuite votre région, et votre navigateur charge donc des images de cette zone depuis le service de cartes.",
   "privacy.share": "WhatsApp n’est contacté que si vous utilisez son lien de partage.",
   "privacy.previews":
-    "Quand le lien d’une sortie est partagé dans une messagerie, celle-ci récupère le titre, l’heure, la zone de rendez-vous, la distance, l’allure et une image d’aperçu. Les messageries peuvent conserver cet aperçu après la suppression de la sortie.",
+    "Quand le lien d’une sortie est partagé dans une messagerie, celle-ci récupère le titre, l’heure, la zone, la distance, l’allure et une image d’aperçu. Les messageries peuvent conserver cet aperçu après la suppression de la sortie.",
   "privacy.logsHeading": "Journaux et protection contre les abus",
   "privacy.logs":
     "Le logiciel journalise le type de page demandée et le résultat, jamais de noms, de liens privés, de lieux exacts ni d’adresses IP.",
@@ -199,7 +199,7 @@ export const fr: Messages = {
   "map.exactNone": "Aucun point défini sur la carte",
   "map.exactRemove": "Retirer",
   "map.pickLabel": "Carte pour choisir un point",
-  "map.planLabel": "Carte de la zone de rendez-vous",
+  "map.planLabel": "Carte de la zone",
   "map.zoomIn": "Zoom avant",
   "map.zoomOut": "Zoom arrière",
   "form.distance": "Distance ({unit}, facultatif)",
@@ -221,7 +221,7 @@ export const fr: Messages = {
   "form.visibilityLink": "Seulement les personnes ayant le lien",
   "form.visibilityPublic": "Tout le monde : listée dans « À proximité » sur ce site",
   "form.visibilityPublicHint":
-    "Une sortie publique peut être trouvée par tout le monde, qui voit alors ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone de rendez-vous, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
+    "Une sortie publique peut être trouvée par tout le monde, qui voit alors ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
   "form.publicNeedsLogin": "Les sorties publiques demandent un compte sur ce site.",
   "form.publicLogIn": "Se connecter",
   "field.public_needs_login":
@@ -491,7 +491,7 @@ export const fr: Messages = {
   "weather.thunderstorm": "Orage",
   "weather.rainChance": "{percent} de risque de pluie",
   "weather.wind": "vent {speed}",
-  "weather.hint": "Pour l’heure de départ, près de la zone de rendez-vous.",
+  "weather.hint": "Pour l’heure de départ, près de la zone.",
   "weather.source": "Données météo :",
 
   "recap.heading": "Récapitulatif",
@@ -604,9 +604,9 @@ export const fr: Messages = {
   "ntfyLink.confirmed": "Les notifications ntfy sont activées.",
   "ntfyLink.turnedOff": "Les notifications ntfy sont désactivées.",
   "privacy.publicPlans":
-    "Les organisateur·rice·s peuvent rendre une sortie publique. Tout le monde peut alors la trouver dans « À proximité » et voir ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone de rendez-vous, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
+    "Les organisateur·rice·s peuvent rendre une sortie publique. Tout le monde peut alors la trouver dans « À proximité » et voir ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
   "privacy.publicPlansProfile":
-    "Les organisateur·rice·s ayant un profil fédivers peuvent rendre une sortie publique. Tout le monde peut alors la trouver sur ce profil et dans le fédivers et voir ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone de rendez-vous, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
+    "Les organisateur·rice·s ayant un profil fédivers peuvent rendre une sortie publique. Tout le monde peut alors la trouver sur ce profil et dans le fédivers et voir ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
   "privacy.ntfy":
     "Si vous activez ntfy, les notifications sont envoyées au serveur ntfy {server} sous un sujet aléatoire créé par l’application ; quiconque connaît le sujet peut les lire. Le sujet est stocké chiffré et supprimé avec votre réponse, la sortie ou le compte.",
   "channelLink.invalid":
@@ -681,7 +681,7 @@ export const fr: Messages = {
   "calendar.intro":
     "Votre application de calendrier peut afficher toutes les sorties que vous organisez ou auxquelles vous avez répondu dans ce navigateur. Elle les met à jour d’elle-même quand une sortie est modifiée, annulée ou supprimée.",
   "calendar.contents":
-    "Le calendrier ne contient que des informations publiques : titre, heure, zone de rendez-vous et lien. Jamais le point de départ exact, le parcours ni le nom de quiconque. Le serveur de votre application de calendrier le récupère et voit donc ces informations et que vous avez répondu.",
+    "Le calendrier ne contient que des informations publiques : titre, heure, zone et lien. Jamais le point de départ exact, le parcours ni le nom de quiconque. Le serveur de votre application de calendrier le récupère et voit donc ces informations et que vous avez répondu.",
   "calendar.create": "Créer le lien de calendrier",
   "calendar.active": "Ce navigateur a un lien de calendrier.",
   "calendar.renew": "Obtenir un nouveau lien",

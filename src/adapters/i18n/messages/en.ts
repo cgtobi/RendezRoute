@@ -55,7 +55,7 @@ export const en = {
   "privacy.contact": "Questions about your data:",
   "privacy.storedHeading": "What is stored",
   "privacy.storedPlans":
-    "When you create a plan: your name, the plan details you enter and an optional route. Name, title, note, meeting area, time, distance and pace are visible to anyone with the link. The exact start and the route are shown only to you and people who join, and are stored encrypted.",
+    "When you create a plan: your name, the plan details you enter and an optional route. Name, title, note, area, time, distance and pace are visible to anyone with the link. The exact start and the route are shown only to you and people who join, and are stored encrypted.",
   "privacy.storedResponses":
     "When you respond: the name you give, your choice and the language of the page, for messages about the plan. Your name is stored encrypted and shown to the host, and to the other participants if you join. If you ask to join, your optional note to the host is stored encrypted too, shown only to the host and deleted once the host decides.",
   "privacy.storedRecap":
@@ -87,13 +87,13 @@ export const en = {
   "privacy.tiles":
     "Maps are loaded by your browser directly from {host}. That service sees your IP address and which map area you look at.",
   "privacy.tilesServer":
-    "For link preview images, this server also loads map images of the rough meeting area; this sends nothing about you.",
+    "For link preview images, this server also loads map images of the rough area; this sends nothing about you.",
   "privacy.geocoder":
     "Place search goes through this server to {host}. That service sees what you search for, but not who you are. When you pick a place on the map and the area is empty or still holds the earlier suggestion, the rounded point of that place (about 1 km) is sent to the service the same way, to suggest a name. When you set an exact meeting point on the map and its description is empty or still holds the earlier suggestion, that exact point is sent to the service through this server too, to suggest a description such as a road or a named place; the service does not learn who you are. Searches and the area names are kept in this server’s memory for up to {days} days, so repeated lookups need no new request; lookups of exact points are not kept in this server’s memory.",
   "privacy.push":
     "If you turn on notifications, your browser’s push service (from Google, Mozilla, Apple or Microsoft) delivers them. The messages are encrypted; the service only sees that one was sent. To send them, this server stores your browser’s push address and keys, encrypted, and deletes them when you turn notifications off, or with the plan or your response.",
   "privacy.weather":
-    "For the weather forecast on plan pages, this server asks {host} about the rough meeting area and the start time. Nothing about you is sent. Forecasts are kept in this server’s memory for up to {minutes} minutes.",
+    "For the weather forecast on plan pages, this server asks {host} about the rough area and the start time. Nothing about you is sent. Forecasts are kept in this server’s memory for up to {minutes} minutes.",
   "privacy.calendar":
     "If you create a calendar link, your calendar app’s server fetches it. That server sees the public details of your plans and that you responded to them.",
   "privacy.location":
@@ -102,7 +102,7 @@ export const en = {
     "The map then shows your area, so your browser loads map images of that area from the map service.",
   "privacy.share": "WhatsApp is contacted only when you use its share link.",
   "privacy.previews":
-    "When a plan link is shared in a chat app, the app fetches the plan’s title, time, meeting area, distance, pace and a preview image. Chat apps may keep this preview after the plan is deleted.",
+    "When a plan link is shared in a chat app, the app fetches the plan’s title, time, area, distance, pace and a preview image. Chat apps may keep this preview after the plan is deleted.",
   "privacy.logsHeading": "Logs and abuse protection",
   "privacy.logs":
     "The software logs which kind of page was requested and whether it worked, never names, private links, exact locations or IP addresses.",
@@ -164,7 +164,7 @@ export const en = {
   "form.exactDescriptionSuggested": "Suggested from the map point. Change it if you like.",
   "form.latitude": "Latitude",
   "form.longitude": "Longitude",
-  "form.areaCoordinates": "Map point of the meeting area (optional)",
+  "form.areaCoordinates": "Map point of the area (optional)",
   "form.areaCoordinatesHint":
     "Shown to everyone, rounded to about 1 km. Not needed when the exact start has coordinates.",
   "map.searchButton": "Search",
@@ -189,7 +189,7 @@ export const en = {
   "map.exactNone": "No point set on the map",
   "map.exactRemove": "Remove",
   "map.pickLabel": "Map for choosing a point",
-  "map.planLabel": "Map of the meeting area",
+  "map.planLabel": "Map of the area",
   "map.zoomIn": "Zoom in",
   "map.zoomOut": "Zoom out",
   "form.distance": "Distance ({unit}, optional)",
@@ -211,7 +211,7 @@ export const en = {
   "form.visibilityLink": "Only people with the link",
   "form.visibilityPublic": "Anyone: listed in Nearby on this site",
   "form.visibilityPublicHint":
-    "A public plan can be found by anyone, who then sees what the plan page shows to everyone: the title, the host’s name, date and time, meeting area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
+    "A public plan can be found by anyone, who then sees what the plan page shows to everyone: the title, the host’s name, date and time, area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
   "form.publicNeedsLogin": "Public plans need an account on this site.",
   "form.publicLogIn": "Log in",
   "field.public_needs_login":
@@ -474,7 +474,7 @@ export const en = {
   "weather.thunderstorm": "Thunderstorm",
   "weather.rainChance": "{percent} chance of rain",
   "weather.wind": "wind {speed}",
-  "weather.hint": "For the start time, near the meeting area.",
+  "weather.hint": "For the start time, near the area.",
   "weather.source": "Weather data:",
 
   "recap.heading": "Recap",
@@ -580,9 +580,9 @@ export const en = {
   "ntfyLink.confirmed": "ntfy notifications are on.",
   "ntfyLink.turnedOff": "ntfy notifications are turned off.",
   "privacy.publicPlans":
-    "A host can make a plan public. Anyone can then find it in Nearby and see what the plan page shows to everyone: the title, the host’s name, date and time, meeting area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
+    "A host can make a plan public. Anyone can then find it in Nearby and see what the plan page shows to everyone: the title, the host’s name, date and time, area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
   "privacy.publicPlansProfile":
-    "A host with a fediverse profile can make a plan public. Anyone can then find it on that profile and in the fediverse and see what the plan page shows to everyone: the title, the host’s name, date and time, meeting area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
+    "A host with a fediverse profile can make a plan public. Anyone can then find it on that profile and in the fediverse and see what the plan page shows to everyone: the title, the host’s name, date and time, area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
   "privacy.ntfy":
     "If you turn on ntfy, notifications are posted to the ntfy server {server} under a random topic the app makes; anyone who knows the topic can read them. The topic is stored encrypted and deleted with your response, the plan or the account.",
   "channelLink.invalid":
@@ -653,7 +653,7 @@ export const en = {
   "calendar.intro":
     "Your calendar app can show all plans you host or responded to in this browser. It updates them by itself when a plan changes, is cancelled or deleted.",
   "calendar.contents":
-    "The calendar has only public details: title, time, meeting area and the link. Never the exact start, the route or anyone’s name. Your calendar app’s server fetches it, so that server sees these details and that you responded.",
+    "The calendar has only public details: title, time, area and the link. Never the exact start, the route or anyone’s name. Your calendar app’s server fetches it, so that server sees these details and that you responded.",
   "calendar.create": "Create calendar link",
   "calendar.active": "This browser has a calendar link.",
   "calendar.renew": "Get a new link",

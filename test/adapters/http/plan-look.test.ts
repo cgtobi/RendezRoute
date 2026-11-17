@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import { translator } from "../../../src/adapters/i18n/i18n.ts";
 import { avatarOf } from "../../../src/adapters/in/http/views/avatar.tsx";
+import { loadStylesheet } from "../../support/css.ts";
 import { createTestApp } from "../../support/app.ts";
 import { TestClient } from "../../support/client.ts";
 import { createPlanViaUi, respondViaUi } from "../../support/plans.ts";
@@ -22,23 +23,18 @@ async function planPage() {
   return text(await (await ben.get(`/p/${planId}`)).text());
 }
 
-const CSS = readFileSync(new URL("../../../public/app.css", import.meta.url), "utf8");
+const css = loadStylesheet();
 
 /**
- * The declarations of the stylesheet's one rule for exactly `selector`; every other rule that
- * names it (e.g. `.plan-header::before`, or inside a media query) is returned too, so a test
+ * The declarations of the stylesheet's one top-level rule for exactly `selector`; every other rule
+ * that names it (e.g. `.plan-header::before`, or inside a media query) is returned too, so a test
  * sees what could override it.
  */
 function rule(selector: string): string {
-  const start = CSS.indexOf(`\n${selector} {\n`);
-  if (start === -1) throw new Error(`no rule for ${selector}`);
-  const others = [...CSS.matchAll(/([^{}]*)\{([^{}]*)\}/g)]
-    .filter(
-      ([, selectors = ""]) =>
-        selectors.includes(selector) && !selectors.trim().startsWith(selector + " {"),
-    )
-    .map(([, selectors = "", body = ""]) => `${selectors.trim()} { ${body.trim()} }`);
-  return [CSS.slice(start, CSS.indexOf("}", start)), ...others].join("\n");
+  const own = css.rules(selector, { plain: true });
+  if (own.length === 0) throw new Error(`no rule for ${selector}`);
+  const others = css.all.filter((r) => r.selector.includes(selector) && !own.includes(r));
+  return [css.rule(selector), css.ruleText(others)].join("\n");
 }
 
 describe("plan page look (decision D30)", () => {

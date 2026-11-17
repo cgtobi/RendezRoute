@@ -5,36 +5,13 @@
 //    native date and time inputs. iOS Safari gives them a large min-content width; with a plain
 //    `1fr` track (minmax(auto, 1fr)) the columns stop shrinking and the second input overflows.
 // 2. The footer menu's preference rows (.preference) keep select and button on one line.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { declarations, loadStylesheet } from "../support/css.ts";
 
-/** The stylesheet without comments, with one space for any whitespace and double quotes only. */
-const CSS = readFileSync(join(import.meta.dirname, "../../public/app.css"), "utf8")
-  .replace(/\/\*[\s\S]*?\*\//g, " ")
-  .replace(/'/g, '"')
-  .replace(/\s+/g, " ");
-
-/** A selector list as a sorted, normalised key: order and spacing around commas do not matter. */
-function key(selectors: string): string {
-  return selectors
-    .split(",")
-    .map((selector) => selector.trim().replace(/\s*([>+~])\s*/g, " $1 "))
-    .sort()
-    .join(", ");
-}
+const css = loadStylesheet();
 
 /** The declarations of every top-level rule written for exactly this selector list, joined. */
-function declarationsFor(selectors: string): string {
-  const wanted = key(selectors);
-  const found: string[] = [];
-  // Top-level rules only: `selector { declarations }` outside any @media block.
-  for (const match of CSS.matchAll(/(?<=^|[};])\s*([^{}@;][^{}]*)\{([^{}]*)\}/g)) {
-    if (key(match[1] ?? "") === wanted) found.push(match[2] ?? "");
-  }
-  expect(found.length, `no rule for "${selectors}" in public/app.css`).toBeGreaterThan(0);
-  return found.join(" ").replace(/\s*:\s*/g, ": ");
-}
+const declarationsFor = (selectors: string) => css.rule(selectors, { anyOrder: true });
 
 describe(".field-row", () => {
   it("uses minmax(0, 1fr) tracks so native date/time inputs cannot widen the row", () => {
@@ -90,12 +67,27 @@ describe("select", () => {
   });
 
   it("keeps the arrow: the generic rule's background shorthand comes first", () => {
-    const generic = CSS.indexOf('input:not([type="radio"], [type="checkbox"], [type="color"]),');
-    const shorthand = CSS.indexOf("background: var(--bg)", generic);
-    const arrow = CSS.search(/(?<=[};] )select \{[^}]*background-image/);
-    expect(generic).toBeGreaterThanOrEqual(0);
-    expect(shorthand).toBeGreaterThan(generic);
-    expect(arrow, "a plain `select` rule with the arrow").toBeGreaterThan(shorthand);
+    const generic = css.all.find((rule) =>
+      rule.selector.startsWith('input:not([type="radio"], [type="checkbox"], [type="color"]), '),
+    );
+    expect(generic).toBeDefined();
+    // The first rule at or after the generic one (in the cascade) that sets the shorthand.
+    const shorthand = css.earliest(
+      css.all.filter(
+        (rule) =>
+          rule.body.includes("background: var(--bg)") &&
+          generic !== undefined &&
+          (rule === generic || css.isLater(rule, generic)),
+      ),
+    );
+    const arrow = css.earliest(
+      css.rules("select", { plain: true }).filter((rule) => rule.body.includes("background-image")),
+    );
+    expect(shorthand).toBeDefined();
+    expect(arrow, "a plain `select` rule with the arrow").toBeDefined();
+    expect(shorthand !== undefined && arrow !== undefined && css.isLater(arrow, shorthand)).toBe(
+      true,
+    );
     expect(declarationsFor("select")).not.toMatch(/(?<![-\w])background: /);
   });
 });
@@ -120,13 +112,19 @@ describe(".preference (menu sheet)", () => {
   });
 
   it("keeps the label on one line with the select at 320 px (no stacking override)", () => {
-    expect(CSS).not.toMatch(/max-width: 339/);
+    expect(css.text).not.toMatch(/max-width: 339/);
   });
 
   it("makes the header sticky and the sheet fill the width under it", () => {
     expect(declarationsFor(".site-header-menu")).toMatch(/position: sticky/);
     expect(declarationsFor(".site-header-menu")).toMatch(/top: 0/);
-    expect(CSS).toMatch(/@supports selector\(:popover-open\)/);
+    // Exactly `@supports selector(:popover-open)`, not the `not` variant below.
+    const supported = css.within("supports", "selector(:popover-open)");
+    expect(supported.length).toBeGreaterThan(0);
+    expect(
+      supported.some((rule) => rule.atRules.includes("@supports selector(:popover-open)")),
+    ).toBe(true);
+    expect(supported.some((rule) => rule.atRules.join(" ").includes("not selector"))).toBe(false);
   });
 
   it("keeps the sticky header, hairline and grid off the plain (admin) header", () => {
@@ -140,12 +138,17 @@ describe(".preference (menu sheet)", () => {
     expect(declarationsFor(".site-header-menu > a")).toMatch(/justify-self: center/);
     expect(declarationsFor(".site-header-menu > a")).toMatch(/min-height: var\(--target\)/);
     expect(declarationsFor(".site-header-menu > a")).toMatch(/overflow-wrap: anywhere/);
-    expect(CSS).toMatch(/\.site-header-menu::before \{\s*content: "";/);
+    const before = css.first(".site-header-menu::before", { plain: true });
+    expect(declarations(before.body)[0]).toEqual({ property: "content", value: '""' });
   });
 
   it("puts the menu in its own full-width row under the logo without popover support", () => {
-    const block =
-      /@supports not selector\(:popover-open\) \{(.*?)\} \} @supports/.exec(CSS)?.[1] ?? "";
+    const without = css.within("supports", "not selector(:popover-open)");
+    expect(without.length).toBeGreaterThan(0);
+    expect(
+      without.every((rule) => rule.atRules.includes("@supports not selector(:popover-open)")),
+    ).toBe(true);
+    const block = css.ruleText(without);
     expect(block).toMatch(/\.site-header-menu \{ position: static;/);
     expect(block).toMatch(/#site-menu \{ grid-column: 1 \/ -1; grid-row: 2;/);
     expect(block).toMatch(/\.burger \{ display: none;/);

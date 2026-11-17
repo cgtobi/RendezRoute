@@ -3,38 +3,19 @@
 // "Required" hint made by CSS alone (date and time only after a failed submit, D74). Also the
 // placeholder grey and the disabled look (D74, I91). The pixel result is checked by
 // e2e/field-style.spec.ts.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { declarations, loadStylesheet, readCssRaw } from "../support/css.ts";
 
-const SOURCE = readFileSync(join(import.meta.dirname, "../../public/app.css"), "utf8");
+const css = loadStylesheet();
 
 /** The stylesheet without comments, with one space for any whitespace and double quotes only. */
-const CSS = SOURCE.replace(/\/\*[\s\S]*?\*\//g, " ")
-  .replace(/'/g, '"')
-  .replace(/\s+/g, " ");
+const CSS = css.text;
 
-/** The part of the stylesheet that is not inside a media or supports block. */
-const TOP_LEVEL = CSS.replace(/@(?:media|supports)[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, " ");
+/** The declarations of every top-level (outside @media/@supports; layers do not count) rule. */
+const rule = (selector: string) => css.rule(selector);
 
-/** Selector text with comma lists collapsed: `a,b` and `a, b` are the same. */
-const normal = (selector: string) =>
-  selector
-    .replace(/\(\s+/g, "(")
-    .replace(/\s+\)/g, ")")
-    .replace(/\s*,\s*/g, ", ")
-    .replace(/\s*([>+~])\s*/g, " $1 ")
-    .trim();
-
-/** The declarations of every top-level rule whose selector text is exactly this one, joined. */
-function rule(selector: string, from: string = TOP_LEVEL): string {
-  const found: string[] = [];
-  for (const match of from.matchAll(/(?<=^|[};])\s*([^{}@;][^{}]*)\{([^{}]*)\}/g)) {
-    if (normal(match[1] ?? "") === normal(selector)) found.push(match[2] ?? "");
-  }
-  expect(found.length, `no rule for "${selector}" in public/app.css`).toBeGreaterThan(0);
-  return found.join(" ").replace(/\s*:\s*/g, ": ");
-}
+/** The rules that are not inside a media or supports block. */
+const TOP_LEVEL = css.all.filter((r) => r.atRules.every((atRule) => atRule.startsWith("@layer")));
 
 const TEXT_LIKE =
   ':is(input:not([type]), input[type="text"], input[type="email"], input[type="url"], input[type="search"], input[type="number"], input[type="tel"], input[type="password"], textarea)';
@@ -46,9 +27,25 @@ const EDITABLE = ":not(:disabled, [readonly])";
 const DISABLED_STATE = ":is(:disabled, [readonly])";
 const LINES_DISABLED = `${TEXT_LIKE}${DISABLED_STATE}, ${LINE_OTHERS}${DISABLED_STATE}`;
 const LINES_DISABLED_FOCUS = `${TEXT_LIKE}${DISABLED_STATE}:focus, ${LINE_OTHERS}${DISABLED_STATE}:focus`;
-const forcedCss = [...CSS.matchAll(/@media \(forced-colors: active\) \{(.*?)\} \}/g)]
-  .map((match) => match[1] ?? "")
-  .join(" ");
+/**
+ * The line field rules, found by what they style: the placeholder, the text-like and other line
+ * fields (`:is(input:not([type]), ...)`) and the Required hint. Not a range of the file, so the
+ * set stays the same when rules move between layers.
+ */
+const isLineRule = (r: { selector: string }) =>
+  /:is\(input:not\(\[type\]\)|::placeholder|\.required-hint/.test(r.selector);
+/**
+ * Second selection: the line's neighbours that the old placeholder-to-`.warning` range also
+ * covered, named by selector: the purpose text, the field title and the large title input.
+ */
+const LINE_NEIGHBOURS = [".plan-form .page-purpose", ".field-title", ".plan-form .title-input"];
+/** Both selections together: `isLineRule` plus `LINE_NEIGHBOURS`. */
+const isLineOrNeighbour = (r: { selector: string }) =>
+  isLineRule(r) || LINE_NEIGHBOURS.includes(r.selector);
+
+const PLACEHOLDER_RULE = "input::placeholder, textarea::placeholder";
+
+const forcedCss = css.ruleText(css.forced());
 
 describe("the line field rule (decision D73)", () => {
   it("covers text, email, url, search, number, tel, password, untyped inputs and textarea", () => {
@@ -93,20 +90,27 @@ describe("the line field rule (decision D73)", () => {
   });
 
   it("shows no browser frame on a focused text-like line field, only in forced colours", () => {
-    const none =
-      /@media \(forced-colors: none\) \{ ([^{]*:focus-visible:not\([^)]*\)[^{]*)\{ outline: none; \} \}/.exec(
-        CSS,
+    const none = css
+      .forced("none")
+      .find(
+        (r) => /:focus-visible:not\([^)]*\)/.test(r.selector) && /^outline: none;?$/.test(r.body),
       );
     // The removal sits inside forced-colors: none: it outranks the Highlight rule otherwise.
-    expect(none).not.toBeNull();
-    expect(none?.[1]).toContain('input[type="text"]');
+    expect(none).toBeDefined();
+    expect(none?.selector).toContain('input[type="text"]');
     // The danger line outranks the accent one there, so those two states keep the global ring;
     // a read-only field has no focus underline either.
-    expect(none?.[1]).toContain(
+    expect(none?.selector).toContain(
       ":focus-visible:not(:placeholder-shown:required, .field-invalid *, [readonly])",
     );
-    expect(TOP_LEVEL).not.toMatch(/:focus-visible:not\([^)]*\) \{ outline: none/);
-    expect(CSS).toMatch(/:focus-visible \{\s*outline: 2px solid Highlight;/);
+    expect(
+      TOP_LEVEL.filter(
+        (r) => /:focus-visible:not\(/.test(r.selector) && /outline: none/.test(r.body),
+      ).map((r) => r.selector),
+    ).toEqual([]);
+    expect(css.rule(`${TEXT_LIKE}:focus-visible`, { atRule: "forced-colors: active" })).toMatch(
+      /^outline: 2px solid Highlight;/,
+    );
     // Date, time, file and select fields keep the global ring: none of them is in that rule.
     expect(TEXT_LIKE).not.toMatch(/date|time|file|select/);
   });
@@ -125,13 +129,15 @@ describe("the line field rule (decision D73)", () => {
   });
 
   it("uses tokens only: no raw colour in the line rules", () => {
-    const start = CSS.indexOf("input::placeholder");
-    const end = CSS.indexOf("/* Messages */") > 0 ? CSS.indexOf(".warning {") : CSS.length;
-    expect(start).toBeGreaterThan(0);
-    expect(end).toBeGreaterThan(start);
-    const block = CSS.slice(start, end);
+    const block = css.all.filter(
+      (r) =>
+        isLineOrNeighbour(r) &&
+        !r.atRules.some((atRule) => atRule === "@media (forced-colors: active)"),
+    );
+    expect(css.rules(PLACEHOLDER_RULE)).toHaveLength(1);
+    expect(block.length).toBeGreaterThan(5);
     // System colours are allowed in the forced-colours block only.
-    expect(block.replace(/@media \(forced-colors: active\).*$/, "")).not.toMatch(
+    expect(block.map((r) => r.body).join(" ")).not.toMatch(
       /#[0-9a-f]{3,8}\b|rgba?\(|hsl|(?:Canvas|GrayText|Highlight)/i,
     );
   });
@@ -191,12 +197,13 @@ describe("the required hint (decision D73)", () => {
   });
 
   it("is shown only by rules that come after the hiding one and are lower than .field-invalid", () => {
-    const hidden = CSS.indexOf(".required-hint { display: none");
-    const shown = CSS.indexOf(":where(:required:placeholder-shown");
-    const invalid = CSS.indexOf(".field-invalid .required-hint");
-    expect(hidden).toBeGreaterThan(0);
-    expect(shown).toBeGreaterThan(hidden);
-    expect(invalid).toBeGreaterThan(shown);
+    const hidden = css.first(".required-hint", { plain: true });
+    const shown = css.all.find((r) => r.selector.startsWith(":where(:required:placeholder-shown"));
+    const invalid = css.first(".field-invalid .required-hint", { plain: true });
+    expect(css.rule(".required-hint")).toMatch(/^display: none/);
+    expect(shown).toBeDefined();
+    expect(shown !== undefined && css.isLater(shown, hidden)).toBe(true);
+    expect(shown !== undefined && css.isLater(invalid, shown)).toBe(true);
     expect(rule(".field-invalid .required-hint")).toMatch(/display: none/);
     // `:where()` wraps every condition, so the shown rules weigh one class like the base rule.
     expect(CSS).not.toMatch(/(?<!:where\()\S*:required:placeholder-shown \+ \.required-hint/);
@@ -204,9 +211,9 @@ describe("the required hint (decision D73)", () => {
 
   it("neither the red line nor the hint applies to a disabled or readonly control", () => {
     // Every rule that draws the required line or shows the hint excludes disabled and readonly.
-    const required = [...TOP_LEVEL.matchAll(/(?<=^|[};])\s*([^{}@;][^{}]*)\{[^{}]*\}/g)]
-      .map((match) => match[1] ?? "")
-      .filter((selector) => /:required:(?:placeholder-shown|invalid)/.test(selector));
+    const required = TOP_LEVEL.map((r) => r.selector).filter((selector) =>
+      /:required:(?:placeholder-shown|invalid)/.test(selector),
+    );
     expect(required.length).toBeGreaterThanOrEqual(3);
     for (const selector of required) {
       const withoutException = selector.replace(/:not\(\s*:disabled, \[readonly\]\s*\)/g, "");
@@ -218,7 +225,7 @@ describe("the required hint (decision D73)", () => {
   });
 
   it("works without script: selectors only, no class set by a script", () => {
-    expect(SOURCE).not.toMatch(/required-hint-visible|is-empty/);
+    expect(readCssRaw()).not.toMatch(/required-hint-visible|is-empty/);
   });
 });
 
@@ -231,10 +238,15 @@ describe("the placeholder grey (decision D74)", () => {
   });
 
   it("never lowers the opacity of a field or its placeholder below 1", () => {
-    const block = CSS.slice(CSS.indexOf("input::placeholder"), CSS.indexOf(".warning {"));
-    expect([...block.matchAll(/opacity:\s*([\d.]+)/g)].map((m) => m[1])).not.toContainEqual(
-      expect.stringMatching(/^0/),
+    const block = css.all.filter(isLineOrNeighbour);
+    expect(block.length).toBeGreaterThan(5);
+    const opacities = block.flatMap((r) =>
+      declarations(r.body)
+        .filter((d) => d.property === "opacity")
+        .map((d) => d.value),
     );
+    expect(opacities).toContain("1");
+    expect(opacities).not.toContainEqual(expect.stringMatching(/^0/));
   });
 });
 
@@ -263,10 +275,14 @@ describe("the disabled look (decision D74)", () => {
     const body = rule(LINES_DISABLED_FOCUS);
     expect(body).toMatch(/border-bottom-width: 1px/);
     expect(body).toMatch(/border-bottom-color: var\(--control-line\)/);
-    const accent = CSS.indexOf("border-bottom-color: var(--accent)");
-    const disabled = CSS.indexOf("cursor: not-allowed");
-    expect(accent).toBeGreaterThan(0);
-    expect(disabled).toBeGreaterThan(accent);
+    const accent = css.earliest(
+      css.all.filter((r) => r.body.includes("border-bottom-color: var(--accent)")),
+    );
+    const disabled = css.earliest(css.all.filter((r) => r.body.includes("cursor: not-allowed")));
+    expect(accent).toBeDefined();
+    expect(accent !== undefined && disabled !== undefined && css.isLater(disabled, accent)).toBe(
+      true,
+    );
   });
 
   it("keeps the placeholder of a disabled field in --placeholder", () => {

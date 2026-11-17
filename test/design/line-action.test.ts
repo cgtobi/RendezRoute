@@ -4,30 +4,17 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { loadStylesheet } from "../support/css.ts";
 
 const PUBLIC = join(import.meta.dirname, "../../public");
-const CSS = readFileSync(join(PUBLIC, "app.css"), "utf8")
-  .replace(/\/\*[\s\S]*?\*\//g, " ")
-  .replace(/'/g, '"')
-  .replace(/\s+/g, " ");
-
-/** The declarations of every rule whose selector list is exactly this, joined. */
-function rule(selector: string): string {
-  const found: string[] = [];
-  for (const match of CSS.matchAll(/(?<=^|[};])\s*([^{}@;][^{}]*)\{([^{}]*)\}/g)) {
-    const text = (match[1] ?? "").replace(/\s*,\s*/g, ", ").trim();
-    if (text === selector) found.push(match[2] ?? "");
-  }
-  expect(found.length, `no rule for "${selector}"`).toBeGreaterThan(0);
-  return found.join(" ").replace(/\s*:\s*/g, ": ");
-}
+const css = loadStylesheet();
+const CSS = css.text;
+const rule = (selector: string) => css.rule(selector);
 
 const ROW = ".inline-input.line-action";
 const BUTTON = `${ROW} button.line-action-button`;
 const INPUT = `${ROW} input:is(:not([type]), [type="search"], [type="text"])`;
-const forced = [...CSS.matchAll(/@media \(forced-colors: active\) \{(.*?)\} \}/g)]
-  .map((match) => match[1] ?? "")
-  .join(" ");
+const forced = css.ruleText(css.forced());
 
 describe("the icon button on a line (decision D75)", () => {
   it("is a transparent 44 x 44 px button without border, radius or fill, in the accent colour", () => {
@@ -44,7 +31,7 @@ describe("the icon button on a line (decision D75)", () => {
   it("has no hover fill, keeps a focus state and the global focus ring", () => {
     expect(rule(`${BUTTON}:hover`)).toMatch(/background: transparent/);
     expect(rule(`${BUTTON}:hover`)).not.toMatch(/color-mix/);
-    expect(CSS).toMatch(/:focus-visible \{[^}]*outline/);
+    expect(css.rule(":focus-visible")).toMatch(/outline/);
     expect(rule(`${BUTTON}:focus-visible`)).toMatch(/outline-offset/);
   });
 

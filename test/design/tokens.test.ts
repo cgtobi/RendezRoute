@@ -1,7 +1,5 @@
 // The design tokens in public/app.css meet WCAG 2.2 AA in light and dark mode (decision D27):
 // text 4.5:1 (1.4.3), field borders and focus rings 3:1 against the page (1.4.11).
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import { AVATAR_COLOURS } from "../../src/adapters/in/http/views/avatar.tsx";
 import {
@@ -11,48 +9,35 @@ import {
   TINT_PERCENT,
   tintOn,
 } from "../../src/domain/color.ts";
+import {
+  ATTRIBUTE_SELECTOR,
+  bodyText,
+  colourTokens,
+  customProperties,
+  DARK_MEDIA,
+  loadStylesheet,
+  MEDIA_SELECTOR,
+  splitSelectorList,
+  type CssRule,
+} from "../support/css.ts";
 
-const CSS = readFileSync(join(import.meta.dirname, "../../public/app.css"), "utf8");
-const DARK = "@media (prefers-color-scheme: dark)";
-
-/**
- * The declarations of the first rule in `css` written for exactly `selector`, at the start of a
- * line (also indented, inside a media query), up to its closing brace; "" if there is none.
- */
-function ruleFor(css: string, selector: string): string {
-  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = new RegExp(`\\n[ \\t]*${escapedSelector} \\{\\n`).exec(css);
-  return match === null ? "" : css.slice(match.index, css.indexOf("}", match.index));
-}
-
-/** The colour tokens of the first rule written for `selector` after `from`, written as #rrggbb. */
-function tokens(selector: string, from = 0): Record<string, string> {
-  const start = CSS.indexOf(`${selector} {`, from);
-  if (from < 0 || start < 0) return {};
-  const block = CSS.slice(start, CSS.indexOf("}", start));
-  return Object.fromEntries(
-    [...block.matchAll(/(--[a-z0-9-]+):\s*(#[0-9a-f]{6})\s*;/gi)].map((m) => [m[1], m[2]]),
-  );
-}
-
-/** Every custom property declaration (`--name: value;`) of the first rule for `selector`. */
-function declarations(selector: string, from = 0): Record<string, string> {
-  const start = CSS.indexOf(`${selector} {`, from);
-  if (from < 0 || start < 0) return {};
-  const block = CSS.slice(start, CSS.indexOf("}", start));
-  return Object.fromEntries(
-    [...block.matchAll(/(--[a-z0-9-]+):\s*([^;]+?)\s*;/gi)].map((m) => [m[1], m[2]]),
-  );
-}
+const css = loadStylesheet();
 
 // Each scheme states every tested colour itself: a dark value that is missing, or written in a
 // form this test cannot read, fails instead of falling back to the light one. Dark exists twice
 // (decision I82): in the media query for the system, and under the attribute for a chosen theme.
-const MEDIA_SELECTOR = ':root:not([data-theme="light"])';
-const ATTRIBUTE_SELECTOR = ':root[data-theme="dark"]';
-const light = tokens(":root");
-const dark = tokens(MEDIA_SELECTOR, CSS.indexOf(DARK));
-const darkChosen = tokens(ATTRIBUTE_SELECTOR);
+// The three blocks are read as rules, wherever they live (top level, in a media query, in a layer).
+const blocks = css.tokenBlocks();
+// The tests read the FIRST block of each kind, as they always did; later blocks of the same kind
+// must not hold a tested token (see "no tested colour hides in a later block").
+const firstBlock = (list: readonly CssRule[]) => {
+  const rule = list[0];
+  if (rule === undefined) throw new Error("a token block is missing");
+  return customProperties(rule);
+};
+const light = colourTokens(firstBlock(blocks.light));
+const dark = colourTokens(firstBlock(blocks.dark));
+const darkChosen = colourTokens(firstBlock(blocks.darkChosen));
 
 /** [foreground, background, minimum ratio] */
 const PAIRS: readonly [string, string, number][] = [
@@ -118,10 +103,22 @@ describe("the placeholder grey (decision D74)", () => {
   });
 });
 
+describe("the token blocks", () => {
+  it("are found, and no tested colour is defined only in a later block of the same kind", () => {
+    expect(blocks.light.length).toBeGreaterThan(0);
+    expect(blocks.dark.length).toBeGreaterThan(0);
+    expect(blocks.darkChosen.length).toBeGreaterThan(0);
+    for (const list of [blocks.light, blocks.dark, blocks.darkChosen]) {
+      const later = list.slice(1).flatMap((rule) => Object.keys(customProperties(rule)));
+      expect(later.filter((name) => NAMES.includes(name))).toEqual([]);
+    }
+  });
+});
+
 describe("the two dark token blocks (decision I82)", () => {
   it("define the same token names with the same values", () => {
-    const media = declarations(MEDIA_SELECTOR, CSS.indexOf(DARK));
-    const chosen = declarations(ATTRIBUTE_SELECTOR);
+    const media = firstBlock(blocks.dark);
+    const chosen = firstBlock(blocks.darkChosen);
     expect(Object.keys(chosen).length).toBeGreaterThan(20);
     const names = [...new Set([...Object.keys(media), ...Object.keys(chosen)])];
     const differs = names.find((name) => media[name] !== chosen[name]);
@@ -134,19 +131,18 @@ describe("the two dark token blocks (decision I82)", () => {
   });
 
   it("scope every selector in the dark media queries to pages where Light was not chosen", () => {
-    const bodies = [...CSS.matchAll(/@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n\}/g)];
-    expect(bodies.length).toBeGreaterThan(0);
-    const selectors = bodies.flatMap(([, body = ""]) =>
-      [...body.matchAll(/(?:^|\n)[ \t]*([^\s@}][^{}\n]*?)\s*\{/g)].map(([, s = ""]) => s),
-    );
+    const darkRules = css.inMedia(DARK_MEDIA);
+    expect(darkRules.length).toBeGreaterThan(0);
+    // Every item of every selector list, not only the last one.
+    const selectors = darkRules.flatMap((rule) => splitSelectorList(rule.selector));
     expect(selectors.length).toBeGreaterThan(5);
     expect(selectors.filter((s) => !s.startsWith(MEDIA_SELECTOR))).toEqual([]);
   });
 
   it("set color-scheme per theme", () => {
-    expect(ruleFor(CSS, ":root")).toContain("color-scheme: light dark");
-    expect(ruleFor(CSS, ':root[data-theme="light"]')).toContain("color-scheme: light");
-    expect(ruleFor(CSS, ATTRIBUTE_SELECTOR)).toContain("color-scheme: dark");
+    expect(bodyText(css.first(":root"))).toContain("color-scheme: light dark");
+    expect(bodyText(css.first(':root[data-theme="light"]'))).toContain("color-scheme: light");
+    expect(bodyText(css.first(ATTRIBUTE_SELECTOR))).toContain("color-scheme: dark");
   });
 });
 
@@ -190,7 +186,7 @@ describe.each([
   });
 
   it("reads the exact start card in --fg, its hint and links too", () => {
-    const rule = ruleFor(CSS, ".exact-start");
+    const rule = bodyText(css.first(".exact-start"));
     expect([rule.includes("--muted: var(--fg)"), rule.includes("--accent: var(--fg)")]).toEqual([
       true,
       true,
@@ -204,20 +200,18 @@ describe.each([
   ["the system is dark", MEDIA_SELECTOR],
   ["dark is chosen", ATTRIBUTE_SELECTOR],
 ])("maps when %s", (_when, scope) => {
-  /** The rules inside the dark-mode media queries, without the token blocks. */
-  const darkRules = [...CSS.matchAll(/@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n\}/g)]
-    .map(([, body = ""]) => body)
-    .join("\n");
-  // The media rules are indented; the attribute rules stand at the top level.
+  /** The rules inside the dark-mode media queries, as text. */
+  const darkRules = css.ruleText(css.inMedia(DARK_MEDIA));
+  // The media rules sit inside the query; the attribute rules stand outside every at-rule.
   const darkRule = (selector: string) =>
     scope === MEDIA_SELECTOR
-      ? ruleFor(darkRules, `${scope} ${selector}`)
-      : ruleFor(CSS, `${scope} ${selector}`);
+      ? bodyText(css.first(`${scope} ${selector}`, { atRule: DARK_MEDIA }))
+      : bodyText(css.first(`${scope} ${selector}`));
 
   it("darkens the tiles, and only the tiles", () => {
     expect(darkRule(".map .leaflet-tile-pane")).toContain("filter: invert(1) hue-rotate(180deg)");
     expect(darkRules).not.toMatch(/\.leaflet-(overlay|marker)-pane[^{]*\{[^}]*filter/);
-    expect(CSS).not.toMatch(/data-theme="dark"\][^{]*\.leaflet-(overlay|marker)-pane/);
+    expect(css.text).not.toMatch(/data-theme="dark"\][^{]*\.leaflet-(overlay|marker)-pane/);
   });
 
   it("gives the zoom buttons and the attribution the page's dark colours", () => {
@@ -232,17 +226,17 @@ describe.each([
 // at the wrap-up"): one component for groups of buttons, and room below a part's line.
 describe("layout of parts and button rows", () => {
   it("groups buttons only in .button-row, whose buttons fill it on phones and sit side by side from 600 px", () => {
-    expect(CSS).not.toMatch(/\n\.buttons \{/);
-    expect(ruleFor(CSS, ".button-row > *")).toContain("flex: 1 1 auto");
-    expect(ruleFor(CSS, ".button-row form > button")).toContain("width: 100%");
-    expect(CSS).toMatch(/@media \(min-width: 600px\) \{\s*\.button-row > \* \{\s*flex: none;/);
+    expect(css.rules(".buttons")).toEqual([]);
+    expect(css.rule(".button-row > *")).toContain("flex: 1 1 auto");
+    expect(css.rule(".button-row form > button")).toContain("width: 100%");
+    expect(css.rule(".button-row > *", { atRule: "min-width: 600px" })).toMatch(/^flex: none;/);
   });
 
   it("gives a part that starts with a form room below its line, and nothing else", () => {
-    expect(ruleFor(CSS, ".sectioned > section:not(.status) > form:first-child")).toContain(
+    expect(css.rule(".sectioned > section:not(.status) > form:first-child")).toContain(
       "margin-top: var(--s4)",
     );
     // A wider rule would override e.g. the delete fold's own margin (.danger-zone).
-    expect(CSS).not.toContain(":first-child:not(h2)");
+    expect(css.text).not.toContain(":first-child:not(h2)");
   });
 });

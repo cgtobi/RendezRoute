@@ -4,29 +4,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { loadStylesheet } from "../support/css.ts";
 
 const PUBLIC = join(import.meta.dirname, "../../public");
-const CSS = readFileSync(join(PUBLIC, "app.css"), "utf8")
-  .replace(/\/\*[\s\S]*?\*\//g, " ")
-  .replace(/'/g, '"')
-  .replace(/\s+/g, " ");
-
-/** The declarations of every rule whose selector list is exactly this, joined. */
-function rule(selector: string): string {
-  const found: string[] = [];
-  for (const match of CSS.matchAll(/(?<=^|[};])\s*([^{}@;][^{}]*)\{([^{}]*)\}/g)) {
-    const text = (match[1] ?? "").replace(/\s*,\s*/g, ", ").trim();
-    if (text === selector) found.push(match[2] ?? "");
-  }
-  expect(found.length, `no rule for "${selector}"`).toBeGreaterThan(0);
-  return found.join(" ").replace(/\s*:\s*/g, ": ");
-}
+const css = loadStylesheet();
+const rule = (selector: string) => css.rule(selector);
 
 // Two classes and two elements (0,2,2) on purpose: `.plan button:not(.secondary, .danger)` (0,2,1) must not win.
 const BUTTON = ".point-readout p button.icon-button";
-const forced = [...CSS.matchAll(/@media \(forced-colors: active\) \{(.*?)\} \}/g)]
-  .map((match) => match[1] ?? "")
-  .join(" ");
+const forced = css.ruleText(css.forced());
 
 describe("the quiet icon button in the status lines (decision D76)", () => {
   it("is a 44 x 44 px button without box, border or fill, muted at rest", () => {
@@ -52,7 +38,7 @@ describe("the quiet icon button in the status lines (decision D76)", () => {
     const body = rule(`${BUTTON}:hover, ${BUTTON}:focus-visible`);
     expect(body).toMatch(/color: var\(--accent\)/);
     expect(body).not.toMatch(/background: (?!transparent)/);
-    expect(CSS).toMatch(/:focus-visible \{[^}]*outline/);
+    expect(css.rule(":focus-visible")).toMatch(/outline/);
     expect(rule(`${BUTTON}:focus-visible`)).not.toMatch(/outline: (none|0)/);
   });
 

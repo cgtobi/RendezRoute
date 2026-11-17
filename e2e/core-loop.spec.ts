@@ -1,5 +1,6 @@
 // The v0.1 core loop in a real browser against the built image (spec 5 acceptance criteria, 2b).
 // Runs once per project: default settings (fake providers) and maps, geocoder and weather disabled.
+// Also follows the plan in a calendar feed: create the link, edit, cancel, delete.
 import { expect, type Page, test } from "@playwright/test";
 import { inFiveDays, openFold, person } from "./helpers.ts";
 
@@ -63,6 +64,7 @@ async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: str
 test("A plan can be created, shared, joined, cancelled and deleted without any account", async ({
   browser,
   baseURL,
+  request,
 }, testInfo) => {
   const withMaps = testInfo.project.name === "default settings";
   const problems: string[] = [];
@@ -96,6 +98,25 @@ test("A plan can be created, shared, joined, cancelled and deleted without any a
   await joiner.getByRole("link", { name: "Back to the plan" }).click();
   await expect(joiner.getByText("North gate, by the bike racks")).toBeVisible();
 
+  // Calendar feed: the joiner's link follows the plan on the next poll. Calendar servers fetch
+  // without the browser's cookies: the test's own request context has none.
+  await joiner.goto("/calendar");
+  await joiner.getByRole("button", { name: "Create calendar link" }).click();
+  const feedUrl = (await joiner.locator(".link-box code").textContent()) ?? "";
+  expect(feedUrl).toMatch(/\/c\/[\w-]{43}$/);
+  const poll = async () => {
+    const response = await request.get(feedUrl);
+    expect(response.status()).toBe(200);
+    return (await response.text()).replaceAll("\r\n ", "");
+  };
+  expect(await poll()).toContain("SUMMARY:Sunday long run");
+  // A change shows on the next poll.
+  await host.goto(`${planUrl}/host`);
+  await host.getByLabel("Title").fill("Sunday long run, later");
+  await host.getByRole("button", { name: "Save changes" }).click();
+  await expect(host.getByText("Changes saved.")).toBeVisible();
+  expect(await poll()).toContain("SUMMARY:Sunday long run\\, later");
+
   // Cancel: final, with a banner for everyone.
   await host.goto(`${planUrl}/host`);
   await host.getByText("Cancel plan…").click();
@@ -107,8 +128,10 @@ test("A plan can be created, shared, joined, cancelled and deleted without any a
   await host.goto(planUrl);
   await expect(host.getByText("This plan was cancelled.")).toBeVisible();
   await expect(host.getByRole("link", { name: "WhatsApp" })).toHaveCount(0);
-  await joiner.reload();
+  // The joiner is on the calendar page since the feed step: back to the plan.
+  await joiner.goto(planUrl);
   await expect(joiner.getByText("This plan was cancelled.")).toBeVisible();
+  expect(await poll()).toContain("STATUS:CANCELLED");
 
   // Delete: gone for everyone, indistinguishable from a plan that never existed.
   await host.goto(`${planUrl}/host`);
@@ -118,6 +141,7 @@ test("A plan can be created, shared, joined, cancelled and deleted without any a
   const gone = await viewer.goto(planUrl);
   expect(gone?.status()).toBe(404);
   await expect(viewer.getByText("This plan no longer exists.")).toBeVisible();
+  expect(await poll()).not.toContain("Sunday long run");
 
   // Chrome logs the deliberate 404 of the deleted plan page as an error; nothing else may appear.
   const expected404 = `console: Failed to load resource: the server responded with a status of 404 (Not Found) @ ${planUrl}`;

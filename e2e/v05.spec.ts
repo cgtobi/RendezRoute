@@ -1,5 +1,6 @@
 // v0.5 flows in a real browser against the built image (spec 6 acceptance criteria, plan step 11):
-// approval with a note, push permission denied, and a calendar feed following the plan.
+// approval with a note and push permission denied. The calendar feed that follows a plan is a step of
+// the core loop (core-loop.spec.ts).
 import { expect, type Page, test } from "@playwright/test";
 import { inFiveDays, openFold, person } from "./helpers.ts";
 
@@ -97,49 +98,4 @@ test("The app works fully if push permission is denied", async ({ browser, baseU
   await ben.goto(planUrl);
   await expect(ben.getByText("This plan was cancelled.")).toBeVisible();
   expect(problems).toEqual([]);
-});
-
-test("Calendar feed reflects changes, cancellations and deletions on the next poll", async ({
-  browser,
-  baseURL,
-  request,
-}) => {
-  const problems: string[] = [];
-  const { page: host } = await person(browser, baseURL ?? "", problems);
-  const { page: ben } = await person(browser, baseURL ?? "", problems);
-  const planUrl = await createPlan(host, "Feed run");
-
-  await ben.goto(planUrl);
-  await ben.getByLabel("Your name").fill("Ben");
-  await ben.getByRole("button", { name: "I'm in" }).click();
-  await expect(ben.getByRole("heading", { name: "Response saved" })).toBeVisible();
-  await ben.goto("/calendar");
-  await ben.getByRole("button", { name: "Create calendar link" }).click();
-  const feedUrl = (await ben.locator(".link-box code").textContent()) ?? "";
-  expect(feedUrl).toMatch(/\/c\/[\w-]{43}$/);
-  // Calendar servers fetch without the browser's cookies: the test's own request context has none.
-  const poll = async () => {
-    const response = await request.get(feedUrl);
-    expect(response.status()).toBe(200);
-    return (await response.text()).replaceAll("\r\n ", "");
-  };
-  expect(await poll()).toContain("SUMMARY:Feed run");
-
-  await host.goto(`${planUrl}/host`);
-  await host.getByLabel("Title").fill("Feed run, later");
-  await host.getByRole("button", { name: "Save changes" }).click();
-  await expect(host.getByText("Changes saved.")).toBeVisible();
-  expect(await poll()).toContain("SUMMARY:Feed run\\, later");
-
-  await cancel(host, planUrl);
-  expect(await poll()).toContain("STATUS:CANCELLED");
-
-  await host.goto(`${planUrl}/host`);
-  await host.getByRole("link", { name: "Delete plan…" }).click();
-  await host.getByRole("button", { name: "Delete for good" }).click();
-  await expect(host.getByText("This plan no longer exists.")).toBeVisible();
-  expect(await poll()).not.toContain("Feed run");
-  // Chrome logs the deliberate 404 of the deleted plan page as an error; nothing else may appear.
-  const expected404 = `console: Failed to load resource: the server responded with a status of 404 (Not Found) @ ${planUrl}`;
-  expect(problems.filter((problem) => problem !== expected404)).toEqual([]);
 });

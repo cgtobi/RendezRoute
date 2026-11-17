@@ -1,14 +1,18 @@
-// Real-layout checks on phone widths (Chromium): the date and time fields side by side on the create
-// form, and the header menu sheet's preference rows. Runs in the default and minimal projects.
+// Real-layout checks on phone widths and one wide screen (Chromium): the date and time fields
+// side by side on the create form, and the header menu sheet's preference rows. Runs in the default
+// and minimal projects.
 // Everything is checked on /new (the header is on every page), so no plan is created: those
 // containers do not trust X-Forwarded-For, so one project shares one create limiter (5 burst).
 // Rows stay on one line at 320 px: label and select, the Change button hidden by the script.
+// The logo is centred and 44 px tall at 320, 390 and 800 px. The other /new checks share one test,
+// one context and one page, a named step each (decision D84).
 import { expect, test } from "@playwright/test";
 import { openFold, person } from "./helpers.ts";
 
 const WIDTHS = [
   { width: 320, height: 640 },
   { width: 390, height: 844 },
+  { width: 800, height: 900 },
 ] as const;
 
 /** Pixels of tolerance for sub-pixel rounding. */
@@ -95,6 +99,17 @@ for (const viewport of WIDTHS) {
       }
     }
 
+    // The logo is centred in the header and at least 44 px tall (decision D68); the header is on
+    // every page, so /new shows it as well as /.
+    const logoBox = await page.locator("header.site-header > a").boundingBox();
+    expect(logoBox, `logo at ${viewport.width} px`).not.toBeNull();
+    const logo = logoBox as NonNullable<typeof logoBox>;
+    expect(
+      Math.abs(logo.x + logo.width / 2 - viewport.width / 2),
+      `centre offset at ${viewport.width} px`,
+    ).toBeLessThanOrEqual(2);
+    expect(logo.height, `logo height at ${viewport.width} px`).toBeGreaterThanOrEqual(44);
+
     // Menu sheet, on the same page, opened through the burger.
     const burger = page.locator("button.burger");
     const burgerBox = await burger.boundingBox();
@@ -143,115 +158,100 @@ for (const viewport of WIDTHS) {
   });
 }
 
-test("The time zone line shows the zone the select holds, and follows a new pick", async ({
+test("The create form's own pieces: time zone line, summaries and title", async ({
   browser,
   baseURL,
 }) => {
   const problems: string[] = [];
   const { context, page } = await person(browser, baseURL ?? "", problems);
-  await page.goto("/new");
-  const select = page.locator("#field-timeZone");
-  const name = page.locator("details.zone-line [data-zone-name]");
-  const summary = page.locator("details.zone-line > summary");
-  // The script may have preselected the browser's zone: the line shows whatever the select holds.
-  await expect(async () => {
-    expect(await name.textContent()).toBe(await select.inputValue());
-  }).toPass();
-  await expect(summary).toContainText("Change");
-  await summary.click();
-  const other = (await select.inputValue()) === "UTC" ? "Europe/Berlin" : "UTC";
-  await select.selectOption(other);
-  await expect(name).toHaveText(other);
-  expect(problems).toEqual([]);
-  await context.close();
-});
+  // Each step opens a fresh form; the 320 px steps set their width first.
+  // The two steps that do not set a width use the context's own size, as the separate tests did.
+  const standard = page.viewportSize() ?? { width: 1280, height: 720 };
+  await test.step("The time zone line shows the zone the select holds, and follows a new pick", async () => {
+    await page.setViewportSize(standard);
+    await page.goto("/new");
+    const select = page.locator("#field-timeZone");
+    const name = page.locator("details.zone-line [data-zone-name]");
+    const summary = page.locator("details.zone-line > summary");
+    // The script may have preselected the browser's zone: the line shows whatever the select holds.
+    await expect(async () => {
+      expect(await name.textContent()).toBe(await select.inputValue());
+    }).toPass();
+    await expect(summary).toContainText("Change");
+    await summary.click();
+    const other = (await select.inputValue()) === "UTC" ? "Europe/Berlin" : "UTC";
+    await select.selectOption(other);
+    await expect(name).toHaveText(other);
+  });
+  await test.step("The who and exact summaries follow the join radios and the exact point", async () => {
+    await page.setViewportSize(standard);
+    await page.goto("/new");
+    const value = (title: string) =>
+      page
+        .locator("details.fold", { has: page.locator(".fold-title", { hasText: title }) })
+        .locator(".fold-value");
+    await expect(value("Who can join and find it")).toContainText("Join: anyone with the link");
+    await expect(value("Exact meeting point")).toHaveText("Optional · anyone who joins sees it");
 
-test("The titled time zone line wraps inside 320 px with the longest zone name", async ({
-  browser,
-  baseURL,
-}) => {
-  const problems: string[] = [];
-  const { context, page } = await person(browser, baseURL ?? "", problems);
-  await page.setViewportSize({ width: 320, height: 640 });
-  await page.goto("/new");
-  // The longest zone name the select offers (a string: this project has no DOM types).
-  const longest = await page.evaluate<string>(
-    `Array.from(document.querySelectorAll("#field-timeZone option"), (o) => o.value).reduce((a, b) => (b.length > a.length ? b : a), "")`,
-  );
-  await page.locator("#field-timeZone").selectOption(longest, { force: true });
-  const summary = page.locator("details.zone-line > summary");
-  await expect(page.locator("details.zone-line [data-zone-name]")).toHaveText(longest);
-  await expect(page.locator("details.zone-line .zone-title")).toBeVisible();
-  const box = await summary.boundingBox();
-  expect(box?.height, "summary stays a 44 px tap target").toBeGreaterThanOrEqual(44);
-  const widths = await page.evaluate<{ scrollWidth: number; innerWidth: number }>(
-    "({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth })",
-  );
-  expect(widths.scrollWidth, "the page scrolls sideways").toBeLessThanOrEqual(widths.innerWidth);
-  expect((box?.x ?? 0) + (box?.width ?? 999), "summary right edge").toBeLessThanOrEqual(320);
-  expect(problems).toEqual([]);
-  await context.close();
-});
+    await openFold(page, "Who can join and find it");
+    await page.getByLabel("Only people I accept").check();
+    await expect(value("Who can join and find it")).toContainText("Join: after your approval");
+    await expect(value("Exact meeting point")).toHaveText(
+      "Optional · only people you accept see it",
+    );
 
-test("The who and exact summaries follow the join radios and the exact point", async ({
-  browser,
-  baseURL,
-}) => {
-  const problems: string[] = [];
-  const { context, page } = await person(browser, baseURL ?? "", problems);
-  await page.goto("/new");
-  const value = (title: string) =>
-    page
-      .locator("details.fold", { has: page.locator(".fold-title", { hasText: title }) })
-      .locator(".fold-value");
-  await expect(value("Who can join and find it")).toContainText("Join: anyone with the link");
-  await expect(value("Exact meeting point")).toHaveText("Optional · anyone who joins sees it");
-
-  await openFold(page, "Who can join and find it");
-  await page.getByLabel("Only people I accept").check();
-  await expect(value("Who can join and find it")).toContainText("Join: after your approval");
-  await expect(value("Exact meeting point")).toHaveText("Optional · only people you accept see it");
-
-  await openFold(page, "Exact meeting point");
-  await page.getByLabel("Description of the meeting point").fill("North gate");
-  await expect(value("Exact meeting point")).toHaveText("Set · only people you accept see it");
-  await page.getByLabel("Anyone with the link").check();
-  await expect(value("Exact meeting point")).toHaveText("Set · anyone who joins sees it");
-  expect(problems).toEqual([]);
-  await context.close();
-});
-
-test("The title is the heading input: the first focus selects the default, a long one stays inside 320 px", async ({
-  browser,
-  baseURL,
-}) => {
-  const problems: string[] = [];
-  const { context, page } = await person(browser, baseURL ?? "", problems);
-  await page.setViewportSize({ width: 320, height: 640 });
-  await page.goto("/new");
-  const title = page.locator("#field-title");
-  await expect(title).toHaveValue(/^(My plan|Mein Treffen|Ma sortie)$/);
-  // The first focus selects the whole default, so one key replaces it.
-  await title.focus();
-  await page.keyboard.press("x");
-  await expect(title).toHaveValue("x");
-  // A later focus does not select again: typing appends.
-  await page.locator("#field-activity").focus();
-  await title.focus();
-  await page.keyboard.press("y");
-  await expect(title).toHaveValue("xy");
-  // A 100-character title scrolls inside the field.
-  await title.fill("W".repeat(100));
-  const widths = await page.evaluate<{ scrollWidth: number; innerWidth: number }>(
-    "({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth })",
-  );
-  expect(widths.scrollWidth, "long title scrolls the page sideways").toBeLessThanOrEqual(
-    widths.innerWidth,
-  );
-  const box = await title.boundingBox();
-  expect(box?.height, "title input height").toBeGreaterThanOrEqual(44);
-  // No pencil: the title is the line alone.
-  await expect(page.locator(".title-field, .icon-pencil, .line-pen")).toHaveCount(0);
+    await openFold(page, "Exact meeting point");
+    await page.getByLabel("Description of the meeting point").fill("North gate");
+    await expect(value("Exact meeting point")).toHaveText("Set · only people you accept see it");
+    await page.getByLabel("Anyone with the link").check();
+    await expect(value("Exact meeting point")).toHaveText("Set · anyone who joins sees it");
+  });
+  await test.step("The titled time zone line wraps inside 320 px with the longest zone name", async () => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto("/new");
+    // The longest zone name the select offers (a string: this project has no DOM types).
+    const longest = await page.evaluate<string>(
+      `Array.from(document.querySelectorAll("#field-timeZone option"), (o) => o.value).reduce((a, b) => (b.length > a.length ? b : a), "")`,
+    );
+    await page.locator("#field-timeZone").selectOption(longest, { force: true });
+    const summary = page.locator("details.zone-line > summary");
+    await expect(page.locator("details.zone-line [data-zone-name]")).toHaveText(longest);
+    await expect(page.locator("details.zone-line .zone-title")).toBeVisible();
+    const box = await summary.boundingBox();
+    expect(box?.height, "summary stays a 44 px tap target").toBeGreaterThanOrEqual(44);
+    const widths = await page.evaluate<{ scrollWidth: number; innerWidth: number }>(
+      "({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth })",
+    );
+    expect(widths.scrollWidth, "the page scrolls sideways").toBeLessThanOrEqual(widths.innerWidth);
+    expect((box?.x ?? 0) + (box?.width ?? 999), "summary right edge").toBeLessThanOrEqual(320);
+  });
+  await test.step("The title is the heading input: the first focus selects the default, a long one stays inside 320 px", async () => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto("/new");
+    const title = page.locator("#field-title");
+    await expect(title).toHaveValue(/^(My plan|Mein Treffen|Ma sortie)$/);
+    // The first focus selects the whole default, so one key replaces it.
+    await title.focus();
+    await page.keyboard.press("x");
+    await expect(title).toHaveValue("x");
+    // A later focus does not select again: typing appends.
+    await page.locator("#field-activity").focus();
+    await title.focus();
+    await page.keyboard.press("y");
+    await expect(title).toHaveValue("xy");
+    // A 100-character title scrolls inside the field.
+    await title.fill("W".repeat(100));
+    const widths = await page.evaluate<{ scrollWidth: number; innerWidth: number }>(
+      "({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth })",
+    );
+    expect(widths.scrollWidth, "long title scrolls the page sideways").toBeLessThanOrEqual(
+      widths.innerWidth,
+    );
+    const box = await title.boundingBox();
+    expect(box?.height, "title input height").toBeGreaterThanOrEqual(44);
+    // No pencil: the title is the line alone.
+    await expect(page.locator(".title-field, .icon-pencil, .line-pen")).toHaveCount(0);
+  });
   expect(problems).toEqual([]);
   await context.close();
 });

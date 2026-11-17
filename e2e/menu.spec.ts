@@ -123,28 +123,6 @@ test("Tab from the burger enters the sheet", async ({ browser, baseURL }) => {
   await context.close();
 });
 
-test("The logo is centred in the header and at least 44 px tall (decision D68)", async ({
-  browser,
-  baseURL,
-}) => {
-  const problems: string[] = [];
-  const { context, page } = await person(browser, baseURL ?? "", problems);
-  for (const width of [320, 390, 800]) {
-    await page.setViewportSize({ width, height: 700 });
-    await page.goto("/");
-    const box = await page.locator("header.site-header > a").boundingBox();
-    expect(box, `logo at ${width} px`).not.toBeNull();
-    const logo = box as NonNullable<typeof box>;
-    expect(
-      Math.abs(logo.x + logo.width / 2 - width / 2),
-      `centre offset at ${width} px`,
-    ).toBeLessThanOrEqual(2);
-    expect(logo.height, `logo height at ${width} px`).toBeGreaterThanOrEqual(44);
-  }
-  expect(problems).toEqual([]);
-  await context.close();
-});
-
 test("A map scrolling under the header never paints over the burger", async ({
   browser,
   baseURL,

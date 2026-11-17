@@ -6,12 +6,32 @@
 // Checks: (a) nothing scrolls sideways, per section and for the page; (b) no two controls that sit
 // side by side (children of one container) overlap; (c) every interactive element is at least
 // 44 px in one dimension, bar a documented exception list; (d) Tab shows a visible focus cue on
-// every stop of every section; (e) no console error and no CSP violation.
+// every stop of every section; (e) no console error and no CSP violation; (f) no axe-core
+// violation (the 390 px visits, Chromium only, below).
+//
+// One visit per scheme and width runs every check on the same page load (the former
+// styleguide-axe spec is merged in, decision D84). The Tab walk runs at 390 px in both schemes and
+// at 320 px in light only: the cue rules (outline, inset line, 2 px underline) do not depend on the
+// scheme, the colours are asserted by the contrast tests and the CSS snapshot, and the 320 px dark
+// walk visited the same stops as the 320 px light one (so the walk does not run there). The geometry checks run in all four visits.
+//
+// Axe passing does not replace a screen reader pass on a phone (docs/release-checklist.md). The
+// axe violation list must be empty bar the allowlist below: one entry per rule id and selector,
+// each with the reason. Only dev-only page artefacts belong there, never a real app bug.
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { person } from "./helpers.ts";
 
 const WIDTHS = [320, 390] as const;
 const SCHEMES = ["light", "dark"] as const;
+
+/** The axe rule set: WCAG 2.0, 2.1 and 2.2 levels A and AA, plus axe's best-practice rules (clean today, so they stay on). */
+const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
+
+type Allowed = { rule: string; selector: string; reason: string };
+
+/** Known axe findings that are artefacts of the catalogue page. Empty: add nothing without a reason. */
+const AXE_ALLOWED: readonly Allowed[] = [];
 
 // No trace for this spec: the Tab walk presses a few hundred keys on a page with thousands of
 // nodes, and a trace snapshots the DOM around every press. Under a parallel run that made each
@@ -98,6 +118,28 @@ interface Problem {
   detail: string;
 }
 
+/** The axe audit of the page as it stands; fails on any violation that is not allowlisted. */
+async function expectNoAxeViolations(page: Page): Promise<void> {
+  const { violations, passes } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+  // Guards against an audit that silently ran nothing (for example blocked by the CSP).
+  expect(passes.length, "axe rules that passed").toBeGreaterThan(20);
+  const unexpected = violations.flatMap((violation) =>
+    violation.nodes
+      .filter(
+        (node) =>
+          !AXE_ALLOWED.some(
+            (allowed) =>
+              allowed.rule === violation.id && node.target.join(" ").includes(allowed.selector),
+          ),
+      )
+      .map(
+        (node) =>
+          `${violation.id} (${violation.impact ?? "n/a"}): ${violation.help}\n  ${violation.helpUrl}\n  target: ${node.target.join(" ")}\n  ${node.failureSummary?.replaceAll("\n", "\n  ") ?? ""}`,
+      ),
+  );
+  expect(unexpected, "axe violations").toEqual([]);
+}
+
 const format = (list: readonly Problem[]) =>
   list.map((item) => `${item.where}: ${item.detail}`).join("\n");
 
@@ -109,6 +151,9 @@ for (const scheme of SCHEMES) {
     }) => {
       // The Tab walk presses a few hundred keys; WebKit's Option+Tab is slow under a parallel run.
       test.slow();
+      // The walk: 390 px in both schemes, 320 px in light only (see the top of this file).
+      const walk = width === 390 || scheme === "light";
+      const webkit = browser.browserType().name() === "webkit";
       const problems: string[] = [];
       const { context, page } = await person(browser, baseURL ?? "", problems, {
         context: { colorScheme: scheme, viewport: { width, height: 800 } },
@@ -126,6 +171,11 @@ for (const scheme of SCHEMES) {
         page,
         `document.querySelectorAll("details").forEach((d) => { d.open = true; });`,
       );
+
+      // (f) Axe, before anything touches focus or tabindex. Chromium (default settings) only, at
+      // 390 px: axe's results do not depend on the engine here, and in WebKit one audit took
+      // 15 s against 2.5 s. WebKit keeps the geometry checks below.
+      if (width === 390 && !webkit) await test.step("axe audit", () => expectNoAxeViolations(page));
 
       // (a) Nothing scrolls sideways, per section and for the page.
       const overflow = await inPage<Problem[]>(
@@ -225,7 +275,7 @@ for (const scheme of SCHEMES) {
       // Which cue is required depends on the control: a summary has the inset line (D81), a text
       // line field the outline or the 2 px underline (D78); everything else the global outline.
       // A visually hidden control (a radio) is judged by its visible label.
-      const webkit = browser.browserType().name() === "webkit";
+      const stopsBySection: Record<string, number> = {};
       const sections = await inPage<{ id: string; controls: number }[]>(
         page,
         `return [...document.querySelectorAll(${JSON.stringify(SECTION)})].map((s) => ({
@@ -234,19 +284,21 @@ for (const scheme of SCHEMES) {
              .filter((c) => !c.disabled && visible(c) && !clipped(c) && !c.closest('nav[aria-label="Sections"]')).length,
          }));`,
       );
-      // The styles of every control while nothing has the focus, to compare the stops with.
-      await inPage(
-        page,
-        `document.activeElement.blur();
+      if (walk)
+        await test.step("Tab walk", async () => {
+          // The styles of every control while nothing has the focus, to compare the stops with.
+          await inPage(
+            page,
+            `document.activeElement.blur();
          window.__before = new Map();
          for (const el of document.querySelectorAll("a[href], button, summary, input:not([type=hidden]), select, textarea")) window.__before.set(el, sign(cueTarget(el)));`,
-      );
-      // One pass over the whole page, recording each stop inside the page (a focusin listener),
-      // so the Node side only presses keys and polls a counter: a round trip per stop was what
-      // pushed this test over its time limit under a parallel run.
-      await inPage(
-        page,
-        `window.__stops = [];
+          );
+          // One pass over the whole page, recording each stop inside the page (a focusin listener),
+          // so the Node side only presses keys and polls a counter: a round trip per stop was what
+          // pushed this test over its time limit under a parallel run.
+          await inPage(
+            page,
+            `window.__stops = [];
          window.__seen = new Set();
          window.__last = null;
          // Called after each key press, from the page: WebKit sends no focusin for date and time
@@ -277,27 +329,27 @@ for (const scheme of SCHEMES) {
          };
          document.querySelector("h1").setAttribute("tabindex", "-1");
          document.querySelector("h1").focus();`,
-      );
-      // macOS WebKit tabs through form fields only; Option+Tab also stops on links, buttons
-      // and radios, like Tab in Chromium (Safari's own convention).
-      const key = webkit ? "Alt+Tab" : "Tab";
-      // One evaluate per press records the stop and returns how many elements were seen, whether
-      // focus came back to the first stop (a wrap: the end of the page), and where it is now.
-      // The walk is bounded without relying on timing: it ends at a wrap, after 15 presses in a
-      // row that reach no new element (focus left to the browser, or cycles between two), or at
-      // twice the page's focusable elements plus a margin (a date or time field takes a few
-      // presses each). Each press has its own deadline and the walk a wall-clock budget, so a
-      // stuck browser fails with the last element named instead of hanging to the test timeout.
-      const focusable = await page.evaluate<number>(
-        `document.querySelectorAll("a[href], button, summary, input:not([type=hidden]), select, textarea, [tabindex]").length`,
-      );
-      const maxPresses = focusable * 2 + 30;
-      const PRESS_DEADLINE_MS = 20_000;
-      const WALK_BUDGET_MS = 150_000;
-      const started = Date.now();
-      const step = () =>
-        page.evaluate<{ seen: number; wrapped: boolean; now: string }>(
-          `(() => {
+          );
+          // macOS WebKit tabs through form fields only; Option+Tab also stops on links, buttons
+          // and radios, like Tab in Chromium (Safari's own convention).
+          const key = webkit ? "Alt+Tab" : "Tab";
+          // One evaluate per press records the stop and returns how many elements were seen, whether
+          // focus came back to the first stop (a wrap: the end of the page), and where it is now.
+          // The walk is bounded without relying on timing: it ends at a wrap, after 15 presses in a
+          // row that reach no new element (focus left to the browser, or cycles between two), or at
+          // twice the page's focusable elements plus a margin (a date or time field takes a few
+          // presses each). Each press has its own deadline and the walk a wall-clock budget, so a
+          // stuck browser fails with the last element named instead of hanging to the test timeout.
+          const focusable = await page.evaluate<number>(
+            `document.querySelectorAll("a[href], button, summary, input:not([type=hidden]), select, textarea, [tabindex]").length`,
+          );
+          const maxPresses = focusable * 2 + 30;
+          const PRESS_DEADLINE_MS = 20_000;
+          const WALK_BUDGET_MS = 150_000;
+          const started = Date.now();
+          const step = () =>
+            page.evaluate<{ seen: number; wrapped: boolean; now: string }>(
+              `(() => {
              const before = window.__last;
              window.__record();
              const el = document.activeElement;
@@ -305,55 +357,58 @@ for (const scheme of SCHEMES) {
              const wrapped = before !== null && window.__last === window.__first && before !== window.__first;
              return { seen: window.__seen.size, wrapped, now: el ? describe(el) : "none" };
            })()`.replace("(() => {", `(() => { ${BROWSER_HELPERS}`),
-        );
-      let stale = 0;
-      let seen = 0;
-      let last = "none";
-      let pressed = 0;
-      for (; pressed < maxPresses && stale < 15; pressed += 1) {
-        if (Date.now() - started > WALK_BUDGET_MS) {
-          throw new Error(
-            `Tab walk over its ${WALK_BUDGET_MS} ms budget after ${pressed} presses; stops by section ${JSON.stringify(await page.evaluate("Object.fromEntries(window.__stops.reduce((m, s) => m.set(s.id, (m.get(s.id) || 0) + 1), new Map()))"))}; last focused ${last}`,
-          );
-        }
-        const state = await Promise.race([
-          page.keyboard.press(key).then(step),
-          new Promise<never>((_, reject) =>
-            setTimeout(
-              () =>
-                reject(
-                  new Error(
-                    `Tab walk stuck: press ${pressed} took over ${PRESS_DEADLINE_MS} ms; last focused ${last}`,
-                  ),
-                ),
-              PRESS_DEADLINE_MS,
-            ).unref(),
-          ),
-        ]);
-        last = state.now;
-        stale = state.seen === seen ? stale + 1 : 0;
-        seen = state.seen;
-        if (state.wrapped) break;
-      }
-      expect(
-        pressed,
-        `Tab walk hit its press cap (${maxPresses}) without ending; last focused ${last}`,
-      ).toBeLessThan(maxPresses);
-      const recorded =
-        await page.evaluate<{ id: string; cue: boolean; what: string }[]>("window.__stops");
-      const missing: Problem[] = recorded
-        .filter((stop) => !stop.cue)
-        .map((stop) => ({ where: `#${stop.id}`, detail: stop.what }));
-      const stopsBySection: Record<string, number> = {};
-      for (const stop of recorded) stopsBySection[stop.id] = (stopsBySection[stop.id] ?? 0) + 1;
-      const stops = recorded.length;
-      expect(stops, "focus stops walked").toBeGreaterThan(50);
-      expect(format(missing), "stops without a new visible focus cue").toBe("");
+            );
+          let stale = 0;
+          let seen = 0;
+          let last = "none";
+          let pressed = 0;
+          for (; pressed < maxPresses && stale < 15; pressed += 1) {
+            if (Date.now() - started > WALK_BUDGET_MS) {
+              throw new Error(
+                `Tab walk over its ${WALK_BUDGET_MS} ms budget after ${pressed} presses; stops by section ${JSON.stringify(await page.evaluate("Object.fromEntries(window.__stops.reduce((m, s) => m.set(s.id, (m.get(s.id) || 0) + 1), new Map()))"))}; last focused ${last}`,
+              );
+            }
+            const state = await Promise.race([
+              page.keyboard.press(key).then(step),
+              new Promise<never>((_, reject) =>
+                setTimeout(
+                  () =>
+                    reject(
+                      new Error(
+                        `Tab walk stuck: press ${pressed} took over ${PRESS_DEADLINE_MS} ms; last focused ${last}`,
+                      ),
+                    ),
+                  PRESS_DEADLINE_MS,
+                ).unref(),
+              ),
+            ]);
+            last = state.now;
+            stale = state.seen === seen ? stale + 1 : 0;
+            seen = state.seen;
+            if (state.wrapped) break;
+          }
+          expect(
+            pressed,
+            `Tab walk hit its press cap (${maxPresses}) without ending; last focused ${last}`,
+          ).toBeLessThan(maxPresses);
+          const recorded =
+            await page.evaluate<{ id: string; cue: boolean; what: string }[]>("window.__stops");
+          const missing: Problem[] = recorded
+            .filter((stop) => !stop.cue)
+            .map((stop) => ({ where: `#${stop.id}`, detail: stop.what }));
+          for (const stop of recorded) stopsBySection[stop.id] = (stopsBySection[stop.id] ?? 0) + 1;
+          const stops = recorded.length;
+          expect(stops, "focus stops walked").toBeGreaterThan(50);
+          expect(format(missing), "stops without a new visible focus cue").toBe("");
+        });
+
       // Every section that has controls has at least one Tab stop and one measured target.
+      // (Stops are only counted where the walk ran.)
       const empty = sections
         .filter(
           ({ id, controls }) =>
-            controls > 0 && ((stopsBySection[id] ?? 0) === 0 || (small.bySection[id] ?? 0) === 0),
+            controls > 0 &&
+            ((walk && (stopsBySection[id] ?? 0) === 0) || (small.bySection[id] ?? 0) === 0),
         )
         .map(
           ({ id, controls }) =>

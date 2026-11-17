@@ -15,8 +15,26 @@ const ADMIN_INGRESS_SPECS = /v10-admin-ingress\.spec\.ts$/;
  * The specs that also run in WebKit (D72, plan I98): the layout specs and the ones that read
  * `/new` or `/styleguide` only. They create no plan, so they can share the default containers.
  */
-const LAYOUT_SPECS =
-  /(?:layout-phone|styleguide|styleguide-axe|css-snapshot|field-style|map-pick)\.spec\.ts$/;
+const LAYOUT_SPECS = /(?:layout-phone|styleguide|css-snapshot|field-style|map-pick)\.spec\.ts$/;
+
+/**
+ * Specs that do not depend on the maps, geocoder and weather settings (they read the style guide,
+ * the header menu, or only need a plan without maps, and the 90 s v06 test is about ratings), so
+ * they run in the "default settings" project only (D84, plan I101). The two config-dependent
+ * variants of a flow stay in core-loop and the area/field specs.
+ */
+const CONFIG_INDEPENDENT_SPECS =
+  /(?:v06|styleguide|theme|css-state-coverage|css-snapshot)\.spec\.ts$/;
+
+/** Specs that need the map and the geocoder, which the maps-off project turns off. */
+const MAPS_ONLY_SPECS = /area-suggestions\.spec\.ts$/;
+
+/**
+ * Tests the maps-off project leaves out: a v05 test that creates a plan without maps (the same in
+ * both configurations), and the field-style group that needs the map.
+ */
+const CONFIG_INDEPENDENT_TESTS =
+  /The app works fully if push permission is denied|Map-related field styles/;
 
 export default defineConfig({
   testDir: ".",
@@ -44,7 +62,14 @@ export default defineConfig({
     },
     {
       name: "maps, geocoder and weather disabled",
-      testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS, ADMIN_INGRESS_SPECS],
+      testIgnore: [
+        ACCOUNT_SPECS,
+        ADMIN_SPLIT_SPECS,
+        ADMIN_INGRESS_SPECS,
+        CONFIG_INDEPENDENT_SPECS,
+        MAPS_ONLY_SPECS,
+      ],
+      grepInvert: CONFIG_INDEPENDENT_TESTS,
       use: { baseURL: "http://localhost:3102" },
     },
     // The layout specs again on WebKit against the default containers. The specs open their own

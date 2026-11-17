@@ -183,32 +183,32 @@ test("Find my location disables itself when the browser refuses", async ({
 });
 
 // The tiles around a zone's center at zoom 6: the center's tile and its neighbours (the map is
-// wider than one tile). Tokyo (35.65, 139.74) is tile 56/25, Berlin (52.52, 13.405) is 34/20.
-for (const [zone, tiles, place] of [
-  ["Asia/Tokyo", /\/tiles\/6\/5[567]\/2[456]\.png/, "Tokyo"],
-  ["UTC", /\/tiles\/6\/3[345]\/(19|20|21)\.png/, "Berlin"],
-] as const) {
-  test(`The map opens on ${place} at zoom 6 for a browser in ${zone}, with no saved point`, async ({
-    browser,
-    baseURL,
-  }, testInfo) => {
-    test.skip(
-      testInfo.project.name === NO_MAP_PROJECT,
-      "needs the map, which the other project turns off",
-    );
-    const problems: string[] = [];
-    const { page } = await person(browser, baseURL ?? "", problems, {
-      context: { timezoneId: zone },
-    });
-    const tile = page.waitForRequest((request) => tiles.test(request.url()));
-    await page.goto("/new");
-    await tile;
-    await expect(map(page)).toBeVisible();
-    // Opening the form sets no point.
-    for (const field of Object.values(fields(page))) await expect(field).toHaveValue("");
-    expect(problems).toEqual([]);
+// wider than one tile). Tokyo (35.65, 139.74) is tile 56/25. The fallback to Berlin (52.52, 13.405)
+// for UTC or an unknown zone, and the browser zone's center, are asserted by the unit tests
+// "opens on the browser zone's center at zoom 6" and "opens on Berlin at zoom 6 for UTC" in
+// test/client/map-view.test.ts (decision D84); this one proves that the tiles really load there.
+test("The map opens on Tokyo at zoom 6 for a browser in Asia/Tokyo, with no saved point", async ({
+  browser,
+  baseURL,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name === NO_MAP_PROJECT,
+    "needs the map, which the other project turns off",
+  );
+  const problems: string[] = [];
+  const { page } = await person(browser, baseURL ?? "", problems, {
+    context: { timezoneId: "Asia/Tokyo" },
   });
-}
+  const tile = page.waitForRequest((request) =>
+    /\/tiles\/6\/5[567]\/2[456]\.png/.test(request.url()),
+  );
+  await page.goto("/new");
+  await tile;
+  await expect(map(page)).toBeVisible();
+  // Opening the form sets no point.
+  for (const field of Object.values(fields(page))) await expect(field).toHaveValue("");
+  expect(problems).toEqual([]);
+});
 
 test("Without maps the coordinate fields stay and there is no map, switch or locate control", async ({
   browser,

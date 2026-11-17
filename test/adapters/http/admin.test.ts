@@ -167,6 +167,16 @@ describe("the instance admin's pages (spec 7 Moderation, 3.6 Instance admin colu
     for (const [path, response] of pages) await expectWorksUnderPrefix(admin, path, response);
   });
 
+  it("shows an example placeholder in the invite usage limit, not in the date (D74)", async () => {
+    const { admin } = await setup({ ADMIN_TOKEN: TOKEN, POSTING_MODE: "invite" });
+    await logIn(admin);
+    const home = await (await admin.get("/admin/")).text();
+    const tag = (name: string) =>
+      new RegExp(`<input[^>]*name="${name}"[^>]*>`).exec(home)?.[0] ?? "";
+    expect(tag("maxUses")).toContain(`placeholder="${en("placeholder.inviteMaxUses")}"`);
+    expect(tag("expiresOn")).not.toContain("placeholder");
+  });
+
   it("work under any path prefix with invite links too (spec 3.8, 7 Moderation)", async () => {
     const { admin } = await setup({ ADMIN_TOKEN: TOKEN, POSTING_MODE: "invite" });
     await logIn(admin);

@@ -893,13 +893,22 @@ export interface Place {
 }
 
 /**
- * Place name → coordinates (spec 3.9) and, for the label suggestion (decision D70), the point of
- * the public grid → a locality-level name. Throws when the service is unavailable.
+ * Place name → coordinates (spec 3.9), for the label suggestion (decision D70) the point of the
+ * public grid → a locality-level name, and for the description (decision D77) the exact point → a
+ * street-level name. Throws when the service is unavailable.
  */
 export interface Geocoder {
   search(query: string, options: { language: string }): Promise<Place[]>;
   /** A locality name (district and/or city) for the point, never a street; undefined if none. */
   reverse(
+    point: { lat: number; lng: number },
+    options: { language: string },
+  ): Promise<string | undefined>;
+  /**
+   * A short street-level description of the EXACT point (a named place or a road, never a house
+   * number), for the meeting-point description (decision D77); undefined if none. Never cached.
+   */
+  describe(
     point: { lat: number; lng: number },
     options: { language: string },
   ): Promise<string | undefined>;

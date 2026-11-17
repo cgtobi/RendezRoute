@@ -10,7 +10,8 @@ export function escaped(text: string): string {
 
 /**
  * The page's main (primary) buttons and button links between `from` and `to`, each as its text:
- * buttons and `.button` links that are neither secondary nor danger (decision D27).
+ * buttons and `.button` links that are neither secondary nor danger (decision D27). An icon
+ * button on a field's line (`line-action-button`, D75) is not a main action either; nor is the quiet icon button in a status line (`icon-button`, D76).
  */
 export function primaries(html: string, from = "<main", to = "</main>"): string[] {
   const part = html.slice(html.indexOf(from), html.indexOf(to));
@@ -18,7 +19,13 @@ export function primaries(html: string, from = "<main", to = "</main>"): string[
     .filter(([, tag, attributes = ""]) => {
       const classes = /class="([^"]*)"/.exec(attributes)?.[1]?.split(" ") ?? [];
       const isButton = tag === "button" || classes.includes("button");
-      return isButton && !classes.includes("secondary") && !classes.includes("danger");
+      return (
+        isButton &&
+        !classes.includes("secondary") &&
+        !classes.includes("danger") &&
+        !classes.includes("line-action-button") &&
+        !classes.includes("icon-button")
+      );
     })
     .map(([, , , content = ""]) => content.replace(/<[^>]*>/g, "").trim());
 }

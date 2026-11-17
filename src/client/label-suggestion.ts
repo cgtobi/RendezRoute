@@ -1,7 +1,7 @@
 // Suggesting the meeting-area name after a tap on the form map (decision D70). Only the rounded
 // public point is ever sent, through the server's own CSRF-protected endpoint; a failure is silent.
 import { type Point, shouldSuggest } from "./geo.ts";
-import { setField } from "./places.ts";
+import { setField, showHint } from "./places.ts";
 
 const DEBOUNCE_MS = 600;
 
@@ -12,7 +12,7 @@ const DEBOUNCE_MS = 600;
 export function createLabelSuggester(
   picker: HTMLElement,
   form: HTMLFormElement,
-): ((point: Point) => void) | undefined {
+): (((point: Point) => void) & { cancel(): void }) | undefined {
   const endpoint = picker.dataset.suggestEndpoint;
   const field = form.querySelector<HTMLInputElement>('[name="areaLabel"]');
   if (endpoint === undefined || endpoint === "" || field === null) return undefined;
@@ -28,7 +28,7 @@ export function createLabelSuggester(
   field.addEventListener("input", () => {
     if (field.value === lastSuggestion) return;
     lastSuggestion = undefined;
-    if (hint !== null) hint.hidden = true;
+    showHint(hint, false);
   });
 
   // A tap that finds no name must not leave the name of the previous place: while the field still
@@ -37,7 +37,7 @@ export function createLabelSuggester(
     if (lastSuggestion === undefined || field.value !== lastSuggestion) return;
     lastSuggestion = undefined;
     setField(form, "areaLabel", "");
-    if (hint !== null) hint.hidden = true;
+    showHint(hint, false);
   };
 
   const lookup = async (point: Point, signal: AbortSignal) => {
@@ -60,18 +60,26 @@ export function createLabelSuggester(
     if (!shouldSuggest(field.value, lastSuggestion)) return;
     lastSuggestion = label;
     setField(form, "areaLabel", label);
-    if (hint !== null) hint.hidden = false;
+    showHint(hint, true);
   };
 
-  return (point) => {
+  const cancel = () => {
     clearTimeout(timer);
     pending?.abort();
     pending = undefined;
-    if (!shouldSuggest(field.value, lastSuggestion)) return;
-    timer = setTimeout(() => {
-      if (!shouldSuggest(field.value, lastSuggestion)) return;
-      pending = new AbortController();
-      void lookup(point, pending.signal);
-    }, DEBOUNCE_MS);
   };
+
+  // `cancel` is for Remove: a lookup still on its way must not name a point that is gone.
+  return Object.assign(
+    (point: Point) => {
+      cancel();
+      if (!shouldSuggest(field.value, lastSuggestion)) return;
+      timer = setTimeout(() => {
+        if (!shouldSuggest(field.value, lastSuggestion)) return;
+        pending = new AbortController();
+        void lookup(point, pending.signal);
+      }, DEBOUNCE_MS);
+    },
+    { cancel },
+  );
 }

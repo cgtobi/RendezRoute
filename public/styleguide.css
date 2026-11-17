@@ -97,3 +97,11 @@
 .sg-swatch-ok-line {
   background: var(--ok-line);
 }
+
+.sg-samples {
+  margin: var(--s4) 0;
+}
+
+.sg-samples h3 {
+  margin: 0 0 var(--s2);
+}

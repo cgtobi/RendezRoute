@@ -4,7 +4,7 @@ import { roundCoordinate, shortLabel } from "./geo.ts";
 export interface PickedPlace {
   lat: number;
   lng: number;
-  /** Place name from search; fills an empty area label. */
+  /** Place name from search; a picked result is an explicit choice and replaces the area text. */
   label?: string;
 }
 
@@ -21,10 +21,16 @@ export function pickPlace(form: HTMLFormElement, place: PickedPlace): void {
   form
     .querySelector<HTMLElement>("[data-map-picker]")
     ?.dispatchEvent(new CustomEvent<PickedPlace>(PLACE_EVENT, { detail: place }));
-  const areaLabel = form.querySelector<HTMLInputElement>('[name="areaLabel"]');
-  if (place.label !== undefined && areaLabel !== null && areaLabel.value.trim() === "") {
-    areaLabel.value = shortLabel(place.label);
-  }
+  // Through setField: the input event tells the label suggester the text is now the host's.
+  if (place.label !== undefined) setField(form, "areaLabel", shortLabel(place.label));
+}
+
+/**
+ * Shows or hides a suggestion status line (role="status"). It is always in the page and empty
+ * while off: a live region announces a change of its text, not a line that was hidden before.
+ */
+export function showHint(hint: HTMLElement | null, on: boolean): void {
+  if (hint !== null) hint.textContent = on ? (hint.dataset.text ?? "") : "";
 }
 
 export function setField(form: HTMLFormElement, name: string, value: string): void {

@@ -9,6 +9,7 @@ export const en = {
   "layout.imprint": "Imprint",
   "layout.language": "Language",
   "layout.change": "Change",
+  "layout.done": "Done",
   "form.where": "Where",
   "form.hostingAs": "Hosting as {name}",
   "fold.exact": "Exact meeting point",
@@ -88,7 +89,7 @@ export const en = {
   "privacy.tilesServer":
     "For link preview images, this server also loads map images of the rough meeting area; this sends nothing about you.",
   "privacy.geocoder":
-    "Place search goes through this server to {host}. That service sees what you search for, but not who you are. When you pick a place on the map and the meeting area is empty or still holds the earlier suggestion, the rounded point of that place (about 1 km) is sent to the service the same way, to suggest a name; never the exact start. Searches and their results are kept in this server’s memory for up to {days} days, so repeated searches need no new request.",
+    "Place search goes through this server to {host}. That service sees what you search for, but not who you are. When you pick a place on the map and the area is empty or still holds the earlier suggestion, the rounded point of that place (about 1 km) is sent to the service the same way, to suggest a name. When you set an exact meeting point on the map and its description is empty or still holds the earlier suggestion, that exact point is sent to the service through this server too, to suggest a description such as a road or a named place; the service does not learn who you are. Searches and the area names are kept in this server’s memory for up to {days} days, so repeated lookups need no new request; lookups of exact points are not kept in this server’s memory.",
   "privacy.push":
     "If you turn on notifications, your browser’s push service (from Google, Mozilla, Apple or Microsoft) delivers them. The messages are encrypted; the service only sees that one was sent. To send them, this server stores your browser’s push address and keys, encrypted, and deletes them when you turn notifications off, or with the plan or your response.",
   "privacy.weather":
@@ -151,24 +152,23 @@ export const en = {
   "form.date": "Date",
   "form.time": "Start time",
   "form.timeZone": "Time zone",
-  "form.areaLabel": "Meeting area",
-  "form.areaLabelHint": "Shown to everyone, for example “Englischer Garten, north end”.",
+  "form.timeZoneLine": "Time zone:",
+  "form.areaLabel": "Area",
+  "form.areaLabelHint": "Shown to everyone.",
   "form.areaLabelSuggested": "Suggested from the map. Change it if you like.",
   "form.publicHint":
     "Don't put the exact meeting point here; it's public. Use “Exact meeting point” instead.",
-  "form.exactStartHint": "Only you and people who join can see this.",
   "form.openModeWarning":
     "Anyone with the link who joins will see the exact start. Choose “Only people I accept” to decide who sees it.",
-  "form.exactDescription": "Where exactly?",
+  "form.exactDescription": "Description of the meeting point",
+  "form.exactDescriptionSuggested": "Suggested from the map point. Change it if you like.",
   "form.latitude": "Latitude",
   "form.longitude": "Longitude",
   "form.areaCoordinates": "Map point of the meeting area (optional)",
   "form.areaCoordinatesHint":
     "Shown to everyone, rounded to about 1 km. Not needed when the exact start has coordinates.",
-  "map.search": "Find a place",
   "map.searchButton": "Search",
-  "map.searchHint":
-    "Search results set the meeting area; switch the map to the exact start and tap the map. Searches go through this site, so the search service does not see who you are.",
+  "map.searchHint": "Press Enter or Search to look a place up; the one you pick sets the area.",
   "map.searchUnavailable": "Place search is not available right now.",
   "map.noResults": "No places found.",
   "map.findMe": "Find my location",
@@ -303,6 +303,7 @@ export const en = {
   "field.link_invalid": "Enter a web address starting with https://.",
   "field.link_too_long": "This link is too long.",
   "field.required": "Please fill this in.",
+  "field.requiredHint": "Required",
   "field.too_long": "This is too long.",
   "field.invalid_characters": "This contains characters that are not allowed.",
   "field.choice_invalid": "Please choose one of the options.",
@@ -367,7 +368,7 @@ export const en = {
   "recapNote.link": "Link: {link}",
   "recapNote.plan": "Plan page: {link}",
   "recapNote.copies": "Your server may keep copies of this message.",
-  "plan.where": "Meeting area",
+  "plan.where": "Area",
   "plan.distance": "Distance",
   "plan.elevation": "Elevation gain",
   "plan.pace": "Pace",
@@ -1131,6 +1132,20 @@ export const en = {
   "admin.inviteCreated": "Here is the new invite link. Copy it now: it is shown only this once.",
   "admin.inviteWarning":
     "Anyone with this link can create plans here until it expires, is used up or you revoke it.",
+  // Examples shown in an empty field (decision D74): they vanish when typing, so nothing the
+  // person must know goes here.
+  "placeholder.areaLabel": "Englischer Garten, north end",
+  "placeholder.areaSearch": "Search or type a name",
+  "placeholder.place": "e.g. Englischer Garten",
+  "placeholder.findPlan": "https://…/p/…",
+  "placeholder.distance": "10.5",
+  "placeholder.elevation": "250",
+  "placeholder.exactDescription": "bench by the north gate",
+  "placeholder.note": "e.g. relaxed pace, coffee afterwards",
+  "placeholder.displayName": "e.g. Sam",
+  "placeholder.inviteMaxUses": "10",
+  "placeholder.distanceFrom": "5",
+  "placeholder.distanceTo": "20",
 } as const satisfies Readonly<Record<string, Message>>;
 
 export type MessageKey = keyof typeof en;

@@ -5,6 +5,7 @@ import { type HexColor, parseHexColor } from "./color.ts";
 import {
   type ExactStart,
   type GeoPoint,
+  MAX_DESCRIPTION_LENGTH,
   publicAreaFrom,
   validateExactStart,
   validateGeoPoint,
@@ -157,6 +158,7 @@ export const PLAN_LIMITS = {
   posterName: 50,
   title: 100,
   areaLabel: 100,
+  exactDescription: MAX_DESCRIPTION_LENGTH,
   note: 2000,
   distanceKm: { min: 0.1, max: 1000 },
   elevationGainM: { max: 20000 },

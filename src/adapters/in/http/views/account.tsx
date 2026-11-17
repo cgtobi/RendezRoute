@@ -18,6 +18,7 @@ import {
   type TelegramSwitchProps,
 } from "./more-channels.tsx";
 import { fieldErrorMessage, formatDate, itemWhen } from "./format.ts";
+import { RequiredHint } from "./line-field.tsx";
 import { Item, ItemList } from "./item.tsx";
 import { Titles } from "./my-data.tsx";
 import { Status } from "./status.tsx";
@@ -122,6 +123,7 @@ export function AccountPage(props: {
                   id="field-displayName"
                   name="displayName"
                   maxlength={IDENTITY_LIMITS.displayName}
+                  placeholder={t("placeholder.displayName")}
                   value={props.rename?.value ?? account.displayName ?? ""}
                   aria-invalid={props.rename === undefined ? undefined : "true"}
                   aria-describedby={
@@ -355,12 +357,15 @@ function FediverseLogin(props: {
             id="field-server"
             name="server"
             required
+            placeholder=" "
             autocomplete="off"
             spellcheck={false}
             value={form?.value ?? ""}
+            aria-required="true"
             aria-invalid={form === undefined ? undefined : "true"}
             aria-describedby={form === undefined ? "field-server-hint" : "field-server-error"}
           />
+          <RequiredHint t={t} controlId="field-server" invalid={form !== undefined} />
           <p class="hint" id="field-server-hint">
             {props.servers === undefined
               ? t("account.fediverseHint")

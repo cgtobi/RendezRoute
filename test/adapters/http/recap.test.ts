@@ -186,7 +186,7 @@ describe("the recap window on the forms (spec 6 feature 6)", () => {
     });
     expect(response.status).toBe(422);
     expect(await response.text()).toMatch(
-      /<div class="field field-invalid"><label for="field-recapWindow">[\s\S]*?<p class="error">/,
+      /<div class="field field-invalid"><label for="field-recapWindow">[\s\S]*?<p class="error" id="field-recapWindow-error">/,
     );
   });
 });

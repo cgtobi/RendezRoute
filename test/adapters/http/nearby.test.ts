@@ -63,6 +63,19 @@ describe("the Nearby page (spec 7 Visibility and Nearby plans)", () => {
     expect(html).not.toContain(escaped(en("nearby.results", { count: 0 })));
   });
 
+  it("shows example placeholders in the place and distance fields (D74)", async () => {
+    const { client } = await setup();
+    const html = await (await client().get("/nearby")).text();
+    const tag = (name: string) =>
+      new RegExp(`<input[^>]*name="${name}"[^>]*>`).exec(html)?.[0] ?? "";
+    expect(tag("place")).toContain(`placeholder="${escaped(en("placeholder.place"))}"`);
+    expect(tag("distanceFrom")).toContain(`placeholder="${en("placeholder.distanceFrom")}"`);
+    expect(tag("distanceTo")).toContain(`placeholder="${en("placeholder.distanceTo")}"`);
+    // The pace unit depends on the activity, so those two stay without an example.
+    expect(tag("paceFrom")).not.toContain("placeholder");
+    expect(tag("paceTo")).not.toContain("placeholder");
+  });
+
   it("searches around a typed place, and says when it is not found", async () => {
     const { client } = await setup();
     await createPlanViaUi(client(), {

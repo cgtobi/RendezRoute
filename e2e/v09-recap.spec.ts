@@ -83,7 +83,7 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
   await fillTimeOffGrid(host, iso.slice(11, 16));
   await host.locator("#field-areaLabel").fill("Flaucher");
   await openFold(host, "Exact meeting point");
-  await host.getByLabel("Where exactly?").fill(START);
+  await host.getByLabel("Description of the meeting point").fill(START);
   await openFold(host, "Who can join and find it");
   await host.getByLabel(/Followers of .* in the fediverse/).check();
   await host.getByRole("button", { name: "Create plan" }).click();

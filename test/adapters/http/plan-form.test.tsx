@@ -60,7 +60,7 @@ function all(node: Node): Node[] {
 }
 
 const attr = (node: Node, name: string): string | undefined =>
-  new RegExp(`(?:^|\\s)${name}(?:="([^"]*)")?(?=\\s|$)`).exec(node.attributes.trim())?.[1] ??
+  new RegExp(`(?:^|\\s)${name}(?:="([^"]*)")?(?=\\s|/|$)`).exec(node.attributes.trim())?.[1] ??
   (new RegExp(`(?:^|\\s)${name}(?=\\s|$|=)`).test(node.attributes) ? "" : undefined);
 
 const hasAttr = (node: Node, name: string) => attr(node, name) !== undefined;
@@ -311,10 +311,28 @@ describe("time zone line", () => {
     const zoneLine = line as Node;
     expect(isOpen(zoneLine)).toBe(false);
     const summary = zoneLine.children.find((node) => node.tag === "summary");
-    expect(summary?.text).toBe(`Time zone, Europe/Berlin · ${en["layout.change"]}`);
+    expect(summary?.text).toBe(
+      `Time zone: Europe/Berlin · ${en["layout.change"]}${en["layout.done"]}`,
+    );
     expect(all(zoneLine).some((node) => attr(node, "data-zone-name") !== undefined)).toBe(true);
     expect(named(zoneLine, "timeZone")).toHaveLength(1);
     expect(zoneLine.text).toContain(en["form.timeZone"]);
+  });
+
+  it("starts with a visible title in every language, one summary, and no hidden prefix (D80)", () => {
+    for (const lang of ["en", "de", "fr"] as const) {
+      const tl = translator(lang);
+      const { html, root } = render({ t: tl, values: { timeZone: "Europe/Berlin" } });
+      const line = all(root).find((node) => classes(node).includes("zone-line")) as Node;
+      expect(line.children.filter((node) => node.tag === "summary")).toHaveLength(1);
+      const title = all(line).find((node) => classes(node).includes("zone-title")) as Node;
+      expect(title.text).toBe(tl("form.timeZoneLine"));
+      expect(classes(title)).not.toContain("visually-hidden");
+      expect(html).toContain(
+        `<span class="zone-title">${tl("form.timeZoneLine")}</span> <span data-zone-name`,
+      );
+    }
+    expect(translator("fr")("form.timeZoneLine")).toBe("Fuseau horaire\u202f:");
   });
 
   it("renders open when the time zone has an error", () => {
@@ -332,7 +350,7 @@ describe("host name", () => {
     const line = hostName(root);
     expect(line !== undefined && !isOpen(line)).toBe(true);
     const summary = (line as Node).children.find((node) => node.tag === "summary");
-    expect(summary?.text).toBe(`Hosting as Anna · ${en["layout.change"]}`);
+    expect(summary?.text).toBe(`Hosting as Anna · ${en["layout.change"]}${en["layout.done"]}`);
     const [field] = named(line as Node, "posterName");
     expect(attr(field as Node, "value")).toBe("Anna");
     expect(attr(field as Node, "required")).toBeDefined();
@@ -452,12 +470,12 @@ describe("fold summaries", () => {
     ).toBe("Join: after your approval · Find: followers");
   });
 
-  it("who: public starts with 'Public', carries the warning class and the strong weight", () => {
+  it("who: public starts with 'Public', carries the warning class and no strong marker (D81)", () => {
     const { root } = render({ visibility: everything, values: { visibility: "public" } });
     const fold = foldByTitle(root, en["fold.who"]);
     expect(foldValue(fold)).toBe("Public · Join: anyone with the link · Find: anyone");
     expect(classes(fold)).toContain("fold-warning");
-    expect(classes(fold)).toContain("fold-strong");
+    expect(classes(fold)).not.toContain("fold-strong");
     const approval = render({
       visibility: everything,
       values: { visibility: "public", joinMode: "approval" },
@@ -504,7 +522,7 @@ describe("fold summaries", () => {
   it("keeps the title, a hidden comma and the value in one summary", () => {
     const { html } = render({});
     expect(html).toContain(
-      `<span class="fold-title">${en["fold.who"]}</span><span class="visually-hidden">, </span>`,
+      `<span class="fold-title">${en["fold.who"]}</span><span class="visually-hidden fold-sep">, </span>`,
     );
   });
 });
@@ -670,8 +688,26 @@ describe("further form behaviour", () => {
     const { root } = render({ values: { timeZone: "Mars/Olympus" } });
     const line = all(root).find((node) => classes(node).includes("zone-line")) as Node;
     expect(line.children.find((node) => node.tag === "summary")?.text).toBe(
-      `Time zone, Europe/Berlin · ${en["layout.change"]}`,
+      `Time zone: Europe/Berlin · ${en["layout.change"]}${en["layout.done"]}`,
     );
+  });
+});
+
+describe("open and closed summary texts", () => {
+  it("renders both texts in the zone line and the host name summaries", () => {
+    const { root } = render({ values: { posterName: "Anna" } });
+    for (const name of ["zone-line", "host-name"]) {
+      const line = all(root).find((node) => classes(node).includes(name)) as Node;
+      const summary = line.children.find((node) => node.tag === "summary") as Node;
+      const spans = all(summary).filter((node) => classes(node).includes("zone-change"));
+      expect(
+        spans.map((node) => [classes(node).includes("zone-change-closed"), node.text]),
+      ).toEqual([
+        [true, en["layout.change"]],
+        [false, en["layout.done"]],
+      ]);
+      expect(classes(spans[1] as Node)).toContain("zone-change-open");
+    }
   });
 });
 
@@ -736,30 +772,20 @@ describe("inline title (decision D71, step 0.12-9)", () => {
     expect(own(input, "aria-invalid")).toBe("true");
     expect(own(input, "aria-describedby")).toBe("field-title-error");
     expect(html).toContain('id="field-title-error"');
-    const field = (input.parent as Node).parent as Node;
+    const field = input.parent as Node;
     expect(classes(field)).toEqual(["field", "field-title", "field-invalid"]);
-    expect(field.children.map((node) => node.tag)).toEqual(["label", "div", "p"]);
+    expect(field.children.map((node) => node.tag)).toEqual(["label", "input", "p"]);
     expect(own(field.children[2] as Node, "hidden")).toBeUndefined();
   });
 
-  it("wraps the input in .title-field with one decorative pencil icon after it", () => {
-    const { root } = render({ values: { title: "Sunday run" } });
+  it("has no wrapper and no pencil: the input sits right in the field, the hint after it", () => {
+    const { root, html } = render({ values: { title: "Sunday run" } });
     const input = titleInput(root);
-    const wrap = input.parent as Node;
-    expect(classes(wrap)).toEqual(["title-field"]);
-    expect(classes(wrap.parent as Node)).toEqual(["field", "field-title"]);
-    expect(wrap.children.map((node) => node.tag)).toEqual(["input", "span"]);
-    const pencil = wrap.children[1] as Node;
-    expect(classes(pencil)).toEqual(["icon", "icon-pencil", "title-edit-icon"]);
-    expect(own(pencil, "aria-hidden")).toBe("true");
-    expect(pencil.text).toBe("");
-    expect(
-      all(root).filter((node) => classes(node).includes("icon-pencil")),
-      "one pencil per form",
-    ).toHaveLength(1);
-    // The label stays outside the wrapper, before it.
-    const field = wrap.parent as Node;
-    expect(field.children.map((node) => node.tag)).toEqual(["label", "div"]);
+    const field = input.parent as Node;
+    expect(classes(field)).toEqual(["field", "field-title"]);
+    expect(field.children.map((node) => node.tag)).toEqual(["label", "input", "p"]);
+    expect(classes(field.children[2] as Node)).toEqual(["required-hint"]);
+    expect(html).not.toMatch(/pencil|line-pen|line-field|title-field/);
   });
 
   it("is there on the template form too", () => {
@@ -824,7 +850,10 @@ describe("exact point on the map (decision D66)", () => {
     const set = all(root).find((node) => attr(node, "data-exact-set") !== undefined);
     expect(set && hasAttr(set, "hidden")).toBe(true);
     expect(html).toContain('data-exact-remove=""');
-    expect(html).toContain(`>${en["map.exactRemove"]}</button>`);
+    expect(html).toContain(
+      `<button type="button" class="icon-button" data-exact-remove=""><span class="icon icon-close" aria-hidden="true"></span><span class="visually-hidden">${en["map.exactRemove"]}</span></button>`,
+    );
+    expect(html).not.toMatch(/<button[^>]*class="secondary"[^>]*data-exact-remove/);
   });
 
   it("keeps the latitude and longitude inputs rendered and visible in the markup", () => {
@@ -856,5 +885,409 @@ describe("exact point on the map (decision D66)", () => {
     expect(area.html).toContain('id="field-areaLng-error"');
     const details = all(area.root).find((node) => attr(node, "data-area-fields") !== undefined);
     expect(details && isOpen(details)).toBe(true);
+  });
+});
+
+describe("the line and pen style and the required hint (decision D73)", () => {
+  const REQUIRED_HINT = `<p class="required-hint" id="`;
+  const hintOf = (root: Node, id: string) =>
+    all(root).find((node) => node.tag === "p" && attr(node, "id") === id);
+
+  it("gives every required control aria-required, and a visual hint after it except date and time", () => {
+    const { root } = render({ values: { title: "Run", posterName: "" } });
+    const required = controls(root).filter((node) => hasAttr(node, "required"));
+    expect(required.map((node) => attr(node, "name"))).toEqual([
+      "title",
+      "date",
+      "time",
+      "areaLabel",
+      "posterName",
+    ]);
+    for (const control of required) {
+      const name = attr(control, "name") ?? "";
+      const hintId = `field-${name}-required`;
+      expect(attr(control, "aria-required")).toBe("true");
+      // The hint is purely visual: never named in aria-describedby.
+      expect(attr(control, "aria-describedby") ?? "").not.toContain("-required");
+      const hint = hintOf(root, hintId);
+      const dateOrTime = name === "date" || name === "time";
+      expect(hint === undefined).toBe(dateOrTime);
+      expect(hint === undefined ? [] : classes(hint)).toEqual(dateOrTime ? [] : ["required-hint"]);
+      expect(hint === undefined ? "true" : attr(hint, "aria-hidden")).toBe("true");
+      expect(hint === undefined ? en["field.requiredHint"] : hint.text).toBe(
+        en["field.requiredHint"],
+      );
+    }
+  });
+
+  it("puts the hint right after the control", () => {
+    const { root } = render({});
+    const after = (name: string) => {
+      const control = named(root, name)[0] as Node;
+      const siblings = (control.parent as Node).children;
+      return siblings[siblings.indexOf(control) + 1];
+    };
+    for (const name of ["title", "areaLabel", "posterName"]) {
+      expect(attr(after(name) as Node, "id")).toBe(`field-${name}-required`);
+    }
+  });
+
+  it("renders the text-like fields with a placeholder so CSS can tell when they are empty", () => {
+    const { root } = render({});
+    for (const name of ["title", "posterName"]) {
+      expect(attr(named(root, name)[0] as Node, "placeholder")).toBe(" ");
+    }
+    // The meeting area has a real example instead (decision D74); it works the same way.
+    expect(attr(named(root, "areaLabel")[0] as Node, "placeholder")).toBe(
+      en["placeholder.areaLabel"],
+    );
+    // Date and time have no placeholder: CSS uses :invalid for them.
+    for (const name of ["date", "time"]) {
+      expect(hasAttr(named(root, name)[0] as Node, "placeholder")).toBe(false);
+    }
+  });
+
+  it("has no line wrapper and no pencil on any field", () => {
+    const { html } = render({ values: { title: "Run" } });
+    expect(html).not.toMatch(/pencil|line-pen|line-field/);
+  });
+
+  it("shows an error instead of the hint, never both", () => {
+    for (const field of ["title", "date", "time", "areaLabel", "posterName"] as const) {
+      const { root, html } = render({ errors: errorOn(field) });
+      expect(hintOf(root, `field-${field}-required`)).toBeUndefined();
+      expect(html).not.toContain(`id="field-${field}-required"`);
+      const control = named(root, field)[0] as Node;
+      expect(attr(control, "aria-invalid")).toBe("true");
+      // A field with a hint names it first (decision D74), then the error; never the required hint.
+      const hint = field === "areaLabel" || field === "posterName" ? `field-${field}-hint ` : "";
+      expect(attr(control, "aria-describedby")).toBe(`${hint}field-${field}-error`);
+      expect(attr(control, "aria-required")).toBe("true");
+    }
+  });
+
+  it("keeps the hint element for a prefilled field, hidden by CSS only because it has text", () => {
+    const { html } = render({ values: { title: "Run", areaLabel: "Park" } });
+    expect(html.split(REQUIRED_HINT)).toHaveLength(4);
+  });
+
+  it("leaves optional fields without hint, aria-required and placeholder", () => {
+    const { root } = render({});
+    // (distance, note and exact description got example placeholders in D74: see below.)
+    for (const name of ["paceFrom", "paceTo", "areaLat", "exactLat"]) {
+      const control = named(root, name)[0] as Node;
+      expect(hasAttr(control, "aria-required")).toBe(false);
+      expect(hasAttr(control, "placeholder")).toBe(false);
+      expect(hintOf(root, `field-${name}-required`)).toBeUndefined();
+    }
+  });
+
+  it("has the template form's required fields too, without a date", () => {
+    const { root } = render({ forTemplate: true, withGpx: false });
+    expect(hintOf(root, "field-time-required")).toBeUndefined();
+    expect(hintOf(root, "field-date-required")).toBeUndefined();
+  });
+});
+
+describe("errors that were missing aria-invalid and aria-describedby", () => {
+  const field = (html: string, name: string) =>
+    parse(html).children.length > 0 ? named(parse(html), name) : [];
+
+  it("marks the drop policy group, its radios and the message", () => {
+    const { root, html } = render({ errors: errorOn("dropPolicy") });
+    expect(html).toContain('id="field-dropPolicy-error"');
+    const radios = field(html, "dropPolicy");
+    expect(radios.length).toBeGreaterThan(1);
+    for (const radio of radios) expect(attr(radio, "aria-invalid")).toBe("true");
+    const group = radios[0]?.parent?.parent as Node;
+    expect(group.tag).toBe("fieldset");
+    expect(attr(group, "aria-describedby")).toBe("field-dropPolicy-error");
+    expect(all(root).filter((node) => hasAttr(node, "aria-invalid"))).toHaveLength(radios.length);
+  });
+
+  it("marks the join mode group", () => {
+    const { html } = render({ errors: errorOn("joinMode") });
+    expect(html).toContain('id="field-joinMode-error"');
+    const radios = field(html, "joinMode");
+    for (const radio of radios) expect(attr(radio, "aria-invalid")).toBe("true");
+    expect(attr(radios[0]?.parent?.parent as Node, "aria-describedby")).toBe(
+      "field-joinMode-hint field-joinMode-error",
+    );
+  });
+
+  it("marks the GPX file field and its message", () => {
+    const { html } = render({ errors: errorOn("gpx") });
+    const [file] = field(html, "gpx");
+    expect(attr(file as Node, "aria-invalid")).toBe("true");
+    expect(attr(file as Node, "aria-describedby")).toBe("field-gpx-hint field-gpx-error");
+    expect(html).toContain('id="field-gpx-error"');
+  });
+
+  it("marks the retention and recap selects", () => {
+    const { html } = render({ errors: [...errorOn("retentionDays"), ...errorOn("recapWindow")] });
+    for (const name of ["retentionDays", "recapWindow"]) {
+      const [select] = field(html, name);
+      expect(attr(select as Node, "aria-invalid")).toBe("true");
+      const hint = name === "recapWindow" ? "field-recapWindow-hint " : "";
+      expect(attr(select as Node, "aria-describedby")).toBe(`${hint}field-${name}-error`);
+      expect(html).toContain(`id="field-${name}-error"`);
+    }
+  });
+
+  it("marks the template options group when it has an error", () => {
+    const { html } = render({ errors: errorOn("keepAsTemplate") });
+    expect(html).toContain('id="field-template-error"');
+    const [box] = field(html, "keepAsTemplate");
+    expect(attr(box as Node, "aria-invalid")).toBe("true");
+    expect(attr(box?.parent?.parent as Node, "aria-describedby")).toBe(
+      "field-template-hint field-template-error",
+    );
+  });
+
+  it("adds none of it without an error", () => {
+    const { html } = render({});
+    expect(html).not.toContain("field-dropPolicy-error");
+    expect(html).not.toContain("field-joinMode-error");
+    expect(html).not.toContain("field-gpx-error");
+    expect(html).not.toContain("field-template-error");
+    expect(html).not.toMatch(/aria-invalid/);
+  });
+});
+
+describe("example placeholders (decision D74)", () => {
+  describe.each(["en", "de", "fr"] as const)("in %s", (language) => {
+    const tl = translator(language);
+    const catalog = (key: Parameters<typeof tl>[0]) => tl(key);
+    const withLanguage = (overrides: Parameters<typeof render>[0] = {}) =>
+      render({ ...overrides, t: tl });
+
+    it("shows the translated examples in the text fields and the note", () => {
+      const { root } = withLanguage({ values: { posterName: "Anna" } });
+      const expected = {
+        areaLabel: "placeholder.areaLabel",
+        distanceKm: "placeholder.distance",
+        elevationGainM: "placeholder.elevation",
+        exactDescription: "placeholder.exactDescription",
+        note: "placeholder.note",
+      } as const;
+      for (const [name, key] of Object.entries(expected)) {
+        const control = named(root, name)[0] as Node;
+        expect(attr(control, "placeholder")).toBe(catalog(key as keyof typeof en));
+      }
+    });
+
+    it("keeps the blank placeholder on required fields without an example", () => {
+      const { root } = withLanguage({});
+      for (const name of ["title", "posterName"]) {
+        expect(attr(named(root, name)[0] as Node, "placeholder")).toBe(" ");
+      }
+    });
+
+    it("leaves the pace fields without a placeholder: their unit depends on the activity", () => {
+      const { root } = withLanguage({});
+      for (const name of ["paceFrom", "paceTo"]) {
+        expect(hasAttr(named(root, name)[0] as Node, "placeholder")).toBe(false);
+      }
+    });
+
+    it("no longer has the meeting-area example in the hint under the field", () => {
+      const { html } = withLanguage({});
+      const example = catalog("placeholder.areaLabel");
+      const hint = new RegExp(`<p class="hint"[^>]*>([^<]*)</p>`, "g");
+      const hints = [...html.matchAll(hint)].map((m) => m[1] ?? "");
+      expect(hints.join("\n")).not.toContain(example);
+      expect(html).toContain(escaped(catalog("form.areaLabelHint")));
+    });
+  });
+
+  it("keeps the example out of the value: an empty field has no value attribute text", () => {
+    const { root } = render({});
+    expect(attr(named(root, "areaLabel")[0] as Node, "value")).toBe("");
+  });
+});
+
+describe("hints named by aria-describedby (decision D74)", () => {
+  const ids = (html: string) => new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+  const describedby = (node: Node) => (attr(node, "aria-describedby") ?? "").split(" ");
+
+  it("gives the Field hint an id and lists it alone, never the required hint", () => {
+    const { root } = render({});
+    for (const name of ["areaLabel", "posterName"]) {
+      const hint = all(root).find((node) => attr(node, "id") === `field-${name}-hint`);
+      expect(hint?.tag).toBe("p");
+      expect(classes(hint as Node)).toContain("hint");
+      expect(describedby(named(root, name)[0] as Node)).toEqual([`field-${name}-hint`]);
+    }
+  });
+
+  it("lists the hint and the error for a hinted field with an error, without the required hint", () => {
+    const { root } = render({ errors: errorOn("areaLabel") });
+    expect(describedby(named(root, "areaLabel")[0] as Node)).toEqual([
+      "field-areaLabel-hint",
+      "field-areaLabel-error",
+    ]);
+  });
+
+  it("names the hint of an optional field, the note and the recap window select", () => {
+    const { root } = render({});
+    expect(describedby(named(root, "note")[0] as Node)).toEqual(["field-note-hint"]);
+    expect(describedby(named(root, "recapWindow")[0] as Node)).toEqual(["field-recapWindow-hint"]);
+  });
+
+  it("leaves a field without a hint without aria-describedby", () => {
+    const { root } = render({ values: { posterName: "Anna" } });
+    expect(hasAttr(named(root, "distanceKm")[0] as Node, "aria-describedby")).toBe(false);
+    expect(hasAttr(named(root, "retentionDays")[0] as Node, "aria-describedby")).toBe(false);
+  });
+
+  it("names the hint of the pace, join mode, share buttons, visibility and template fieldsets", () => {
+    const { root } = render({ visibility: everything });
+    const fieldsetOf = (name: string) => {
+      const control = named(root, name)[0] as Node;
+      for (let up = control.parent; up !== undefined; up = up.parent) {
+        if (up.tag === "fieldset") return up;
+      }
+      throw new Error(`no fieldset around ${name}`);
+    };
+    expect(describedby(fieldsetOf("paceFrom"))).toEqual(["field-pace-hint"]);
+    expect(describedby(fieldsetOf("joinMode"))).toEqual(["field-joinMode-hint"]);
+    expect(describedby(fieldsetOf("shareCopy"))).toEqual(["field-shareButtons-hint"]);
+    expect(describedby(fieldsetOf("visibility"))).toEqual(["field-visibility-hint"]);
+    expect(describedby(fieldsetOf("keepAsTemplate"))).toEqual(["field-template-hint"]);
+    const [file] = named(root, "gpx");
+    expect(describedby(file as Node)).toEqual(["field-gpx-hint"]);
+  });
+
+  it("never names a required hint id in aria-describedby", () => {
+    for (const errors of [[], errorOn("areaLabel"), errorOn("title")]) {
+      const { root } = render({ errors, values: { title: "Run" } });
+      const named_ = all(root)
+        .filter((node) => hasAttr(node, "aria-describedby"))
+        .flatMap((node) => describedby(node));
+      expect(named_.filter((id) => id.endsWith("-required"))).toEqual([]);
+    }
+  });
+
+  it("only names ids that exist in the page, for a form with and without errors", () => {
+    for (const errors of [[], errorOn("areaLabel"), errorOn("joinMode"), errorOn("gpx")]) {
+      const { root, html } = render({ errors, visibility: everything });
+      const present = ids(html);
+      const missing = all(root)
+        .filter((node) => hasAttr(node, "aria-describedby"))
+        .flatMap((node) => describedby(node))
+        .filter((id) => !present.has(id));
+      expect(missing).toEqual([]);
+    }
+  });
+});
+
+describe("the Where section (decision D77)", () => {
+  const withSearch = { placeSearch: true } as const;
+
+  it("labels the area field Area, the heading Where and the description Description of the meeting point", () => {
+    const { html } = render({});
+    expect(html).toContain(`<h2>${en["form.where"]}</h2>`);
+    expect(html).toContain('<label for="field-areaLabel">Area</label>');
+    expect(html).toContain(
+      '<label for="field-exactDescription">Description of the meeting point</label>',
+    );
+    expect(html).toContain(en["fold.exact"]);
+    expect(html).not.toContain("Meeting area</label>");
+    expect(html).not.toContain("Where exactly?");
+  });
+
+  it("without the place search the area stays a plain required text field", () => {
+    const { html, root } = render({});
+    const [area] = named(root, "areaLabel");
+    expect(attr(area as Node, "required")).toBeDefined();
+    expect(attr(area as Node, "autocomplete")).toBeUndefined();
+    expect(html).not.toContain("line-action");
+    expect(html).not.toContain("data-place-search");
+    expect(html).toContain('id="field-areaLabel-required"');
+  });
+
+  it("with the place search the area input sits in a line-action row with the magnifier button", () => {
+    const { html, root } = render(withSearch);
+    expect(named(root, "areaLabel")).toHaveLength(1);
+    const row =
+      /<div class="inline-input line-action">[\s\S]*?<\/button><\/div>/.exec(html)?.[0] ?? "";
+    expect(row).toContain('name="areaLabel"');
+    expect(row).toContain('autocomplete="off"');
+    expect(row).toContain('aria-required="true"');
+    expect(row).toContain('<span class="visually-hidden">Search</span>');
+    expect(row).not.toContain("required-hint");
+    // The "Required" hint follows the row, and the field's own hint is still named by the input.
+    expect(html).toMatch(/<\/button><\/div><p class="required-hint" id="field-areaLabel-required"/);
+    expect(row).toContain('aria-describedby="field-areaLabel-hint"');
+    expect(html).toContain('id="field-areaLabel-hint"');
+    expect(html).toContain('data-placeholder="Search or type a name"');
+    expect(html).not.toContain('id="place-search"');
+  });
+
+  it("keeps an area error under the field with the search", () => {
+    const { html } = render({ ...withSearch, errors: errorOn("areaLabel") });
+    expect(html).toContain('id="field-areaLabel-error"');
+    expect(html).not.toContain('id="field-areaLabel-required"');
+  });
+
+  it("says who sees the exact point once, in the fold's subtitle and not again in its body", () => {
+    const { root } = render({});
+    const exact = foldByTitle(root, en["fold.exact"]);
+    expect(exact.text).not.toContain("Only you and people who join can see this.");
+    expect(en["fold.exactNone"]).toContain("only people you accept see it");
+  });
+
+  it("offers the description suggestion line only with the map and the place search", () => {
+    const map = { tileUrl: "https://t/{z}/{x}/{y}.png", attribution: "a", defaultZoom: 12 };
+    expect(render({ map, ...withSearch }).html).toContain(
+      '<p class="hint" data-description-suggested="" data-text="Suggested from the map point. Change it if you like." role="status"></p>',
+    );
+    expect(render({ map }).html).not.toContain("data-description-suggested");
+    expect(render(withSearch).html).not.toContain("data-description-suggested");
+  });
+});
+
+describe("fewer words (decision D79)", () => {
+  it("builds the Area hint from its own sentence only; the Note keeps the public hint", () => {
+    const { html } = render({});
+    const area = /id="field-areaLabel-hint">([^<]*)</.exec(html)?.[1] ?? "";
+    expect(area).toBe(escaped(en["form.areaLabelHint"]));
+    expect(area).not.toContain("exact meeting point here");
+    const note = /id="field-note-hint">([^<]*)</.exec(html)?.[1] ?? "";
+    expect(note).toBe(escaped(en["form.publicHint"]));
+  });
+
+  it("drops the privacy sentence from the search hint in every language", () => {
+    for (const lang of ["en", "de", "fr"] as const) {
+      const hint = translator(lang)("map.searchHint");
+      expect(hint).not.toMatch(/search service|Suchdienst|service de recherche/);
+    }
+  });
+
+  it("marks only the who fold to hide its summary when open", () => {
+    const { html } = render({});
+    expect(html.match(/fold-hide-open/g)).toHaveLength(1);
+    const { root } = render({});
+    const who = foldByTitle(root, en["fold.who"]);
+    expect(classes(who)).toContain("fold-hide-open");
+    for (const title of [en["fold.exact"], en["fold.route"], en["fold.look"], en["fold.after"]]) {
+      expect(classes(foldByTitle(root, title))).not.toContain("fold-hide-open");
+    }
+    expect(html).toContain('<span class="visually-hidden fold-sep">, </span>');
+  });
+
+  it("gives every fold the same look: none carries a strong marker (D81)", () => {
+    const { html } = render({ visibility: everything, values: { visibility: "public" } });
+    expect(html).not.toContain("fold-strong");
+    expect(html).toContain("fold-warning");
+  });
+
+  it("keeps both legends, the join one visually hidden and the find one visible", () => {
+    const { root } = render({ visibility: everything });
+    const legends = all(foldByTitle(root, en["fold.who"])).filter((node) => node.tag === "legend");
+    const byText = (text: string) => legends.find((node) => node.text === text);
+    expect(classes(byText(en["form.joinMode"]) as Node)).toContain("visually-hidden");
+    expect(byText(en["form.visibility"])).toBeDefined();
+    expect(classes(byText(en["form.visibility"]) as Node)).not.toContain("visually-hidden");
   });
 });

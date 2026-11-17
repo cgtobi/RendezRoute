@@ -253,7 +253,6 @@ test("Nearby: a public plan found from the device's location and from a typed pl
   await host.getByLabel("Start time").fill("08:30");
   await host.locator("#field-areaLabel").fill("Flaucher");
   // The area point from place search (the fake geocoder knows Flaucher at 48.1107, 11.5582).
-  await host.getByLabel("Find a place").fill("Flaucher");
   await host.locator(".place-search").getByRole("button", { name: "Search" }).click();
   await host.getByRole("button", { name: "Flaucher, Isar, Munich" }).click();
   await openFold(host, "Who can join and find it");

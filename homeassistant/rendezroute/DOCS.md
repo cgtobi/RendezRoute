@@ -102,9 +102,11 @@ matter most for what leaves your server:
   to stay entirely on your server.
 - **Maps, place search and weather** call outside services (OpenStreetMap, Nominatim, Open-Meteo
   by default). Each has a switch, and the addresses can be changed. Picking a place on the map also
-  asks the place-search service, through the app, for a name of the rounded point (about 1 km, never
-  the exact start), and only while the meeting-area field is empty or still holds the earlier
-  suggestion.
+  asks the place-search service, through the app, for a name of the rounded point (about 1 km), and
+  only while the area field is empty or still holds the earlier suggestion. When an exact point is
+  set on the map and its description is empty, that exact point is sent, through the app, to the
+  place-search service to suggest a description; the service does not learn who the user is. The
+  app does not keep these lookups of exact points in memory.
 
 You are responsible for your instance: if people other than you use it, add an imprint and a
 privacy link in the options if the law where you live requires them.

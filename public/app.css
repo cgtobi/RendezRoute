@@ -31,6 +31,7 @@
   --bg: #ffffff;
   --fg: #16181d;
   --muted: #5c636e;
+  --placeholder: #687079;
   --line: #e4e7eb;
   --control-line: #c5cad1;
   --field-border: #858c97;
@@ -98,6 +99,7 @@
     --bg: #121316;
     --fg: #e8eaed;
     --muted: #a3a9b2;
+    --placeholder: #868c96;
     --line: #2c2f35;
     --control-line: #464b53;
     --field-border: #737a85;
@@ -138,6 +140,7 @@
   --bg: #121316;
   --fg: #e8eaed;
   --muted: #a3a9b2;
+  --placeholder: #868c96;
   --line: #2c2f35;
   --control-line: #464b53;
   --field-border: #737a85;
@@ -572,16 +575,20 @@ html:has(.site-header-menu) {
   --icon: url("icons/pin.svg");
 }
 
+.icon-search {
+  --icon: url("icons/search.svg");
+}
+
+.icon-close {
+  --icon: url("icons/close.svg");
+}
+
 .icon-globe {
   --icon: url("icons/globe.svg");
 }
 
 .icon-users {
   --icon: url("icons/users.svg");
-}
-
-.icon-pencil {
-  --icon: url("icons/pencil.svg");
 }
 
 /* Buttons: one primary per page, quiet secondaries, red for deleting. */
@@ -797,8 +804,198 @@ input[type="checkbox"] {
   border-width: 2px;
 }
 
-/* The title as the form's big heading, edited in place (D71): no box, a pencil icon as the
-   edit hint. `.plan-form` out-ranks the generic input rules above. */
+/* One field style, the line (decision D73): text-like fields are an underline instead of a box.
+   Date, time, file and select fields get the same line. Radios, checkboxes, colour fields and the menu's preference
+   select keep their look. The 44 px target comes from min-height and padding, not the border. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder);
+  opacity: 1;
+}
+
+:is(
+  input:not([type]),
+  input[type="text"],
+  input[type="email"],
+  input[type="url"],
+  input[type="search"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="password"],
+  textarea
+),
+:is(input[type="date"], input[type="time"], input[type="file"], .field select) {
+  padding-block: var(--s2);
+  padding-left: 0;
+  border-style: solid;
+  /* The resting underline is thin; focus and error thicken it without moving the text. */
+  border-width: 0 0 1px;
+  border-color: transparent transparent var(--field-border);
+  border-radius: 0;
+  background-color: transparent;
+}
+
+:is(
+  input:not([type]),
+  input[type="text"],
+  input[type="email"],
+  input[type="url"],
+  input[type="search"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="password"],
+  textarea
+) {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+:is(
+  input:not([type]),
+  input[type="text"],
+  input[type="email"],
+  input[type="url"],
+  input[type="search"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="password"],
+  textarea
+):focus,
+:is(input[type="date"], input[type="time"], input[type="file"], .field select):focus {
+  border-bottom-width: 2px;
+  border-bottom-color: var(--accent);
+  padding-bottom: calc(var(--s2) - 1px);
+}
+
+/* An error, and an empty required field, turn the line red; both outrank the focus colour. */
+.field-invalid
+  :is(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="password"],
+    textarea
+  ),
+.field-invalid :is(input[type="date"], input[type="time"], input[type="file"], .field select),
+:is(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="password"],
+    textarea
+  ):required:placeholder-shown:not(:disabled, [readonly]),
+:is(input[type="date"], input[type="time"], input[type="file"], .field select):required:invalid:not(
+    :disabled,
+    [readonly]
+  ) {
+  border-bottom-width: 2px;
+  border-bottom-color: var(--danger);
+  padding-bottom: calc(var(--s2) - 1px);
+}
+
+/* A focused line field shows the 2 px accent underline and no browser frame: the underline is the
+   one focus signal (the area field's row draws it by :focus-within). Buttons, links, selects,
+   checkboxes, radios and date and time inputs keep the global `:focus-visible` ring; summaries
+   have their own inset line (decision D81).
+   An empty required field and a field with an error draw a danger line that outranks the accent
+   one, so they keep the global ring too. Forced colours have no accent, so the line fields keep a
+   system outline there. */
+/* Not in forced colours: the rule below is more specific than the Highlight outline there. */
+@media (forced-colors: none) {
+  :is(
+      input:not([type]),
+      input[type="text"],
+      input[type="email"],
+      input[type="url"],
+      input[type="search"],
+      input[type="number"],
+      input[type="tel"],
+      input[type="password"],
+      textarea
+    ):focus-visible:not(:placeholder-shown:required, .field-invalid *, [readonly]) {
+    outline: none;
+  }
+}
+
+@media (forced-colors: active) {
+  :is(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="password"],
+    textarea
+  ):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+/* A field that cannot be edited (decision D74): the placeholder grey, a dotted line, and the
+   not-allowed cursor; no accent on focus. The page says why, in a hint below the field. Radios and
+   checkboxes are not lines; `.choice` dims its own text. */
+:is(
+  input:not([type]),
+  input[type="text"],
+  input[type="email"],
+  input[type="url"],
+  input[type="search"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="password"],
+  textarea
+):is(:disabled, [readonly]),
+:is(input[type="date"], input[type="time"], input[type="file"], .field select):is(
+  :disabled,
+  [readonly]
+) {
+  border-bottom: 1px dotted var(--control-line);
+  padding-bottom: var(--s2);
+  background-color: transparent;
+  color: var(--placeholder);
+  cursor: not-allowed;
+}
+
+:is(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="password"],
+    textarea
+  ):is(:disabled, [readonly]):focus,
+:is(input[type="date"], input[type="time"], input[type="file"], .field select):is(
+    :disabled,
+    [readonly]
+  ):focus {
+  border-bottom-width: 1px;
+  border-bottom-color: var(--control-line);
+  padding-bottom: var(--s2);
+}
+
+input:is(:disabled, [readonly])::placeholder,
+textarea:is(:disabled, [readonly])::placeholder {
+  color: var(--placeholder);
+  opacity: 1;
+}
+
+/* The title is the same line, large: edited in place as the form's heading (D71). The heading size
+   is scaled down: about 22 characters fit at 320 px; longer text scrolls inside. */
+/* `.plan-form` out-ranks the generic input rules above. */
 .plan-form .page-purpose {
   margin-bottom: var(--s1);
   color: var(--muted);
@@ -812,41 +1009,8 @@ input[type="checkbox"] {
   margin-top: 0;
 }
 
-/* The pencil icon at the field's end is the edit hint; the input has no underline at rest. */
-.title-field {
-  position: relative;
-}
-
-.title-field .title-edit-icon {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  width: 1.25em;
-  height: 1.25em;
-  margin: 0;
-  /* The icon's em is the body size, whatever the input's font size. */
-  font-size: 1rem;
-  color: var(--muted);
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-
-.title-field:hover .title-edit-icon,
-.title-field:focus-within .title-edit-icon {
-  color: var(--accent);
-}
-
 .plan-form .title-input {
-  min-height: var(--target);
-  /* Right padding keeps the text from running under the pencil (1.25rem wide). */
-  padding: var(--s2) calc(1.25rem + var(--s2)) var(--s2) 0;
-  border: 0;
-  /* Transparent at rest so the height stays the same when the underline appears. */
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: transparent;
   color: inherit;
-  /* The heading size scaled down: about 22 characters fit at 320 px; longer text scrolls inside. */
   font-size: calc(var(--text-2xl) * 0.8);
   font-weight: 700;
   line-height: 1.2;
@@ -855,27 +1019,88 @@ input[type="checkbox"] {
   white-space: nowrap;
 }
 
-.plan-form .title-input::placeholder {
-  color: var(--muted);
-  opacity: 1;
+/* "Required" under an empty required control (decision D73), pure CSS: hidden unless a rule below
+   shows it. A text-like control has a placeholder (the views give it an example, " " where there is no
+   real one), so `:placeholder-shown` means it is empty; the placeholder text itself is irrelevant.
+   File and select controls have no placeholder: `:invalid` while required means empty. Date and
+   time controls show no hint on a fresh form (decision D74): they keep aria-required, and the
+   error text shows after a failed submit. A disabled or readonly control shows no hint.
+   `:where()` keeps the specificity low so `.field-invalid .required-hint` can always hide it. */
+.required-hint {
+  display: none;
+  margin: var(--s1) 0 0;
+  color: var(--danger);
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
-.plan-form .title-input:focus {
-  border-bottom-color: var(--accent);
+:where(:required:placeholder-shown:not(:disabled, [readonly])) ~ .required-hint {
+  display: block;
 }
 
-.plan-form .field-invalid .title-input {
-  border-bottom-color: var(--danger);
+:where(:is(input[type="file"], select):required:invalid:not(:disabled, [readonly]))
+  ~ .required-hint {
+  display: block;
+}
+
+/* The same for a control in a line-action row (decision D77): the hint is the row's sibling. */
+:where(.inline-input.line-action:has(:required:placeholder-shown:not(:disabled, [readonly])))
+  ~ .required-hint {
+  display: block;
+}
+
+/* After a failed submit the error message replaces the hint. */
+.field-invalid .required-hint {
+  display: none;
 }
 
 @media (forced-colors: active) {
-  .plan-form .title-input {
-    border-bottom-color: Canvas;
+  :is(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="password"],
+    textarea
+  ),
+  :is(input[type="date"], input[type="time"], input[type="file"], .field select) {
+    border-bottom-color: GrayText;
   }
 
-  .plan-form .title-input:focus,
-  .plan-form .field-invalid .title-input {
-    border-bottom-color: CanvasText;
+  :is(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="password"],
+    textarea
+  ):focus,
+  :is(input[type="date"], input[type="time"], input[type="file"], .field select):focus,
+  .field-invalid
+    :is(
+      input:not([type]),
+      input[type="text"],
+      input[type="email"],
+      input[type="url"],
+      input[type="search"],
+      input[type="number"],
+      input[type="tel"],
+      input[type="password"],
+      textarea
+    ),
+  .field-invalid :is(input[type="date"], input[type="time"], input[type="file"], .field select) {
+    border-bottom-color: Highlight;
+  }
+
+  /* The hint is text only here: the red is replaced by the system colour. */
+  .required-hint {
+    color: CanvasText;
   }
 }
 
@@ -1668,6 +1893,24 @@ details > summary {
   cursor: pointer;
 }
 
+/* A focused summary (a fold, the zone and host-name lines, every other disclosure; decision D81,
+   after D78) shows a 2 px accent line under its row instead of the 3 px frame, the same cue as the
+   line fields. Chromium also shows it after a click on a summary. An inset shadow takes no room.
+   Forced colours keep a system outline, inside the row so it is not clipped. */
+@media (forced-colors: none) {
+  details > summary:focus-visible {
+    outline: none;
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+}
+
+@media (forced-colors: active) {
+  details > summary:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+
 /* Creation form (decision D61): the time zone and host name as quiet lines, the "Where" block, and
    folds divided by hairlines, no card boxes. */
 
@@ -1704,9 +1947,33 @@ details > summary {
   font-size: var(--text-md);
 }
 
+/* The line reads "Time zone: Europe/Berlin · Change" (decision D80): the title is muted like the
+   line and the zone name has the text colour. Open, the zone field's own label says what it is,
+   so the title is removed, also from the summary's accessible name. */
+.zone-line [data-zone-name] {
+  color: var(--fg);
+}
+
+details[open] > summary .zone-title {
+  display: none;
+}
+
 .zone-change {
   color: var(--accent);
   text-decoration: underline;
+}
+
+/* The link says Change while the fold is closed and Done while it is open; no script needed. */
+.zone-change-open {
+  display: none;
+}
+
+details[open] > summary .zone-change-open {
+  display: inline;
+}
+
+details[open] > summary .zone-change-closed {
+  display: none;
 }
 
 .zone-line .field,
@@ -1779,19 +2046,17 @@ details > summary {
   overflow-wrap: anywhere;
 }
 
-.fold-strong .fold-title {
-  font-weight: 600;
+/* A fold marked to show its summary only when closed (decision D79): the value and its hidden
+   separator leave the open summary, and so its accessible name. */
+details[open].fold-hide-open > summary .fold-value,
+details[open].fold-hide-open > summary .fold-sep {
+  display: none;
 }
 
-/* The bar sits in the page margin, so the titles stay aligned with the other folds. */
-.fold-strong::before {
-  content: "";
-  position: absolute;
-  top: var(--s2);
-  bottom: var(--s2);
-  left: calc(var(--s3) * -1);
-  width: 3px;
-  background: var(--accent);
+/* A suggestion status line is empty (and takes no room) until the script gives it its text. */
+.hint[data-label-suggested]:empty,
+.hint[data-description-suggested]:empty {
+  margin: 0;
 }
 
 .fold-warning .fold-value {
@@ -1917,6 +2182,85 @@ details > summary {
 .inline-input input {
   flex: 1;
   min-width: 10rem;
+}
+
+/* An icon button at the end of a field's line (decision D75): the row draws the one underline
+   under input and button, so the input inside has none. */
+.inline-input.line-action {
+  flex-wrap: nowrap;
+  gap: 0;
+  border-bottom: 1px solid var(--field-border);
+}
+
+.inline-input.line-action:focus-within {
+  margin-bottom: -1px;
+  border-bottom-width: 2px;
+  border-bottom-color: var(--accent);
+}
+
+.inline-input.line-action input:is(:not([type]), [type="search"], [type="text"]),
+.inline-input.line-action input:is(:not([type]), [type="search"], [type="text"]):focus {
+  border-bottom-width: 0;
+  padding-bottom: var(--s2);
+}
+
+/* The row takes over the states that colour and thicken a bare input's line, so the line is
+   still drawn once: the input keeps no underline of its own in the focus, empty-required and
+   error states (decision D77). The danger line outranks the focus line, as for a bare input. */
+.inline-input.line-action
+  input:is(:not([type]), [type="search"], [type="text"]):required:placeholder-shown:not(
+    :disabled,
+    [readonly]
+  ),
+.field-invalid .inline-input.line-action input:is(:not([type]), [type="search"], [type="text"]) {
+  border-bottom-width: 0;
+  padding-bottom: var(--s2);
+}
+
+.inline-input.line-action:has(input:required:placeholder-shown:not(:disabled, [readonly])),
+.field-invalid .inline-input.line-action {
+  margin-bottom: -1px;
+  border-bottom-width: 2px;
+  border-bottom-color: var(--danger);
+}
+
+.inline-input.line-action button.line-action-button {
+  flex: none;
+  width: var(--target);
+  min-width: var(--target);
+  height: var(--target);
+  min-height: var(--target);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
+}
+
+/* No hover fill: the icon stays on the line, only the pointer changes. */
+.inline-input.line-action button.line-action-button:hover {
+  background: transparent;
+}
+
+.inline-input.line-action button.line-action-button:focus-visible {
+  outline-offset: -2px;
+}
+
+.inline-input.line-action .icon {
+  width: 1.5em;
+  height: 1.5em;
+  vertical-align: baseline;
+}
+
+@media (forced-colors: active) {
+  .inline-input.line-action {
+    border-bottom-color: CanvasText;
+  }
+
+  .inline-input.line-action button.line-action-button {
+    color: ButtonText;
+  }
 }
 
 .place-results {
@@ -2059,6 +2403,50 @@ details > summary {
   gap: var(--s2);
   align-items: center;
   margin: var(--s3) 0;
+}
+
+/* The status text takes the line's remaining width and wraps on a phone (decision D76). */
+.point-readout .readout-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The quiet icon button at the end of a status line: a muted x, no box, 44 px target. Two
+   classes and two elements deep, so the plan page's main-button rule does not paint it. */
+.point-readout p button.icon-button {
+  flex: none;
+  width: var(--target);
+  min-width: var(--target);
+  height: var(--target);
+  min-height: var(--target);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.point-readout p button.icon-button:hover,
+.point-readout p button.icon-button:focus-visible {
+  background: transparent;
+  color: var(--accent);
+}
+
+.point-readout p button.icon-button:focus-visible {
+  outline-offset: -2px;
+}
+
+.point-readout p button.icon-button .icon {
+  width: 1.5em;
+  height: 1.5em;
+  vertical-align: baseline;
+}
+
+@media (forced-colors: active) {
+  .point-readout p button.icon-button {
+    color: ButtonText;
+  }
 }
 
 .share-actions {

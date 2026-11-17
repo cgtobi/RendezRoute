@@ -14,6 +14,19 @@ const REVERSE_ZOOM = 14;
  */
 const DISTRICT_KEYS = ["suburb", "city_district", "borough", "quarter"] as const;
 const SETTLEMENT_KEYS = ["city", "town", "village", "municipality"] as const;
+/** Nominatim's zoom for single buildings and streets (the description of the exact point, D77). */
+const DESCRIBE_ZOOM = 18;
+/** Address parts that name a way; never `house_number`. */
+const ROAD_KEYS = ["road", "pedestrian", "footway", "path", "cycleway", "living_street"] as const;
+
+/** Upstream text: no control or bidi characters, one space at a time, cut on a code point. */
+function cleanText(text: string, max: number): string {
+  const clean = stripBidiControls(text)
+    .replace(/\p{Cc}/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+  return Array.from(clean).slice(0, max).join("");
+}
 
 function firstPart(address: Record<string, unknown>, keys: readonly string[]): string | undefined {
   for (const key of keys) {
@@ -94,14 +107,43 @@ export function createNominatimGeocoder({
         (part) => part !== undefined,
       );
       if (name.length === 0) return undefined;
-      // Upstream text: no control or bidi characters, one space at a time, cut on a code point and
-      // never left ending in a separator.
-      const clean = stripBidiControls(name.join(", "))
-        .replace(/\p{Cc}/gu, " ")
-        .replace(/\s+/gu, " ")
-        .trim();
-      if (clean === "") return undefined;
-      const cut = Array.from(clean).slice(0, PLAN_LIMITS.areaLabel).join("");
+      // Never left ending in a separator.
+      const cut = cleanText(name.join(", "), PLAN_LIMITS.areaLabel);
+      return cut.replace(/[\s,]+$/u, "") || undefined;
+    },
+    async describe(point, { language }) {
+      const url = new URL(reverseUrl);
+      url.search = new URLSearchParams({
+        lat: String(point.lat),
+        lon: String(point.lng),
+        format: "jsonv2",
+        zoom: String(DESCRIBE_ZOOM),
+        addressdetails: "1",
+        "accept-language": language,
+      }).toString();
+      const response = await throttle(() =>
+        http.get(url, { headers: { accept: "application/json" }, maxBytes: 256 * 1024 }),
+      );
+      if (response.status !== 200) throw new Error(`Geocoder answered ${response.status}.`);
+      const data: unknown = JSON.parse(new TextDecoder().decode(response.body));
+      if (typeof data !== "object" || data === null || Array.isArray(data)) {
+        throw new Error("Unexpected geocoder response.");
+      }
+      const { error, name, address } = data as Record<string, unknown>;
+      if (error !== undefined) return undefined;
+      const parts =
+        typeof address === "object" && address !== null && !Array.isArray(address)
+          ? (address as Record<string, unknown>)
+          : {};
+      // A named place (a car park, a kiosk, a park) first, then the way it is on. Never the house
+      // number, never the full `display_name` (it repeats the city, county and country).
+      const place = typeof name === "string" && name.trim() !== "" ? name.trim() : undefined;
+      const road = firstPart(parts, ROAD_KEYS);
+      const description = [place, road === place ? undefined : road].filter(
+        (part) => part !== undefined,
+      );
+      if (description.length === 0) return undefined;
+      const cut = cleanText(description.join(", "), PLAN_LIMITS.exactDescription);
       return cut.replace(/[\s,]+$/u, "") || undefined;
     },
   };
@@ -161,5 +203,7 @@ export function createCachedGeocoder(
         () => inner.reverse(cell, options),
       );
     },
+    // The exact point (decision D77): never cached, so no exact point is kept in memory.
+    describe: (point, options) => inner.describe(point, options),
   };
 }

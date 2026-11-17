@@ -13,6 +13,7 @@ import { MenuSheetBody } from "../layout.tsx";
 import { Initial, PersonName } from "./avatar.tsx";
 import { ModeSwitch } from "./maps.tsx";
 import { ExactStartSection } from "./plan-page.tsx";
+import { RequiredHint } from "./line-field.tsx";
 import { Fold, PlanForm, type VisibilityChoice } from "./plan-form.tsx";
 import { PlanMetrics } from "./plan-metrics.tsx";
 import { ShareLinks } from "./share.tsx";
@@ -113,6 +114,112 @@ const VISIBILITY: VisibilityChoice = {
   sharedBy: "@anna@runs.example.org",
   nearby: true,
 };
+
+const SAMPLE_KINDS = [
+  "text",
+  "email",
+  "search",
+  "textarea",
+  "select",
+  "date",
+  "time",
+  "file",
+  "color",
+] as const;
+type SampleKind = (typeof SAMPLE_KINDS)[number];
+type SampleState = "rest" | "filled" | "required" | "error" | "disabled";
+
+/** The states each kind shows: a file field has no value to show, a colour is never empty. */
+const SAMPLE_STATES: Record<SampleKind, readonly SampleState[]> = {
+  text: ["rest", "filled", "required", "error", "disabled"],
+  email: ["rest", "filled", "required", "error", "disabled"],
+  search: ["rest", "filled", "required", "error", "disabled"],
+  textarea: ["rest", "filled", "required", "error", "disabled"],
+  select: ["rest", "filled", "required", "error", "disabled"],
+  date: ["rest", "filled", "required", "error", "disabled"],
+  time: ["rest", "filled", "required", "error", "disabled"],
+  file: ["rest", "required", "error", "disabled"],
+  color: ["rest", "error", "disabled"],
+};
+
+const SAMPLE_VALUE: Record<SampleKind, string> = {
+  text: "Easy Sunday run",
+  email: "anna@example.org",
+  search: "Englischer Garten",
+  textarea: "Some longer text on a second line of the sample.",
+  select: "2",
+  date: "2031-06-07",
+  time: "07:30",
+  file: "",
+  color: "#2e5bff",
+};
+
+/** One field of the inputs section in one state, built like the real forms build theirs. */
+function FieldSample({ t, kind, state }: { t: Translate; kind: SampleKind; state: SampleState }) {
+  const id = `sg-${kind}-${state}`;
+  const required = state === "required";
+  const invalid = state === "error";
+  const value = state === "filled" || invalid ? SAMPLE_VALUE[kind] : undefined;
+  const disabled = state === "disabled";
+  const props = {
+    id,
+    disabled,
+    required,
+    "aria-required": required ? "true" : undefined,
+    "aria-invalid": invalid ? "true" : undefined,
+    "aria-describedby": invalid ? `${id}-error` : disabled ? `${id}-reason` : undefined,
+  };
+  const textLike = kind === "text" || kind === "email" || kind === "search" || kind === "textarea";
+  // Empty text-like samples show an example (decision D74); a required one keeps the blank
+  // placeholder CSS needs, as in the forms that have no example.
+  const placeholder = !textLike
+    ? undefined
+    : required
+      ? " "
+      : state === "rest" || disabled
+        ? "An example"
+        : undefined;
+  const control =
+    kind === "textarea" ? (
+      <textarea {...props} rows={3} placeholder={placeholder}>
+        {value}
+      </textarea>
+    ) : kind === "select" ? (
+      <select {...props}>
+        <option value="">Choose</option>
+        <option value="1">First</option>
+        <option value="2" selected={value === "2" || undefined}>
+          Second
+        </option>
+      </select>
+    ) : (
+      <input
+        {...props}
+        type={kind}
+        value={value}
+        placeholder={placeholder}
+        step={kind === "time" ? 900 : undefined}
+      />
+    );
+  return (
+    <div class={invalid ? "field field-invalid" : "field"}>
+      <label for={id}>{`${kind}, ${state}`}</label>
+      {control}
+      {required && kind !== "date" && kind !== "time" && <RequiredHint t={t} controlId={id} />}
+      {state === "rest" && <p class="hint">A hint under the field.</p>}
+      {disabled && (
+        <p class="hint" id={`${id}-reason`}>
+          This field cannot be changed here, because the sample is switched off.
+        </p>
+      )}
+      {invalid && (
+        <p class="error" id={`${id}-error`}>
+          {t("field.required")}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function Section({
   id,
@@ -230,63 +337,24 @@ export function StyleGuide(props: StyleGuideProps) {
       <Section
         id="sg-inputs"
         title="Inputs"
-        note="Text, search, email, select, textarea, date, time with step, colour, file; with hint and error variants; a two-column row."
+        note="Every field type in the one line style (decision D73), each at rest, filled, empty and required (red hint; none under date and time until a failed submit, D74), with an error and disabled (with its reason below). Hover or tab into a field to see its focus. The first row at rest also has a hint."
       >
-        <div class="field">
-          <label for="sg-text">Text</label>
-          <input id="sg-text" type="text" value="Plain text" />
-          <p class="hint">A hint under the field.</p>
-        </div>
-        <div class="field field-invalid">
-          <label for="sg-text-error">Text with an error</label>
-          <input
-            id="sg-text-error"
-            type="text"
-            value="Wrong"
-            aria-invalid="true"
-            aria-describedby="sg-text-error-message"
-          />
-          <p class="error" id="sg-text-error-message">
-            Please fill this in.
-          </p>
-        </div>
-        <div class="field">
-          <label for="sg-search">Search</label>
-          <input id="sg-search" type="search" />
-        </div>
-        <div class="field">
-          <label for="sg-email">Email</label>
-          <input id="sg-email" type="email" autocomplete="email" />
-        </div>
-        <div class="field">
-          <label for="sg-select">Select</label>
-          <select id="sg-select">
-            <option>First</option>
-            <option>Second</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="sg-textarea">Textarea</label>
-          <textarea id="sg-textarea" rows={3}>
-            Some longer text.
-          </textarea>
-        </div>
-        <div class="field">
-          <label for="sg-color">Colour</label>
-          <input id="sg-color" type="color" value="#2e5bff" />
-        </div>
-        <div class="field">
-          <label for="sg-file">File</label>
-          <input id="sg-file" type="file" />
-        </div>
+        {SAMPLE_KINDS.map((kind) => (
+          <div class="sg-samples">
+            <h3>{kind}</h3>
+            {SAMPLE_STATES[kind].map((state) => (
+              <FieldSample t={t} kind={kind} state={state} />
+            ))}
+          </div>
+        ))}
         <div class="field-row">
           <div class="field">
-            <label for="sg-date">Date</label>
-            <input id="sg-date" type="date" value="2031-06-07" />
+            <label for="sg-pair-date">Date and time side by side</label>
+            <input id="sg-pair-date" type="date" value="2031-06-07" />
           </div>
           <div class="field">
-            <label for="sg-time">Time</label>
-            <input id="sg-time" type="time" step={900} value="07:30" />
+            <label for="sg-pair-time">Time</label>
+            <input id="sg-pair-time" type="time" step={900} value="07:30" />
           </div>
         </div>
       </Section>
@@ -341,7 +409,7 @@ export function StyleGuide(props: StyleGuideProps) {
       <Section
         id="sg-folds"
         title="Folds"
-        note="The plan form's .fold groups, rendered by the real Fold: closed, open, warning, strong."
+        note="The plan form's .fold groups, rendered by the real Fold: closed, open, warning, summary only when closed."
       >
         <div class="folds">
           <Fold title="Closed fold" value="One-line summary" open={false}>
@@ -350,10 +418,10 @@ export function StyleGuide(props: StyleGuideProps) {
           <Fold title="Open fold" value="One-line summary" open>
             <p>Body of the fold.</p>
           </Fold>
-          <Fold title="Warning fold" value="Public: anyone can find it" open={false} warning>
-            <p>Body of the fold.</p>
+          <Fold title="Summary only when closed" value="One-line summary" open hideValueOpen>
+            <p>Body of the fold, open: no summary line (the "who" fold).</p>
           </Fold>
-          <Fold title="Strong fold" value="One-line summary" open={false} strong>
+          <Fold title="Warning fold" value="Public: anyone can find it" open={false} warning>
             <p>Body of the fold.</p>
           </Fold>
         </div>
@@ -362,29 +430,59 @@ export function StyleGuide(props: StyleGuideProps) {
       <Section
         id="sg-title"
         title="Title field"
-        note="The title as the form's big heading with the pencil hint. Mirrors plan-form.tsx."
+        note="The title as the form's big heading. Mirrors plan-form.tsx."
       >
         <div class="field field-title">
           <label class="visually-hidden" for="sg-title-input">
             Title
           </label>
-          <div class="title-field">
-            <input id="sg-title-input" class="title-input" value="Easy Sunday run" />
-            <span class="icon icon-pencil title-edit-icon" aria-hidden="true"></span>
-          </div>
+          <input
+            id="sg-title-input"
+            class="title-input"
+            value="Easy Sunday run"
+            required
+            placeholder=" "
+            aria-required="true"
+          />
+          <RequiredHint t={t} controlId="sg-title-input" />
+        </div>
+        <div class="field field-title">
+          <label class="visually-hidden" for="sg-title-empty">
+            Title, emptied
+          </label>
+          <input
+            id="sg-title-empty"
+            class="title-input"
+            required
+            placeholder=" "
+            aria-required="true"
+          />
+          <RequiredHint t={t} controlId="sg-title-empty" />
         </div>
       </Section>
 
       <Section
         id="sg-lines"
         title="Lines, switch and readouts"
-        note="Zone line and host-name line (mirror plan-form.tsx), the mode switch (real ModeSwitch), point readouts (mirror maps.tsx). No live map."
+        note="The icon button on a field's line (mirrors the area field with its place search, D75 and D77; the quiet remove button mirrors the map status lines, D76), zone line and host-name line (mirror plan-form.tsx), the mode switch (real ModeSwitch), point readouts (mirror maps.tsx). No live map."
       >
+        <div class="field">
+          <label for="sg-line-action">Field with an icon button</label>
+          <div class="inline-input line-action">
+            <input id="sg-line-action" type="text" placeholder={t("placeholder.areaSearch")} />
+            <button type="button" class="line-action-button">
+              <span class="icon icon-search" aria-hidden="true"></span>
+              <span class="visually-hidden">{t("map.searchButton")}</span>
+            </button>
+          </div>
+        </div>
         <details class="zone-line">
           <summary>
-            <span>Europe/Berlin</span>
+            <span class="zone-title">{t("form.timeZoneLine")}</span>{" "}
+            <span data-zone-name>Europe/Berlin</span>
             {" · "}
-            <span class="zone-change">{t("layout.change")}</span>
+            <span class="zone-change zone-change-closed">{t("layout.change")}</span>
+            <span class="zone-change zone-change-open">{t("layout.done")}</span>
           </summary>
           <div class="field">
             <label for="sg-zone">Time zone</label>
@@ -397,7 +495,8 @@ export function StyleGuide(props: StyleGuideProps) {
           <summary>
             {t("form.hostingAs", { name: "Anna" })}
             {" · "}
-            <span class="zone-change">{t("layout.change")}</span>
+            <span class="zone-change zone-change-closed">{t("layout.change")}</span>
+            <span class="zone-change zone-change-open">{t("layout.done")}</span>
           </summary>
           <div class="field">
             <label for="sg-host">Host name</label>
@@ -407,10 +506,10 @@ export function StyleGuide(props: StyleGuideProps) {
         <ModeSwitch t={t} />
         <div class="point-readout">
           <p>
-            {t("map.areaSet")}
-            {" · "}
-            <button type="button" class="secondary">
-              {t("map.areaRemove")}
+            <span class="readout-text">{t("map.areaSet")}</span>
+            <button type="button" class="icon-button">
+              <span class="icon icon-close" aria-hidden="true"></span>
+              <span class="visually-hidden">{t("map.areaRemove")}</span>
             </button>
           </p>
         </div>

@@ -112,7 +112,12 @@ function SearchForm(props: NearbyPageProps & { errors: readonly NearbyFieldError
         field(
           "place",
           t("nearby.place"),
-          text("place", { type: "search", maxlength: 100, autocomplete: "off" }),
+          text("place", {
+            type: "search",
+            maxlength: 100,
+            autocomplete: "off",
+            placeholder: t("placeholder.place"),
+          }),
           t("nearby.placeHint"),
         )}
       {/* Set by the map or the device, already rounded; a typed place replaces them. */}
@@ -188,9 +193,19 @@ function SearchForm(props: NearbyPageProps & { errors: readonly NearbyFieldError
             {field(
               "distanceFrom",
               t("nearby.atLeast"),
-              text("distanceFrom", { inputmode: "decimal" }),
+              text("distanceFrom", {
+                inputmode: "decimal",
+                placeholder: t("placeholder.distanceFrom"),
+              }),
             )}
-            {field("distanceTo", t("nearby.atMost"), text("distanceTo", { inputmode: "decimal" }))}
+            {field(
+              "distanceTo",
+              t("nearby.atMost"),
+              text("distanceTo", {
+                inputmode: "decimal",
+                placeholder: t("placeholder.distanceTo"),
+              }),
+            )}
           </div>
         </fieldset>
         <fieldset>

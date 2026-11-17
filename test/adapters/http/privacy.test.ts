@@ -67,16 +67,33 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect(withoutMaps).not.toContain(en("privacy.locationMap"));
   });
 
-  it("says that picking a place on the map sends the rounded point, never the exact start (D70)", () => {
+  it("says that the exact point is sent for a description suggestion and the lookups are not cached (D77)", () => {
     for (const lang of ["en", "de", "fr"] as const) {
       const text = translator(lang)("privacy.geocoder", { host: "geo.example", days: 7 });
       expect(text).toContain("geo.example");
       expect(text).toContain("7");
       expect(text).toMatch(/1 km/);
     }
-    expect(en("privacy.geocoder", { host: "h", days: 7 })).toMatch(
-      /map and the meeting area is empty or still holds the earlier suggestion.*rounded.*about 1 km.*never the exact start/,
+    const english = en("privacy.geocoder", { host: "h", days: 7 });
+    expect(english).toMatch(
+      /map and the area is empty or still holds the earlier suggestion.*rounded.*about 1 km/,
     );
+    expect(english).toMatch(
+      /exact meeting point on the map.*that exact point is sent to the service through this server.*does not learn who you are/,
+    );
+    expect(english).toMatch(/lookups of exact points are not kept in this server’s memory/);
+    expect(english).not.toMatch(/not stored/);
+    expect(translator("de")("privacy.geocoder", { host: "h", days: 7 })).toMatch(
+      /Anfragen mit genauen Punkten werden nicht im Arbeitsspeicher/,
+    );
+    expect(translator("fr")("privacy.geocoder", { host: "h", days: 7 })).toMatch(
+      /requêtes portant sur des points exacts ne sont pas conservées/,
+    );
+    expect(english).not.toContain("never the exact start");
+    for (const old of [/nie der genaue Start/, /jamais le départ exact/]) {
+      expect(translator("de")("privacy.geocoder", { host: "h", days: 7 })).not.toMatch(old);
+      expect(translator("fr")("privacy.geocoder", { host: "h", days: 7 })).not.toMatch(old);
+    }
   });
 
   it("states that pre-update backups are deleted after 7 days (spec 11)", async () => {

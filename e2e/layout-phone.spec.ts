@@ -166,6 +166,33 @@ test("The time zone line shows the zone the select holds, and follows a new pick
   await context.close();
 });
 
+test("The titled time zone line wraps inside 320 px with the longest zone name", async ({
+  browser,
+  baseURL,
+}) => {
+  const problems: string[] = [];
+  const { context, page } = await person(browser, baseURL ?? "", problems);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/new");
+  // The longest zone name the select offers (a string: this project has no DOM types).
+  const longest = await page.evaluate<string>(
+    `Array.from(document.querySelectorAll("#field-timeZone option"), (o) => o.value).reduce((a, b) => (b.length > a.length ? b : a), "")`,
+  );
+  await page.locator("#field-timeZone").selectOption(longest, { force: true });
+  const summary = page.locator("details.zone-line > summary");
+  await expect(page.locator("details.zone-line [data-zone-name]")).toHaveText(longest);
+  await expect(page.locator("details.zone-line .zone-title")).toBeVisible();
+  const box = await summary.boundingBox();
+  expect(box?.height, "summary stays a 44 px tap target").toBeGreaterThanOrEqual(44);
+  const widths = await page.evaluate<{ scrollWidth: number; innerWidth: number }>(
+    "({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth })",
+  );
+  expect(widths.scrollWidth, "the page scrolls sideways").toBeLessThanOrEqual(widths.innerWidth);
+  expect((box?.x ?? 0) + (box?.width ?? 999), "summary right edge").toBeLessThanOrEqual(320);
+  expect(problems).toEqual([]);
+  await context.close();
+});
+
 test("The who and exact summaries follow the join radios and the exact point", async ({
   browser,
   baseURL,
@@ -186,7 +213,7 @@ test("The who and exact summaries follow the join radios and the exact point", a
   await expect(value("Exact meeting point")).toHaveText("Optional · only people you accept see it");
 
   await openFold(page, "Exact meeting point");
-  await page.getByLabel("Where exactly?").fill("North gate");
+  await page.getByLabel("Description of the meeting point").fill("North gate");
   await expect(value("Exact meeting point")).toHaveText("Set · only people you accept see it");
   await page.getByLabel("Anyone with the link").check();
   await expect(value("Exact meeting point")).toHaveText("Set · anyone who joins sees it");
@@ -223,17 +250,8 @@ test("The title is the heading input: the first focus selects the default, a lon
   );
   const box = await title.boundingBox();
   expect(box?.height, "title input height").toBeGreaterThanOrEqual(44);
-  // The pencil is the edit hint: visible at the end of the field, and a click on it reaches the input.
-  const pencil = page.locator(".title-field .icon-pencil");
-  await expect(pencil).toBeVisible();
-  await page.locator("#field-activity").focus();
-  await expect(title).not.toBeFocused();
-  const pencilBox = await pencil.boundingBox();
-  expect(pencilBox, "pencil box").not.toBeNull();
-  if (pencilBox !== null) {
-    await page.mouse.click(pencilBox.x + pencilBox.width / 2, pencilBox.y + pencilBox.height / 2);
-  }
-  await expect(title).toBeFocused();
+  // No pencil: the title is the line alone.
+  await expect(page.locator(".title-field, .icon-pencil, .line-pen")).toHaveCount(0);
   expect(problems).toEqual([]);
   await context.close();
 });

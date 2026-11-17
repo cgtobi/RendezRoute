@@ -11,6 +11,7 @@ import type { Units } from "../../../../domain/units.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, formatDate } from "./format.ts";
 import { Item } from "./item.tsx";
+import { describedBy } from "./line-field.tsx";
 import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { PlanMetrics } from "./plan-metrics.tsx";
 import { WINDOW_LABELS } from "./recap.tsx";
@@ -30,7 +31,13 @@ export function TemplateOptions({
     (e) => e.field === "keepAsTemplate" || e.field === "templateIncludePrivate",
   );
   return (
-    <fieldset class={error === undefined ? undefined : "field-invalid"}>
+    <fieldset
+      class={error === undefined ? undefined : "field-invalid"}
+      aria-describedby={describedBy(
+        "field-template-hint",
+        error === undefined ? undefined : "field-template-error",
+      )}
+    >
       <legend>{t("form.template")}</legend>
       <label class="choice">
         <input
@@ -38,6 +45,7 @@ export function TemplateOptions({
           name="keepAsTemplate"
           value="1"
           checked={values.keepAsTemplate === "1"}
+          aria-invalid={error === undefined ? undefined : "true"}
         />
         {t("form.keepAsTemplate")}
       </label>
@@ -47,11 +55,18 @@ export function TemplateOptions({
           name="templateIncludePrivate"
           value="1"
           checked={values.templateIncludePrivate === "1"}
+          aria-invalid={error === undefined ? undefined : "true"}
         />
         {t("form.templateIncludePrivate")}
       </label>
-      <p class="hint">{t("form.templateHint")}</p>
-      {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+      <p class="hint" id="field-template-hint">
+        {t("form.templateHint")}
+      </p>
+      {error !== undefined && (
+        <p class="error" id="field-template-error">
+          {fieldErrorMessage(error.code, t)}
+        </p>
+      )}
     </fieldset>
   );
 }
@@ -226,8 +241,17 @@ export function TemplatePage(props: TemplatePageProps) {
                       type={field}
                       required
                       value={props.repeat[field]}
+                      aria-required="true"
+                      aria-invalid={error === undefined ? undefined : "true"}
+                      aria-describedby={describedBy(
+                        error === undefined ? undefined : `field-${field}-error`,
+                      )}
                     />
-                    {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+                    {error !== undefined && (
+                      <p class="error" id={`field-${field}-error`}>
+                        {fieldErrorMessage(error.code, t)}
+                      </p>
+                    )}
                   </div>
                 );
               })}

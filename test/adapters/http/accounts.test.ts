@@ -240,6 +240,15 @@ describe("the account page (spec 7 Identity)", () => {
     expect(html).toContain("SENTINELxxx");
   });
 
+  it("shows an example placeholder in the display name field (D74)", async () => {
+    const { app, oidc } = await setup();
+    const client = new TestClient(app);
+    await logIn(client, oidc);
+    const html = await (await client.get("/account")).text();
+    const tag = /<input[^>]*id="field-displayName"[^>]*>/.exec(html)?.[0] ?? "";
+    expect(tag).toContain(`placeholder="${en("placeholder.displayName")}"`);
+  });
+
   it("logs this browser out, which needs the CSRF token", async () => {
     const { app, oidc, database } = await setup();
     const client = new TestClient(app);

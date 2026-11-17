@@ -139,7 +139,10 @@ test("the admin pages work through the fake Ingress, with no cookie and no login
   }
 
   // On localhost the browser does send Sec-Fetch-Site (same-origin) and the same token works.
-  const { page: local } = await person(browser, LOCAL_INGRESS, problems);
+  const { page: local } = await person(browser, LOCAL_INGRESS, problems, {
+    // No route at all: it would hide the browser's own Sec-Fetch-Site header from this check.
+    stubGeocode: false,
+  });
   let localSite: string | undefined;
   local.on("request", async (request) => {
     if (request.method() === "POST") localSite = (await request.allHeaders())["sec-fetch-site"];

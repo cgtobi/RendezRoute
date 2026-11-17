@@ -7,6 +7,7 @@ import { MAX_DISPLAY_NAME_LENGTH } from "../../../../domain/responding.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { BackLink } from "./back-link.tsx";
 import { fieldErrorMessage } from "./format.ts";
+import { describedBy, RequiredHint } from "./line-field.tsx";
 import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
 import { MoreChannels, type NtfySwitchProps, type TelegramSwitchProps } from "./more-channels.tsx";
@@ -65,10 +66,13 @@ export function ManagePage(props: {
               name="displayName"
               value={props.displayName}
               required
+              placeholder=" "
               maxlength={MAX_DISPLAY_NAME_LENGTH}
+              aria-required="true"
               aria-invalid={invalid ? "true" : undefined}
-              aria-describedby={invalid ? "field-displayName-error" : undefined}
+              aria-describedby={describedBy(invalid ? "field-displayName-error" : undefined)}
             />
+            <RequiredHint t={t} controlId="field-displayName" invalid={invalid} />
             {props.errorCode !== undefined && (
               <p class="error" id="field-displayName-error">
                 {fieldErrorMessage(props.errorCode, t)}

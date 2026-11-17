@@ -206,6 +206,23 @@ describe("rate limits on the label suggestion (decision D70)", () => {
   });
 });
 
+describe("rate limit on the description suggestion (decision D77)", () => {
+  it("shares the geocoder budget: 10 lookups per client in a burst, then 429", async () => {
+    const { at, geocoder } = await setup();
+    const client = at("203.0.113.8");
+    const csrf = (await client.hiddenFields("/new"))._csrf ?? "";
+    const lookup = () =>
+      client.request("/geocode/describe", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify({ lat: 48.11346, lng: 11.56123 }),
+      });
+    for (let i = 0; i < 10; i++) expect((await lookup()).status).toBe(200);
+    expect((await lookup()).status).toBe(429);
+    expect(geocoder.describeCalls).toHaveLength(10);
+  });
+});
+
 describe("the place search and the label suggestion share one budget (decision D70)", () => {
   async function mixed(first: "search" | "reverse") {
     const { at, geocoder } = await setup();

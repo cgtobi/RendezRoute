@@ -52,6 +52,117 @@ describe("the style guide with ALLOW_INSECURE_DEV on", () => {
     }
   });
 
+  it("shows every field type in every state in the inputs section (decision D73)", async () => {
+    const { html } = await guide();
+    const start = html.indexOf('id="sg-inputs"');
+    const section = html.slice(start, html.indexOf('id="sg-choices"'));
+    const states = {
+      text: ["rest", "filled", "required", "error", "disabled"],
+      email: ["rest", "filled", "required", "error", "disabled"],
+      search: ["rest", "filled", "required", "error", "disabled"],
+      textarea: ["rest", "filled", "required", "error", "disabled"],
+      select: ["rest", "filled", "required", "error", "disabled"],
+      date: ["rest", "filled", "required", "error", "disabled"],
+      time: ["rest", "filled", "required", "error", "disabled"],
+      file: ["rest", "required", "error", "disabled"],
+      color: ["rest", "error", "disabled"],
+    };
+    for (const [kind, list] of Object.entries(states)) {
+      for (const state of list) {
+        expect(section, `${kind} ${state}`).toContain(`id="sg-${kind}-${state}"`);
+      }
+    }
+    // A required, empty sample has the red hint after it; an error sample has its message instead.
+    expect(section).toContain(
+      '<p class="required-hint" id="sg-text-required-required" aria-hidden="true">',
+    );
+    expect(section).not.toContain('id="sg-text-error-required"');
+    expect(section).toContain('id="sg-text-error-error"');
+    // The ids of one section are unique, so the labels and descriptions point at one control.
+    const ids = [...section.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    // No pencil and no line wrapper on any sample.
+    expect(section).not.toMatch(/pencil|line-pen|line-field/);
+  });
+
+  it("shows the icon button on a line in the lines section (D75)", async () => {
+    const { html } = await guide();
+    const section = html.slice(html.indexOf('id="sg-lines"'), html.indexOf('id="sg-plan-form"'));
+    expect(section).toContain('<div class="inline-input line-action">');
+    expect(section).toContain(
+      '<button type="button" class="line-action-button"><span class="icon icon-search" aria-hidden="true"></span><span class="visually-hidden">Search</span></button>',
+    );
+  });
+
+  it("shows the quiet remove icon button in the status line sample (D76)", async () => {
+    const { html } = await guide();
+    const section = html.slice(html.indexOf('id="sg-lines"'), html.indexOf('id="sg-plan-form"'));
+    expect(section).toContain(
+      '<button type="button" class="icon-button"><span class="icon icon-close" aria-hidden="true"></span><span class="visually-hidden">Remove</span></button>',
+    );
+  });
+
+  it("gives every disabled sample a reason line that its control is described by (D74)", async () => {
+    const { html } = await guide();
+    const section = html.slice(html.indexOf('id="sg-inputs"'), html.indexOf('id="sg-choices"'));
+    for (const kind of [
+      "text",
+      "email",
+      "search",
+      "textarea",
+      "select",
+      "date",
+      "time",
+      "file",
+      "color",
+    ]) {
+      const id = `sg-${kind}-disabled`;
+      const tag = new RegExp(`<(?:input|select|textarea)\\b[^>]*\\bid="${id}"[^>]*>`).exec(
+        section,
+      )?.[0];
+      expect(tag).toBeDefined();
+      expect(tag).toMatch(/\sdisabled(?:=""|\s|\/|>)/);
+      expect(tag).toContain(`aria-describedby="${id}-reason"`);
+      expect(section).toMatch(new RegExp(`<p class="hint" id="${id}-reason">[^<]+</p>`));
+    }
+  });
+
+  it("shows example placeholders in the empty text-like samples, at rest and disabled (D74)", async () => {
+    const { html } = await guide();
+    const section = html.slice(html.indexOf('id="sg-inputs"'), html.indexOf('id="sg-choices"'));
+    for (const kind of ["text", "email", "search", "textarea"]) {
+      for (const state of ["rest", "disabled"]) {
+        const id = `sg-${kind}-${state}`;
+        const tag = new RegExp(`<(?:input|textarea)\\b[^>]*\\bid="${id}"[^>]*>`).exec(section)?.[0];
+        expect(tag).toMatch(/placeholder="[^" ][^"]*"/);
+      }
+    }
+  });
+
+  it("never names a required hint in aria-describedby, and every named id exists", async () => {
+    const { html } = await guide();
+    const present = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+    const named = [...html.matchAll(/\saria-describedby="([^"]*)"/g)].flatMap((m) =>
+      (m[1] ?? "").split(" "),
+    );
+    expect(named.length).toBeGreaterThan(0);
+    expect(named.filter((id) => id.endsWith("-required"))).toEqual([]);
+    expect(named.filter((id) => !present.has(id))).toEqual([]);
+  });
+
+  it("has aria-required but no required hint element on date and time (D74)", async () => {
+    const { html } = await guide();
+    const section = html.slice(html.indexOf('id="sg-inputs"'), html.indexOf('id="sg-choices"'));
+    for (const kind of ["date", "time"]) {
+      const id = `sg-${kind}-required`;
+      const tag = new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`).exec(section)?.[0] ?? "";
+      expect(tag).toContain('aria-required="true"');
+      expect(tag).not.toContain("placeholder");
+      expect(tag).not.toContain("aria-describedby");
+      expect(section).not.toContain(`id="${id}-required"`);
+    }
+  });
+
   it("is not indexed or stored", async () => {
     const { response, html } = await guide();
     expect(response.headers.get("x-robots-tag")).toBe("noindex");
@@ -76,6 +187,12 @@ describe("the style guide with ALLOW_INSECURE_DEV on", () => {
     const { html } = await guide();
     expect(html.split('class="plan-form"').length - 1).toBe(4);
     expect(html).toContain("fold fold-warning");
+  });
+
+  it("shows a fold that hides its summary when open (D79)", async () => {
+    const { html } = await guide();
+    expect(html).toContain("Summary only when closed");
+    expect(html).toContain("fold-hide-open");
   });
 
   it("is not linked from the home or privacy pages", async () => {

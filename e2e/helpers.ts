@@ -58,7 +58,12 @@ export async function person(
   browser: Browser,
   baseURL: string,
   problems: string[],
-  options: { initScript?: () => void; context?: BrowserContextOptions } = {},
+  options: {
+    initScript?: () => void;
+    context?: BrowserContextOptions;
+    /** False for specs that read raw request headers: any route turns interception on. */
+    stubGeocode?: boolean;
+  } = {},
 ) {
   const context: BrowserContext = await browser.newContext({
     ...options.context,
@@ -71,6 +76,17 @@ export async function person(
     },
   });
   await stubTileHost(context);
+  // Tests share the app's geocode rate limit, and every tap in exact mode asks for a description
+  // (decision D77): answered "nothing" here unless a test routes the request itself (a page route
+  // wins over this one).
+  // Not for a spec that inspects raw headers (v10-admin-ingress): with any route registered,
+  // Chromium no longer reports the browser's own Sec-Fetch-Site in `request.allHeaders()`.
+  if (options.stubGeocode !== false) {
+    await context.route(
+      (url) => url.pathname === "/geocode/describe",
+      (route) => route.fulfill({ json: { label: null } }),
+    );
+  }
   const webkit = browser.browserType().name() === "webkit";
   if (options.initScript !== undefined) await context.addInitScript(options.initScript);
   const page = await context.newPage();

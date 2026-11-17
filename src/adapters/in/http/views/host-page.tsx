@@ -5,6 +5,7 @@ import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { RecapWindow } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
+import { describedBy, RequiredHint } from "./line-field.tsx";
 import type { MapSettings } from "./maps.tsx";
 import { PlanForm, type VisibilityChoice } from "./plan-form.tsx";
 import { RecapShortenedNotice, RecapWindowSelect } from "./recap.tsx";
@@ -266,10 +267,17 @@ function RouteSection(props: HostPageProps) {
             name="gpx"
             accept=".gpx,application/gpx+xml"
             required
+            aria-required="true"
             aria-invalid={props.routeError === undefined ? undefined : "true"}
-            aria-describedby={props.routeError === undefined ? undefined : "field-route-error"}
+            aria-describedby={describedBy(
+              "field-route-hint",
+              props.routeError === undefined ? undefined : "field-route-error",
+            )}
           />
-          <p class="hint">{t("host.routeHint")}</p>
+          <RequiredHint t={t} controlId="field-route" invalid={props.routeError !== undefined} />
+          <p class="hint" id="field-route-hint">
+            {t("host.routeHint")}
+          </p>
           {props.routeError !== undefined && (
             <p class="error" id="field-route-error" role="alert">
               {fieldErrorMessage(props.routeError, t)}
@@ -330,21 +338,37 @@ function RetentionForm(props: HostPageProps) {
         <>
           <div class={error === undefined ? "field" : "field field-invalid"}>
             <label for="field-retentionDays">{t("form.retention")}</label>
-            <select id="field-retentionDays" name="retentionDays">
+            <select
+              id="field-retentionDays"
+              name="retentionDays"
+              aria-invalid={error === undefined ? undefined : "true"}
+              aria-describedby={error === undefined ? undefined : "field-retentionDays-error"}
+            >
               {retentionOptions(props.maxRetentionDays, props.values.retentionDays).map((days) => (
                 <option value={days} selected={props.values.retentionDays === days}>
                   {t("form.retentionDays", { count: Number(days) })}
                 </option>
               ))}
             </select>
-            {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+            {error !== undefined && (
+              <p class="error" id="field-retentionDays-error">
+                {fieldErrorMessage(error.code, t)}
+              </p>
+            )}
           </div>
           <div class={recapError === undefined ? "field" : "field field-invalid"}>
             <label for="field-recapWindow">{t("form.recapWindow")}</label>
-            <RecapWindowSelect t={t} id="field-recapWindow" selected={props.values.recapWindow} />
+            <RecapWindowSelect
+              t={t}
+              id="field-recapWindow"
+              selected={props.values.recapWindow}
+              invalid={recapError !== undefined}
+            />
             <p class="hint">{t("host.recapWindowHint")}</p>
             {recapError !== undefined && (
-              <p class="error">{fieldErrorMessage(recapError.code, t)}</p>
+              <p class="error" id="field-recapWindow-error">
+                {fieldErrorMessage(recapError.code, t)}
+              </p>
             )}
           </div>
           <TemplateOptions t={t} values={props.values} errors={props.errors} />

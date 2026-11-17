@@ -60,6 +60,31 @@ const PLACES = [{ display_name: "Flaucher, Isar, Munich", lat: "48.1107", lon: "
 const REVERSE_REQUESTS: string[] = [];
 
 /**
+ * Every `lat,lon` the street-level (zoom 18) reverse route got: the description of the exact
+ * point (decision D77), which is sent unrounded, so it is kept apart from the grid-cell lookups.
+ */
+const DESCRIBE_REQUESTS: string[] = [];
+
+/** The street-level answer (decision D77): a named place and its road, plus a house number. */
+function describeAnswer(lat: number, lon: number): unknown {
+  const inMunich = lat >= 48 && lat <= 48.2 && lon >= 11.4 && lon <= 11.7;
+  if (!inMunich) return { error: "Unable to geocode" };
+  return {
+    place_id: 2,
+    display_name: "Flaucher car park, 12, Isarauen, Sendling, München, Bayern, Deutschland",
+    name: "Flaucher car park",
+    address: {
+      road: "Isarauen",
+      house_number: "12",
+      suburb: "Sendling",
+      city: "München",
+      state: "Bayern",
+      country: "Deutschland",
+    },
+  };
+}
+
+/**
  * A Nominatim-style jsonv2 reverse answer (decision D70): a full street address inside the
  * Munich box, so tests prove only the district and city are used; "nothing found" elsewhere.
  */
@@ -99,9 +124,17 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
   } else if (url.pathname === "/reverse") {
     const lat = url.searchParams.get("lat") ?? "";
     const lon = url.searchParams.get("lon") ?? "";
-    REVERSE_REQUESTS.push(`${lat},${lon}`);
     response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify(reverseAnswer(Number(lat), Number(lon))));
+    if (url.searchParams.get("zoom") === "18") {
+      DESCRIBE_REQUESTS.push(`${lat},${lon}`);
+      response.end(JSON.stringify(describeAnswer(Number(lat), Number(lon))));
+    } else {
+      REVERSE_REQUESTS.push(`${lat},${lon}`);
+      response.end(JSON.stringify(reverseAnswer(Number(lat), Number(lon))));
+    }
+  } else if (url.pathname === "/describe-requests") {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(DESCRIBE_REQUESTS));
   } else if (url.pathname === "/reverse-requests") {
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify(REVERSE_REQUESTS));

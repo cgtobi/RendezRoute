@@ -44,7 +44,7 @@ async function viewMunich(page: Page, { keepLabel = false } = {}) {
         json: { places: [{ label: "Flaucher, München, Bayern", lat: 48.1107, lng: 11.5582 }] },
       }),
   );
-  await page.getByLabel("Find a place").fill("Flaucher");
+  await label(page).fill("Flaucher");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("button", { name: /Flaucher/ }).click();
   await expect(label(page)).toHaveValue("Flaucher");
@@ -129,11 +129,13 @@ test("A filled meeting area is never looked up", async ({ browser, baseURL }) =>
   expect(bodies).toEqual([]);
 });
 
-test("In exact mode only the rounded public point is sent, never the exact start", async ({
+test("In exact mode the area suggestion still asks only for the rounded public point", async ({
   browser,
   baseURL,
 }) => {
   const { page } = await person(browser, baseURL ?? "", []);
+  // The description lookup of the exact point (D77) is not what this test is about: answered here.
+  await page.route("**/geocode/describe", (route) => route.fulfill({ json: { label: null } }));
   const bodies = await recordLookups(page, { real: true });
   await page.goto("/new");
   await viewMunich(page);

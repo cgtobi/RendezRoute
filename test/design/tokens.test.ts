@@ -60,6 +60,9 @@ const PAIRS: readonly [string, string, number][] = [
   ["--fg", "--surface", 4.5],
   ["--muted", "--bg", 4.5],
   ["--muted", "--surface", 4.5],
+  // Placeholder text (decision D74): WCAG 1.4.3 does not exempt it
+  ["--placeholder", "--bg", 4.5],
+  ["--placeholder", "--surface", 4.5],
   ["--accent", "--bg", 4.5],
   ["--accent", "--surface", 4.5],
   ["--on-accent", "--accent", 4.5],
@@ -94,6 +97,24 @@ describe.each([
   it.each(PAIRS)("%s on %s reaches %s:1", (fg, bg, minimum) => {
     const ratio = contrastRatio(scheme[fg] ?? "#000000", scheme[bg] ?? "#000000");
     expect(ratio).toBeGreaterThanOrEqual(minimum);
+  });
+});
+
+describe("the placeholder grey (decision D74)", () => {
+  it.each([
+    ["light", light],
+    ["dark", dark],
+    ["dark (chosen, data-theme)", darkChosen],
+  ])("is not the muted text colour in %s mode", (_mode, scheme) => {
+    expect(scheme["--placeholder"]).toBeDefined();
+    expect(scheme["--placeholder"]).not.toBe(scheme["--muted"]);
+  });
+
+  it("is lighter than --muted on the light page", () => {
+    const bg = light["--bg"] ?? "";
+    expect(contrastRatio(light["--placeholder"] ?? "", bg)).toBeLessThan(
+      contrastRatio(light["--muted"] ?? "", bg),
+    );
   });
 });
 

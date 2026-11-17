@@ -28,6 +28,15 @@ const UNITS = [
   "unit.fahrenheit",
 ];
 
+/** Example placeholders that are numbers or an address, the same in every language (D74). */
+const SAME_EXAMPLES = [
+  "placeholder.findPlan",
+  "placeholder.elevation",
+  "placeholder.inviteMaxUses",
+  "placeholder.distanceFrom",
+  "placeholder.distanceTo",
+];
+
 /** Strings that are the same in every language. */
 const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
   de: [
@@ -45,6 +54,7 @@ const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
     "telegram.label",
     // The service's name (decision D41).
     "form.shareWhatsApp",
+    ...SAME_EXAMPLES,
   ],
   fr: [
     ...UNITS,
@@ -56,6 +66,7 @@ const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
     "layout.menu",
     "plan.distance",
     "privacy.cookiesHeading",
+    ...SAME_EXAMPLES,
   ],
 };
 
@@ -130,8 +141,8 @@ describe("French typography (decision I31)", () => {
     ([key, message]) => forms(message).map((text) => [key, text] as const),
   );
 
-  it("puts a narrow no-break space before ; : ! ? (but not in times like 5:30)", () => {
-    const wrong = texts.filter(([, text]) => /(?<![ \d])[;:!?]/.test(text));
+  it("puts a narrow no-break space before ; : ! ? (but not in times like 5:30 or in https://)", () => {
+    const wrong = texts.filter(([, text]) => /(?<![ \d])[;:!?](?!\/\/)/.test(text));
     expect(wrong.map(([key, text]) => `${key}: ${text}`)).toEqual([]);
   });
 
@@ -150,5 +161,49 @@ describe("German typography", () => {
           .map((text) => `${key}: ${text}`),
     );
     expect(wrong).toEqual([]);
+  });
+});
+
+describe("the required hint text (decision D73)", () => {
+  it("is in all three catalogs, apart from the server's error text for an empty field", () => {
+    const hints = SUPPORTED_LANGUAGES.map(
+      (language) => (catalogs[language] as Readonly<Record<string, Message>>)["field.requiredHint"],
+    );
+    expect(hints).toEqual(["Required", "Pflichtfeld", "Obligatoire"]);
+    for (const language of SUPPORTED_LANGUAGES) {
+      const catalog = catalogs[language] as Readonly<Record<string, Message>>;
+      expect(catalog["field.requiredHint"]).not.toEqual(catalog["field.required"]);
+    }
+  });
+});
+
+describe("example placeholders (decision D74)", () => {
+  const PLACEHOLDER_KEYS = Object.keys(english).filter((key) => key.startsWith("placeholder."));
+
+  it("exist in every language, each a non-empty string", () => {
+    expect(PLACEHOLDER_KEYS.length).toBeGreaterThanOrEqual(10);
+    for (const language of SUPPORTED_LANGUAGES) {
+      const catalog = catalogs[language] as Readonly<Record<string, Message>>;
+      for (const key of PLACEHOLDER_KEYS) {
+        expect(typeof catalog[key], `${language} ${key}`).toBe("string");
+        expect((catalog[key] as string).trim(), `${language} ${key}`).not.toBe("");
+      }
+    }
+  });
+
+  it("puts the meeting-area example in the placeholder, no longer in the hint", () => {
+    for (const language of SUPPORTED_LANGUAGES) {
+      const catalog = catalogs[language] as Readonly<Record<string, Message>>;
+      const example = catalog["placeholder.areaLabel"] as string;
+      expect(example).toMatch(/Garten|Parc/);
+      expect(catalog["form.areaLabelHint"] as string).not.toContain(example);
+      expect(catalog["form.areaLabelHint"] as string).not.toMatch(/Garten|Parc/);
+    }
+  });
+
+  it("translates the decimal separator of the distance example", () => {
+    expect((catalogs.en as Readonly<Record<string, Message>>)["placeholder.distance"]).toBe("10.5");
+    expect((catalogs.de as Readonly<Record<string, Message>>)["placeholder.distance"]).toBe("10,5");
+    expect((catalogs.fr as Readonly<Record<string, Message>>)["placeholder.distance"]).toBe("10,5");
   });
 });

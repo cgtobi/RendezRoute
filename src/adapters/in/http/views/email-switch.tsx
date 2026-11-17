@@ -5,6 +5,7 @@ import type { EmailSetting } from "../../../../application/email.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage } from "./format.ts";
+import { RequiredHint } from "./line-field.tsx";
 
 export interface EmailSwitchProps {
   setting: EmailSetting;
@@ -107,12 +108,15 @@ export function EmailSwitch({
               name="address"
               type="email"
               required
+              placeholder=" "
               autocomplete="email"
               maxlength={254}
               value={form?.value ?? ""}
+              aria-required="true"
               aria-invalid={invalid ? "true" : undefined}
               aria-describedby={invalid ? "field-email-error" : "field-email-hint"}
             />
+            <RequiredHint t={t} controlId="field-email" invalid={invalid} />
             <p class="hint" id="field-email-hint">
               {t(texts.hint)}
               {shared && ` ${t("email.hostShared")}`}

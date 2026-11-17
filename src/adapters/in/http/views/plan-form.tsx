@@ -20,7 +20,8 @@ import {
 } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
-import { MapTools, type MapSettings } from "./maps.tsx";
+import { describedBy, isTextLike, RequiredHint } from "./line-field.tsx";
+import { AreaSearch, MapTools, type MapSettings } from "./maps.tsx";
 import { RecapWindowSelect } from "./recap.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
 import { TemplateOptions } from "./templates.tsx";
@@ -115,26 +116,27 @@ export function Fold({
   title,
   value,
   open,
-  strong = false,
   warning = false,
   kind,
   summaries,
+  hideValueOpen = false,
   children,
 }: {
   title: string;
   value: string;
   open: boolean;
-  strong?: boolean;
   warning?: boolean;
   /** Which summary the browser script keeps in step with the fields, with every variant text. */
   kind?: "who" | "exact";
   summaries?: Record<string, string>;
+  /** Show the summary line only while the fold is closed (decision D79). */
+  hideValueOpen?: boolean;
   children: Child;
 }) {
   const classes = [
     "fold",
-    strong ? "fold-strong" : undefined,
     warning ? "fold-warning" : undefined,
+    hideValueOpen ? "fold-hide-open" : undefined,
   ];
   return (
     <details
@@ -146,7 +148,7 @@ export function Fold({
       <summary>
         <span class="fold-text">
           <span class="fold-title">{title}</span>
-          <span class="visually-hidden">, </span>
+          <span class="visually-hidden fold-sep">, </span>
           <span class="fold-value">{value}</span>
         </span>
       </summary>
@@ -221,11 +223,16 @@ export function PlanForm({
   }) => {
     const error = errorFor(field);
     const classes = ["field", extraClass, error === undefined ? undefined : "field-invalid"];
+    const hintId = `${id(field)}-hint`;
     return (
       <div class={classes.filter(Boolean).join(" ")}>
         <label for={id(field)}>{label}</label>
         {children}
-        {hint !== undefined && <p class="hint">{hint}</p>}
+        {hint !== undefined && (
+          <p class="hint" id={hintId}>
+            {hint}
+          </p>
+        )}
         {error !== undefined && (
           <p class="error" id={`${id(field)}-error`}>
             {fieldErrorMessage(error.code, t)}
@@ -235,16 +242,50 @@ export function PlanForm({
     );
   };
 
-  const input = (field: PlanField, attributes: Record<string, string | number | boolean> = {}) => (
-    <input
-      id={id(field)}
-      name={field}
-      value={values[field]}
-      aria-invalid={errorFor(field) !== undefined ? "true" : undefined}
-      aria-describedby={errorFor(field) !== undefined ? `${id(field)}-error` : undefined}
-      {...attributes}
-    />
-  );
+  /**
+   * A form control for a field. A required one has aria-required, a placeholder CSS can test (" " unless the caller gives
+   * a real one) and the "Required" hint after it, which an error replaces. `hinted` is set when
+   * the field's `Field` shows a hint, which the control then names in aria-describedby. The hint is
+   * visual only (never in aria-describedby) and date and time controls get none.
+   */
+  const input = (
+    field: PlanField,
+    attributes: Record<string, string | number | boolean> = {},
+    hinted = false,
+    /** Wraps the control and its "Required" hint, for a control with an action beside it. */
+    wrap?: (control: Child, requiredHint: Child) => Child,
+  ) => {
+    const invalid = errorFor(field) !== undefined;
+    const required = attributes["required"] === true;
+    const type = typeof attributes["type"] === "string" ? attributes["type"] : undefined;
+    const textLike = isTextLike(type);
+    const control = (
+      <input
+        id={id(field)}
+        name={field}
+        value={values[field]}
+        aria-invalid={invalid ? "true" : undefined}
+        aria-required={required ? "true" : undefined}
+        aria-describedby={describedBy(
+          hinted ? `${id(field)}-hint` : undefined,
+          invalid ? `${id(field)}-error` : undefined,
+        )}
+        placeholder={required && textLike ? " " : undefined}
+        {...attributes}
+      />
+    );
+    const requiredHint =
+      required && type !== "date" && type !== "time" ? (
+        <RequiredHint t={t} controlId={id(field)} invalid={invalid} />
+      ) : undefined;
+    if (wrap !== undefined) return wrap(control, requiredHint);
+    return (
+      <>
+        {control}
+        {requiredHint}
+      </>
+    );
+  };
 
   const retentionDays =
     values.retentionDays === ""
@@ -273,11 +314,15 @@ export function PlanForm({
 
   const hostNameField = (
     <Field field="posterName" label={t("form.posterName")} hint={t("form.posterNameHint")}>
-      {input("posterName", {
-        required: true,
-        maxlength: PLAN_LIMITS.posterName,
-        autocomplete: "nickname",
-      })}
+      {input(
+        "posterName",
+        {
+          required: true,
+          maxlength: PLAN_LIMITS.posterName,
+          autocomplete: "nickname",
+        },
+        true,
+      )}
     </Field>
   );
 
@@ -366,16 +411,13 @@ export function PlanForm({
         <label class="visually-hidden" for={id("title")}>
           {t("form.title")}
         </label>
-        <div class="title-field">
-          {input("title", {
-            class: "title-input",
-            required: true,
-            maxlength: PLAN_LIMITS.title,
-            autocomplete: "off",
-            ...(values.title === t("form.defaultTitle") ? { "data-select-on-focus": "" } : {}),
-          })}
-          <span class="icon icon-pencil title-edit-icon" aria-hidden="true"></span>
-        </div>
+        {input("title", {
+          class: "title-input",
+          required: true,
+          maxlength: PLAN_LIMITS.title,
+          autocomplete: "off",
+          ...(values.title === t("form.defaultTitle") ? { "data-select-on-focus": "" } : {}),
+        })}
         {titleError !== undefined && (
           <p class="error" id={`${id("title")}-error`}>
             {fieldErrorMessage(titleError.code, t)}
@@ -417,13 +459,23 @@ export function PlanForm({
 
       <details class="zone-line" open={errorFor("timeZone") !== undefined}>
         <summary>
-          <span class="visually-hidden">{`${t("form.timeZone")}, `}</span>
+          {/* The visible title (decision D80); open, the zone field's own label replaces it. */}
+          <span class="zone-title">{t("form.timeZoneLine")}</span>{" "}
           <span data-zone-name>{shownZone}</span>
           {" · "}
-          <span class="zone-change">{t("layout.change")}</span>
+          <span class="zone-change zone-change-closed">{t("layout.change")}</span>
+          <span class="zone-change zone-change-open">{t("layout.done")}</span>
         </summary>
         <Field field="timeZone" label={t("form.timeZone")}>
-          <select id={id("timeZone")} name="timeZone" data-detect-zone={detectZoneFrom}>
+          <select
+            id={id("timeZone")}
+            name="timeZone"
+            data-detect-zone={detectZoneFrom}
+            aria-invalid={errorFor("timeZone") !== undefined ? "true" : undefined}
+            aria-describedby={
+              errorFor("timeZone") !== undefined ? `${id("timeZone")}-error` : undefined
+            }
+          >
             {timeZones.map((zone) => (
               <option value={zone} selected={values.timeZone === zone}>
                 {zone}
@@ -437,16 +489,31 @@ export function PlanForm({
         <h2>{t("form.where")}</h2>
         <MapTools t={t} map={map} placeSearch={placeSearch} />
 
-        <Field
-          field="areaLabel"
-          label={t("form.areaLabel")}
-          hint={`${t("form.areaLabelHint")} ${t("form.publicHint")}`}
-        >
-          {input("areaLabel", { required: true, maxlength: PLAN_LIMITS.areaLabel })}
+        <Field field="areaLabel" label={t("form.areaLabel")} hint={t("form.areaLabelHint")}>
+          {input(
+            "areaLabel",
+            {
+              required: true,
+              maxlength: PLAN_LIMITS.areaLabel,
+              placeholder: t("placeholder.areaLabel"),
+              // The search sends nothing while typing; the browser's own history stays out of the way.
+              ...(placeSearch ? { autocomplete: "off" } : {}),
+            },
+            true,
+            // With the place search the area field is also the search field (decision D77).
+            placeSearch
+              ? (control, requiredHint) => (
+                  <AreaSearch t={t} control={control} requiredHint={requiredHint} />
+                )
+              : undefined,
+          )}
           {map !== undefined && placeSearch && (
-            <p class="hint" data-label-suggested="" role="status" hidden>
-              {t("form.areaLabelSuggested")}
-            </p>
+            <p
+              class="hint"
+              data-label-suggested=""
+              data-text={t("form.areaLabelSuggested")}
+              role="status"
+            ></p>
           )}
         </Field>
 
@@ -475,20 +542,31 @@ export function PlanForm({
           summaries={exactSummaries}
           open={exactSet || hasError("exactDescription", "exactLat", "exactLng")}
         >
-          <p class="hint">{t("form.exactStartHint")}</p>
           <p class="hint">{t("form.openModeWarning")}</p>
           <Field field="exactDescription" label={t("form.exactDescription")}>
-            {input("exactDescription", { maxlength: 200 })}
+            {input("exactDescription", {
+              maxlength: PLAN_LIMITS.exactDescription,
+              placeholder: t("placeholder.exactDescription"),
+            })}
+            {/* Always there and empty until the script sets the text, so the live region announces it. */}
+            {map !== undefined && placeSearch && (
+              <p
+                class="hint"
+                data-description-suggested=""
+                data-text={t("form.exactDescriptionSuggested")}
+                role="status"
+              ></p>
+            )}
           </Field>
           {/* The map script shows this line and hides the coordinate fields below it (decision
               D66); without the script or with maps off the fields stay. */}
           {map !== undefined && (
             <div class="point-readout" data-exact-readout="" hidden>
               <p data-exact-set="" hidden>
-                {t("map.exactSet")}
-                {" · "}
-                <button type="button" class="secondary" data-exact-remove="">
-                  {t("map.exactRemove")}
+                <span class="readout-text">{t("map.exactSet")}</span>
+                <button type="button" class="icon-button" data-exact-remove="">
+                  <span class="icon icon-close" aria-hidden="true"></span>
+                  <span class="visually-hidden">{t("map.exactRemove")}</span>
                 </button>
               </p>
               <p data-exact-none="" tabindex={-1}>
@@ -512,7 +590,8 @@ export function PlanForm({
           <summary>
             {t("form.hostingAs", { name: values.posterName })}
             {" · "}
-            <span class="zone-change">{t("layout.change")}</span>
+            <span class="zone-change zone-change-closed">{t("layout.change")}</span>
+            <span class="zone-change zone-change-open">{t("layout.done")}</span>
           </summary>
           {hostNameField}
         </details>
@@ -541,7 +620,10 @@ export function PlanForm({
                 unit: t(units === "imperial" ? "unit.mi" : "unit.km"),
               })}
             >
-              {input("distanceKm", { inputmode: "decimal" })}
+              {input("distanceKm", {
+                inputmode: "decimal",
+                placeholder: t("placeholder.distance"),
+              })}
             </Field>
             <Field
               field="elevationGainM"
@@ -549,13 +631,16 @@ export function PlanForm({
                 unit: t(units === "imperial" ? "unit.ft" : "unit.m"),
               })}
             >
-              {input("elevationGainM", { inputmode: "numeric" })}
+              {input("elevationGainM", {
+                inputmode: "numeric",
+                placeholder: t("placeholder.elevation"),
+              })}
             </Field>
           </div>
 
-          <fieldset>
+          <fieldset aria-describedby="field-pace-hint">
             <legend>{t("form.pace")}</legend>
-            <p class="hint">
+            <p class="hint" id="field-pace-hint">
               {t(units === "imperial" ? "form.paceHintImperial" : "form.paceHint")}
             </p>
             <div class="field-row">
@@ -568,7 +653,11 @@ export function PlanForm({
             </div>
           </fieldset>
 
-          <fieldset>
+          <fieldset
+            aria-describedby={
+              errorFor("dropPolicy") !== undefined ? "field-dropPolicy-error" : undefined
+            }
+          >
             <legend>{t("form.dropPolicy")}</legend>
             {DROP_POLICIES.map((policy) => (
               <label class="choice">
@@ -577,24 +666,41 @@ export function PlanForm({
                   name="dropPolicy"
                   value={policy}
                   checked={values.dropPolicy === policy}
+                  aria-invalid={errorFor("dropPolicy") !== undefined ? "true" : undefined}
                 />
                 {t(`drop.${policy}`)}
               </label>
             ))}
             {errorFor("dropPolicy") !== undefined && (
-              <p class="error">{fieldErrorMessage("choice_invalid", t)}</p>
+              <p class="error" id="field-dropPolicy-error">
+                {fieldErrorMessage("choice_invalid", t)}
+              </p>
             )}
           </fieldset>
 
           {withGpx && (
             <div class={errors.some((e) => e.field === "gpx") ? "field field-invalid" : "field"}>
               <label for="field-gpx">{t("form.gpx")}</label>
-              <input id="field-gpx" type="file" name="gpx" accept=".gpx,application/gpx+xml" />
-              <p class="hint">{t("form.gpxHint")}</p>
+              <input
+                id="field-gpx"
+                type="file"
+                name="gpx"
+                accept=".gpx,application/gpx+xml"
+                aria-invalid={hasError("gpx") ? "true" : undefined}
+                aria-describedby={describedBy(
+                  "field-gpx-hint",
+                  hasError("gpx") ? "field-gpx-error" : undefined,
+                )}
+              />
+              <p class="hint" id="field-gpx-hint">
+                {t("form.gpxHint")}
+              </p>
               {errors
                 .filter((e) => e.field === "gpx")
-                .map((e) => (
-                  <p class="error">{fieldErrorMessage(e.code, t)}</p>
+                .map((e, index) => (
+                  <p class="error" id={index === 0 ? "field-gpx-error" : undefined}>
+                    {fieldErrorMessage(e.code, t)}
+                  </p>
                 ))}
             </div>
           )}
@@ -603,7 +709,18 @@ export function PlanForm({
           )}
 
           <Field field="note" label={t("form.note")} hint={t("form.publicHint")}>
-            <textarea id={id("note")} name="note" rows={4} maxlength={PLAN_LIMITS.note}>
+            <textarea
+              id={id("note")}
+              name="note"
+              rows={4}
+              maxlength={PLAN_LIMITS.note}
+              placeholder={t("placeholder.note")}
+              aria-invalid={errorFor("note") !== undefined ? "true" : undefined}
+              aria-describedby={describedBy(
+                "field-note-hint",
+                errorFor("note") !== undefined ? "field-note-error" : undefined,
+              )}
+            >
               {values.note}
             </textarea>
           </Field>
@@ -614,21 +731,36 @@ export function PlanForm({
           value={whoSummary}
           kind="who"
           summaries={whoSummaries}
-          strong
+          hideValueOpen
           warning={effectiveVisibility === "public"}
           open={hasError("joinMode", "visibility") || confirmAcceptPending !== undefined}
         >
-          <fieldset>
-            <legend>{t("form.joinMode")}</legend>
-            <p class="hint">{t("form.joinModeHint")}</p>
+          <fieldset
+            aria-describedby={describedBy(
+              "field-joinMode-hint",
+              errorFor("joinMode") !== undefined ? "field-joinMode-error" : undefined,
+            )}
+          >
+            <legend class="visually-hidden">{t("form.joinMode")}</legend>
+            <p class="hint" id="field-joinMode-hint">
+              {t("form.joinModeHint")}
+            </p>
             {JOIN_MODES.map((mode) => (
               <label class="choice">
-                <input type="radio" name="joinMode" value={mode} checked={joinMode === mode} />
+                <input
+                  type="radio"
+                  name="joinMode"
+                  value={mode}
+                  checked={joinMode === mode}
+                  aria-invalid={errorFor("joinMode") !== undefined ? "true" : undefined}
+                />
                 {t(mode === "open" ? "form.joinOpen" : "form.joinApproval")}
               </label>
             ))}
             {errorFor("joinMode") !== undefined && (
-              <p class="error">{fieldErrorMessage("choice_invalid", t)}</p>
+              <p class="error" id="field-joinMode-error">
+                {fieldErrorMessage("choice_invalid", t)}
+              </p>
             )}
           </fieldset>
 
@@ -688,7 +820,14 @@ export function PlanForm({
           )}
         >
           <Field field="retentionDays" label={t("form.retention")}>
-            <select id={id("retentionDays")} name="retentionDays">
+            <select
+              id={id("retentionDays")}
+              name="retentionDays"
+              aria-invalid={errorFor("retentionDays") !== undefined ? "true" : undefined}
+              aria-describedby={
+                errorFor("retentionDays") !== undefined ? `${id("retentionDays")}-error` : undefined
+              }
+            >
               {retentionOptions(maxRetentionDays, retentionDays).map((days) => (
                 <option value={days} selected={retentionDays === days}>
                   {t("form.retentionDays", { count: Number(days) })}
@@ -698,7 +837,13 @@ export function PlanForm({
           </Field>
 
           <Field field="recapWindow" label={t("form.recapWindow")} hint={t("form.recapWindowHint")}>
-            <RecapWindowSelect t={t} id={id("recapWindow")} selected={recapWindow} />
+            <RecapWindowSelect
+              t={t}
+              id={id("recapWindow")}
+              selected={recapWindow}
+              invalid={errorFor("recapWindow") !== undefined}
+              hintId="field-recapWindow-hint"
+            />
           </Field>
 
           {!forTemplate && <TemplateOptions t={t} values={values} errors={errors} />}
@@ -731,7 +876,13 @@ function ShareFieldset({
   error: FieldError | undefined;
 }) {
   return (
-    <fieldset class={error === undefined ? undefined : "field-invalid"}>
+    <fieldset
+      class={error === undefined ? undefined : "field-invalid"}
+      aria-describedby={describedBy(
+        "field-shareButtons-hint",
+        error === undefined ? undefined : "field-shareButtons-error",
+      )}
+    >
       <legend>{t("form.shareButtons")}</legend>
       {SHARE_BUTTONS.map((button) => {
         const field = SHARE_BUTTON_FIELDS[button];
@@ -742,8 +893,14 @@ function ShareFieldset({
           </label>
         );
       })}
-      <p class="hint">{t("form.shareButtonsHint")}</p>
-      {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+      <p class="hint" id="field-shareButtons-hint">
+        {t("form.shareButtonsHint")}
+      </p>
+      {error !== undefined && (
+        <p class="error" id="field-shareButtons-error">
+          {fieldErrorMessage(error.code, t)}
+        </p>
+      )}
     </fieldset>
   );
 }
@@ -783,9 +940,16 @@ function VisibilityFieldset({
   };
   if (shown.length === 1) return null;
   return (
-    <fieldset>
+    <fieldset
+      aria-describedby={describedBy(
+        "field-visibility-hint",
+        error === undefined ? undefined : "field-visibility-error",
+      )}
+    >
       <legend>{t("form.visibility")}</legend>
-      <p class="hint">{t("form.visibilityPublicHint")}</p>
+      <p class="hint" id="field-visibility-hint">
+        {t("form.visibilityPublicHint")}
+      </p>
       {shown.map((visibility) => (
         <label class="choice">
           <input
@@ -813,7 +977,11 @@ function VisibilityFieldset({
           {t("form.publicNeedsLogin")} <a href={choice.loginHref}>{t("form.publicLogIn")}</a>
         </p>
       )}
-      {error !== undefined && <p class="error">{fieldErrorMessage(error.code, t)}</p>}
+      {error !== undefined && (
+        <p class="error" id="field-visibility-error">
+          {fieldErrorMessage(error.code, t)}
+        </p>
+      )}
     </fieldset>
   );
 }

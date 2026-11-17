@@ -1,0 +1,92 @@
+// Guards for the icon button on a field's line (decision D75, plan I92): the map place search's
+// magnifier sits at the end of the field's underline, one shared line under both. The pixel
+// result is checked by e2e/field-style.spec.ts.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vite-plus/test";
+
+const PUBLIC = join(import.meta.dirname, "../../public");
+const CSS = readFileSync(join(PUBLIC, "app.css"), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, " ")
+  .replace(/'/g, '"')
+  .replace(/\s+/g, " ");
+
+/** The declarations of every rule whose selector list is exactly this, joined. */
+function rule(selector: string): string {
+  const found: string[] = [];
+  for (const match of CSS.matchAll(/(?<=^|[};])\s*([^{}@;][^{}]*)\{([^{}]*)\}/g)) {
+    const text = (match[1] ?? "").replace(/\s*,\s*/g, ", ").trim();
+    if (text === selector) found.push(match[2] ?? "");
+  }
+  expect(found.length, `no rule for "${selector}"`).toBeGreaterThan(0);
+  return found.join(" ").replace(/\s*:\s*/g, ": ");
+}
+
+const ROW = ".inline-input.line-action";
+const BUTTON = `${ROW} button.line-action-button`;
+const INPUT = `${ROW} input:is(:not([type]), [type="search"], [type="text"])`;
+const forced = [...CSS.matchAll(/@media \(forced-colors: active\) \{(.*?)\} \}/g)]
+  .map((match) => match[1] ?? "")
+  .join(" ");
+
+describe("the icon button on a line (decision D75)", () => {
+  it("is a transparent 44 x 44 px button without border, radius or fill, in the accent colour", () => {
+    const body = rule(BUTTON);
+    expect(body).toMatch(/width: var\(--target\)/);
+    expect(body).toMatch(/min-width: var\(--target\)/);
+    expect(body).toMatch(/min-height: var\(--target\)/);
+    expect(body).toMatch(/border: 0(?![.\d])/);
+    expect(body).toMatch(/border-radius: 0(?![.\d])/);
+    expect(body).toMatch(/background: transparent/);
+    expect(body).toMatch(/color: var\(--accent\)/);
+  });
+
+  it("has no hover fill, keeps a focus state and the global focus ring", () => {
+    expect(rule(`${BUTTON}:hover`)).toMatch(/background: transparent/);
+    expect(rule(`${BUTTON}:hover`)).not.toMatch(/color-mix/);
+    expect(CSS).toMatch(/:focus-visible \{[^}]*outline/);
+    expect(rule(`${BUTTON}:focus-visible`)).toMatch(/outline-offset/);
+  });
+
+  it("lets the row draw one 1 px underline, thickened to 2 px accent on focus-within", () => {
+    const row = rule(ROW);
+    expect(row).toMatch(/border-bottom: 1px solid var\(--field-border\)/);
+    expect(row).toMatch(/flex-wrap: nowrap/);
+    const focus = rule(`${ROW}:focus-within`);
+    expect(focus).toMatch(/border-bottom-width: 2px/);
+    expect(focus).toMatch(/border-bottom-color: var\(--accent\)/);
+  });
+
+  it("takes the underline off the input inside the row, also on focus", () => {
+    const body = rule(`${INPUT}, ${INPUT}:focus`);
+    expect(body).toMatch(/border-bottom-width: 0(?![.\d])/);
+  });
+
+  it("shows the Required hint, a sibling of the row, while the control inside is empty (D77)", () => {
+    expect(CSS).toContain(
+      ":where(.inline-input.line-action:has(:required:placeholder-shown:not(:disabled, [readonly])))",
+    );
+  });
+
+  it("is scoped to the row with the modifier, so other .inline-input rows are untouched", () => {
+    expect(rule(".inline-input")).not.toMatch(/border/);
+    expect(rule(".inline-input input")).not.toMatch(/border/);
+  });
+
+  it("draws the icon with the .icon mask from public/icons/search.svg in currentColor", () => {
+    expect(rule(".icon-search")).toContain('--icon: url("icons/search.svg")');
+    const svg = readFileSync(join(PUBLIC, "icons/search.svg"), "utf8");
+    expect(svg).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 24 24"/);
+    expect(svg.trimEnd()).toMatch(/<\/svg>$/);
+    expect(svg).toMatch(/<circle /);
+    expect(svg).toMatch(/<path /);
+    expect(Buffer.byteLength(svg)).toBeLessThan(600);
+  });
+
+  it("falls back to system colours in forced-colors mode", () => {
+    expect(forced).toContain(`${ROW} {`);
+    expect(forced).toMatch(/border-bottom-color: CanvasText/);
+    expect(forced).toContain(`${BUTTON} {`);
+    expect(forced).toMatch(/color: ButtonText/);
+  });
+});

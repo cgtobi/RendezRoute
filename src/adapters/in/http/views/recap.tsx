@@ -7,6 +7,7 @@ import type { Translate } from "../../../i18n/i18n.ts";
 import type { MessageKey } from "../../../i18n/messages/en.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, formatDay, formatTime } from "./format.ts";
+import { describedBy } from "./line-field.tsx";
 import { Linkified } from "./linkify.tsx";
 import type { Placement } from "./placement.ts";
 
@@ -57,13 +58,24 @@ export function RecapWindowSelect({
   t,
   id,
   selected,
+  invalid = false,
+  hintId,
 }: {
   t: Translate;
   id: string;
   selected: string;
+  /** The field shows an error under it with the id `<id>-error`. */
+  invalid?: boolean;
+  /** The id of a hint under the field, named together with the error. */
+  hintId?: string;
 }) {
   return (
-    <select id={id} name="recapWindow">
+    <select
+      id={id}
+      name="recapWindow"
+      aria-invalid={invalid ? "true" : undefined}
+      aria-describedby={describedBy(hintId, invalid ? `${id}-error` : undefined)}
+    >
       {RECAP_WINDOWS.map((window) => (
         <option value={window} selected={selected === window}>
           {t(WINDOW_LABELS[window])}

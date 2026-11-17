@@ -10,6 +10,7 @@ export const de: Messages = {
   "layout.imprint": "Impressum",
   "layout.language": "Sprache",
   "layout.change": "Ändern",
+  "layout.done": "Fertig",
   "form.where": "Wo",
   "form.hostingAs": "Du organisierst als {name}",
   "fold.exact": "Genauer Treffpunkt",
@@ -89,7 +90,7 @@ export const de: Messages = {
   "privacy.tilesServer":
     "Für Vorschaubilder von Links lädt dieser Server außerdem Kartenbilder des ungefähren Treffgebiets; dabei wird nichts über dich übermittelt.",
   "privacy.geocoder":
-    "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Wenn du einen Ort auf der Karte wählst und das Treffgebiet leer ist oder noch den früheren Vorschlag enthält, wird der gerundete Punkt dieses Ortes (etwa 1 km) auf dem gleichen Weg an den Dienst geschickt, um einen Namen vorzuschlagen; nie der genaue Start. Suchanfragen und Ergebnisse bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit wiederholte Suchen keine neue Anfrage brauchen.",
+    "Die Ortssuche läuft über diesen Server zu {host}. Dieser Dienst sieht, wonach du suchst, aber nicht, wer du bist. Wenn du einen Ort auf der Karte wählst und das Gebiet leer ist oder noch den früheren Vorschlag enthält, wird der gerundete Punkt dieses Ortes (etwa 1 km) auf dem gleichen Weg an den Dienst geschickt, um einen Namen vorzuschlagen. Wenn du auf der Karte einen genauen Treffpunkt setzt und dessen Beschreibung leer ist oder noch den früheren Vorschlag enthält, wird dieser genaue Punkt ebenfalls über diesen Server an den Dienst geschickt, um eine Beschreibung wie eine Straße oder einen benannten Ort vorzuschlagen; der Dienst erfährt nicht, wer du bist. Suchanfragen und die Gebietsnamen bleiben bis zu {days} Tage im Arbeitsspeicher dieses Servers, damit Wiederholungen keine neue Anfrage brauchen; Anfragen mit genauen Punkten werden nicht im Arbeitsspeicher dieses Servers gehalten.",
   "privacy.push":
     "Wenn du Benachrichtigungen einschaltest, stellt der Push-Dienst deines Browsers (von Google, Mozilla, Apple oder Microsoft) sie zu. Die Nachrichten sind verschlüsselt; der Dienst sieht nur, dass eine verschickt wurde. Dafür speichert dieser Server die Push-Adresse und die Schlüssel deines Browsers verschlüsselt und löscht sie, wenn du Benachrichtigungen ausschaltest, oder mit dem Treffen oder deiner Antwort.",
   "privacy.weather":
@@ -156,24 +157,24 @@ export const de: Messages = {
   "form.date": "Datum",
   "form.time": "Startzeit",
   "form.timeZone": "Zeitzone",
-  "form.areaLabel": "Treffgebiet",
-  "form.areaLabelHint": "Für alle sichtbar, zum Beispiel „Englischer Garten, Nordende“.",
+  "form.timeZoneLine": "Zeitzone:",
+  "form.areaLabel": "Gebiet",
+  "form.areaLabelHint": "Für alle sichtbar.",
   "form.areaLabelSuggested": "Vorschlag von der Karte. Ändere ihn, wenn du magst.",
   "form.publicHint":
     "Gib hier nicht den genauen Treffpunkt an, dieses Feld ist öffentlich. Dafür gibt es „Genauer Treffpunkt“.",
-  "form.exactStartHint": "Nur du und alle, die zusagen, sehen ihn.",
   "form.openModeWarning":
     "Alle mit dem Link, die zusagen, sehen den genauen Treffpunkt. Wähle „Nur, wen ich annehme“, um selbst zu entscheiden, wer ihn sieht.",
-  "form.exactDescription": "Wo genau?",
+  "form.exactDescription": "Beschreibung des Treffpunkts",
+  "form.exactDescriptionSuggested": "Vorschlag vom Kartenpunkt. Ändere ihn, wenn du magst.",
   "form.latitude": "Breitengrad",
   "form.longitude": "Längengrad",
   "form.areaCoordinates": "Kartenpunkt des Treffgebiets (optional)",
   "form.areaCoordinatesHint":
     "Für alle sichtbar, auf etwa 1 km gerundet. Nicht nötig, wenn der genaue Treffpunkt Koordinaten hat.",
-  "map.search": "Ort suchen",
   "map.searchButton": "Suchen",
   "map.searchHint":
-    "Suchergebnisse legen das Treffgebiet fest; schalte die Karte auf den genauen Start um und tippe auf die Karte. Suchanfragen laufen über diese Website, der Suchdienst erfährt also nicht, wer du bist.",
+    "Drücke Enter oder Suchen, um einen Ort zu finden; der gewählte legt das Gebiet fest.",
   "map.searchUnavailable": "Die Ortssuche ist gerade nicht verfügbar.",
   "map.noResults": "Keine Orte gefunden.",
   "map.findMe": "Meinen Standort finden",
@@ -315,6 +316,7 @@ export const de: Messages = {
   "field.link_invalid": "Gib eine Webadresse ein, die mit https:// beginnt.",
   "field.link_too_long": "Dieser Link ist zu lang.",
   "field.required": "Bitte fülle dieses Feld aus.",
+  "field.requiredHint": "Pflichtfeld",
   "field.too_long": "Das ist zu lang.",
   "field.invalid_characters": "Das enthält nicht erlaubte Zeichen.",
   "field.choice_invalid": "Bitte wähle eine der Optionen.",
@@ -381,7 +383,7 @@ export const de: Messages = {
   "recapNote.link": "Link: {link}",
   "recapNote.plan": "Seite des Treffens: {link}",
   "recapNote.copies": "Dein Server kann Kopien dieser Nachricht behalten.",
-  "plan.where": "Treffgebiet",
+  "plan.where": "Gebiet",
   "plan.distance": "Distanz",
   "plan.elevation": "Höhenmeter",
   "plan.pace": "Pace",
@@ -1179,4 +1181,17 @@ export const de: Messages = {
     "Hier ist der neue Einladungslink. Kopiere ihn jetzt: Er wird nur dieses eine Mal angezeigt.",
   "admin.inviteWarning":
     "Alle mit diesem Link können hier Treffen erstellen, bis er abläuft, aufgebraucht ist oder du ihn widerrufst.",
+  // Beispiele im leeren Feld (Entscheidung D74), zur Prüfung durch Muttersprachler.
+  "placeholder.areaLabel": "Englischer Garten, Nordende",
+  "placeholder.areaSearch": "Ort suchen oder Namen eingeben",
+  "placeholder.place": "z. B. Englischer Garten",
+  "placeholder.findPlan": "https://…/p/…",
+  "placeholder.distance": "10,5",
+  "placeholder.elevation": "250",
+  "placeholder.exactDescription": "Bank am Nordtor",
+  "placeholder.note": "z. B. lockeres Tempo, danach Kaffee",
+  "placeholder.displayName": "z. B. Sam",
+  "placeholder.inviteMaxUses": "10",
+  "placeholder.distanceFrom": "5",
+  "placeholder.distanceTo": "20",
 };

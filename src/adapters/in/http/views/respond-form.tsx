@@ -5,6 +5,7 @@ import { MAX_REQUEST_NOTE_LENGTH } from "../../../../domain/requests.ts";
 import { MAX_DISPLAY_NAME_LENGTH } from "../../../../domain/responding.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage } from "./format.ts";
+import { describedBy, RequiredHint } from "./line-field.tsx";
 
 export interface RespondFormState {
   csrfToken: string;
@@ -42,12 +43,20 @@ export function RespondForm({
           name="displayName"
           value={state.displayName}
           required
+          placeholder=" "
           maxlength={MAX_DISPLAY_NAME_LENGTH}
           autocomplete="nickname"
+          aria-required="true"
           aria-invalid={invalid ? "true" : undefined}
-          aria-describedby={invalid ? "field-displayName-error" : undefined}
+          aria-describedby={describedBy(
+            "field-displayName-hint",
+            invalid ? "field-displayName-error" : undefined,
+          )}
         />
-        <p class="hint">{t("respond.nameHint")}</p>
+        <RequiredHint t={t} controlId="field-displayName" invalid={invalid} />
+        <p class="hint" id="field-displayName-hint">
+          {t("respond.nameHint")}
+        </p>
         {state.errorCode !== undefined && (
           <p class="error" id="field-displayName-error">
             {fieldErrorMessage(state.errorCode, t)}

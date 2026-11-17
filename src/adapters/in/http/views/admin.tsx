@@ -16,6 +16,7 @@ import type { Translate } from "../../../i18n/i18n.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { BackLink } from "./back-link.tsx";
 import { fieldErrorMessage, formatDate, formatDay, formatTime } from "./format.ts";
+import { describedBy, RequiredHint } from "./line-field.tsx";
 import { Item } from "./item.tsx";
 import { WhenWhere } from "./when-where.tsx";
 
@@ -45,9 +46,15 @@ export function AdminLogin({
             name="token"
             type="password"
             required
+            placeholder=" "
             autocomplete="current-password"
+            aria-required="true"
+            aria-describedby="field-token-hint"
           />
-          <p class="hint">{t("admin.tokenHint")}</p>
+          <RequiredHint t={t} controlId="field-token" />
+          <p class="hint" id="field-token-hint">
+            {t("admin.tokenHint")}
+          </p>
         </div>
         <button type="submit">{t("admin.login")}</button>
       </form>
@@ -103,9 +110,27 @@ export function AdminHome({
         {csrf}
         <div class={notFound === "plan" ? "field field-invalid" : "field"}>
           <label for="field-plan">{t("admin.findPlan")}</label>
-          <input id="field-plan" name="plan" required />
-          <p class="hint">{t("admin.findPlanHint")}</p>
-          {notFound === "plan" && <p class="error">{t("admin.planNotFound")}</p>}
+          <input
+            id="field-plan"
+            name="plan"
+            required
+            placeholder={t("placeholder.findPlan")}
+            aria-required="true"
+            aria-invalid={notFound === "plan" ? "true" : undefined}
+            aria-describedby={describedBy(
+              "field-plan-hint",
+              notFound === "plan" ? "field-plan-error" : undefined,
+            )}
+          />
+          <RequiredHint t={t} controlId="field-plan" invalid={notFound === "plan"} />
+          <p class="hint" id="field-plan-hint">
+            {t("admin.findPlanHint")}
+          </p>
+          {notFound === "plan" && (
+            <p class="error" id="field-plan-error">
+              {t("admin.planNotFound")}
+            </p>
+          )}
         </div>
         <button type="submit">{t("admin.findPlanSubmit")}</button>
       </form>
@@ -272,7 +297,14 @@ function InvitesSection(
           name={name}
           type={input.type}
           value={props.values[name]}
-          {...(input.type === "number" ? { min: 1, max: INVITE_LIMITS.maxUses, step: 1 } : {})}
+          {...(input.type === "number"
+            ? {
+                min: 1,
+                max: INVITE_LIMITS.maxUses,
+                step: 1,
+                placeholder: t("placeholder.inviteMaxUses"),
+              }
+            : {})}
           aria-invalid={error === undefined ? undefined : "true"}
           aria-describedby={`field-${name}-${error === undefined ? "hint" : "error"}`}
         />

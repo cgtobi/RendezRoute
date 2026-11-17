@@ -13,7 +13,7 @@ async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: str
 
   if (withMaps) {
     // Place search sets the public area; tapping the map sets the exact start.
-    await host.getByLabel("Find a place").fill("Flaucher");
+    await host.locator("#field-areaLabel").fill("Flaucher");
     await host.getByRole("button", { name: "Search" }).click();
     await host.getByRole("button", { name: /Flaucher/ }).click();
     await expect(host.locator("#field-areaLabel")).toHaveValue(/Flaucher/);
@@ -36,7 +36,7 @@ async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: str
     await host.locator("#field-exactLng").fill("11.55820");
   }
   await openFold(host, "Exact meeting point");
-  await host.getByLabel("Where exactly?").fill("North gate, by the bike racks");
+  await host.getByLabel("Description of the meeting point").fill("North gate, by the bike racks");
   await host.getByRole("button", { name: "Create plan" }).click();
 
   await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();

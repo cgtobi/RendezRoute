@@ -217,6 +217,145 @@ describe("Nominatim reverse lookup (decision D70)", () => {
   });
 });
 
+describe("Nominatim description of the exact point (decision D77)", () => {
+  const body = (extra: Record<string, unknown>) =>
+    JSON.stringify({ display_name: "12, Some Road, Sendling, München, Deutschland", ...extra });
+
+  async function describeAt(text: string, language = "en") {
+    const http = new FakeOutboundHttp().respond("https://geo.example.org/nominatim/reverse", {
+      body: text,
+    });
+    const geocoder = createNominatimGeocoder({
+      http,
+      baseUrl: BASE,
+      throttle: async (run) => run(),
+    });
+    return {
+      http,
+      label: await geocoder.describe({ lat: 48.11346, lng: 11.56123 }, { language }),
+    };
+  }
+
+  it("asks at street level with the exact point and sends nothing else", async () => {
+    const { http } = await describeAt(body({ address: { road: "Some Road" } }));
+    const url = http.requests[0];
+    expect(url?.pathname).toBe("/nominatim/reverse");
+    expect(Object.fromEntries(url?.searchParams ?? [])).toEqual({
+      lat: "48.11346",
+      lon: "11.56123",
+      format: "jsonv2",
+      zoom: "18",
+      addressdetails: "1",
+      "accept-language": "en",
+    });
+  });
+
+  it("names a place and the road it is on, never the house number or the full address", async () => {
+    const { label } = await describeAt(
+      body({
+        name: "Flaucher car park",
+        address: { road: "Isarauen", house_number: "12", suburb: "Sendling", postcode: "81369" },
+      }),
+    );
+    expect(label).toBe("Flaucher car park, Isarauen");
+    expect(label).not.toMatch(/12|Sendling|81369|Deutschland/);
+  });
+
+  it("uses the road alone, a way type other than road, or the name alone", async () => {
+    expect(
+      (await describeAt(body({ address: { road: "Some Road", house_number: "3" } }))).label,
+    ).toBe("Some Road");
+    expect((await describeAt(body({ address: { footway: "Isarweg" } }))).label).toBe("Isarweg");
+    expect((await describeAt(body({ name: "Kiosk", address: { city: "München" } }))).label).toBe(
+      "Kiosk",
+    );
+    expect(
+      (await describeAt(body({ name: "Some Road", address: { road: "Some Road" } }))).label,
+    ).toBe("Some Road");
+  });
+
+  it("answers undefined for nothing found, or only a house number or locality", async () => {
+    expect((await describeAt(body({ error: "Unable to geocode" }))).label).toBeUndefined();
+    expect(
+      (await describeAt(body({ address: { house_number: "3", city: "München" } }))).label,
+    ).toBeUndefined();
+    expect((await describeAt(body({ name: "  " }))).label).toBeUndefined();
+  });
+
+  it("cleans upstream text and cuts it to the description field's length", async () => {
+    const dirty = await describeAt(body({ address: { road: " Isar\nweg\u202E " } }));
+    expect(dirty.label).toBe("Isar weg");
+    const long = await describeAt(body({ address: { road: "x".repeat(300) } }));
+    expect(Array.from(long.label ?? "")).toHaveLength(200);
+  });
+
+  it("fails on errors and unexpected responses, so nothing is filled in", async () => {
+    for (const http of [
+      new FakeOutboundHttp().fail("https://geo.example.org/", new Error("timed out")),
+      new FakeOutboundHttp().respond("https://geo.example.org/", { status: 503, body: "busy" }),
+      new FakeOutboundHttp().respond("https://geo.example.org/", { body: "<html>" }),
+      new FakeOutboundHttp().respond("https://geo.example.org/", { body: "[]" }),
+    ]) {
+      const geocoder = createNominatimGeocoder({
+        http,
+        baseUrl: BASE,
+        throttle: async (run) => run(),
+      });
+      await expect(
+        geocoder.describe({ lat: 48.11, lng: 11.56 }, { language: "en" }),
+      ).rejects.toBeInstanceOf(Error);
+    }
+  });
+
+  it("goes through the same throttle as the other lookups", async () => {
+    const http = new FakeOutboundHttp().respond("https://geo.example.org/", { body: "{}" });
+    let throttled = 0;
+    const geocoder = createNominatimGeocoder({
+      http,
+      baseUrl: BASE,
+      throttle: async (run) => {
+        throttled += 1;
+        return run();
+      },
+    });
+    await geocoder.describe({ lat: 1, lng: 2 }, { language: "en" });
+    expect(throttled).toBe(1);
+  });
+
+  it("is never cached: every lookup of an exact point reaches the service", async () => {
+    const inner = new FakeGeocoder({}, {}, { "48.11346,11.56123": "Flaucher car park" });
+    const cached = createCachedGeocoder(inner, {
+      clock: new FakeClock(),
+      ttlMs: 7 * 24 * 3600 * 1000,
+      maxEntries: 10,
+    });
+    const point = { lat: 48.11346, lng: 11.56123 };
+    expect(await cached.describe(point, { language: "en" })).toBe("Flaucher car park");
+    expect(await cached.describe(point, { language: "en" })).toBe("Flaucher car park");
+    expect(inner.describeCalls).toEqual([
+      { ...point, language: "en" },
+      { ...point, language: "en" },
+    ]);
+    // Nothing of it is shared with the cell's cached name.
+    await cached.reverse({ lat: 48.11, lng: 11.56 }, { language: "en" });
+    await cached.describe(point, { language: "en" });
+    expect(inner.describeCalls).toHaveLength(3);
+  });
+
+  it("does not turn a failure into a kept answer", async () => {
+    const inner = new FakeGeocoder();
+    inner.failing = true;
+    const cached = createCachedGeocoder(inner, {
+      clock: new FakeClock(),
+      ttlMs: 1000,
+      maxEntries: 2,
+    });
+    await expect(cached.describe({ lat: 1, lng: 2 }, { language: "en" })).rejects.toThrow(
+      "unavailable",
+    );
+  });
+});
+
 describe("throttle (spec 3.9: max 1 request per second)", () => {
   beforeEach(() => {
     vi.useFakeTimers();

@@ -2,6 +2,7 @@
 // the mode switch; a control finds the device's place (view only).
 import L from "leaflet";
 import { publicCircleCenter, readCoordinate, roundCoordinate, zoomForAccuracy } from "./geo.ts";
+import { createDescriptionSuggester } from "./description-suggestion.ts";
 import { createLabelSuggester } from "./label-suggestion.ts";
 import { browserZone, openingView, operatorView } from "./map-view.ts";
 import { PLACE_EVENT, type PickedPlace, setField } from "./places.ts";
@@ -145,6 +146,8 @@ export function initPickMaps(): void {
 
     // Undefined without the endpoint attribute (no geocoder): then a tap never looks anything up.
     const suggestLabel = createLabelSuggester(picker, form);
+    // The same for the exact point's description (decision D77).
+    const suggestDescription = createDescriptionSuggester(picker, form);
 
     const set = (mode: Mode, at: L.LatLng) => {
       // The public area follows an exact point: a tap in area mode is ignored (the caption says why).
@@ -164,6 +167,11 @@ export function initPickMaps(): void {
       // snapped, is the only thing a lookup may send (decision D70).
       const center = publicCircleCenter(point("exact"), point("area"));
       if (center !== undefined) suggestLabel?.(center);
+      // The description lookup sends the exact point itself, as set by this tap (decision D77).
+      if (mode === "exact") {
+        const exact = point("exact");
+        if (exact !== undefined) suggestDescription?.suggest({ lat: exact.lat, lng: exact.lng });
+      }
     };
 
     map.on("click", (event: L.LeafletMouseEvent) => set(currentMode(), event.latlng));
@@ -175,11 +183,17 @@ export function initPickMaps(): void {
     form.addEventListener("input", sync);
     picker.addEventListener("change", updateCaption);
     form.querySelector("[data-exact-remove]")?.addEventListener("click", () => {
+      // A lookup still on its way must not fill the description for a point that is gone.
+      suggestDescription?.cancel();
+      // Our own suggestion described the point that is gone; the host's text stays.
+      suggestDescription?.clearSuggestion();
+      // The public area point can survive this Remove: a pending area-name lookup still runs.
       for (const name of FIELDS.exact) setField(form, name, "");
       // The button disappears with the point: keep focus on the line that replaces it.
       readoutNone?.focus();
     });
     form.querySelector("[data-area-remove]")?.addEventListener("click", () => {
+      suggestLabel?.cancel();
       for (const name of FIELDS.area) setField(form, name, "");
       areaNone?.focus();
     });

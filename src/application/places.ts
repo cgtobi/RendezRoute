@@ -46,3 +46,27 @@ export async function suggestPlaceName(
     return { kind: "unavailable" };
   }
 }
+
+/**
+ * A suggested description of the exact meeting point (decision D77). Unlike the area name, this
+ * sends the EXACT point to the geocoder (never cached, never logged); the caller says so in the
+ * privacy notice. An empty or failed lookup leaves the field alone.
+ */
+export async function describeExactPoint(
+  deps: { geocoder: Geocoder },
+  request: { lat: number; lng: number; language: string },
+): Promise<
+  | { kind: "found"; label: string }
+  | { kind: "none" }
+  | { kind: "unavailable" }
+  | { kind: "invalid" }
+> {
+  const valid = validateGeoPoint({ lat: request.lat, lng: request.lng });
+  if (!valid.ok) return { kind: "invalid" };
+  try {
+    const label = await deps.geocoder.describe(valid.value, { language: request.language });
+    return label === undefined ? { kind: "none" } : { kind: "found", label };
+  } catch {
+    return { kind: "unavailable" };
+  }
+}

@@ -12,6 +12,7 @@ export const fr: Messages = {
   "layout.imprint": "Mentions légales",
   "layout.language": "Langue",
   "layout.change": "Changer",
+  "layout.done": "Terminé",
   "form.where": "Où",
   "form.hostingAs": "Vous organisez en tant que {name}",
   "fold.exact": "Point de départ exact",
@@ -91,7 +92,7 @@ export const fr: Messages = {
   "privacy.tilesServer":
     "Pour les images d’aperçu des liens, ce serveur charge aussi des images de carte de la zone de rendez-vous approximative, sans rien transmettre vous concernant.",
   "privacy.geocoder":
-    "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Lorsque vous choisissez un lieu sur la carte et que la zone de rendez-vous est vide ou contient encore la suggestion précédente, le point arrondi de ce lieu (environ 1 km) est envoyé au service de la même manière, pour suggérer un nom ; jamais le départ exact. Les recherches et leurs résultats restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes.",
+    "La recherche de lieux passe par ce serveur vers {host}. Ce service voit ce que vous cherchez, mais pas qui vous êtes. Lorsque vous choisissez un lieu sur la carte et que la zone est vide ou contient encore la suggestion précédente, le point arrondi de ce lieu (environ 1 km) est envoyé au service de la même manière, pour suggérer un nom. Lorsque vous placez un point de rendez-vous exact sur la carte et que sa description est vide ou contient encore la suggestion précédente, ce point exact est lui aussi envoyé au service par ce serveur, pour suggérer une description comme une rue ou un lieu nommé ; le service ne sait pas qui vous êtes. Les recherches et les noms de zone restent jusqu’à {days} jours dans la mémoire de ce serveur, pour éviter de répéter les requêtes ; les requêtes portant sur des points exacts ne sont pas conservées dans la mémoire de ce serveur.",
   "privacy.push":
     "Si vous activez les notifications, le service push de votre navigateur (de Google, Mozilla, Apple ou Microsoft) les distribue. Les messages sont chiffrés ; le service voit seulement qu’un message a été envoyé. Pour les envoyer, ce serveur enregistre l’adresse push et les clés de votre navigateur, chiffrées, et les supprime quand vous désactivez les notifications, ou avec la sortie ou votre réponse.",
   "privacy.weather":
@@ -158,25 +159,25 @@ export const fr: Messages = {
   "form.date": "Date",
   "form.time": "Heure de départ",
   "form.timeZone": "Fuseau horaire",
-  "form.areaLabel": "Zone de rendez-vous",
-  "form.areaLabelHint":
-    "Visible par tout le monde, par exemple « Parc de la Tête d’Or, entrée nord ».",
+  "form.timeZoneLine": "Fuseau horaire :",
+  "form.areaLabel": "Zone",
+  "form.areaLabelHint": "Visible par tout le monde.",
   "form.areaLabelSuggested": "Suggestion issue de la carte. Modifiez-la si vous le souhaitez.",
   "form.publicHint":
     "N’indiquez pas ici le point de rendez-vous exact, ce champ est public. Utilisez plutôt « Point de départ exact ».",
-  "form.exactStartHint": "Visible seulement par vous et les personnes inscrites.",
   "form.openModeWarning":
     "Toute personne ayant le lien et qui s’inscrit verra le point de départ exact. Choisissez « Seulement les personnes que j’accepte » pour décider qui le voit.",
-  "form.exactDescription": "Où exactement ?",
+  "form.exactDescription": "Description du point de rendez-vous",
+  "form.exactDescriptionSuggested":
+    "Suggestion issue du point de la carte. Modifiez-la si vous le souhaitez.",
   "form.latitude": "Latitude",
   "form.longitude": "Longitude",
   "form.areaCoordinates": "Point de la zone sur la carte (facultatif)",
   "form.areaCoordinatesHint":
     "Visible par tout le monde, arrondi à environ 1 km. Inutile si le point de départ exact a des coordonnées.",
-  "map.search": "Chercher un lieu",
   "map.searchButton": "Chercher",
   "map.searchHint":
-    "Les résultats de recherche définissent la zone de rendez-vous ; passez la carte sur le départ exact et touchez-la. Les recherches passent par ce site, le service de recherche ne sait donc pas qui vous êtes.",
+    "Appuyez sur Entrée ou sur Chercher pour trouver un lieu ; celui que vous choisissez définit la zone.",
   "map.searchUnavailable": "La recherche de lieux n’est pas disponible pour le moment.",
   "map.noResults": "Aucun lieu trouvé.",
   "map.findMe": "Trouver ma position",
@@ -315,6 +316,7 @@ export const fr: Messages = {
   "field.link_invalid": "Saisissez une adresse web complète, commençant par https.",
   "field.link_too_long": "Ce lien est trop long.",
   "field.required": "Veuillez remplir ce champ.",
+  "field.requiredHint": "Obligatoire",
   "field.too_long": "C’est trop long.",
   "field.invalid_characters": "Ce champ contient des caractères non autorisés.",
   "field.choice_invalid": "Veuillez choisir l’une des options.",
@@ -380,7 +382,7 @@ export const fr: Messages = {
   "recapNote.link": "Lien : {link}",
   "recapNote.plan": "Page de la sortie : {link}",
   "recapNote.copies": "Votre serveur peut conserver des copies de ce message.",
-  "plan.where": "Zone de rendez-vous",
+  "plan.where": "Zone",
   "plan.distance": "Distance",
   "plan.elevation": "Dénivelé positif",
   "plan.pace": "Allure",
@@ -1181,4 +1183,17 @@ export const fr: Messages = {
     "Voici le nouveau lien d’invitation. Copiez-le maintenant : il n’est affiché que cette fois.",
   "admin.inviteWarning":
     "Toute personne disposant de ce lien peut créer des sorties ici jusqu’à son expiration, son épuisement ou sa révocation.",
+  // Exemples dans le champ vide (décision D74), à relire par des francophones.
+  "placeholder.areaLabel": "Parc de la Tête d’Or, entrée nord",
+  "placeholder.areaSearch": "Chercher un lieu ou saisir un nom",
+  "placeholder.place": "p. ex. Parc de la Tête d’Or",
+  "placeholder.findPlan": "https://…/p/…",
+  "placeholder.distance": "10,5",
+  "placeholder.elevation": "250",
+  "placeholder.exactDescription": "banc près de la porte nord",
+  "placeholder.note": "p. ex. allure tranquille, café ensuite",
+  "placeholder.displayName": "p. ex. Sam",
+  "placeholder.inviteMaxUses": "10",
+  "placeholder.distanceFrom": "5",
+  "placeholder.distanceTo": "20",
 };

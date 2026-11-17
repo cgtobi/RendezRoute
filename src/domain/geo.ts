@@ -8,7 +8,8 @@ export interface GeoPoint {
 
 /** 0.01° ≈ 1 km: the public point never reveals more than the grid cell. */
 const PUBLIC_GRID_PER_DEGREE = 100;
-const MAX_DESCRIPTION_LENGTH = 200;
+/** The longest exact-start description (the form's maxlength and the suggestion's cut). */
+export const MAX_DESCRIPTION_LENGTH = 200;
 
 export function validateGeoPoint(point: GeoPoint): Result<GeoPoint, "coordinates_invalid"> {
   const valid =

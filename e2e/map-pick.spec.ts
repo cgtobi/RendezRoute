@@ -46,7 +46,7 @@ test("The switch starts on the public area; a tap sets the area, then the exact 
   await expect(exactFold(page)).not.toHaveAttribute("open", "");
   // The area point is set on the map, so its coordinate fields stay out of sight.
   await expect(f.areaLat).toBeHidden();
-  await expect(areaReadout(page)).toContainText("Public area set on the map · Remove");
+  await expect(areaReadout(page)).toContainText("Public area set on the map");
 
   // The exact start: its own mode, its own caption, then the fold with the readout.
   await page.locator(".mode-switch label", { hasText: "Exact start" }).click();
@@ -58,7 +58,7 @@ test("The switch starts on the public area; a tap sets the area, then the exact 
   await expect(f.exactLng).not.toHaveValue("");
   await expect(exactFold(page)).toHaveAttribute("open", "");
   const readout = exactFold(page).locator("[data-exact-readout]");
-  await expect(readout).toContainText("Point set on the map · Remove");
+  await expect(readout).toContainText("Point set on the map");
   await expect(f.exactLat).toBeHidden();
   await expect(f.exactLng).toBeHidden();
   await expect(f.exactLat).toBeAttached();
@@ -82,7 +82,7 @@ test("The switch starts on the public area; a tap sets the area, then the exact 
   await expect(readout.getByRole("button", { name: "Remove" })).toBeHidden();
   // The area point set earlier stays, and its line is back with it.
   await expect(f.areaLat).toHaveValue(areaBefore[0] ?? "");
-  await expect(areaReadout(page)).toContainText("Public area set on the map · Remove");
+  await expect(areaReadout(page)).toContainText("Public area set on the map");
 
   // Without the exact point a tap in area mode sets the area again.
   await map(page).click({ position: { x: 200, y: 120 } });
@@ -106,7 +106,7 @@ test("The public area line: a tap sets it, Remove clears both fields and focuses
   await expect(readout.getByRole("button", { name: "Remove" })).toBeHidden();
 
   await map(page).click({ position: { x: 250, y: 200 } });
-  await expect(readout).toContainText("Public area set on the map · Remove");
+  await expect(readout).toContainText("Public area set on the map");
   await expect(f.areaLat).not.toHaveValue("");
   await expect(f.areaLng).not.toHaveValue("");
 
@@ -118,7 +118,7 @@ test("The public area line: a tap sets it, Remove clears both fields and focuses
 
   await map(page).click({ position: { x: 250, y: 200 } });
   await expect(f.areaLat).not.toHaveValue("");
-  await expect(readout).toContainText("Public area set on the map · Remove");
+  await expect(readout).toContainText("Public area set on the map");
 });
 
 test("Find my location moves the view only: no field changes, no point is set", async ({

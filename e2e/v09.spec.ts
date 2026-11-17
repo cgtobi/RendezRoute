@@ -110,7 +110,7 @@ test("Federation: follow, a plan for followers, a remote join, a private exact s
   await host.getByLabel("Start time").fill("08:30");
   await host.locator("#field-areaLabel").fill("Flaucher");
   await openFold(host, "Exact meeting point");
-  await host.getByLabel("Where exactly?").fill(START);
+  await host.getByLabel("Description of the meeting point").fill(START);
   await openFold(host, "Route, pace and note");
   await host.getByLabel("Route (GPX file, optional)").setInputFiles({
     name: "run.gpx",

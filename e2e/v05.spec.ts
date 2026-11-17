@@ -12,7 +12,7 @@ async function createPlan(host: Page, title: string, approval = false): Promise<
   await host.getByLabel("Start time").fill("08:30");
   await host.locator("#field-areaLabel").fill("Flaucher, north end");
   await openFold(host, "Exact meeting point");
-  await host.getByLabel("Where exactly?").fill("North gate, by the bike racks");
+  await host.getByLabel("Description of the meeting point").fill("North gate, by the bike racks");
   if (approval) {
     await openFold(host, "Who can join and find it");
     await host.getByLabel("Only people I accept").check();

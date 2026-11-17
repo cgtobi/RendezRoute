@@ -27,6 +27,98 @@ describe("form map and place search (spec 3.9, decision D12)", () => {
     expect(html).toContain('<link rel="stylesheet" href="/static/build/map.css"/>');
   });
 
+  it("merges the place search into the area field: one input, no separate search field (D77)", async () => {
+    const html = await page();
+    expect(html).not.toContain('id="place-search"');
+    const box =
+      /<div class="place-search"[\s\S]*?<ul class="place-results"><\/ul>/.exec(html)?.[0] ?? "";
+    expect(box).toMatch(/<input[^>]*id="field-areaLabel"[^>]*name="areaLabel"/);
+    expect(box).toContain('autocomplete="off"');
+    expect(box).toContain('aria-required="true"');
+    expect(box).toContain('class="required-hint"');
+    expect(box).toContain('data-placeholder="Search or type a name"');
+    expect(box).toMatch(/<p class="hint" data-status="" role="status"><\/p>/);
+    expect(html).toContain('<label for="field-areaLabel">Area</label>');
+    // The magnifier and its hint stay hidden until the script runs: without it the area is a
+    // plain required text field.
+    expect(box).toMatch(/<button type="button" class="line-action-button" hidden=""/);
+    expect(box).toMatch(/<p class="hint" data-search-hint="" hidden="">/);
+    const german = await (
+      await (await createTestApp()).app.request("/new", { headers: { "accept-language": "de" } })
+    ).text();
+    expect(german).toContain('data-placeholder="Ort suchen oder Namen eingeben"');
+    expect(german).toContain('<label for="field-areaLabel">Gebiet</label>');
+  });
+
+  it("makes the search button an icon on the area field's line with a hidden label (D75, D77)", async () => {
+    const { app } = await createTestApp();
+    for (const [language, label] of [
+      ["en", "Search"],
+      ["de", "Suchen"],
+      ["fr", "Chercher"],
+    ] as const) {
+      const html = await (
+        await app.request("/new", { headers: { "accept-language": language } })
+      ).text();
+      const row = html.slice(
+        html.indexOf('<div class="inline-input line-action">'),
+        html.indexOf("data-search-hint"),
+      );
+      expect(row).toContain(
+        `<button type="button" class="line-action-button" hidden=""><span class="icon icon-search" aria-hidden="true"></span><span class="visually-hidden">${label}</span></button>`,
+      );
+      expect(row).toContain('id="field-areaLabel"');
+      expect(row).not.toContain("secondary");
+    }
+  });
+
+  it("keeps the area a plain required text field without the geocoder (D77)", async () => {
+    const html = await page({ GEOCODER_ENABLED: "false" });
+    expect(html).toMatch(/<input[^>]*id="field-areaLabel"[^>]*required/);
+    expect(html).not.toContain("line-action");
+    expect(html).not.toContain("data-describe-endpoint");
+    expect(html).not.toContain("data-description-suggested");
+    expect(html).not.toMatch(/<input[^>]*id="field-areaLabel"[^>]*autocomplete/);
+  });
+
+  it("offers the description suggestion endpoint and its status line with the geocoder (D77)", async () => {
+    const html = await page();
+    expect(html).toMatch(
+      /<div[^>]*data-map-picker=""[^>]*data-describe-endpoint="\/geocode\/describe"/,
+    );
+    expect(html).toMatch(
+      /<p class="hint" data-description-suggested="" data-text="Suggested from the map point\. Change it if you like\." role="status"><\/p>/,
+    );
+    expect(html).toContain("Description of the meeting point");
+    expect(html).not.toContain("Where exactly?");
+  });
+
+  it("says who sees the exact point only once in the fold (D77)", async () => {
+    const html = await page();
+    expect(html).not.toContain("Only you and people who join can see this.");
+    expect(html).toContain("Optional · only people you accept see it");
+  });
+
+  it("names the area Remove button in the page's language, as hidden text without the secondary look (D76)", async () => {
+    const { app } = await createTestApp();
+    for (const [language, label] of [
+      ["en", "Remove"],
+      ["de", "Entfernen"],
+      ["fr", "Retirer"],
+    ] as const) {
+      const html = await (
+        await app.request("/new", { headers: { "accept-language": language } })
+      ).text();
+      const readout = /<div[^>]*data-area-readout=""[^>]*>[\s\S]*?<\/div>/.exec(html)?.[0] ?? "";
+      expect(readout).toContain(
+        `<button type="button" class="icon-button" data-area-remove=""><span class="icon icon-close" aria-hidden="true"></span><span class="visually-hidden">${label}</span></button>`,
+      );
+      expect(readout).toContain('<span class="readout-text">');
+      expect(readout).not.toContain("secondary");
+      expect(readout).not.toContain("·");
+    }
+  });
+
   it("offers a two-segment mode switch under the map, on the public area by default (D66)", async () => {
     const html = await page();
     expect(html).toMatch(/<input[^>]*type="radio"[^>]*name="mapMode"[^>]*value="area"[^>]*checked/);
@@ -65,7 +157,9 @@ describe("form map and place search (spec 3.9, decision D12)", () => {
     expect(readout).toMatch(/^<div[^>]*hidden/);
     expect(readout).toMatch(/<p[^>]*data-area-set=""[^>]*hidden[^>]*>/);
     expect(readout).toContain("Public area set on the map");
-    expect(readout).toMatch(/<button[^>]*data-area-remove=""[^>]*>Remove<\/button>/);
+    expect(readout).toContain(
+      '<button type="button" class="icon-button" data-area-remove=""><span class="icon icon-close" aria-hidden="true"></span><span class="visually-hidden">Remove</span></button>',
+    );
     expect(readout).toMatch(
       /<p[^>]*data-area-none=""[^>]*tabindex="-1"[^>]*>No public area set on the map<\/p>/,
     );
@@ -331,17 +425,96 @@ describe("POST /geocode/reverse (decision D70)", () => {
   });
 });
 
+describe("POST /geocode/describe (decision D77)", () => {
+  async function describePoint(body: unknown, { env = {}, withCsrf = true, failing = false } = {}) {
+    const test = await createTestApp({
+      env,
+      geocoder: new FakeGeocoder({}, {}, { "48.11346,11.56123": "Flaucher car park, Isarauen" }),
+    });
+    test.geocoder.failing = failing;
+    const client = new TestClient(test.app);
+    const csrf = (await client.hiddenFields("/new"))._csrf ?? "";
+    const response = await client.request("/geocode/describe", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(withCsrf ? { "x-csrf-token": csrf } : {}),
+      },
+      body: typeof body === "string" ? body : JSON.stringify(body),
+    });
+    return { response, geocoder: test.geocoder };
+  }
+
+  it("answers with a description of the exact point, sent unsnapped, and is never cached", async () => {
+    const { response, geocoder } = await describePoint({ lat: 48.11346, lng: 11.56123 });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ label: "Flaucher car park, Isarauen" });
+    expect(geocoder.describeCalls).toEqual([{ lat: 48.11346, lng: 11.56123, language: "en" }]);
+    expect(geocoder.reverseCalls).toHaveLength(0);
+  });
+
+  it("answers null for a point without a description", async () => {
+    const { response } = await describePoint({ lat: 10, lng: 10 });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ label: null });
+  });
+
+  it("requires the CSRF token, with no geocoder call without it", async () => {
+    const { response, geocoder } = await describePoint(
+      { lat: 48.11346, lng: 11.56123 },
+      { withCsrf: false },
+    );
+    expect(response.status).toBe(403);
+    expect(geocoder.describeCalls).toHaveLength(0);
+  });
+
+  it("rejects out-of-range, non-number and missing coordinates", async () => {
+    for (const body of [
+      { lat: 91, lng: 0 },
+      { lat: 0, lng: -181 },
+      { lat: "48.1", lng: "11.5" },
+      { lat: 48.11 },
+      { lat: null, lng: 11.56 },
+      { lat: 48.11346, lng: 11.56123, extra: 1 },
+      "not json",
+      "[]",
+    ]) {
+      const { response, geocoder } = await describePoint(body);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "bad_request" });
+      expect(geocoder.describeCalls).toHaveLength(0);
+    }
+  });
+
+  it("reports an unavailable service and leaves nothing to fill in", async () => {
+    const { response } = await describePoint({ lat: 48.11346, lng: 11.56123 }, { failing: true });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable" });
+  });
+
+  it("does not exist when the geocoder is disabled", async () => {
+    const { response } = await describePoint(
+      { lat: 48.11346, lng: 11.56123 },
+      { env: { GEOCODER_ENABLED: "false" } },
+    );
+    expect(response.status).toBe(404);
+  });
+});
+
 describe("label suggestion markup (decision D70)", () => {
-  it("offers the lookup endpoint and a hidden hint only with maps and the geocoder", async () => {
+  it("offers the lookup endpoint and an empty status line only with maps and the geocoder", async () => {
     const html = await page();
     expect(html).toMatch(
       /<div[^>]*data-map-picker=""[^>]*data-suggest-endpoint="\/geocode\/reverse"/,
     );
     const hint = /<p[^>]*data-label-suggested=""[^>]*>[^<]*<\/p>/.exec(html)?.[0] ?? "";
     expect(hint).toMatch(/^<p[^>]*class="hint"/);
-    expect(hint).toContain("hidden");
+    // Always in the page and empty, so the live region announces the text the script sets.
+    expect(hint).not.toContain("hidden");
     expect(hint).toContain('role="status"');
-    expect(hint).toContain("Suggested from the map. Change it if you like.");
+    expect(hint).toContain('data-text="Suggested from the map. Change it if you like."');
+    expect(hint).toMatch(/><\/p>$/);
     expect(html.indexOf('id="field-areaLabel"')).toBeLessThan(html.indexOf("data-label-suggested"));
   });
 

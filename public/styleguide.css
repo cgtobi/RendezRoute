@@ -1,0 +1,99 @@
+/* Only for the dev-only style guide (decision D72), loaded by /styleguide alone. */
+
+.sg-section {
+  margin: var(--s6) 0;
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line);
+}
+
+.sg-sheet {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.sg-tokens {
+  border-collapse: collapse;
+}
+
+.sg-tokens th,
+.sg-tokens td {
+  padding: var(--s1) var(--s3);
+  text-align: left;
+}
+
+.sg-swatch {
+  display: inline-block;
+  width: var(--target);
+  height: var(--s5);
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-sm);
+}
+
+.sg-swatch-bg {
+  background: var(--bg);
+}
+
+.sg-swatch-fg {
+  background: var(--fg);
+}
+
+.sg-swatch-muted {
+  background: var(--muted);
+}
+
+.sg-swatch-line {
+  background: var(--line);
+}
+
+.sg-swatch-control-line {
+  background: var(--control-line);
+}
+
+.sg-swatch-field-border {
+  background: var(--field-border);
+}
+
+.sg-swatch-surface {
+  background: var(--surface);
+}
+
+.sg-swatch-accent {
+  background: var(--accent);
+}
+
+.sg-swatch-on-accent {
+  background: var(--on-accent);
+}
+
+.sg-swatch-focus {
+  background: var(--focus);
+}
+
+.sg-swatch-danger {
+  background: var(--danger);
+}
+
+.sg-swatch-on-danger {
+  background: var(--on-danger);
+}
+
+.sg-swatch-warning-bg {
+  background: var(--warning-bg);
+}
+
+.sg-swatch-warning-line {
+  background: var(--warning-line);
+}
+
+.sg-swatch-ok {
+  background: var(--ok);
+}
+
+.sg-swatch-ok-bg {
+  background: var(--ok-bg);
+}
+
+.sg-swatch-ok-line {
+  background: var(--ok-line);
+}

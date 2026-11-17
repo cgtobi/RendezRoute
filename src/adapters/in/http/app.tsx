@@ -32,6 +32,7 @@ import { registerProfileRoutes } from "./routes/fediverse-profile.tsx";
 import { registerNearbyRoutes } from "./routes/nearby.tsx";
 import { registerPlanRoutes } from "./routes/plans.tsx";
 import { registerRecapRoutes } from "./routes/recap.tsx";
+import { registerStyleGuideRoutes } from "./routes/styleguide.tsx";
 import { registerTemplateRoutes } from "./routes/templates.tsx";
 import { registerLinkToolRoutes } from "./routes/link-tools.tsx";
 import { registerMyDataRoutes } from "./routes/my-data.tsx";
@@ -271,6 +272,8 @@ export function createApp({
     reporting: adminAuth !== undefined,
   };
   registerPlanRoutes(app, deps);
+  // The dev-only style guide (decision D72): 404 like any unknown path unless ALLOW_INSECURE_DEV is on.
+  if (config.allowInsecureDev) registerStyleGuideRoutes(app, deps);
   // Profiles exist only for accounts, while federation is on (decisions D36, D37).
   if (federation !== undefined && accounts !== undefined) {
     registerProfileRoutes(app, { config, planDeps, identities: accounts.identities });

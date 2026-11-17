@@ -23,6 +23,23 @@ export function MapAssets() {
   );
 }
 
+/** The switch between setting the area point and the exact start on the pick map. */
+export function ModeSwitch({ t }: { t: Translate }) {
+  return (
+    <fieldset class="mode-switch">
+      <legend class="visually-hidden">{t("map.pickLegend")}</legend>
+      <label>
+        <input type="radio" name="mapMode" value="area" checked />
+        <span>{t("map.modeArea")}</span>
+      </label>
+      <label>
+        <input type="radio" name="mapMode" value="exact" />
+        <span>{t("map.modeExact")}</span>
+      </label>
+    </fieldset>
+  );
+}
+
 /** Place search and the tap-to-pick map (with its mode switch) of the create and edit forms. */
 export function MapTools({
   t,
@@ -77,17 +94,7 @@ export function MapTools({
           hidden
         >
           <div class="map" role="application" aria-label={t("map.pickLabel")}></div>
-          <fieldset class="mode-switch">
-            <legend class="visually-hidden">{t("map.pickLegend")}</legend>
-            <label>
-              <input type="radio" name="mapMode" value="area" checked />
-              <span>{t("map.modeArea")}</span>
-            </label>
-            <label>
-              <input type="radio" name="mapMode" value="exact" />
-              <span>{t("map.modeExact")}</span>
-            </label>
-          </fieldset>
+          <ModeSwitch t={t} />
           <p
             class="hint map-caption"
             data-map-caption=""

@@ -99,62 +99,15 @@ export function Layout({
                 aria-label={t("layout.menu")}
               ></button>
               <div id="site-menu" popover="auto">
-                <div class="site-menu-body">
-                  <nav class="site-menu-links" aria-label={t("layout.menu")}>
-                    <ul>
-                      {config.nearbyEnabled && (
-                        <li>
-                          <a href={`${pathBase}nearby`}>{t("layout.nearby")}</a>
-                        </li>
-                      )}
-                      <li>
-                        <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
-                      </li>
-                      {loginConfigured(config) && (
-                        <li>
-                          <a href={`${pathBase}account`}>{t("layout.account")}</a>
-                        </li>
-                      )}
-                    </ul>
-                  </nav>
-                  <div class="site-menu-preferences">
-                    {languageSwitch !== undefined && (
-                      <>
-                        <PreferenceForm
-                          t={t}
-                          {...languageSwitch}
-                          action="/language"
-                          field="language"
-                          label={t("layout.language")}
-                          options={SUPPORTED_LANGUAGES.map((value) => ({
-                            value,
-                            label: LANGUAGE_NAMES[value],
-                            lang: value,
-                          }))}
-                          selected={language}
-                        />
-                        <PreferenceForm
-                          t={t}
-                          {...languageSwitch}
-                          action="/units"
-                          field="units"
-                          label={t("layout.units")}
-                          options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
-                          selected={units}
-                        />
-                        <PreferenceForm
-                          t={t}
-                          {...languageSwitch}
-                          action="/theme"
-                          field="theme"
-                          label={t("layout.theme")}
-                          options={THEMES.map((value) => ({ value, label: t(`theme.${value}`) }))}
-                          selected={theme}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
+                <MenuSheetBody
+                  t={t}
+                  config={config}
+                  language={language}
+                  units={units}
+                  theme={theme}
+                  languageSwitch={languageSwitch}
+                  pathBase={pathBase}
+                />
               </div>
             </>
           )}
@@ -189,6 +142,90 @@ export function Layout({
   );
 }
 
+/** The menu sheet's content: links, then the language, units and theme rows. Also shown open by the dev style guide. */
+export function MenuSheetBody({
+  t,
+  config,
+  language,
+  units,
+  theme,
+  languageSwitch,
+  pathBase = "/",
+  idPrefix = "preference",
+}: {
+  t: Translate;
+  config: Config;
+  language: Language;
+  units: Units;
+  theme: Theme;
+  languageSwitch?: { csrfToken: string; returnTo: string } | undefined;
+  pathBase?: string | undefined;
+  /** Prefix of the select ids, so a second copy on one page keeps its ids unique. */
+  idPrefix?: string;
+}) {
+  return (
+    <div class="site-menu-body">
+      <nav class="site-menu-links" aria-label={t("layout.menu")}>
+        <ul>
+          {config.nearbyEnabled && (
+            <li>
+              <a href={`${pathBase}nearby`}>{t("layout.nearby")}</a>
+            </li>
+          )}
+          <li>
+            <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
+          </li>
+          {loginConfigured(config) && (
+            <li>
+              <a href={`${pathBase}account`}>{t("layout.account")}</a>
+            </li>
+          )}
+        </ul>
+      </nav>
+      <div class="site-menu-preferences">
+        {languageSwitch !== undefined && (
+          <>
+            <PreferenceForm
+              t={t}
+              {...languageSwitch}
+              idPrefix={idPrefix}
+              action="/language"
+              field="language"
+              label={t("layout.language")}
+              options={SUPPORTED_LANGUAGES.map((value) => ({
+                value,
+                label: LANGUAGE_NAMES[value],
+                lang: value,
+              }))}
+              selected={language}
+            />
+            <PreferenceForm
+              t={t}
+              {...languageSwitch}
+              idPrefix={idPrefix}
+              action="/units"
+              field="units"
+              label={t("layout.units")}
+              options={UNITS.map((value) => ({ value, label: t(`units.${value}`) }))}
+              selected={units}
+            />
+            <PreferenceForm
+              t={t}
+              {...languageSwitch}
+              idPrefix={idPrefix}
+              action="/theme"
+              field="theme"
+              label={t("layout.theme")}
+              options={THEMES.map((value) => ({ value, label: t(`theme.${value}`) }))}
+              selected={theme}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Works without JavaScript: choose and submit (decisions P5, D15). */
 function PreferenceForm(props: {
   t: Translate;
@@ -199,8 +236,9 @@ function PreferenceForm(props: {
   label: string;
   options: readonly { value: string; label: string; lang?: string }[];
   selected: string;
+  idPrefix?: string;
 }) {
-  const id = `preference-${props.field}`;
+  const id = `${props.idPrefix ?? "preference"}-${props.field}`;
   return (
     <form method="post" action={props.action} class="preference">
       <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />

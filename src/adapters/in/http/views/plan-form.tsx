@@ -111,7 +111,7 @@ function isActivity(value: string): value is ActivityType {
 }
 
 /** One group of optional fields: title, a one-line value summary and a chevron (decision D61). */
-function Fold({
+export function Fold({
   title,
   value,
   open,

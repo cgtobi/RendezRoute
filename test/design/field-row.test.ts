@@ -47,6 +47,24 @@ describe(".field-row", () => {
 
   it("lets its children shrink", () => {
     expect(declarationsFor(".field-row > *")).toMatch(/min-width: 0(?![.\d])/);
+    expect(declarationsFor(".field-row > .field")).toMatch(/min-width: 0(?![.\d])/);
+  });
+
+  it("drops the native iOS date/time look so the box obeys its column (decision D59)", () => {
+    const rule = declarationsFor('input[type="time"], input[type="date"]');
+    expect(rule).toMatch(/-webkit-appearance: none/);
+    expect(rule).toMatch(/(?<![-\w])appearance: none/);
+    expect(rule).toMatch(/display: block/);
+    expect(rule).toMatch(/inline-size: 100%/);
+    expect(rule).toMatch(/min-inline-size: 0(?![.\d])/);
+    expect(rule).toMatch(/max-inline-size: 100%/);
+    expect(rule).toMatch(/box-sizing: border-box/);
+    expect(rule).toMatch(/margin: 0(?![.\d])/);
+    expect(
+      declarationsFor(
+        'input[type="time"]::-webkit-datetime-edit, input[type="date"]::-webkit-datetime-edit',
+      ),
+    ).toMatch(/padding: 0(?![.\d])/);
   });
 
   it("lets date and time inputs shrink and start-aligns their text", () => {
@@ -55,6 +73,36 @@ describe(".field-row", () => {
     expect(rule).toMatch(/min-width: 0(?![.\d])/);
     expect(rule).toMatch(/max-width: 100%/);
     expect(rule).toMatch(/text-align: start/);
+  });
+});
+
+describe("select", () => {
+  it("drops the native look (WebKit ignores box styling otherwise) and draws its own arrow", () => {
+    const rule = declarationsFor("select");
+    expect(rule).toMatch(/-webkit-appearance: none/);
+    expect(rule).toMatch(/(?<![-\w])appearance: none/);
+    const image = /background-image: ([^;]*);/.exec(rule)?.[1] ?? "";
+    expect(image.match(/linear-gradient\(/g)?.length).toBe(2);
+    expect(image.match(/var\(--fg\)/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(image).not.toMatch(/url\(/);
+    expect(rule).toMatch(/background-repeat: no-repeat/);
+    expect(rule).toMatch(/padding-right: calc\(var\(--s3\) \+ 1\.75rem\)/);
+  });
+
+  it("keeps the arrow: the generic rule's background shorthand comes first", () => {
+    const generic = CSS.indexOf('input:not([type="radio"], [type="checkbox"], [type="color"]),');
+    const shorthand = CSS.indexOf("background: var(--bg)", generic);
+    const arrow = CSS.search(/(?<=[};] )select \{[^}]*background-image/);
+    expect(generic).toBeGreaterThanOrEqual(0);
+    expect(shorthand).toBeGreaterThan(generic);
+    expect(arrow, "a plain `select` rule with the arrow").toBeGreaterThan(shorthand);
+    expect(declarationsFor("select")).not.toMatch(/(?<![-\w])background: /);
+  });
+});
+
+describe("body", () => {
+  it("breaks a word that is longer than the line, so plain text never scrolls the page sideways", () => {
+    expect(declarationsFor("body")).toMatch(/overflow-wrap: break-word/);
   });
 });
 

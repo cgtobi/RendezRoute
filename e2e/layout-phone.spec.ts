@@ -48,6 +48,18 @@ for (const viewport of WIDTHS) {
     expect(dateBox.x).toBeGreaterThanOrEqual(0);
     expect(dateBox.x + dateBox.width, "date input right edge").toBeLessThanOrEqual(viewport.width);
     expect(timeBox.x + timeBox.width, "time input right edge").toBeLessThanOrEqual(viewport.width);
+    // Side by side, not overlapping, and inside the page padding (the form's own column).
+    expect(dateBox.x + dateBox.width, "date input runs under the time input").toBeLessThanOrEqual(
+      timeBox.x + 0.5,
+    );
+    const column = await page.locator(".field-row").first().boundingBox();
+    const columnBox = column as NonNullable<typeof column>;
+    expect(dateBox.x, "date input left of the content column").toBeGreaterThanOrEqual(
+      columnBox.x - 0.5,
+    );
+    expect(timeBox.x + timeBox.width, "time input past the content column").toBeLessThanOrEqual(
+      columnBox.x + columnBox.width + 0.5,
+    );
     expect(
       Math.abs(dateBox.width - timeBox.width),
       "date and time widths differ",

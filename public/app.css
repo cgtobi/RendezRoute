@@ -183,6 +183,7 @@
 
 body {
   margin: 0;
+  overflow-wrap: break-word;
   background: var(--bg);
   color: var(--fg);
   font:
@@ -660,6 +661,10 @@ legend {
   min-width: 0;
 }
 
+.field-row > .field {
+  min-width: 0;
+}
+
 input:not([type="radio"], [type="checkbox"], [type="color"]),
 select,
 textarea {
@@ -673,6 +678,24 @@ textarea {
   font: inherit;
 }
 
+/* WebKit falls back to native control metrics (23 px tall, no padding) unless the native look is
+   dropped, and Chromium then loses its arrow too: draw one from two gradients, no asset. This rule
+   follows the generic one above, whose `background` shorthand would reset the image. Forced
+   colours drop background images; the border stays, so the select remains visible. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: calc(var(--s3) + 1.75rem);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--fg) 50%),
+    linear-gradient(135deg, var(--fg) 50%, transparent 50%);
+  background-position:
+    calc(100% - var(--s3) - 0.45rem) calc(50% - 0.1rem),
+    calc(100% - var(--s3)) calc(50% - 0.1rem);
+  background-size: 0.45rem 0.45rem;
+  background-repeat: no-repeat;
+}
+
 textarea {
   min-height: 6rem;
 }
@@ -682,6 +705,22 @@ input[type="time"] {
   min-width: 0;
   max-width: 100%;
   text-align: start;
+  /* iOS Safari sizes the native date/time control from its inner editor and ignores width: 100%;
+     dropping the native appearance makes it an ordinary block box that obeys its column. The
+     picker still opens on tap. */
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit {
+  padding: 0;
 }
 
 input::-webkit-date-and-time-value {

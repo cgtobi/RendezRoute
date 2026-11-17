@@ -12,10 +12,10 @@ const ADMIN_SPLIT_SPECS = /v10-admin-split\.spec\.ts$/;
 const ADMIN_INGRESS_SPECS = /v10-admin-ingress\.spec\.ts$/;
 
 /**
- * The layout specs, the only ones that also run in WebKit (D72). Step 13c adds
- * `styleguide.spec.ts` here. They create no plan, so they can share the default containers.
+ * The specs that also run in WebKit (D72, plan I98): the layout specs and the ones that read
+ * `/new` or `/styleguide` only. They create no plan, so they can share the default containers.
  */
-const LAYOUT_SPECS = /(?:layout-phone)\.spec\.ts$/;
+const LAYOUT_SPECS = /(?:layout-phone|styleguide|field-style|map-pick)\.spec\.ts$/;
 
 export default defineConfig({
   testDir: ".",
@@ -46,8 +46,9 @@ export default defineConfig({
       testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS, ADMIN_INGRESS_SPECS],
       use: { baseURL: "http://localhost:3102" },
     },
-    // The layout specs again on WebKit (iPhone 13 viewport and user agent) against the default
-    // containers. Needs `npx playwright install webkit` once. Playwright's WebKit is the desktop
+    // The layout specs again on WebKit against the default containers. The specs open their own
+    // contexts (`person()`), so what makes it a phone is the explicit context viewport (320 and
+    // 390 px), not the iPhone 13 device profile below. Needs `npx playwright install webkit` once. Playwright's WebKit is the desktop
     // engine, so iOS-native control quirks still need a phone (D72).
     {
       name: "webkit iPhone",

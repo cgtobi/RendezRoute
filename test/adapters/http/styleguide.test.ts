@@ -163,6 +163,39 @@ describe("the style guide with ALLOW_INSECURE_DEV on", () => {
     }
   });
 
+  it("has no id twice, and every reference points at an id on the page (plan I98)", async () => {
+    const { html } = await guide();
+    const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1] ?? "");
+    const present = new Set(ids);
+    const repeated = ids.filter((id, index) => ids.indexOf(id) !== index);
+    expect([...new Set(repeated)]).toEqual([]);
+    const references = (pattern: RegExp) =>
+      [...html.matchAll(pattern)].flatMap((match) => (match[1] ?? "").split(/\s+/).filter(Boolean));
+    const lists = {
+      for: references(/\sfor="([^"]*)"/g),
+      "aria-describedby": references(/\saria-describedby="([^"]*)"/g),
+      "aria-labelledby": references(/\saria-labelledby="([^"]*)"/g),
+      "aria-controls": references(/\saria-controls="([^"]*)"/g),
+      popovertarget: references(/\spopovertarget="([^"]*)"/g),
+      list: references(/\slist="([^"]*)"/g),
+      form: references(/\sform="([^"]*)"/g),
+      "aria-owns": references(/\saria-owns="([^"]*)"/g),
+      "aria-errormessage": references(/\saria-errormessage="([^"]*)"/g),
+      "aria-activedescendant": references(/\saria-activedescendant="([^"]*)"/g),
+      href: references(/\shref="#([^"]+)"/g),
+    };
+    for (const [attribute, values] of Object.entries(lists)) {
+      expect({ [attribute]: values.filter((value) => !present.has(value)) }).toEqual({
+        [attribute]: [],
+      });
+    }
+    // The four forms have their own prefixes; the real pages keep the plain one.
+    for (const prefix of ["sg-create", "sg-errors", "sg-filled", "sg-host"]) {
+      expect(present.has(`${prefix}-time`)).toBe(true);
+    }
+    expect(present.has("field-time")).toBe(false);
+  });
+
   it("is not indexed or stored", async () => {
     const { response, html } = await guide();
     expect(response.headers.get("x-robots-tag")).toBe("noindex");

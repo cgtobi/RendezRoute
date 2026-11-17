@@ -5,6 +5,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { inFiveDays, person } from "./helpers.ts";
 
+/** The project whose app has maps, geocoder and weather turned off; the default and WebKit projects have the map. */
+const NO_MAP_PROJECT = "maps, geocoder and weather disabled";
+
 /**
  * The area line: the field itself, or, where the place search is merged into it (decision D77),
  * the row that draws the one underline for input and magnifier button. Document order puts the
@@ -192,7 +195,7 @@ test("The place search button is a magnifier on the line: named Search, 44 px, o
   baseURL,
 }, testInfo) => {
   test.skip(
-    testInfo.project.name !== "default settings",
+    testInfo.project.name === NO_MAP_PROJECT,
     "needs the map, which the other project turns off",
   );
   const problems: string[] = [];
@@ -229,7 +232,7 @@ test("The map's Remove button is a quiet muted x: named Remove, 44 px, no box, r
   baseURL,
 }, testInfo) => {
   test.skip(
-    testInfo.project.name !== "default settings",
+    testInfo.project.name === NO_MAP_PROJECT,
     "needs the map, which the other project turns off",
   );
   const problems: string[] = [];
@@ -280,18 +283,27 @@ test("An empty required field and a field with an error keep a visible focus rin
   await area.fill("Park");
   expect(await outline()).toBe("none");
 
-  // After a failed submit the field is marked invalid, whatever it holds.
-  await page.evaluate(`document.querySelector("form[action='/new']").noValidate = true`);
-  await area.fill("");
-  await page.getByRole("button", { name: "Create plan" }).click();
-  await expect(page.locator(".field-invalid #field-areaLabel")).toBeVisible();
-  await area.fill("Park");
+  // A field with an error keeps the ring whatever it holds. The error state comes from the style
+  // guide's "with errors" form (the same markup and CSS as a 422 page) instead of a real failed
+  // submit: that POST counts against the create limiter, which every spec of a container shares
+  // (one client address), so under a parallel run it can be answered 429 and never gives the 422.
+  await page.goto("/styleguide");
+  const invalid = page.locator(".field-invalid #sg-errors-areaLabel");
+  await expect(invalid).toBeVisible();
+  await invalid.fill("Park");
   // A key press first: after the mouse click the browser may not show a ring for script focus.
   await page.keyboard.press("Shift+Tab");
-  await area.focus();
-  expect(await outline()).toBe("solid");
-  // The failed submit's 422 is the expected answer, not a problem.
-  expect(problems.filter((problem) => !problem.includes("status of 422"))).toEqual([]);
+  await invalid.focus();
+  // Read with retries: the focus state applies a frame later. "auto" is the browser's own ring,
+  // which means our `:focus-visible { outline: 3px solid }` did not apply, and fails.
+  const ring = () =>
+    page.evaluate<string>(
+      `(() => { const s = getComputedStyle(document.querySelector("#sg-errors-areaLabel")); return s.outlineStyle + " " + s.outlineWidth + " " + s.outlineColor; })()`,
+    );
+  await expect
+    .poll(ring, { message: "focus ring of the invalid, filled field (style width colour)" })
+    .toMatch(/^solid 3px /);
+  expect(problems).toEqual([]);
   await context.close();
 });
 

@@ -244,6 +244,7 @@ function Section({
 export function StyleGuide(props: StyleGuideProps) {
   const { t, config, language, units, theme, csrfToken, returnTo } = props;
   const form = (
+    idPrefix: string,
     values: PlanInput,
     options: { errors?: readonly FieldError[]; edit?: boolean } = {},
   ) => (
@@ -264,6 +265,7 @@ export function StyleGuide(props: StyleGuideProps) {
       routeTrim=""
       units={units}
       visibility={VISIBILITY}
+      idPrefix={idPrefix}
     />
   );
   return (
@@ -521,15 +523,15 @@ export function StyleGuide(props: StyleGuideProps) {
       <Section
         id="sg-plan-form"
         title="Plan form"
-        note="The real PlanForm in four states: empty create, create with errors, create with values and public visibility, host edit. Ids repeat across the four forms."
+        note="The real PlanForm in four states: empty create, create with errors, create with values and public visibility, host edit. Each form has its own id prefix (sg-create, sg-errors, sg-filled, sg-host). The page scripts only act on the real prefix, so these samples stay static."
       >
-        {form({ ...SAMPLE_VALUES, title: t("form.defaultTitle") })}
+        {form("sg-create", { ...SAMPLE_VALUES, title: t("form.defaultTitle") })}
         <hr />
-        {form({ ...SAMPLE_VALUES, title: "", date: "" }, { errors: ERRORS })}
+        {form("sg-errors", { ...SAMPLE_VALUES, title: "", date: "" }, { errors: ERRORS })}
         <hr />
-        {form(FILLED_VALUES)}
+        {form("sg-filled", FILLED_VALUES)}
         <hr />
-        {form(FILLED_VALUES, { edit: true })}
+        {form("sg-host", FILLED_VALUES, { edit: true })}
       </Section>
 
       <Section

@@ -22,10 +22,13 @@ export function TemplateOptions({
   t,
   values,
   errors,
+  idPrefix = "field",
 }: {
   t: Translate;
   values: Pick<PlanInput, "keepAsTemplate" | "templateIncludePrivate">;
   errors: readonly FieldError[];
+  /** Start of the hint and error ids (the style guide shows several forms on one page). */
+  idPrefix?: string;
 }) {
   const error = errors.find(
     (e) => e.field === "keepAsTemplate" || e.field === "templateIncludePrivate",
@@ -34,8 +37,8 @@ export function TemplateOptions({
     <fieldset
       class={error === undefined ? undefined : "field-invalid"}
       aria-describedby={describedBy(
-        "field-template-hint",
-        error === undefined ? undefined : "field-template-error",
+        `${idPrefix}-template-hint`,
+        error === undefined ? undefined : `${idPrefix}-template-error`,
       )}
     >
       <legend>{t("form.template")}</legend>
@@ -59,11 +62,11 @@ export function TemplateOptions({
         />
         {t("form.templateIncludePrivate")}
       </label>
-      <p class="hint" id="field-template-hint">
+      <p class="hint" id={`${idPrefix}-template-hint`}>
         {t("form.templateHint")}
       </p>
       {error !== undefined && (
-        <p class="error" id="field-template-error">
+        <p class="error" id={`${idPrefix}-template-error`}>
           {fieldErrorMessage(error.code, t)}
         </p>
       )}

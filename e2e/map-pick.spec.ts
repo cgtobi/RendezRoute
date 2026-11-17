@@ -3,6 +3,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openFold, person } from "./helpers.ts";
 
+/** The project whose app has maps, geocoder and weather turned off; the default and WebKit projects have the map. */
+const NO_MAP_PROJECT = "maps, geocoder and weather disabled";
+
 const EXACT_FOLD = "Exact meeting point";
 const exactFold = (page: Page) =>
   page.locator("details.fold", { has: page.locator(".fold-title", { hasText: EXACT_FOLD }) });
@@ -20,7 +23,7 @@ test("The switch starts on the public area; a tap sets the area, then the exact 
   baseURL,
 }, testInfo) => {
   test.skip(
-    testInfo.project.name !== "default settings",
+    testInfo.project.name === NO_MAP_PROJECT,
     "needs the map, which the other project turns off",
   );
   const problems: string[] = [];
@@ -95,7 +98,7 @@ test("The public area line: a tap sets it, Remove clears both fields and focuses
   baseURL,
 }, testInfo) => {
   test.skip(
-    testInfo.project.name !== "default settings",
+    testInfo.project.name === NO_MAP_PROJECT,
     "needs the map, which the other project turns off",
   );
   const { page } = await person(browser, baseURL ?? "", []);
@@ -126,7 +129,7 @@ test("Find my location moves the view only: no field changes, no point is set", 
   baseURL,
 }, testInfo) => {
   test.skip(
-    testInfo.project.name !== "default settings",
+    testInfo.project.name === NO_MAP_PROJECT,
     "needs the map, which the other project turns off",
   );
   const problems: string[] = [];
@@ -164,7 +167,7 @@ test("Find my location disables itself when the browser refuses", async ({
   baseURL,
 }, testInfo) => {
   test.skip(
-    testInfo.project.name !== "default settings",
+    testInfo.project.name === NO_MAP_PROJECT,
     "needs the map, which the other project turns off",
   );
   const { page } = await person(browser, baseURL ?? "", []);
@@ -174,7 +177,8 @@ test("Find my location disables itself when the browser refuses", async ({
   await locate.click();
   await expect(locate).toBeDisabled();
   await expect(locate).toHaveAttribute("title", "Location access was refused");
-  await expect(locate).toBeFocused();
+  // Safari does not focus a button on click (a WebKit limit), so there is no focus to keep.
+  if (browser.browserType().name() !== "webkit") await expect(locate).toBeFocused();
   for (const field of Object.values(fields(page))) await expect(field).toHaveValue("");
 });
 
@@ -189,7 +193,7 @@ for (const [zone, tiles, place] of [
     baseURL,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "default settings",
+      testInfo.project.name === NO_MAP_PROJECT,
       "needs the map, which the other project turns off",
     );
     const problems: string[] = [];
@@ -211,7 +215,7 @@ test("Without maps the coordinate fields stay and there is no map, switch or loc
   baseURL,
 }, testInfo) => {
   test.skip(
-    testInfo.project.name === "default settings",
+    testInfo.project.name !== NO_MAP_PROJECT,
     "the default project has the map; this checks the one without",
   );
   const { page } = await person(browser, baseURL ?? "", []);

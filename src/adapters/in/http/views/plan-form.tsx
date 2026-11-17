@@ -27,6 +27,9 @@ import { RouteTrimField } from "./route-trim.tsx";
 import { TemplateOptions } from "./templates.tsx";
 import type { Units } from "../../../../domain/units.ts";
 
+/** Start of the field ids on the real pages. */
+const DEFAULT_ID_PREFIX = "field";
+
 const COLOR_PRESETS = [
   "#2E5BFF",
   "#0F9D58",
@@ -87,6 +90,13 @@ export interface PlanFormProps {
    * and the plan stays link-only.
    */
   visibility: VisibilityChoice;
+  /**
+   * Start of every field id, label target and description id, "field" on the real pages. The
+   * style guide shows several forms on one page and gives each its own prefix so ids stay unique.
+   * The page scripts look fields up as `#field-time` and so on, so they only act on a form with
+   * the default prefix.
+   */
+  idPrefix?: string;
 }
 
 export interface VisibilityChoice {
@@ -203,9 +213,12 @@ export function PlanForm({
   forTemplate = false,
   notice,
   visibility,
+  idPrefix = DEFAULT_ID_PREFIX,
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
-  const id = (field: PlanField) => `field-${field}`;
+  const fid = (name: string) => `${idPrefix}-${name}`;
+  const id = (field: PlanField) => fid(field);
+  const presetsId = idPrefix === DEFAULT_ID_PREFIX ? "color-presets" : `${idPrefix}-color-presets`;
   const titleError = errorFor("title");
 
   const Field = ({
@@ -638,9 +651,9 @@ export function PlanForm({
             </Field>
           </div>
 
-          <fieldset aria-describedby="field-pace-hint">
+          <fieldset aria-describedby={fid("pace-hint")}>
             <legend>{t("form.pace")}</legend>
-            <p class="hint" id="field-pace-hint">
+            <p class="hint" id={fid("pace-hint")}>
               {t(units === "imperial" ? "form.paceHintImperial" : "form.paceHint")}
             </p>
             <div class="field-row">
@@ -655,7 +668,7 @@ export function PlanForm({
 
           <fieldset
             aria-describedby={
-              errorFor("dropPolicy") !== undefined ? "field-dropPolicy-error" : undefined
+              errorFor("dropPolicy") !== undefined ? fid("dropPolicy-error") : undefined
             }
           >
             <legend>{t("form.dropPolicy")}</legend>
@@ -672,7 +685,7 @@ export function PlanForm({
               </label>
             ))}
             {errorFor("dropPolicy") !== undefined && (
-              <p class="error" id="field-dropPolicy-error">
+              <p class="error" id={fid("dropPolicy-error")}>
                 {fieldErrorMessage("choice_invalid", t)}
               </p>
             )}
@@ -680,32 +693,32 @@ export function PlanForm({
 
           {withGpx && (
             <div class={errors.some((e) => e.field === "gpx") ? "field field-invalid" : "field"}>
-              <label for="field-gpx">{t("form.gpx")}</label>
+              <label for={fid("gpx")}>{t("form.gpx")}</label>
               <input
-                id="field-gpx"
+                id={fid("gpx")}
                 type="file"
                 name="gpx"
                 accept=".gpx,application/gpx+xml"
                 aria-invalid={hasError("gpx") ? "true" : undefined}
                 aria-describedby={describedBy(
-                  "field-gpx-hint",
-                  hasError("gpx") ? "field-gpx-error" : undefined,
+                  fid("gpx-hint"),
+                  hasError("gpx") ? fid("gpx-error") : undefined,
                 )}
               />
-              <p class="hint" id="field-gpx-hint">
+              <p class="hint" id={fid("gpx-hint")}>
                 {t("form.gpxHint")}
               </p>
               {errors
                 .filter((e) => e.field === "gpx")
                 .map((e, index) => (
-                  <p class="error" id={index === 0 ? "field-gpx-error" : undefined}>
+                  <p class="error" id={index === 0 ? fid("gpx-error") : undefined}>
                     {fieldErrorMessage(e.code, t)}
                   </p>
                 ))}
             </div>
           )}
           {withGpx && (
-            <RouteTrimField t={t} id="field-gpxTrim" selected={routeTrim} units={units} />
+            <RouteTrimField t={t} id={fid("gpxTrim")} selected={routeTrim} units={units} />
           )}
 
           <Field field="note" label={t("form.note")} hint={t("form.publicHint")}>
@@ -717,8 +730,8 @@ export function PlanForm({
               placeholder={t("placeholder.note")}
               aria-invalid={errorFor("note") !== undefined ? "true" : undefined}
               aria-describedby={describedBy(
-                "field-note-hint",
-                errorFor("note") !== undefined ? "field-note-error" : undefined,
+                fid("note-hint"),
+                errorFor("note") !== undefined ? fid("note-error") : undefined,
               )}
             >
               {values.note}
@@ -737,12 +750,12 @@ export function PlanForm({
         >
           <fieldset
             aria-describedby={describedBy(
-              "field-joinMode-hint",
-              errorFor("joinMode") !== undefined ? "field-joinMode-error" : undefined,
+              fid("joinMode-hint"),
+              errorFor("joinMode") !== undefined ? fid("joinMode-error") : undefined,
             )}
           >
             <legend class="visually-hidden">{t("form.joinMode")}</legend>
-            <p class="hint" id="field-joinMode-hint">
+            <p class="hint" id={fid("joinMode-hint")}>
               {t("form.joinModeHint")}
             </p>
             {JOIN_MODES.map((mode) => (
@@ -758,7 +771,7 @@ export function PlanForm({
               </label>
             ))}
             {errorFor("joinMode") !== undefined && (
-              <p class="error" id="field-joinMode-error">
+              <p class="error" id={fid("joinMode-error")}>
                 {fieldErrorMessage("choice_invalid", t)}
               </p>
             )}
@@ -767,6 +780,7 @@ export function PlanForm({
           {visibility !== undefined && (
             <VisibilityFieldset
               t={t}
+              idPrefix={idPrefix}
               choice={visibility}
               value={values.visibility}
               error={errorFor("visibility")}
@@ -785,6 +799,7 @@ export function PlanForm({
         >
           <ShareFieldset
             t={t}
+            idPrefix={idPrefix}
             values={values}
             error={SHARE_BUTTONS.map((button) => errorFor(SHARE_BUTTON_FIELDS[button])).find(
               Boolean,
@@ -793,17 +808,17 @@ export function PlanForm({
 
           <fieldset>
             <legend>{t("form.colors")}</legend>
-            <datalist id="color-presets">
+            <datalist id={presetsId}>
               {COLOR_PRESETS.map((color) => (
                 <option value={color} />
               ))}
             </datalist>
             <div class="field-row">
               <Field field="primaryColor" label={t("form.primaryColor")}>
-                {input("primaryColor", { type: "color", list: "color-presets" })}
+                {input("primaryColor", { type: "color", list: presetsId })}
               </Field>
               <Field field="secondaryColor" label={t("form.secondaryColor")}>
-                {input("secondaryColor", { type: "color", list: "color-presets" })}
+                {input("secondaryColor", { type: "color", list: presetsId })}
               </Field>
             </div>
           </fieldset>
@@ -842,11 +857,13 @@ export function PlanForm({
               id={id("recapWindow")}
               selected={recapWindow}
               invalid={errorFor("recapWindow") !== undefined}
-              hintId="field-recapWindow-hint"
+              hintId={fid("recapWindow-hint")}
             />
           </Field>
 
-          {!forTemplate && <TemplateOptions t={t} values={values} errors={errors} />}
+          {!forTemplate && (
+            <TemplateOptions t={t} values={values} errors={errors} idPrefix={idPrefix} />
+          )}
         </Fold>
       </div>
 
@@ -868,10 +885,12 @@ export function PlanForm({
 /** "Share buttons on the plan page", chosen by the host (decision D41). */
 function ShareFieldset({
   t,
+  idPrefix,
   values,
   error,
 }: {
   t: Translate;
+  idPrefix: string;
   values: PlanInput;
   error: FieldError | undefined;
 }) {
@@ -879,8 +898,8 @@ function ShareFieldset({
     <fieldset
       class={error === undefined ? undefined : "field-invalid"}
       aria-describedby={describedBy(
-        "field-shareButtons-hint",
-        error === undefined ? undefined : "field-shareButtons-error",
+        `${idPrefix}-shareButtons-hint`,
+        error === undefined ? undefined : `${idPrefix}-shareButtons-error`,
       )}
     >
       <legend>{t("form.shareButtons")}</legend>
@@ -893,11 +912,11 @@ function ShareFieldset({
           </label>
         );
       })}
-      <p class="hint" id="field-shareButtons-hint">
+      <p class="hint" id={`${idPrefix}-shareButtons-hint`}>
         {t("form.shareButtonsHint")}
       </p>
       {error !== undefined && (
-        <p class="error" id="field-shareButtons-error">
+        <p class="error" id={`${idPrefix}-shareButtons-error`}>
           {fieldErrorMessage(error.code, t)}
         </p>
       )}
@@ -913,11 +932,13 @@ function ShareFieldset({
  */
 function VisibilityFieldset({
   t,
+  idPrefix,
   choice,
   value,
   error,
 }: {
   t: Translate;
+  idPrefix: string;
   choice: VisibilityChoice;
   value: string;
   error: FieldError | undefined;
@@ -942,12 +963,12 @@ function VisibilityFieldset({
   return (
     <fieldset
       aria-describedby={describedBy(
-        "field-visibility-hint",
-        error === undefined ? undefined : "field-visibility-error",
+        `${idPrefix}-visibility-hint`,
+        error === undefined ? undefined : `${idPrefix}-visibility-error`,
       )}
     >
       <legend>{t("form.visibility")}</legend>
-      <p class="hint" id="field-visibility-hint">
+      <p class="hint" id={`${idPrefix}-visibility-hint`}>
         {t("form.visibilityPublicHint")}
       </p>
       {shown.map((visibility) => (
@@ -978,7 +999,7 @@ function VisibilityFieldset({
         </p>
       )}
       {error !== undefined && (
-        <p class="error" id="field-visibility-error">
+        <p class="error" id={`${idPrefix}-visibility-error`}>
           {fieldErrorMessage(error.code, t)}
         </p>
       )}

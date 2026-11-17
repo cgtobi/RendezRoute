@@ -15,7 +15,7 @@ const ADMIN_INGRESS_SPECS = /v10-admin-ingress\.spec\.ts$/;
  * The specs that also run in WebKit (D72, plan I98): the layout specs and the ones that read
  * `/new` or `/styleguide` only. They create no plan, so they can share the default containers.
  */
-const LAYOUT_SPECS = /(?:layout-phone|styleguide|field-style|map-pick)\.spec\.ts$/;
+const LAYOUT_SPECS = /(?:layout-phone|styleguide|styleguide-axe|field-style|map-pick)\.spec\.ts$/;
 
 export default defineConfig({
   testDir: ".",

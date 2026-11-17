@@ -445,6 +445,10 @@ Node 26 and npm. Install with `npm ci`, then:
 - `npm run e2e` uses fake map, search, weather and login services. `E2E_CHANNEL=chrome npm run e2e`
   uses an installed Chrome instead of Playwright's Chromium.
 - The `webkit iPhone` project of `npm run e2e` needs WebKit once: `npx playwright install webkit`.
+- `npm run css:snapshot:write` and `npm run css:snapshot:compare` store and check the computed
+  styles of `/styleguide` (all projects, light and dark, 320 and 390 px) under the git-ignored
+  `.css-snapshots/current` (`CSS_SNAPSHOT_DIR` for another folder). Take one before a CSS refactor
+  and compare after; details in `e2e/css-snapshot.spec.ts`.
 - `npm run icons -- <folder>` rebuilds the logo and icons in `public/` from the Inkscape exports of
   the logo (`RendezRoute_AppIcon.svg`, `RendezRoute_icon.svg`).
 

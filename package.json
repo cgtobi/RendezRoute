@@ -18,6 +18,8 @@
     "test": "vp test",
     "check": "vp check --deny-warnings && npm run typecheck && vp test",
     "e2e": "playwright test -c e2e/playwright.config.ts",
+    "css:snapshot:write": "CSS_SNAPSHOT=write playwright test -c e2e/playwright.config.ts css-snapshot",
+    "css:snapshot:compare": "CSS_SNAPSHOT=compare playwright test -c e2e/playwright.config.ts css-snapshot",
     "icons": "node scripts/brand-icons.ts",
     "zones": "node scripts/zone-centres.ts"
   },

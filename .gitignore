@@ -8,6 +8,7 @@ public/build/
 coverage/
 playwright-report/
 test-results/
+.css-snapshots/
 
 # Local runtime data: never commit databases or keys
 data/

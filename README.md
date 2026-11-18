@@ -56,20 +56,6 @@ without building a group chat, a sign-up sheet or a social network first.
 3. **Join.** Guests say they are in (or ask to join, if the host wants to approve) and get the exact
    start and the route.
 
-## Screenshots
-
-The plan page above is the host's own view. More to come: the plan form, the page as a guest,
-Nearby, and the Home Assistant admin.
-
-<!--
-Screenshots still needed (phone width, light and dark, into docs/img/, webp):
-- plan form (/new)
-- plan page as a guest (not the host)
-- Nearby (/nearby)
-- Home Assistant admin (the panel inside Home Assistant)
-Add them here once they exist; do not link files that are missing.
--->
-
 ## Quick start
 
 RendezRoute runs as a single Docker container behind a reverse proxy that provides HTTPS.

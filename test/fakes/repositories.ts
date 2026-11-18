@@ -302,6 +302,34 @@ export function createFakeRepositories(): {
             .slice(page.offset, page.offset + page.limit),
         );
       },
+      findPublicUpcoming(from, until, limit) {
+        const found = activeWhere(
+          (plan) =>
+            plan.visibility === "public" &&
+            plan.area.point !== undefined &&
+            plan.startsAt >= from &&
+            plan.startsAt < until,
+        );
+        return Promise.resolve(
+          found
+            .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime() || a.id.localeCompare(b.id))
+            .slice(0, limit),
+        );
+      },
+      findPublicRecent(from, until, limit) {
+        const found = activeWhere(
+          (plan) =>
+            plan.visibility === "public" &&
+            plan.area.point !== undefined &&
+            plan.startsAt >= from &&
+            plan.startsAt < until,
+        );
+        return Promise.resolve(
+          found
+            .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime() || a.id.localeCompare(b.id))
+            .slice(0, limit),
+        );
+      },
       async findActiveDeletingBetween(from, to) {
         return activeWhere((plan) => plan.deleteAt >= from && plan.deleteAt <= to);
       },

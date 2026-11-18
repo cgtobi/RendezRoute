@@ -216,7 +216,8 @@ export const de: Messages = {
     "Geteilt wird nur der Link zum Treffen. Wo das Gerät ein Teilen-Menü hat, ersetzt es den WhatsApp-Knopf.",
   "form.visibility": "Wer das Treffen finden kann",
   "form.visibilityLink": "Nur, wer den Link hat",
-  "form.visibilityPublic": "Alle: gelistet unter „In der Nähe“ auf dieser Seite",
+  "form.visibilityPublic":
+    "Alle: gelistet auf der Startseite und unter „In der Nähe“ auf dieser Seite",
   "form.visibilityPublicHint":
     "Ein öffentliches Treffen können alle finden und sehen dann, was die Seite des Treffens allen zeigt: Titel, Name der Organisator:in, Datum und Uhrzeit, Gebiet, Aktivität, Distanz, Tempo und Notiz. Der genaue Treffpunkt, die Route und die Namen derer, die antworten, bleiben verborgen wie bei jedem Treffen.",
   "form.publicNeedsLogin": "Öffentliche Treffen brauchen ein Konto auf dieser Seite.",
@@ -228,7 +229,7 @@ export const de: Messages = {
   "form.visibilityFollowersNone":
     "Follower:innen im Fediverse (folgen kann dort jede:r) und alle mit dem Link",
   "form.visibilityPublicShared":
-    "Alle: gelistet unter „In der Nähe“ auf dieser Seite und im Fediverse geteilt von {handle}",
+    "Alle: gelistet auf der Startseite und unter „In der Nähe“ auf dieser Seite und im Fediverse geteilt von {handle}",
   "form.visibilityPublicProfile": "Alle: im Fediverse geteilt von {handle}",
   "form.followersNeedsProfile":
     "Für Follower:innen brauchst du ein Fediverse-Profil, einmal eingerichtet auf der Kontoseite.",
@@ -892,6 +893,8 @@ export const de: Messages = {
     "Orte lassen sich gerade nicht suchen. Nimm stattdessen die Karte oder deinen Standort.",
   "nearby.nothingPublic":
     "Treffen auf dieser Seite können nicht öffentlich sein, darum gibt es hier nichts zu finden.",
+  "home.recent": "Zuletzt",
+  "home.upcoming": "Demnächst",
   "home.nearby": "Öffentliche Treffen in der Nähe finden",
   "layout.nearby": "In der Nähe",
   "privacy.federation":

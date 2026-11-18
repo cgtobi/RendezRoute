@@ -209,7 +209,7 @@ export const en = {
     "Only the plan’s link is shared. Where the device has a share menu, it replaces the WhatsApp button.",
   "form.visibility": "Who can find this plan",
   "form.visibilityLink": "Only people with the link",
-  "form.visibilityPublic": "Anyone: listed in Nearby on this site",
+  "form.visibilityPublic": "Anyone: listed on the home page and in Nearby on this site",
   "form.visibilityPublicHint":
     "A public plan can be found by anyone, who then sees what the plan page shows to everyone: the title, the host’s name, date and time, area, activity, distance, pace and note. The exact start, the route and the names of people who respond stay hidden, as for any plan.",
   "form.publicNeedsLogin": "Public plans need an account on this site.",
@@ -221,7 +221,7 @@ export const en = {
   "form.visibilityFollowersNone":
     "Followers in the fediverse (anyone there can follow), and people with the link",
   "form.visibilityPublicShared":
-    "Anyone: listed in Nearby on this site and shared in the fediverse by {handle}",
+    "Anyone: listed on the home page and in Nearby on this site and shared in the fediverse by {handle}",
   "form.visibilityPublicProfile": "Anyone: shared in the fediverse by {handle}",
   "form.followersNeedsProfile":
     "Followers need a fediverse profile, set up once on the account page.",
@@ -855,6 +855,8 @@ export const en = {
   "nearby.placeUnavailable":
     "Places can’t be looked up right now. Use the map or your location instead.",
   "nearby.nothingPublic": "Plans on this site can’t be public, so there is nothing to find here.",
+  "home.recent": "Recently",
+  "home.upcoming": "Coming up",
   "home.nearby": "Find public plans nearby",
   "layout.nearby": "Nearby",
   "privacy.federation":

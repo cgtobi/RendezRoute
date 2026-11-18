@@ -1,12 +1,13 @@
 // Who can find a plan (spec 3.3, 7; decisions D35, D36, D37), decided by the plan's owner, not the
 // device that edits it: a co-host with the host link may make an account's plan public.
 // - Public: with PUBLIC_REQUIRES_LOGIN (the default) only plans that belong to an account; only
-//   where something finds it: Nearby, or the owner's profile sharing it (I59, D37). A plan or
+//   where something finds it: the home page and Nearby, or the owner's profile sharing it (I59, D37). A plan or
 //   template already public stays so (I58).
 // - Followers: only while federation is on, for an owner with an active fediverse profile (D37). A
 //   plan or template already for followers stays so, even with federation turned off (I58).
 // - Shared in the fediverse: public and followers plans of an owner with a profile, from when they
-//   are saved under that wording (D35); public plans of others are listed in Nearby only.
+//   are saved under that wording (D35); public plans of others are listed on the home page and in
+//   Nearby only.
 import type { FieldError } from "../domain/plan-input.ts";
 import { mayBePublic, type Plan, type Visibility } from "../domain/plan.ts";
 import type { PlanTemplate } from "../domain/template.ts";

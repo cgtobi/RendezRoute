@@ -1,6 +1,6 @@
 # RendezRoute
 
-RendezRoute lets someone advertise a planned run or ride: a date, a start, a route and a pace. They
+RendezRoute lets someone advertise a planned run, ride or hike: a date, a start, a route and a pace. They
 share a link, guests answer with just a name, and only the people who are allowed to see the exact
 start and route do. This app runs it inside Home Assistant.
 
@@ -98,7 +98,7 @@ RendezRoute collects as little as it can. It has its own privacy notice, written
 of your instance, at `/privacy` on your public address; it follows your settings. Two settings
 matter most for what leaves your server:
 
-- **Federation** is on by default. Public runs and rides can be followed from Mastodon and other
+- **Federation** is on by default. Public runs, rides and hikes can be followed from Mastodon and other
   Fediverse servers, which means data is sent to those servers. Turn **Federation (Fediverse)** off
   to stay entirely on your server.
 - **Maps, place search and weather** call outside services (OpenStreetMap, Nominatim, Open-Meteo

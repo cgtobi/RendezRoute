@@ -82,6 +82,11 @@ describe("the filters", () => {
       distance: { min: 10_000, max: 21_100 },
       pace: { fastest: 300, slowest: 360 },
     });
+    // Hikes are filtered by pace, like runs.
+    expect(filters({ activity: "hike", paceFrom: "12:00", paceTo: "10:00" })).toMatchObject({
+      activity: "hike",
+      pace: { fastest: 600, slowest: 720 },
+    });
     // Speed for rides, in the viewer's units.
     expect(filters({ activity: "ride", paceFrom: "25", paceTo: "30" }).pace).toEqual({
       fastest: 120,
@@ -142,6 +147,8 @@ describe("which plans match", () => {
     expect(matches({}, { to: "2026-06-07" })).toBe(true);
     expect(matches({}, { to: "2026-06-06" })).toBe(false);
     expect(matches({}, { activity: "ride" })).toBe(false);
+    expect(matches({}, { activity: "hike" })).toBe(false);
+    expect(matches({ activity: "hike" }, { activity: "hike" })).toBe(true);
     // 12.5 km at 5:30–6:00 min/km.
     expect(matches({}, { distanceFrom: "10", distanceTo: "15" })).toBe(true);
     expect(matches({}, { distanceFrom: "15" })).toBe(false);

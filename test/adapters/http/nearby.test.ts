@@ -55,6 +55,33 @@ describe("the Nearby page (spec 7 Visibility and Nearby plans)", () => {
     expect(html).not.toContain("Ben");
   });
 
+  it("offers hikes in the activity filter and filters by them", async () => {
+    const { client } = await setup();
+    const { planId: hikeId } = await createPlanViaUi(client(), {
+      visibility: "public",
+      title: "Ridge walk",
+      activity: "hike",
+      paceFrom: "11:00",
+      paceTo: "12:30",
+    });
+    const { planId: runId } = await createPlanViaUi(client(), {
+      visibility: "public",
+      title: "Park run",
+    });
+    const all = await (await client().get(`/nearby?${NEAR}`)).text();
+    expect(all).toContain(`<option value="hike">${en("activity.hike")}</option>`);
+    expect(all).toContain(`href="/p/${hikeId}"`);
+    expect(all).toContain(`href="/p/${runId}"`);
+    const hikes = await (await client().get(`/nearby?${NEAR}&activity=hike`)).text();
+    expect(hikes).toContain(`<option value="hike" selected="">${en("activity.hike")}</option>`);
+    expect(hikes).toContain(`href="/p/${hikeId}"`);
+    expect(hikes).not.toContain(`href="/p/${runId}"`);
+    const byPace = await (
+      await client().get(`/nearby?${NEAR}&activity=hike&paceFrom=11:30&paceTo=12:00`)
+    ).text();
+    expect(byPace).toContain(`href="/p/${hikeId}"`);
+  });
+
   it("shows the form alone until a place is given, with the next two weeks", async () => {
     const { client } = await setup();
     const html = await (await client().get("/nearby")).text();

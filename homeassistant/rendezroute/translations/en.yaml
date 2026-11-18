@@ -34,28 +34,28 @@ configuration:
     description: "The credit line shown on maps. Leave empty for the OpenStreetMap credit; change it with the tile server."
   geocoder_enabled:
     name: "Look up place names"
-    description: "Let the app search addresses and place names while a run or ride is planned. Needs the contact email."
+    description: "Let the app search addresses and place names while a run, ride or hike is planned. Needs the contact email."
   geocoder_url:
     name: "Geocoder URL"
     description: "Address of the geocoding service (Nominatim compatible). Leave empty for the public OpenStreetMap service."
   weather_enabled:
     name: "Show weather"
-    description: "Show a short weather forecast on the page of a run or ride."
+    description: "Show a short weather forecast on the page of a run, ride or hike."
   weather_url:
     name: "Weather service URL"
     description: "Address of the weather service (Open-Meteo compatible). Leave empty for the public Open-Meteo service."
   posting_mode:
-    name: "Who can create runs or rides"
+    name: "Who can create runs, rides or hikes"
     description: "anyone: every visitor. invite: only people with an invite link that you create in the admin pages. logged_in: only people who signed in with the single sign-on or Fediverse login below."
   public_requires_login:
     name: "Public listings need login"
-    description: "Keep the list of public runs and rides visible only to signed-in people. Turn off to show it to every visitor."
+    description: "Keep the list of public runs, rides and hikes visible only to signed-in people. Turn off to show it to every visitor."
   nearby_enabled:
     name: "Show nearby listings"
-    description: "Offer the list of public runs and rides near a visitor's location."
+    description: "Offer the list of public runs, rides and hikes near a visitor's location."
   federation_enabled:
     name: "Federation (Fediverse)"
-    description: "Let people follow the instance's accounts from Mastodon and other Fediverse servers, and let it share public runs and rides there. Turn off to keep plans and profiles off other Fediverse servers."
+    description: "Let people follow the instance's accounts from Mastodon and other Fediverse servers, and let it share public runs, rides and hikes there. Turn off to keep plans and profiles off other Fediverse servers."
   oidc_issuer:
     name: "Single sign-on: issuer"
     description: "Address of your OpenID Connect provider (for example Authentik, Keycloak or Authelia). Setting issuer and client ID turns on single sign-on."
@@ -106,10 +106,10 @@ configuration:
     description: "Address of the Telegram Bot API. Leave empty for the official one."
   max_retention_days:
     name: "Keep finished runs for (days)"
-    description: "The longest time a finished run or ride is kept, 1 to 30 days. Organisers can only choose shorter times."
+    description: "The longest time a finished run, ride or hike is kept, 1 to 30 days. Organisers can only choose shorter times."
   max_plan_horizon_days:
     name: "Plan ahead at most (days)"
-    description: "How far ahead a run or ride may be planned, 1 to 180 days."
+    description: "How far ahead a run, ride or hike may be planned, 1 to 180 days."
   trust_proxy:
     name: "Trust the reverse proxy"
     description: "Turn on only when a reverse proxy in front of the public port sets the X-Forwarded-For header and no one can reach the port directly. Then the app counts rate limits per real visitor and not per proxy."

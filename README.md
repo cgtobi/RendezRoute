@@ -5,7 +5,7 @@
 <h1 align="center">RendezRoute</h1>
 
 <p align="center">
-  Plan a run or ride, share a link, and let others join. Self-hosted, and guests need no account.
+  Plan a run, ride or hike, share a link, and let others join. Self-hosted, and guests need no account.
 </p>
 
 <p align="center">

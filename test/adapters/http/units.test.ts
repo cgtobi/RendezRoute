@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
+import { translator } from "../../../src/adapters/i18n/i18n.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
+import { escaped } from "../../support/html.ts";
 import { createPlanViaUi, planForm } from "../../support/plans.ts";
+
+const en = translator("en");
 
 async function setup() {
   const test = await createTestApp();
@@ -61,6 +65,21 @@ describe("units (spec 2 i18n, decision P5)", () => {
     expect(page).toContain("7.8 mi");
     expect(page).toContain("1,148 ft");
     expect(page).toContain("8:51–9:39 min/mi");
+  });
+
+  it("take a hike's pace as min/km and show it per km or per mile", async () => {
+    const { client } = await setup();
+    const { planId } = await createPlanViaUi(client, {
+      activity: "hike",
+      distanceKm: "9",
+      paceFrom: "11:00",
+      paceTo: "12:30",
+    });
+    const page = await (await client.get(`/p/${planId}`)).text();
+    expect(page).toContain(escaped(en("activity.hike")));
+    expect(page).toContain("11:00–12:30 min/km");
+    await chooseUnits(client, "imperial", `/p/${planId}`);
+    expect(await (await client.get(`/p/${planId}`)).text()).toContain("min/mi");
   });
 
   it("show speeds in mph for rides", async () => {

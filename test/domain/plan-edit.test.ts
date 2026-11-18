@@ -40,9 +40,10 @@ describe("planToInput", () => {
     expect({ ...plan, ...saved.value }).toEqual(plan);
   });
 
-  it("round-trips rides, plans without exact start and plans without optional fields", () => {
+  it("round-trips rides, hikes, plans without exact start and plans without optional fields", () => {
     const variants = [
       samplePlan({}, { activity: "ride", paceFrom: "25", paceTo: "28" }),
+      samplePlan({}, { activity: "hike", paceFrom: "11:00", paceTo: "12:30" }),
       samplePlan(
         {},
         {

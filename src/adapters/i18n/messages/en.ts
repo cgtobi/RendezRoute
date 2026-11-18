@@ -51,7 +51,7 @@ export const en = {
 
   "privacy.title": "Privacy",
   "privacy.intro":
-    "{instance} runs RendezRoute, open-source software for planning runs and rides. This notice is generated from this site’s settings and describes what the software does.",
+    "{instance} runs RendezRoute, open-source software for planning runs, rides and hikes. This notice is generated from this site’s settings and describes what the software does.",
   "privacy.contact": "Questions about your data:",
   "privacy.storedHeading": "What is stored",
   "privacy.storedPlans":
@@ -109,8 +109,8 @@ export const en = {
   "privacy.rateLimits":
     "To prevent abuse, the server counts requests per IP address (for IPv6, per network) in memory only, for at most about an hour.",
 
-  "home.intro": "Plan a run or ride, share the link, and see who joins. No account needed.",
-  "home.cta": "Plan a run or ride",
+  "home.intro": "Plan a run, ride or hike, share the link, and see who joins. No account needed.",
+  "home.cta": "Plan a run, ride or hike",
 
   "error.csrf": "Your form expired or came from another site. Reload the page and try again.",
   "error.internal": "Something went wrong on our side. Please try again later.",
@@ -123,6 +123,7 @@ export const en = {
 
   "activity.run": "Run",
   "activity.trail": "Trail run",
+  "activity.hike": "Hike",
   "activity.ride": "Road ride",
   "activity.gravel": "Gravel ride",
   "activity.mtb": "Mountain bike ride",
@@ -142,7 +143,7 @@ export const en = {
   "unit.celsius": "°C",
   "unit.fahrenheit": "°F",
 
-  "form.heading": "Plan a run or ride",
+  "form.heading": "Plan a run, ride or hike",
   "form.errors": "Please check the fields marked below.",
   "form.posterName": "Your name",
   "form.posterNameHint": "Shown on the plan with a host badge.",
@@ -196,9 +197,9 @@ export const en = {
   "form.elevation": "Elevation gain ({unit}, optional)",
   "form.pace": "Pace or speed (optional)",
   "form.paceHint":
-    "Runs: pace per km, for example 5:30 to 6:00. Rides: speed in km/h, for example 25 to 28.",
+    "Runs: pace per km, for example 5:30 to 6:00. Hikes: for example 12:00 to 13:00. Rides: speed in km/h, for example 25 to 28.",
   "form.paceHintImperial":
-    "Runs: pace per mile, for example 9:00 to 9:30. Rides: speed in mph, for example 15 to 18.",
+    "Runs: pace per mile, for example 9:00 to 9:30. Hikes: for example 19:15 to 21:00. Rides: speed in mph, for example 15 to 18.",
   "form.paceFrom": "From",
   "form.paceTo": "To",
   "form.shareButtons": "Share buttons on the plan page",
@@ -260,7 +261,7 @@ export const en = {
     other:
       "Your fediverse profile is off. {count} plans for followers are now for people with the link.",
   },
-  "actorProfile.organises": "Organises runs and rides on {instance}.",
+  "actorProfile.organises": "Organises runs, rides and hikes on {instance}.",
   "actorProfile.upcoming": "Upcoming public plans",
   "actorProfile.none": "No upcoming public plans right now.",
   "actorProfile.gone": "This fediverse profile was turned off.",
@@ -843,7 +844,7 @@ export const en = {
   "nearby.atMost": "At most",
   "nearby.pace": "Pace or speed",
   "nearby.paceHint":
-    "Choose an activity first: minutes:seconds for runs (for example 5:30), a speed for rides.",
+    "Choose an activity first: minutes:seconds for runs and hikes (for example 5:30), a speed for rides.",
   "nearby.filters": "More filters: radius, days, activity, distance, pace",
   "nearby.search": "Search",
   "nearby.results": { one: "1 public plan", other: "{count} public plans" },
@@ -1075,7 +1076,7 @@ export const en = {
   "account.loginWith": "Log in with {name}",
   "account.linked": "This browser is logged in to your account.",
   "account.displayName": "Display name",
-  "account.displayNameHint": "Filled in as your name when you plan a run or ride.",
+  "account.displayNameHint": "Filled in as your name when you plan a run, ride or hike.",
   "account.save": "Save",
   "account.logout": "Log out",
   "account.logoutHint":

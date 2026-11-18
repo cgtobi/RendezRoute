@@ -454,6 +454,14 @@ describe("fold summaries", () => {
     );
   });
 
+  it("route: pace per km for hikes", () => {
+    expect(
+      summary(en["fold.route"], {
+        values: { activity: "hike", distanceKm: "9", paceFrom: "11:00", paceTo: "12:30" },
+      }),
+    ).toBe("No route · 9 km · 11:00–12:30 min/km · no note");
+  });
+
   it("who: link only and anyone with the link by default, also where visibility is not offered", () => {
     expect(summary(en["fold.who"])).toBe("Join: anyone with the link · Find: link only");
     expect(summary(en["fold.who"], { visibility: linkOnly })).toBe(

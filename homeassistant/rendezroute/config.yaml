@@ -1,7 +1,7 @@
 name: RendezRoute
 version: "0.15.0"
 slug: rendezroute
-description: Advertise a planned run or ride so others can join, without accounts for guests
+description: Advertise a planned run, ride or hike so others can join, without accounts for guests
 url: https://github.com/cgtobi/RendezRoute
 arch:
   - aarch64

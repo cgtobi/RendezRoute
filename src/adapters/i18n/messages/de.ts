@@ -52,7 +52,7 @@ export const de: Messages = {
 
   "privacy.title": "Datenschutz",
   "privacy.intro":
-    "{instance} nutzt RendezRoute, eine Open-Source-Software zum Planen von Läufen und Ausfahrten. Dieser Hinweis wird aus den Einstellungen dieser Website erzeugt und beschreibt, was die Software tut.",
+    "{instance} nutzt RendezRoute, eine Open-Source-Software zum Planen von Läufen, Ausfahrten und Wanderungen. Dieser Hinweis wird aus den Einstellungen dieser Website erzeugt und beschreibt, was die Software tut.",
   "privacy.contact": "Fragen zu deinen Daten:",
   "privacy.storedHeading": "Was gespeichert wird",
   "privacy.storedPlans":
@@ -111,8 +111,8 @@ export const de: Messages = {
     "Zum Schutz vor Missbrauch zählt der Server Anfragen pro IP-Adresse (bei IPv6 pro Netz), nur im Arbeitsspeicher und höchstens etwa eine Stunde lang.",
 
   "home.intro":
-    "Plane einen Lauf oder eine Ausfahrt, teile den Link und sieh, wer mitkommt. Kein Konto nötig.",
-  "home.cta": "Lauf oder Ausfahrt planen",
+    "Plane einen Lauf, eine Ausfahrt oder eine Wanderung, teile den Link und sieh, wer mitkommt. Kein Konto nötig.",
+  "home.cta": "Lauf, Ausfahrt oder Wanderung planen",
 
   "error.csrf":
     "Dein Formular ist abgelaufen oder kam von einer anderen Website. Lade die Seite neu und versuche es noch einmal.",
@@ -128,6 +128,7 @@ export const de: Messages = {
 
   "activity.run": "Lauf",
   "activity.trail": "Traillauf",
+  "activity.hike": "Wanderung",
   "activity.ride": "Rennradausfahrt",
   "activity.gravel": "Gravelausfahrt",
   "activity.mtb": "Mountainbike-Tour",
@@ -147,7 +148,7 @@ export const de: Messages = {
   "unit.celsius": "°C",
   "unit.fahrenheit": "°F",
 
-  "form.heading": "Lauf oder Ausfahrt planen",
+  "form.heading": "Lauf, Ausfahrt oder Wanderung planen",
   "form.errors": "Bitte prüfe die markierten Felder.",
   "form.posterName": "Dein Name",
   "form.posterNameHint": "Steht beim Treffen, gekennzeichnet als Organisator:in.",
@@ -203,9 +204,9 @@ export const de: Messages = {
   "form.elevation": "Höhenmeter ({unit}, optional)",
   "form.pace": "Pace oder Tempo (optional)",
   "form.paceHint":
-    "Läufe: Pace pro km, zum Beispiel 5:30 bis 6:00. Radfahrten: Tempo in km/h, zum Beispiel 25 bis 28.",
+    "Läufe: Pace pro km, zum Beispiel 5:30 bis 6:00. Wanderungen: zum Beispiel 12:00 bis 13:00. Radfahrten: Tempo in km/h, zum Beispiel 25 bis 28.",
   "form.paceHintImperial":
-    "Läufe: Pace pro Meile, zum Beispiel 9:00 bis 9:30. Radfahrten: Tempo in mph, zum Beispiel 15 bis 18.",
+    "Läufe: Pace pro Meile, zum Beispiel 9:00 bis 9:30. Wanderungen: zum Beispiel 19:15 bis 21:00. Radfahrten: Tempo in mph, zum Beispiel 15 bis 18.",
   "form.paceFrom": "Von",
   "form.paceTo": "Bis",
   "form.shareButtons": "Teilen-Knöpfe auf der Seite des Treffens",
@@ -269,7 +270,7 @@ export const de: Messages = {
     other:
       "Dein Fediverse-Profil ist ausgeschaltet. {count} Treffen für Follower:innen sind jetzt für alle mit dem Link.",
   },
-  "actorProfile.organises": "Organisiert Läufe und Ausfahrten auf {instance}.",
+  "actorProfile.organises": "Organisiert Läufe, Ausfahrten und Wanderungen auf {instance}.",
   "actorProfile.upcoming": "Kommende öffentliche Treffen",
   "actorProfile.none": "Gerade keine kommenden öffentlichen Treffen.",
   "actorProfile.gone": "Dieses Fediverse-Profil wurde ausgeschaltet.",
@@ -877,7 +878,7 @@ export const de: Messages = {
   "nearby.atMost": "Höchstens",
   "nearby.pace": "Pace oder Tempo",
   "nearby.paceHint":
-    "Wähle zuerst eine Aktivität: Minuten:Sekunden beim Laufen (zum Beispiel 5:30), ein Tempo beim Radfahren.",
+    "Wähle zuerst eine Aktivität: Minuten:Sekunden beim Laufen und Wandern (zum Beispiel 5:30), ein Tempo beim Radfahren.",
   "nearby.filters": "Weitere Filter: Umkreis, Tage, Aktivität, Distanz, Tempo",
   "nearby.search": "Suchen",
   "nearby.results": { one: "1 öffentliches Treffen", other: "{count} öffentliche Treffen" },
@@ -1118,7 +1119,7 @@ export const de: Messages = {
   "account.linked": "Dieser Browser ist bei deinem Konto angemeldet.",
   "account.displayName": "Anzeigename",
   "account.displayNameHint":
-    "Wird als dein Name eingetragen, wenn du einen Lauf oder eine Ausfahrt planst.",
+    "Wird als dein Name eingetragen, wenn du einen Lauf, eine Ausfahrt oder eine Wanderung planst.",
   "account.save": "Speichern",
   "account.logout": "Abmelden",
   "account.logoutHint":

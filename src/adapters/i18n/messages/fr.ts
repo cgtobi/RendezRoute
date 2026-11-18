@@ -54,7 +54,7 @@ export const fr: Messages = {
 
   "privacy.title": "Confidentialité",
   "privacy.intro":
-    "{instance} utilise RendezRoute, un logiciel libre pour organiser des sorties course à pied et vélo. Cette notice est générée à partir des réglages de ce site et décrit ce que fait le logiciel.",
+    "{instance} utilise RendezRoute, un logiciel libre pour organiser des courses, des sorties vélo et des randonnées. Cette notice est générée à partir des réglages de ce site et décrit ce que fait le logiciel.",
   "privacy.contact": "Questions sur vos données :",
   "privacy.storedHeading": "Ce qui est enregistré",
   "privacy.storedPlans":
@@ -113,7 +113,7 @@ export const fr: Messages = {
     "Pour éviter les abus, le serveur compte les requêtes par adresse IP (par réseau pour IPv6), uniquement en mémoire et pendant environ une heure au plus.",
 
   "home.intro":
-    "Planifiez une course ou une sortie vélo, partagez le lien et voyez qui vient. Aucun compte nécessaire.",
+    "Planifiez une course, une sortie vélo ou une randonnée, partagez le lien et voyez qui vient. Aucun compte nécessaire.",
   "home.cta": "Planifier une sortie",
 
   "error.csrf":
@@ -130,6 +130,7 @@ export const fr: Messages = {
 
   "activity.run": "Course à pied",
   "activity.trail": "Trail",
+  "activity.hike": "Randonnée",
   "activity.ride": "Sortie vélo de route",
   "activity.gravel": "Sortie gravel",
   "activity.mtb": "Sortie VTT",
@@ -149,7 +150,7 @@ export const fr: Messages = {
   "unit.celsius": "°C",
   "unit.fahrenheit": "°F",
 
-  "form.heading": "Planifier une course ou une sortie vélo",
+  "form.heading": "Planifier une course, une sortie vélo ou une randonnée",
   "form.errors": "Veuillez vérifier les champs signalés ci-dessous.",
   "form.posterName": "Votre nom",
   "form.posterNameHint": "Affiché sur la sortie avec un badge d’organisateur·rice.",
@@ -206,9 +207,9 @@ export const fr: Messages = {
   "form.elevation": "Dénivelé positif ({unit}, facultatif)",
   "form.pace": "Allure ou vitesse (facultatif)",
   "form.paceHint":
-    "Course à pied : allure par km, par exemple 5:30 à 6:00. Vélo : vitesse en km/h, par exemple 25 à 28.",
+    "Course à pied : allure par km, par exemple 5:30 à 6:00. Randonnée : par exemple 12:00 à 13:00. Vélo : vitesse en km/h, par exemple 25 à 28.",
   "form.paceHintImperial":
-    "Course à pied : allure par mile, par exemple 9:00 à 9:30. Vélo : vitesse en mph, par exemple 15 à 18.",
+    "Course à pied : allure par mile, par exemple 9:00 à 9:30. Randonnée : par exemple 19:15 à 21:00. Vélo : vitesse en mph, par exemple 15 à 18.",
   "form.paceFrom": "De",
   "form.paceTo": "À",
   "form.shareButtons": "Boutons de partage sur la page de la sortie",
@@ -269,7 +270,8 @@ export const fr: Messages = {
     other:
       "Votre profil fédivers est désactivé. {count} sorties pour les abonné·e·s sont maintenant pour les personnes ayant le lien.",
   },
-  "actorProfile.organises": "Organise des sorties à pied et à vélo sur {instance}.",
+  "actorProfile.organises":
+    "Organise des courses, des sorties vélo et des randonnées sur {instance}.",
   "actorProfile.upcoming": "Prochaines sorties publiques",
   "actorProfile.none": "Pas de sortie publique à venir pour le moment.",
   "actorProfile.gone": "Ce profil fédivers a été désactivé.",
@@ -874,7 +876,7 @@ export const fr: Messages = {
   "nearby.atMost": "Au plus",
   "nearby.pace": "Allure ou vitesse",
   "nearby.paceHint":
-    "Choisissez d’abord une activité : minutes et secondes pour la course (par exemple 5:30), une vitesse pour le vélo.",
+    "Choisissez d’abord une activité : minutes et secondes pour la course et la randonnée (par exemple 5:30), une vitesse pour le vélo.",
   "nearby.filters": "Plus de filtres : rayon, jours, activité, distance, allure",
   "nearby.search": "Rechercher",
   "nearby.results": { one: "1 sortie publique", other: "{count} sorties publiques" },
@@ -1120,7 +1122,7 @@ export const fr: Messages = {
   "account.linked": "Ce navigateur est connecté à votre compte.",
   "account.displayName": "Nom affiché",
   "account.displayNameHint":
-    "Rempli comme votre nom lorsque vous planifiez une course ou une sortie vélo.",
+    "Rempli comme votre nom lorsque vous planifiez une course, une sortie vélo ou une randonnée.",
   "account.save": "Enregistrer",
   "account.logout": "Se déconnecter",
   "account.logoutHint":

@@ -212,6 +212,19 @@ describe("upgrading an existing database (migrations 0025 and 0026 rebuild plans
       { id: "job-1", type: "notification", plan_id: "plan-1" },
     ]);
     expect(one("select plan_id from device_links")).toEqual([{ plan_id: "plan-1" }]);
+    // Other checks of the rebuilt templates table survived: an invalid visibility is still refused.
+    expect(() =>
+      upgraded.sqlite
+        .prepare(
+          `insert into plan_templates (id, poster_name, poster_language, timezone, start_time, activity_type, title,
+            area_label, drop_policy, primary_color, secondary_color, visibility, join_mode, recap_window, retention_days,
+            last_used_at, expires_at, created_at, updated_at)
+           values ('template-badvis', 'Anna', 'en', 'UTC', '09:00', 'run', 'Run', 'Park', 'no_drop', '#2E5BFF', '#FF7A45',
+            'secret', 'open', '1w', 14, ?, ?, ?, ?)`,
+        )
+        .run(t, t, t, t),
+    ).toThrow(/CHECK constraint failed/);
+
     // The view of what each device may reach survived the rebuild: by link and by account.
     expect(one("select device_id, plan_id from device_access where source = 'link'")).toEqual([
       { device_id: "device-1", plan_id: "plan-1" },
@@ -719,6 +732,237 @@ describe("upgrading an existing database (migration 0031 adds contribution notes
     upgraded.sqlite.prepare("delete from plans where id = 'plan-2'").run();
     expect(noteIds()).toEqual([]);
     expect(mappedIds()).toEqual([]);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
+  });
+});
+
+describe("upgrading an existing database (migration 0032 adds the hike activity)", () => {
+  it("keeps every plan and template with all its columns, accepts hike in both tables, and refuses unknown activities", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rendezroute-upgrade-"));
+    dirs.push(dir);
+    const path = join(dir, "rendezroute.db");
+
+    const old = new Kysely<unknown>({
+      dialect: new SqliteDialect({ database: new BetterSqlite3(path) }),
+    });
+    const upTo0031 = Object.fromEntries(
+      Object.entries(migrations).filter(([name]) => name < "0032"),
+    );
+    expect(
+      (
+        await new Migrator({
+          db: old,
+          provider: { getMigrations: () => Promise.resolve(upTo0031) },
+        }).migrateToLatest()
+      ).error,
+    ).toBeUndefined();
+    const t = "2026-06-01T08:00:00.000Z";
+    await sql`insert into identities (id, provider, subject_hmac, subject_enc, created_at, last_active_at)
+      values ('identity-1', 'oidc', 'hmac', 'enc', ${t}, ${t})`.execute(old);
+    // A public plan with every optional column set, owned by the account, and a minimal link plan.
+    await sql`insert into plans (id, slug, poster_name, poster_language, activity_type, title, note, starts_at, timezone,
+      area_label, area_lat, area_lng, exact_location_enc, distance_m, elevation_gain_m, pace_min_s_per_km, pace_max_s_per_km,
+      drop_policy, primary_color, secondary_color, visibility, join_mode, status, recap_window, recap_window_set_at,
+      recap_closed_at, retention_days, delete_at, keep_as_template, template_include_private, host_token_hash, created_at,
+      updated_at, ratings_closed_at, rating_tally, owner_identity_id, federated_at, share_buttons)
+      values ('plan-1', 'anna-trail', 'Anna', 'de', 'trail', 'Trail', 'Bring water', ${t}, 'Europe/Berlin', 'Park', 48.1, 11.5,
+      'exact-enc', 12000, 300, 330, 360, 'drop', '#112233', '#AABBCC', 'public', 'approval', 'active', '1d', ${t}, ${t},
+      14, ${t}, 1, 1, 'hash-1', ${t}, ${t}, ${t}, 'rating-enc', 'identity-1', ${t}, 'copy,whatsApp')`.execute(
+      old,
+    );
+    await sql`insert into plans (id, poster_name, poster_language, activity_type, title, starts_at, timezone, area_label,
+      drop_policy, recap_window, retention_days, delete_at, host_token_hash, created_at, updated_at, visibility)
+      values ('plan-2', 'Ben', 'en', 'run', 'Run', ${t}, 'UTC', 'Lake', 'no_drop', '1w', 14, ${t}, 'hash-2', ${t}, ${t}, 'link')`.execute(
+      old,
+    );
+    // A template with an owner and a route, and a minimal one without.
+    await sql`insert into plan_templates (id, host_token_hash, poster_name, poster_language, timezone, start_time, activity_type,
+      title, note, area_label, area_lat, area_lng, exact_location_enc, distance_m, elevation_gain_m, pace_min_s_per_km,
+      pace_max_s_per_km, drop_policy, primary_color, secondary_color, visibility, join_mode, recap_window, retention_days,
+      route_geojson_enc, creation_nonce, last_used_at, expires_at, created_at, updated_at, owner_identity_id, share_buttons)
+      values ('template-1', 'template-hash-1', 'Anna', 'de', 'Europe/Berlin', '08:00', 'gravel', 'Gravel loop', 'Lunch stop',
+      'Forest', 48.2, 11.6, 'exact-template-enc', 42000, 500, 300, 330, 'no_drop', '#123456', '#ABCDEF', 'link', 'approval',
+      '1w', 14, 'route-enc', 'nonce-1', ${t}, ${t}, ${t}, ${t}, 'identity-1', 'native')`.execute(
+      old,
+    );
+    await sql`insert into plan_templates (id, poster_name, poster_language, timezone, start_time, activity_type, title,
+      area_label, drop_policy, primary_color, secondary_color, visibility, join_mode, recap_window, retention_days,
+      last_used_at, expires_at, created_at, updated_at)
+      values ('template-2', 'Ben', 'en', 'UTC', '07:00', 'run', 'Run', 'Park', 'no_drop', '#2E5BFF', '#FF7A45', 'link',
+      'open', '1w', 14, ${t}, ${t}, ${t}, ${t})`.execute(old);
+    await sql`insert into devices (id, token_hash, created_at, last_seen_at) values ('device-1', 'token-hash-1', ${t}, ${t})`.execute(
+      old,
+    );
+    // Logged in to the account that owns plan-1 and template-1.
+    await sql`insert into devices (id, token_hash, created_at, last_seen_at, identity_id)
+      values ('device-2', 'token-hash-2', ${t}, ${t}, 'identity-1')`.execute(old);
+    await sql`insert into device_links (device_id, role, plan_id, created_at) values ('device-1', 'host', 'plan-1', ${t})`.execute(
+      old,
+    );
+    await sql`insert into device_links (device_id, role, template_id, created_at) values ('device-1', 'template', 'template-2', ${t})`.execute(
+      old,
+    );
+    await sql`insert into responses (id, plan_id, kind, display_name_enc, manage_token_hash, language, identity_id, created_at, updated_at)
+      values ('response-1', 'plan-1', 'joined', 'enc', 'manage-hash', 'en', 'identity-1', ${t}, ${t})`.execute(
+      old,
+    );
+
+    const plansBefore = (
+      await sql<Record<string, unknown>>`select * from plans order by id`.execute(old)
+    ).rows;
+    const templatesBefore = (
+      await sql<Record<string, unknown>>`select * from plan_templates order by id`.execute(old)
+    ).rows;
+    expect(plansBefore).toHaveLength(2);
+    expect(templatesBefore).toHaveLength(2);
+    await old.destroy();
+
+    const upgraded = await openDatabase(path);
+    open.push(upgraded);
+    const one = (query: string) => upgraded.sqlite.prepare(query).all();
+
+    // Every row of both tables survives with every column intact.
+    expect(one("select * from plans order by id")).toEqual(plansBefore);
+    expect(one("select * from plan_templates order by id")).toEqual(templatesBefore);
+
+    // A hike is accepted by both tables; any other unknown value is still refused.
+    expect(() =>
+      upgraded.sqlite
+        .prepare(
+          `insert into plans (id, poster_name, poster_language, activity_type, title, starts_at, timezone, area_label,
+            drop_policy, recap_window, retention_days, delete_at, host_token_hash, created_at, updated_at, visibility)
+           values ('plan-hike', 'Anna', 'en', 'hike', 'Hike', ?, 'UTC', 'Hills', 'no_drop', '1w', 14, ?, 'hash-hike', ?, ?, 'link')`,
+        )
+        .run(t, t, t, t),
+    ).not.toThrow();
+    expect(() =>
+      upgraded.sqlite
+        .prepare(
+          `insert into plan_templates (id, poster_name, poster_language, timezone, start_time, activity_type, title,
+            area_label, drop_policy, primary_color, secondary_color, visibility, join_mode, recap_window, retention_days,
+            last_used_at, expires_at, created_at, updated_at)
+           values ('template-hike', 'Anna', 'en', 'UTC', '09:00', 'hike', 'Hike', 'Hills', 'no_drop', '#2E5BFF', '#FF7A45',
+            'link', 'open', '1w', 14, ?, ?, ?, ?)`,
+        )
+        .run(t, t, t, t),
+    ).not.toThrow();
+    expect(() =>
+      upgraded.sqlite
+        .prepare(
+          `insert into plans (id, poster_name, poster_language, activity_type, title, starts_at, timezone, area_label,
+            drop_policy, recap_window, retention_days, delete_at, host_token_hash, created_at, updated_at, visibility)
+           values ('plan-bogus', 'Anna', 'en', 'swim', 'Swim', ?, 'UTC', 'Lake', 'no_drop', '1w', 14, ?, 'hash-bogus', ?, ?, 'link')`,
+        )
+        .run(t, t, t, t),
+    ).toThrow(/CHECK constraint failed/);
+    expect(() =>
+      upgraded.sqlite
+        .prepare(
+          `insert into plan_templates (id, poster_name, poster_language, timezone, start_time, activity_type, title,
+            area_label, drop_policy, primary_color, secondary_color, visibility, join_mode, recap_window, retention_days,
+            last_used_at, expires_at, created_at, updated_at)
+           values ('template-bogus', 'Anna', 'en', 'UTC', '09:00', 'swim', 'Swim', 'Lake', 'no_drop', '#2E5BFF', '#FF7A45',
+            'link', 'open', '1w', 14, ?, ?, ?, ?)`,
+        )
+        .run(t, t, t, t),
+    ).toThrow(/CHECK constraint failed/);
+
+    // Other checks of the rebuilt templates table survived: an invalid visibility is still refused.
+    expect(() =>
+      upgraded.sqlite
+        .prepare(
+          `insert into plan_templates (id, poster_name, poster_language, timezone, start_time, activity_type, title,
+            area_label, drop_policy, primary_color, secondary_color, visibility, join_mode, recap_window, retention_days,
+            last_used_at, expires_at, created_at, updated_at)
+           values ('template-badvis', 'Anna', 'en', 'UTC', '09:00', 'run', 'Run', 'Park', 'no_drop', '#2E5BFF', '#FF7A45',
+            'secret', 'open', '1w', 14, ?, ?, ?, ?)`,
+        )
+        .run(t, t, t, t),
+    ).toThrow(/CHECK constraint failed/);
+
+    // The view of what each device may reach survived the rebuild: by link and by account.
+    expect(one("select name from sqlite_master where type = 'view' order by name")).toEqual([
+      { name: "device_access" },
+    ]);
+    expect(
+      one(
+        "select device_id, role, plan_id, response_id, template_id from device_access where source = 'link' order by role",
+      ),
+    ).toEqual([
+      {
+        device_id: "device-1",
+        role: "host",
+        plan_id: "plan-1",
+        response_id: null,
+        template_id: null,
+      },
+      {
+        device_id: "device-1",
+        role: "template",
+        plan_id: null,
+        response_id: null,
+        template_id: "template-2",
+      },
+    ]);
+    expect(
+      one(
+        "select device_id, role, plan_id, response_id, template_id from device_access where source = 'account' order by role",
+      ),
+    ).toEqual([
+      {
+        device_id: "device-2",
+        role: "host",
+        plan_id: "plan-1",
+        response_id: null,
+        template_id: null,
+      },
+      {
+        device_id: "device-2",
+        role: "manage",
+        plan_id: null,
+        response_id: "response-1",
+        template_id: null,
+      },
+      {
+        device_id: "device-2",
+        role: "template",
+        plan_id: null,
+        response_id: null,
+        template_id: "template-1",
+      },
+    ]);
+
+    const indexes = (table: string) =>
+      upgraded.sqlite
+        .prepare(
+          "select name from sqlite_master where type = 'index' and tbl_name = ? and name not like 'sqlite_%' order by name",
+        )
+        .pluck()
+        .all(table);
+    expect(indexes("plans")).toEqual([
+      "plans_delete_at",
+      "plans_owner_identity_id",
+      "plans_public_area",
+      "plans_starts_at",
+    ]);
+    expect(indexes("plan_templates")).toEqual([
+      "plan_templates_expires_at",
+      "plan_templates_owner_identity_id",
+    ]);
+    expect(upgraded.sqlite.pragma("foreign_keys", { simple: true })).toBe(1);
+    expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
+
+    // Deleting a template still cascades to the links pointing at it.
+    expect(one("select device_id from device_links where template_id = 'template-2'")).toHaveLength(
+      1,
+    );
+    upgraded.sqlite.prepare("delete from plan_templates where id = 'template-2'").run();
+    expect(one("select device_id from device_links where template_id = 'template-2'")).toEqual([]);
+
+    // Deleting a plan still cascades to its responses and links.
+    upgraded.sqlite.prepare("delete from plans where id = 'plan-1'").run();
+    expect(one("select id from responses")).toEqual([]);
+    expect(one("select device_id from device_links where plan_id = 'plan-1'")).toEqual([]);
     expect(upgraded.sqlite.pragma("foreign_key_check")).toEqual([]);
   });
 });

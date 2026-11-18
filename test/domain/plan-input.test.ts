@@ -251,6 +251,16 @@ describe("validatePlanInput (spec 5 feature 1)", () => {
       expect(draft({ paceFrom: "", paceTo: "" }).pace).toBeUndefined();
     });
 
+    it("reads min:ss for hikes like runs", () => {
+      expect(draft({ activity: "hike", paceFrom: "12:00", paceTo: "10:30" }).pace).toEqual({
+        fastest: 630,
+        slowest: 720,
+      });
+      expect(errors({ activity: "hike", paceFrom: "25", paceTo: "" })).toEqual([
+        { field: "paceFrom", code: "pace_invalid" },
+      ]);
+    });
+
     it("reads whole km/h for rides", () => {
       expect(draft({ activity: "ride", paceFrom: "25", paceTo: "28" }).pace).toEqual({
         fastest: 129,

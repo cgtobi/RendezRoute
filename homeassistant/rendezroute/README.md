@@ -1,7 +1,7 @@
 # RendezRoute for Home Assistant
 
-Advertise a planned run or ride, share a link, and let others join, without an account for guests.
-RendezRoute is a small, self-hosted app: the person who plans a run or ride shares a link, guests
+Advertise a planned run, ride or hike, share a link, and let others join, without an account for guests.
+RendezRoute is a small, self-hosted app: the person who plans a run, ride or hike shares a link, guests
 answer with a name, and the exact start and route are shown only to people who are allowed to see
 them.
 

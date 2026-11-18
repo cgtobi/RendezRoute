@@ -10,10 +10,11 @@ import {
 } from "../../src/domain/pace.ts";
 
 describe("paceStyleFor (spec 3.1 Pace, decision D3)", () => {
-  it("shows runs as pace and rides as speed", () => {
+  it("shows runs and hikes as pace and rides as speed", () => {
     expect(ACTIVITY_TYPES.map((activity) => [activity, paceStyleFor(activity)])).toEqual([
       ["run", "pace"],
       ["trail", "pace"],
+      ["hike", "pace"],
       ["ride", "speed"],
       ["gravel", "speed"],
       ["mtb", "speed"],

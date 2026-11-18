@@ -6,7 +6,7 @@ import { inFiveDays, openFold, person } from "./helpers.ts";
 
 async function createPlan(host: Page, withMaps: boolean): Promise<{ planUrl: string }> {
   await host.goto("/");
-  await host.getByRole("link", { name: "Plan a run or ride" }).click();
+  await host.getByRole("link", { name: "Plan a run, ride or hike" }).click();
   await host.getByLabel("Your name").fill("Anna");
   await host.getByLabel("Title").fill("Sunday long run");
   await host.getByLabel("Date").fill(inFiveDays());

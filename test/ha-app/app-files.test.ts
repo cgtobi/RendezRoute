@@ -301,9 +301,11 @@ describe("config.yaml and the options mapper", () => {
   it("maps only the app's own config folder, and needs the Supervisor API", () => {
     expect(config.map).toEqual(["app_config:rw"]);
     expect(config.hassio_api).toBe(true);
-    // An SQLite database is not backed up while it is written, and the app is not yet proven.
+    // An SQLite database is not backed up while it is written.
     expect(config.backup).toBe("cold");
-    expect(config.stage).toBe("experimental");
+    // Stable is the default, so there is no `stage` line (it was "experimental" until the app ran on
+    // a real device).
+    expect(config.stage).toBeUndefined();
     expect(FIXED_ENVIRONMENT.ENCRYPTION_KEY_FILE).toMatch(/^\/config\//);
   });
 

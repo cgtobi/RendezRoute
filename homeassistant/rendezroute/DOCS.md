@@ -4,8 +4,9 @@ RendezRoute lets someone advertise a planned run or ride: a date, a start, a rou
 share a link, guests answer with just a name, and only the people who are allowed to see the exact
 start and route do. This app runs it inside Home Assistant.
 
-> **Experimental.** This is the first release of the app. It is tested in containers and in
-> automated tests, but not yet on real Home Assistant devices. Expect rough edges, and keep a backup.
+> **Status:** the app runs on a real Home Assistant. It is not 1.0, so expect changes between
+> versions and read the changelog before you update. Keep your Home Assistant backups encrypted (see
+> below).
 
 ## Requirements
 

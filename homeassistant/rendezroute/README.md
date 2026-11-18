@@ -14,7 +14,8 @@ This app runs RendezRoute inside Home Assistant:
 - all settings are in the app's **Configuration** tab; advanced ones appear under
   **⋮ → Show unused optional configuration options**.
 
-**Experimental:** this is the first release of the app and it has not yet been tested on real Home
-Assistant devices. Read the **Documentation** tab before you install it.
+**Status:** the app runs on a real Home Assistant. It is not 1.0, so expect changes between
+versions. Read the **Documentation** tab before you install it, and the **Changelog** tab before you
+update.
 
 Needs Home Assistant Supervisor 2026.10.4 or newer.

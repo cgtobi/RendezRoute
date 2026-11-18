@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.14.0
+
+- The home page now lists public plans below "Find public plans nearby". "Coming up" shows the next
+  ten, soonest first. "Recently" shows up to five that started in the last seven days, newest first.
+  Each row shows what Nearby shows, without the distance: title, activity, start time, area and
+  pace. Never the exact start, the route, names or notes. Nothing is shown when there are no public
+  plans, when Nearby is off (`nearby_enabled`), or when plans cannot be public because logging in is
+  required but not set up.
+- Plans that were already public now also appear on the home page. The choice when creating a plan
+  now reads "Anyone: listed on the home page and in Nearby on this site" (also in German and
+  French).
+- When the home page lists plans it is not stored by caches and not indexed by search engines, as
+  with Nearby.
+- The app is no longer marked experimental in Home Assistant, and its documentation says that it
+  runs on a real Home Assistant.
+- Nothing needs to be configured for this update. To keep plans off the home page, turn off
+  **Nearby** (`nearby_enabled`).
+
 ## 0.13.0
 
 - Text fields are now a line with a grey example text, not a box. An empty required field shows a

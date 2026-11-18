@@ -7,7 +7,7 @@ import type { Child } from "hono/jsx";
 import type { AccountDeps } from "../../../application/accounts.ts";
 import { routeForNoteLink } from "../../../application/participant-notes.ts";
 import type { PlanDeps } from "../../../application/plans.ts";
-import { listPublicRecent, listPublicUpcoming } from "../../../application/public-upcoming.ts";
+import { listMyPlans } from "../../../application/my-plans.ts";
 import { listTemplates } from "../../../application/templates.ts";
 import type {
   AdminAuth,
@@ -15,7 +15,7 @@ import type {
   PreviewRenderer,
   WeatherProvider,
 } from "../../../application/ports.ts";
-import { type Config, loginConfigured } from "../../../config.ts";
+import type { Config } from "../../../config.ts";
 import type { Theme } from "../../../domain/theme.ts";
 import type { Units } from "../../../domain/units.ts";
 import type { Language, Translate } from "../../i18n/i18n.ts";
@@ -49,7 +49,7 @@ import { registerInviteRoutes } from "./routes/invites.tsx";
 import { registerSecretLinkRoutes } from "./routes/secret-links.tsx";
 import { CHANNEL_LINK_PATH, registerChannelLinkRoutes } from "./routes/channel-links.tsx";
 import { PrivacyPage } from "./views/privacy-page.tsx";
-import { PublicUpcoming } from "./views/public-upcoming.tsx";
+import { MyPlans } from "./views/my-plans.tsx";
 import { TemplateList } from "./views/templates.tsx";
 
 const isUploadRoute = (method: string, path: string) =>
@@ -197,22 +197,14 @@ export function createApp({
     return c.body(toGpx(found.route, found.title));
   });
 
-  const nothingPublic = config.publicRequiresLogin && !loginConfigured(config);
-
   app.get("/", async (c) => {
     const t = c.get("t");
-    // The device's templates (spec 3.10, decision I43), so the page is private when it has any.
-    const templates = await listTemplates(planDeps, {
-      deviceToken: readDeviceToken(c, config),
-    });
-    // Plans cannot be public while Nearby is off (decision D35); with login required and none
-    // offered, Nearby lists nothing, and so does the home page.
-    const listed = config.nearbyEnabled && !nothingPublic;
-    const upcoming = listed ? await listPublicUpcoming(planDeps) : [];
-    const recent = listed ? await listPublicRecent(planDeps) : [];
-    const anyPublic = upcoming.length > 0 || recent.length > 0;
-    if (templates.length > 0 || anyPublic) c.header("cache-control", "private, no-store");
-    if (anyPublic) c.header("x-robots-tag", "noindex");
+    const deviceToken = readDeviceToken(c, config);
+    // The device's templates (spec 3.10, decision I43) and its own plans: the page is private
+    // to a browser that has a device, whatever it lists.
+    const templates = await listTemplates(planDeps, { deviceToken });
+    const mine = await listMyPlans(planDeps, { deviceToken });
+    if (deviceToken !== undefined) c.header("cache-control", "private, no-store");
     return c.render(
       <section class="home">
         {c.req.query("dataDeleted") !== undefined && (
@@ -231,20 +223,7 @@ export function createApp({
             <a href="/nearby">{t("home.nearby")}</a>
           </p>
         )}
-        <PublicUpcoming
-          heading="home.upcoming"
-          t={t}
-          items={upcoming}
-          units={c.get("units")}
-          language={c.get("language")}
-        />
-        <PublicUpcoming
-          heading="home.recent"
-          t={t}
-          items={recent}
-          units={c.get("units")}
-          language={c.get("language")}
-        />
+        <MyPlans t={t} plans={mine} language={c.get("language")} />
         <TemplateList t={t} templates={templates} />
       </section>,
     );

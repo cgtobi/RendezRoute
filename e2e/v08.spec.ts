@@ -263,7 +263,7 @@ test("Nearby: a public plan found from the device's location and from a typed pl
   await host.locator(".place-search").getByRole("button", { name: "Search" }).click();
   await host.getByRole("button", { name: "Flaucher, Isar, Munich" }).click();
   await openFold(host, "Who can join and find it");
-  await host.getByLabel("Anyone: listed on the home page and in Nearby on this site").check();
+  await host.getByLabel("Anyone: listed in Nearby on this site").check();
   await host.getByRole("button", { name: "Create plan" }).click();
   await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
 

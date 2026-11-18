@@ -124,6 +124,7 @@ async function pages(client: TestClient, planId: string): Promise<string> {
     `/p/${planId}/host`,
     `/p/${planId}/host/delete`,
     `/p/${planId}/calendar.ics`,
+    "/",
     "/my-data",
     "/my-data/export.zip",
     `/p/${planId}/me/export.zip`,

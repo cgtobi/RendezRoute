@@ -219,8 +219,7 @@ export const fr: Messages = {
     "Seul le lien de la sortie est partagé. Là où l’appareil a un menu de partage, il remplace le bouton WhatsApp.",
   "form.visibility": "Qui peut trouver cette sortie",
   "form.visibilityLink": "Seulement les personnes ayant le lien",
-  "form.visibilityPublic":
-    "Tout le monde : listée sur la page d’accueil et dans « À proximité » sur ce site",
+  "form.visibilityPublic": "Tout le monde : listée dans « À proximité » sur ce site",
   "form.visibilityPublicHint":
     "Une sortie publique peut être trouvée par tout le monde, qui voit alors ce que la page de la sortie montre à tous : le titre, le nom de l’organisateur·rice, la date et l’heure, la zone, l’activité, la distance, l’allure et la remarque. Le point de départ exact, le parcours et les noms des personnes qui répondent restent cachés, comme pour toute sortie.",
   "form.publicNeedsLogin": "Les sorties publiques demandent un compte sur ce site.",
@@ -232,7 +231,7 @@ export const fr: Messages = {
   "form.visibilityFollowersNone":
     "Les abonné·e·s dans le fédivers (tout le monde peut s’y abonner), et les personnes ayant le lien",
   "form.visibilityPublicShared":
-    "Tout le monde : listée sur la page d’accueil et dans « À proximité » sur ce site et partagée dans le fédivers par {handle}",
+    "Tout le monde : listée dans « À proximité » sur ce site et partagée dans le fédivers par {handle}",
   "form.visibilityPublicProfile": "Tout le monde : partagée dans le fédivers par {handle}",
   "form.followersNeedsProfile":
     "Les abonné·e·s demandent un profil fédivers, à configurer une fois sur la page du compte.",
@@ -891,6 +890,7 @@ export const fr: Messages = {
     "Les lieux ne peuvent pas être recherchés pour le moment. Utilisez plutôt la carte ou votre position.",
   "nearby.nothingPublic":
     "Les sorties de ce site ne peuvent pas être publiques : il n’y a donc rien à trouver ici.",
+  "home.roleHost": "Vous organisez",
   "home.recent": "Récemment",
   "home.upcoming": "À venir",
   "home.nearby": "Trouver des sorties publiques à proximité",

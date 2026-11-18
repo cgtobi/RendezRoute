@@ -252,36 +252,6 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       return rows.map(fromRow);
     },
 
-    async findPublicUpcoming(from, until, limit) {
-      const rows = await selectPlans()
-        .where("plans.visibility", "=", "public")
-        .where("plans.status", "=", "active")
-        .where("plans.area_lat", "is not", null)
-        .where("plans.area_lng", "is not", null)
-        .where("plans.starts_at", ">=", from.toISOString())
-        .where("plans.starts_at", "<", until.toISOString())
-        .orderBy("plans.starts_at")
-        .orderBy("plans.id")
-        .limit(limit)
-        .execute();
-      return rows.map(fromRow);
-    },
-
-    async findPublicRecent(from, until, limit) {
-      const rows = await selectPlans()
-        .where("plans.visibility", "=", "public")
-        .where("plans.status", "=", "active")
-        .where("plans.area_lat", "is not", null)
-        .where("plans.area_lng", "is not", null)
-        .where("plans.starts_at", ">=", from.toISOString())
-        .where("plans.starts_at", "<", until.toISOString())
-        .orderBy("plans.starts_at", "desc")
-        .orderBy("plans.id")
-        .limit(limit)
-        .execute();
-      return rows.map(fromRow);
-    },
-
     async findActiveDeletingBetween(from, to) {
       const rows = await selectPlans()
         .where("plans.status", "=", "active")

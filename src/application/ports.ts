@@ -143,16 +143,6 @@ export interface PlanRepository {
     window: { from: Date; to: Date },
     page: { activity: ActivityType | undefined; limit: number; offset: number },
   ): Promise<Plan[]>;
-  /**
-   * Public active plans with a public point starting from `from` (included) until `until`
-   * (excluded), soonest first then by id, at most `limit`: the home page list. No area.
-   */
-  findPublicUpcoming(from: Date, until: Date, limit: number): Promise<Plan[]>;
-  /**
-   * Public active plans with a public point that started from `from` (included) until `until`
-   * (excluded), newest first then by id, at most `limit`: the home page's recent plans.
-   */
-  findPublicRecent(from: Date, until: Date, limit: number): Promise<Plan[]>;
   /** Active plans being deleted within the range, bounds included (spec 3.10: deletion reminder). */
   findActiveDeletingBetween(from: Date, to: Date): Promise<Plan[]>;
   /** Plans the device hosts or manages a response to, with the response's kind (spec 6 feature 2). */

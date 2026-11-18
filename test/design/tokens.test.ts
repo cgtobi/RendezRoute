@@ -52,11 +52,17 @@ const PAIRS: readonly [string, string, number][] = [
   ["--accent", "--surface", 4.5],
   ["--on-accent", "--accent", 4.5],
   ["--danger", "--bg", 4.5],
+  // .error, .required-hint and the fold values sit on the page, and in notices on --surface
+  ["--danger", "--surface", 4.5],
   ["--on-danger", "--danger", 4.5],
   ["--fg", "--warning-bg", 4.5],
   ["--field-border", "--bg", 3],
   ["--field-border", "--surface", 3],
   ["--focus", "--bg", 3],
+  // The 3 px outline of :focus-visible is a non-text indicator (1.4.11): it also surrounds
+  // controls on raised areas and in the status block, where it sits on those fills.
+  ["--focus", "--surface", 3],
+  ["--focus", "--ok-bg", 3],
   ["--ok", "--ok-bg", 4.5],
   ["--fg", "--ok-bg", 4.5],
   ["--muted", "--ok-bg", 4.5],
@@ -82,6 +88,28 @@ describe.each([
   it.each(PAIRS)("%s on %s reaches %s:1", (fg, bg, minimum) => {
     const ratio = contrastRatio(scheme[fg] ?? "#000000", scheme[bg] ?? "#000000");
     expect(ratio).toBeGreaterThanOrEqual(minimum);
+  });
+});
+
+// The default secondary plan colour (.badge, .host-mark, .avatar-host, .deletion) is stated once,
+// in the light block, and is the same in both dark blocks: the dark blocks must not override it.
+describe("the default secondary plan colour and its text", () => {
+  const names = ["--plan-secondary-default", "--plan-on-secondary-default"];
+  it.each([
+    ["dark", dark],
+    ["dark (chosen, data-theme)", darkChosen],
+  ])("is not overridden in %s mode", (_mode, scheme) => {
+    expect(names.filter((name) => scheme[name] !== undefined)).toEqual([]);
+  });
+
+  it("reaches 4.5:1 for its text (--plan-on-secondary-default on --plan-secondary-default)", () => {
+    expect(light["--plan-secondary-default"]).toBeDefined();
+    expect(light["--plan-on-secondary-default"]).toBeDefined();
+    const ratio = contrastRatio(
+      light["--plan-on-secondary-default"] ?? "#ffffff",
+      light["--plan-secondary-default"] ?? "#ffffff",
+    );
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 });
 

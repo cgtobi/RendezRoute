@@ -91,11 +91,12 @@
     --accent: #2c67a8;
     /* --on-accent: text on --accent (buttons, checked mode switch). Pair: on --accent at 4.5:1. */
     --on-accent: #ffffff;
-    /* --focus: the 3 px focus ring (:focus-visible, the mode switch). Pair: on --bg at 3:1. */
+    /* --focus: the 3 px focus ring (:focus-visible, the mode switch). Pairs: on --bg, --surface,
+       --ok-bg at 3:1 (WCAG 1.4.11). */
     --focus: #2c67a8;
     /* Colour: danger, warning, ok */
-    /* --danger: errors, invalid-field line, the delete button, the dev banner. Pair: on --bg at
-       4.5:1 (not tested on --surface). */
+    /* --danger: errors, invalid-field line, the delete button, the dev banner. Pairs: on --bg,
+       --surface at 4.5:1. */
     --danger: #b3261e;
     /* --on-danger: text on --danger (delete button, dev banner). Pair: on --danger at 4.5:1. */
     --on-danger: #ffffff;
@@ -127,7 +128,7 @@
     --avatar-7-bg: #e5e9d0;
     --avatar-7-fg: #4d5a12;
     /* The secondary plan colour where a page has no plan theme (spec 3.1 default). Used for
-       .badge, .host-mark and .avatar-host; no contrast pair in tokens.test.ts. The --plan-* colours themselves come from the per-plan stylesheet
+       .badge, .host-mark and .avatar-host. Pair: --plan-on-secondary-default on --plan-secondary-default at 4.5:1 (light block only: the dark blocks do not override them). The --plan-* colours themselves come from the per-plan stylesheet
        (theme-css.ts) and are not set in this file; they are the same in light and dark. */
     --plan-secondary-default: #ff7a45;
     --plan-on-secondary-default: #111111;

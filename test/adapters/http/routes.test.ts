@@ -159,6 +159,26 @@ describe("routes on the host page (decision D10)", () => {
   });
 });
 
+describe("an upload without a file", () => {
+  it("answers 422 with the message and leaves the route alone", async () => {
+    const { host, planId } = await setup();
+    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
+    const before = await (await host.get(`/p/${planId}/route.gpx`)).text();
+    const response = await host.postMultipart(`/p/${planId}/host/route`, { _csrf: csrf }, {});
+    expect(response.status).toBe(422);
+    const html = await response.text();
+    expect(html).toContain(escaped(en["field.gpx_missing"]));
+    expect(html).toContain('id="field-route-error"');
+    expect(await (await host.get(`/p/${planId}/route.gpx`)).text()).toBe(before);
+    const ok = await host.postMultipart(
+      `/p/${planId}/host/route`,
+      { _csrf: csrf },
+      { gpx: { name: "new.gpx", content: sampleGpx({ lat: 46.5 }) } },
+    );
+    expect(ok.status).toBe(303);
+  });
+});
+
 describe("hiding the start and end of a route (decision D13)", () => {
   const TRIM_OPTIONS = ["0", "200", "500", "1000"].map((m) => `<option value="${m}"`);
 

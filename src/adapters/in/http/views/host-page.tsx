@@ -5,7 +5,7 @@ import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { RecapWindow } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
-import { describedBy, RequiredHint } from "./line-field.tsx";
+import { describedBy } from "./line-field.tsx";
 import type { MapSettings } from "./maps.tsx";
 import { PlanForm, type VisibilityChoice } from "./plan-form.tsx";
 import { RecapShortenedNotice, RecapWindowSelect } from "./recap.tsx";
@@ -266,15 +266,12 @@ function RouteSection(props: HostPageProps) {
             type="file"
             name="gpx"
             accept=".gpx,application/gpx+xml"
-            required
-            aria-required="true"
             aria-invalid={props.routeError === undefined ? undefined : "true"}
             aria-describedby={describedBy(
               "field-route-hint",
               props.routeError === undefined ? undefined : "field-route-error",
             )}
           />
-          <RequiredHint t={t} controlId="field-route" invalid={props.routeError !== undefined} />
           <p class="hint" id="field-route-hint">
             {t("host.routeHint")}
           </p>

@@ -165,20 +165,34 @@ describe("pages", () => {
     expect(attribute(tagOf(manage, "field-displayName"), "aria-describedby")).toBeUndefined();
   });
 
-  it("marks the route file on the host page", async () => {
+  it("does not mark the optional route file on the host page as required", async () => {
     const { app } = await createTestApp();
     const host = new TestClient(app);
     const { planId } = await createPlanViaUi(host);
     const html = await (await host.get(`/p/${planId}/host`)).text();
-    expectRequired(html, "field-route", { textLike: false });
-    expect(attribute(tagOf(html, "field-route"), "aria-describedby")).toBe("field-route-hint");
+    const input = tagOf(html, "field-route");
+    expect(input).not.toMatch(/\srequired[\s=>]/);
+    expect(attribute(input, "aria-required")).toBeUndefined();
+    expect(html).not.toContain('id="field-route-required"');
+    expect(html).toContain(messages["form.gpx"]);
+    expect(attribute(input, "aria-describedby")).toBe("field-route-hint");
     const refused = await host.postMultipart(
       `/p/${planId}/host/route`,
       { _csrf: hiddenFields(html)._csrf ?? "" },
       { gpx: { name: "bad.gpx", content: "not a route" } },
     );
     expect(refused.status).toBe(422);
-    expectErrorInstead(await refused.text(), "field-route", "field-route-error");
+    const refusedHtml = await refused.text();
+    expect(attribute(tagOf(refusedHtml, "field-route"), "aria-invalid")).toBe("true");
+    expect(refusedHtml).toContain('id="field-route-error"');
+    expectDescribedByResolves(refusedHtml);
+    const empty = await host.postMultipart(
+      `/p/${planId}/host/route`,
+      { _csrf: hiddenFields(html)._csrf ?? "" },
+      {},
+    );
+    expect(empty.status).toBe(422);
+    expect(await empty.text()).toContain(`id="field-route-error"`);
   });
 
   it("marks the admin token and the plan search", async () => {

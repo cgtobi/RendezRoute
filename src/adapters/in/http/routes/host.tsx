@@ -215,11 +215,15 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     const body = await readForm(c);
     if (body === undefined) return badRequest(c);
     const gpx = await formFile(body, "gpx");
-    if (gpx === undefined) return c.redirect(`/p/${request(c).planId}/host`, 303);
+    const routeTrim = formField(body, ROUTE_TRIM_FIELD);
+    if (gpx === undefined) {
+      // No file chosen: the page again with a message, like any other upload error.
+      c.status(422);
+      return render(c, { routeError: "gpx_missing", routeTrim });
+    }
     // Every route file counts: parsing it is the costly part (decision I32).
     const allowed = limits.route.take(clientOf(c));
     if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
-    const routeTrim = formField(body, ROUTE_TRIM_FIELD);
     const result = await setRoute(planDeps, { ...request(c), gpx, routeTrim });
     if (result.kind === "invalid") {
       c.status(422);

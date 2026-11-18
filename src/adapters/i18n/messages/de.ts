@@ -341,6 +341,7 @@ export const de: Messages = {
   "field.route_unsafe":
     "Diese Datei kann nicht sicher gelesen werden. Bitte exportiere sie noch einmal als einfache GPX-Datei.",
   "field.route_unreadable": "Das sieht nicht nach einer GPX-Datei aus.",
+  "field.gpx_missing": "Wähle eine GPX-Datei aus.",
   "field.route_empty": "Die Datei enthält keinen Track und keine Route.",
   "field.route_too_many_points": "Die Route hat mehr als 50.000 Punkte.",
   "field.route_invalid": "Die Datei enthält ungültige Koordinaten.",

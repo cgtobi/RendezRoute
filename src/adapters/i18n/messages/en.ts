@@ -329,6 +329,7 @@ export const en = {
   "field.route_unsafe":
     "This file can't be read safely. Please export it again as a plain GPX file.",
   "field.route_unreadable": "This doesn't look like a GPX file.",
+  "field.gpx_missing": "Choose a GPX file.",
   "field.route_empty": "The file contains no track or route.",
   "field.route_too_many_points": "The route has more than 50,000 points.",
   "field.route_invalid": "The file contains invalid coordinates.",

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.15.0
+
+- The home page now lists your own plans, not public ones. This replaces the public list that 0.14.0
+  added. "Coming up" shows up to ten of your plans that have not started, soonest first, and
+  "Recently" shows up to five from the last seven days, newest first. Each row has the title, the
+  day and time, and what you are to the plan: you host it, you are in, you asked to join, or you are
+  interested. A plan you host opens its host page, and one you answered opens your own page for it.
+- Only plans of this browser, or of the account you are logged in with, are listed. Plans where you
+  were declined or removed, and cancelled plans, are left out. Nothing is listed for a browser that
+  has no plans. The exact start, names, route and notes are never shown here.
+- Plans that were public are no longer shown on the home page, only in Nearby. The choice when
+  creating a plan reads "Anyone: listed in Nearby on this site" again (also in German and French).
+- When your browser has used the site, the home page is not stored by caches.
+- Nothing needs to be configured for this update.
+
 ## 0.14.0
 
 - The home page now lists public plans below "Find public plans nearby". "Coming up" shows the next

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.13.0 (not released yet)
+
+- Text fields are now a line with a grey example text, not a box. An empty required field shows a
+  red "Required" under it, and a field that cannot be edited looks disabled. A focused field shows
+  a thicker line instead of a blue frame.
+- The meeting area field is now called "Area", and the place search is part of it: type a name, or
+  press Enter or the magnifier to search for a place. A result fills the name and sets the public
+  area on the map. Nothing is sent while you type. "Where exactly?" is now "Description of the
+  meeting point".
+- Privacy: when you set the exact meeting point on the map and its description is empty, the exact
+  point is now sent through the app to the place-search service, to suggest a description (a place
+  or a road name, never a house number). Until now only the rounded point (about 1 km) left the
+  app, and only for the area name. The app does not keep or log these lookups. The service does not
+  learn who you are. There is no separate switch: turn off **Look up place names**
+  (`geocoder_enabled`) to send nothing.
+- The time zone line now reads "Time zone: Europe/Berlin · Change". The fold "Who can join and find
+  it" shows its summary only while it is closed, and all folds look alike. The search button and the
+  "Remove" buttons on the map are small icons.
+- Date and time fields show a focus ring in Safari too. In high-contrast modes the field lines now
+  use the system colours: grey at rest, the highlight colour when focused or invalid.
+- The route upload on the host page no longer looks required. Pressing Upload without a file says
+  "Choose a GPX file." The route itself is optional.
+- Style sheets and scripts now carry a version in their address, so a changed look shows after an
+  update without a hard reload.
+- Nothing needs to be configured for this update.
+
 ## 0.12.0
 
 - The plan form is shorter. Optional parts are folded away, each with a one-line summary: route,

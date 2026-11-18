@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterAll, afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const seen = vi.hoisted(() => ({ reporting: [] as boolean[] }));
 vi.mock(import("../src/adapters/in/activitypub/federation.ts"), async (original) => {
@@ -19,7 +19,15 @@ vi.mock(import("../src/adapters/in/activitypub/federation.ts"), async (original)
   };
 });
 
+// isolate: false keeps the worker's module cache between files: if another file already loaded
+// main.ts, the cached unmocked copy would be reused. Reload it against the mock, and drop the
+// mocked copies afterwards so they do not leak into later files in the same worker.
+vi.resetModules();
 const { startServer } = await import("../src/main.ts");
+afterAll(() => {
+  vi.doUnmock("../src/adapters/in/activitypub/federation.ts");
+  vi.resetModules();
+});
 
 const dirs: string[] = [];
 afterEach(() => {

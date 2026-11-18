@@ -128,6 +128,9 @@ export default defineConfig({
     // state, process.env, globals and fake timers now persist between files in one worker. Three
     // plain runs and four shuffled runs (files and tests, different seeds) passed; a new test
     // that leaks such state may fail an unrelated file, so restore fakes in afterEach.
+    // Rule: a test that uses vi.mock must call vi.resetModules() before importing the code under
+    // test (and in afterAll), or a cached unmocked copy from an earlier file is reused. The guard
+    // test/lint/mock-isolation.test.ts enforces it.
     isolate: false,
   },
 });

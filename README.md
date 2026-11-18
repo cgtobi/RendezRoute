@@ -30,9 +30,6 @@
 run clubs, cycling groups and friends who want to say "we are going out on Sunday, come along"
 without building a group chat, a sign-up sheet or a social network first.
 
-> **Status:** runs on a real Home Assistant and on an iPhone. It is not 1.0: expect changes between
-> versions, and read the [changelog](homeassistant/rendezroute/CHANGELOG.md) before you update.
-
 ## Why RendezRoute
 
 - **Guests need no account.** Whoever gets the link can answer with just a name. Accounts through
@@ -183,26 +180,6 @@ Node 26 and npm. Install with `npm ci`, then:
 
 Run `npm run build` before `npm run dev`, and start it with
 `BASE_URL=http://localhost:3000 ALLOW_INSECURE_DEV=true DATA_DIR=$PWD/data`.
-
-<details>
-<summary>More about the tests and the icons</summary>
-
-- `npm run e2e` uses fake map, search, weather and login services. `E2E_CHANNEL=chrome npm run e2e`
-  uses an installed Chrome instead of Playwright's Chromium.
-- The `webkit iPhone` project of `npm run e2e` needs WebKit once: `npx playwright install webkit`.
-- `npm run css:snapshot:write` and `npm run css:snapshot:compare` store and check the computed
-  styles of `/styleguide` (all projects, light and dark, 320 and 390 px) under the git-ignored
-  `.css-snapshots/current` (`CSS_SNAPSHOT_DIR` for another folder). Take one before a CSS refactor
-  and compare after; it also covers hover, keyboard focus and forced colors (Chromium); details in
-  `e2e/css-snapshot.spec.ts`.
-- `npm run icons -- <folder>` rebuilds the logo and icons in `public/` from the Inkscape exports of
-  the logo (`RendezRoute_AppIcon.svg`, `RendezRoute_icon.svg`).
-
-</details>
-
-The product's purpose and rules are in [`rendezroute-spec.md`](rendezroute-spec.md), decisions in
-[`docs/decisions.md`](docs/decisions.md), and a handover for new contributors in
-[`docs/handover.md`](docs/handover.md).
 
 ## License
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.0
+
+- Plans can now be a hike, besides a run, trail run, ride, gravel ride or mountain bike ride. Hikes
+  use a pace per kilometre (or mile) like runs, and the form, Nearby filter and texts say "run, ride
+  or hike" (also in German and French).
+- The database is updated once on start: the list of activities in it now includes hikes. Your
+  existing plans and templates are not changed.
+- Nothing needs to be configured for this update.
+
 ## 0.15.0
 
 - The home page now lists your own plans, not public ones. This replaces the public list that 0.14.0

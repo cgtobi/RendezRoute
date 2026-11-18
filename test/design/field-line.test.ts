@@ -159,6 +159,22 @@ describe("the line field rule (decision D73)", () => {
     expect(body).toMatch(/(?<![-\w])appearance: none/);
   });
 
+  it("gives date and time their own focus cue that also works in WebKit (13n)", () => {
+    const ring = css.all.find(
+      (r) =>
+        r.layer === "components" &&
+        r.selector === 'input[type="date"]:focus-within, input[type="time"]:focus-within',
+    );
+    expect(ring, "date/time :focus-within rule in the components layer").toBeDefined();
+    expect(ring?.atRules.filter((a) => a.startsWith("@media"))).toEqual([]);
+    expect(ring?.body).toMatch(/outline: 3px solid var\(--focus\)/);
+    expect(ring?.body).toMatch(/outline-offset: 2px/);
+    // Same declaration as the global ring, so Chromium (both match) draws one ring.
+    const global = css.all.find((r) => r.layer === "base" && r.selector === ":focus-visible");
+    expect(global?.body).toMatch(/outline: 3px solid var\(--focus\)/);
+    expect(global?.body).toMatch(/outline-offset: 2px/);
+  });
+
   it("makes the title the large variant of the same rule", () => {
     const title = rule(".plan-form .title-input");
     expect(title).toMatch(/font-size: calc\(var\(--text-2xl\) \* 0\.8\)/);

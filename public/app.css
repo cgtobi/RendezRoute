@@ -518,6 +518,16 @@
     margin: 0;
   }
 
+  /* Focus cue of date and time inputs (13n). Desktop WebKit keeps the focus in the native inner
+     fields and never matches `:focus-visible` on the host, so the global ring is missing there;
+     `:focus-within` matches the host in every engine. Same declaration as the global ring (one
+     ring where both match). Forced colours need no entry: the outline is a system colour there. */
+  input[type="date"]:focus-within,
+  input[type="time"]:focus-within {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
   input[type="date"]::-webkit-datetime-edit,
   input[type="time"]::-webkit-datetime-edit {
     padding: 0;

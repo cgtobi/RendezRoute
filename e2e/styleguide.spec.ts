@@ -319,13 +319,8 @@ for (const scheme of SCHEMES) {
            if (target.tagName === "SUMMARY") required = /inset/.test(after.shadow);
            else if (textLike) required = after.hasOutline || after.line2;
            else required = after.hasOutline || /inset/.test(after.shadow);
-           // WebKit finding: desktop WebKit does not match :focus-visible on the host of a date or
-           // time input (focus sits in its inner field), so the global ring is missing there and only
-           // the native inner-field highlight shows. Not measurable from outside; skipped in WebKit
-           // for those two types only, and reported in the 13c1 notes.
-           const exemptKind = ${webkit} && (type === "date" || type === "time");
            const changed = after.outline !== before.outline || after.shadow !== before.shadow || after.line !== before.line;
-           window.__stops.push({ id: owner.id, cue: exemptKind || (required && changed), what: describe(el) + (target !== el ? " via " + describe(target) : "") + " before[" + before.outline + " | " + before.shadow + " | " + before.line + "] after[" + after.outline + " | " + after.shadow + " | " + after.line + "]" });
+           window.__stops.push({ id: owner.id, cue: required && changed, what: describe(el) + (target !== el ? " via " + describe(target) : "") + " before[" + before.outline + " | " + before.shadow + " | " + before.line + "] after[" + after.outline + " | " + after.shadow + " | " + after.line + "]" });
          };
          document.querySelector("h1").setAttribute("tabindex", "-1");
          document.querySelector("h1").focus();`,

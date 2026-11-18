@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.13.0 (not released yet)
+## 0.13.0
 
 - Text fields are now a line with a grey example text, not a box. An empty required field shows a
   red "Required" under it, and a field that cannot be edited looks disabled. A focused field shows

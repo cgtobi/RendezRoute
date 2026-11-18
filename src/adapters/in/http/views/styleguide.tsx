@@ -748,6 +748,9 @@ export function StyleGuide(props: StyleGuideProps) {
         <Status state="notAnswered" text="You have not answered yet." />
         <WhenWhere t={t} when="Sun, 7 Jun 2031, 07:30" where="Englischer Garten, north end" />
         <WhenWhereLines t={t} when="Sun, 7 Jun 2031, 07:30" where="Englischer Garten, north end" />
+        {/* A hint right before the pills, as on the admin's plan page: `.hint + .when-where`. */}
+        <p class="hint">{t("admin.planPublic")}</p>
+        <WhenWhere t={t} when="Sun, 7 Jun 2031, 07:30" where="Englischer Garten, north end" />
         <ExactStartSection
           t={t}
           exactStart={{

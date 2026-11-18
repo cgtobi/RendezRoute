@@ -24,78 +24,142 @@
      for badges and counts.
    - Icons: <span class="icon icon-NAME" aria-hidden="true">; each needs its SVG in public/icons/
      and a rule `.icon-NAME { --icon: url("icons/NAME.svg"); }` below.
-   The design tokens below are checked for WCAG AA contrast by test/design/tokens.test.ts. */
+   The design tokens below are checked for WCAG AA contrast by test/design/tokens.test.ts.
 
-:root {
-  /* Colour */
-  --bg: #ffffff;
-  --fg: #16181d;
-  --muted: #5c636e;
-  --placeholder: #687079;
-  --line: #e4e7eb;
-  --control-line: #c5cad1;
-  --field-border: #858c97;
-  --surface: #f3f4f6;
-  --accent: #2c67a8;
-  --on-accent: #ffffff;
-  --focus: #2c67a8;
-  --danger: #b3261e;
-  --on-danger: #ffffff;
-  --warning-bg: #fff4e5;
-  --warning-line: #f3d19c;
-  --ok: #1a6e3e;
-  --ok-bg: #ebf8f0;
-  --ok-line: #b9e4c9;
-  /* Name colours for initials: background and text */
-  --avatar-0-bg: #fde2e4;
-  --avatar-0-fg: #8a1c2b;
-  --avatar-1-bg: #dbe8ff;
-  --avatar-1-fg: #1d3f8f;
-  --avatar-2-bg: #d8f3e1;
-  --avatar-2-fg: #17613a;
-  --avatar-3-bg: #ecdfff;
-  --avatar-3-fg: #5b2a99;
-  --avatar-4-bg: #ffe8cc;
-  --avatar-4-fg: #8a4b00;
-  --avatar-5-bg: #d5f2f4;
-  --avatar-5-fg: #0e5c63;
-  --avatar-6-bg: #f7dcef;
-  --avatar-6-fg: #84205f;
-  --avatar-7-bg: #e5e9d0;
-  --avatar-7-fg: #4d5a12;
-  /* The secondary plan colour where a page has no plan theme (spec 3.1 default) */
-  --plan-secondary-default: #ff7a45;
-  --plan-on-secondary-default: #111111;
-  /* Type: 16 px base; headings tight and heavy */
-  --text-xs: 0.8125rem;
-  --text-sm: 0.875rem;
-  --text-md: 1rem;
-  --text-lg: 1.125rem;
-  --text-2xl: clamp(1.75rem, 1.35rem + 1.8vw, 2.5rem);
-  /* Space: a 4 px scale */
-  --s1: 4px;
-  --s2: 8px;
-  --s3: 12px;
-  --s4: 16px;
-  --s5: 24px;
-  --s6: 32px;
-  --s7: 48px;
-  /* Shape */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-pill: 999px;
-  /* Smallest touch target (WCAG 2.5.8 asks 24 px; 44 px for thumbs) */
-  --target: 44px;
-  color-scheme: light dark;
-}
+   Cascade layers (decision D83), declared once below, weakest first. A later layer beats an
+   earlier one whatever the specificity; inside a layer, specificity and source order decide as
+   before. A state rule (hover, focus, checked, disabled, invalid) lives in the layer of the
+   component it belongs to, never in a layer of its own.
+   - tokens: the :root custom properties, the light and dark sets and the theme overrides.
+   - base: the reset, html and body defaults, headings, links, the default focus ring, the
+     [hidden] rule and .visually-hidden.
+   - components: icons, buttons, fields, line fields, choices, messages, lists, folds, the mode
+     switch and the point readouts.
+   - layout: the site header, menu sheet, footer and banner. After components on purpose: they
+     restyle buttons and selects inside the header.
+   - pages: the plan page, host page, recap, people and avatars, notification blocks, reports.
+   - forced-colors: the forced-colours rules that must beat the layers above. A forced-colours
+     rule that loses to a state rule of its component today (the field underline colours, the
+     line field's row, the readout's icon button) stays in that component's layer, or it would
+     start to win.
+   - Unlayered tail: the map and Leaflet rules. Leaflet's own CSS (build/map.css) is not layered,
+     and an unlayered rule always beats a layered one, so everything that has to win against or tie
+     with Leaflet stays out of the layers at the very end of this file. */
 
-:root[data-theme="light"] {
-  color-scheme: light;
-}
+@layer tokens, base, components, layout, pages, forced-colors;
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+@layer tokens {
+  :root {
+    /* Colour */
+    --bg: #ffffff;
+    --fg: #16181d;
+    --muted: #5c636e;
+    --placeholder: #687079;
+    --line: #e4e7eb;
+    --control-line: #c5cad1;
+    --field-border: #858c97;
+    --surface: #f3f4f6;
+    --accent: #2c67a8;
+    --on-accent: #ffffff;
+    --focus: #2c67a8;
+    --danger: #b3261e;
+    --on-danger: #ffffff;
+    --warning-bg: #fff4e5;
+    --warning-line: #f3d19c;
+    --ok: #1a6e3e;
+    --ok-bg: #ebf8f0;
+    --ok-line: #b9e4c9;
+    /* Name colours for initials: background and text */
+    --avatar-0-bg: #fde2e4;
+    --avatar-0-fg: #8a1c2b;
+    --avatar-1-bg: #dbe8ff;
+    --avatar-1-fg: #1d3f8f;
+    --avatar-2-bg: #d8f3e1;
+    --avatar-2-fg: #17613a;
+    --avatar-3-bg: #ecdfff;
+    --avatar-3-fg: #5b2a99;
+    --avatar-4-bg: #ffe8cc;
+    --avatar-4-fg: #8a4b00;
+    --avatar-5-bg: #d5f2f4;
+    --avatar-5-fg: #0e5c63;
+    --avatar-6-bg: #f7dcef;
+    --avatar-6-fg: #84205f;
+    --avatar-7-bg: #e5e9d0;
+    --avatar-7-fg: #4d5a12;
+    /* The secondary plan colour where a page has no plan theme (spec 3.1 default) */
+    --plan-secondary-default: #ff7a45;
+    --plan-on-secondary-default: #111111;
+    /* Type: 16 px base; headings tight and heavy */
+    --text-xs: 0.8125rem;
+    --text-sm: 0.875rem;
+    --text-md: 1rem;
+    --text-lg: 1.125rem;
+    --text-2xl: clamp(1.75rem, 1.35rem + 1.8vw, 2.5rem);
+    /* Space: a 4 px scale */
+    --s1: 4px;
+    --s2: 8px;
+    --s3: 12px;
+    --s4: 16px;
+    --s5: 24px;
+    --s6: 32px;
+    --s7: 48px;
+    /* Shape */
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-pill: 999px;
+    /* Smallest touch target (WCAG 2.5.8 asks 24 px; 44 px for thumbs) */
+    --target: 44px;
+    color-scheme: light dark;
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121316;
+      --fg: #e8eaed;
+      --muted: #a3a9b2;
+      --placeholder: #868c96;
+      --line: #2c2f35;
+      --control-line: #464b53;
+      --field-border: #737a85;
+      --surface: #1d2024;
+      --accent: #8bb8ea;
+      --on-accent: #111111;
+      --focus: #8bb8ea;
+      --danger: #f2b8b5;
+      --on-danger: #111111;
+      --warning-bg: #3a2c12;
+      --warning-line: #6b5120;
+      --ok: #8fd9a8;
+      --ok-bg: #15271c;
+      --ok-line: #2b5a3c;
+      --avatar-0-bg: #5a1d26;
+      --avatar-0-fg: #ffd6db;
+      --avatar-1-bg: #1f3463;
+      --avatar-1-fg: #d5e3ff;
+      --avatar-2-bg: #174a2c;
+      --avatar-2-fg: #c9f0d7;
+      --avatar-3-bg: #3f2566;
+      --avatar-3-fg: #e7d9ff;
+      --avatar-4-bg: #5a3608;
+      --avatar-4-fg: #ffe2bf;
+      --avatar-5-bg: #124549;
+      --avatar-5-fg: #c8f1f4;
+      --avatar-6-bg: #57203f;
+      --avatar-6-fg: #ffd6ef;
+      --avatar-7-bg: #3b4214;
+      --avatar-7-fg: #e9eec8;
+    }
+  }
+
+  /* The same colours again for a chosen dark theme: CSS cannot share one rule between a media
+     query and an attribute. test/design/tokens.test.ts keeps the two blocks identical. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
     --bg: #121316;
     --fg: #e8eaed;
     --muted: #a3a9b2;
@@ -131,930 +195,364 @@
     --avatar-7-bg: #3b4214;
     --avatar-7-fg: #e9eec8;
   }
-}
 
-/* The same colours again for a chosen dark theme: CSS cannot share one rule between a media
-   query and an attribute. test/design/tokens.test.ts keeps the two blocks identical. */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #121316;
-  --fg: #e8eaed;
-  --muted: #a3a9b2;
-  --placeholder: #868c96;
-  --line: #2c2f35;
-  --control-line: #464b53;
-  --field-border: #737a85;
-  --surface: #1d2024;
-  --accent: #8bb8ea;
-  --on-accent: #111111;
-  --focus: #8bb8ea;
-  --danger: #f2b8b5;
-  --on-danger: #111111;
-  --warning-bg: #3a2c12;
-  --warning-line: #6b5120;
-  --ok: #8fd9a8;
-  --ok-bg: #15271c;
-  --ok-line: #2b5a3c;
-  --avatar-0-bg: #5a1d26;
-  --avatar-0-fg: #ffd6db;
-  --avatar-1-bg: #1f3463;
-  --avatar-1-fg: #d5e3ff;
-  --avatar-2-bg: #174a2c;
-  --avatar-2-fg: #c9f0d7;
-  --avatar-3-bg: #3f2566;
-  --avatar-3-fg: #e7d9ff;
-  --avatar-4-bg: #5a3608;
-  --avatar-4-fg: #ffe2bf;
-  --avatar-5-bg: #124549;
-  --avatar-5-fg: #c8f1f4;
-  --avatar-6-bg: #57203f;
-  --avatar-6-fg: #ffd6ef;
-  --avatar-7-bg: #3b4214;
-  --avatar-7-fg: #e9eec8;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-/* Elements the map script reveals; author display rules must not show them early. */
-[hidden] {
-  display: none !important;
-}
-
-body {
-  margin: 0;
-  overflow-wrap: break-word;
-  background: var(--bg);
-  color: var(--fg);
-  font:
-    var(--text-md) / 1.5 Inter,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-
-h1 {
-  margin: var(--s5) 0 var(--s4);
-  overflow-wrap: break-word;
-  hyphens: auto;
-  font-size: var(--text-2xl);
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
-
-h2 {
-  margin: var(--s6) 0 var(--s3);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-}
-
-h3 {
-  margin: var(--s5) 0 var(--s2);
-  font-size: var(--text-md);
-  font-weight: 700;
-}
-
-a {
-  color: var(--accent);
-  text-underline-offset: 0.15em;
-}
-
-:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-code {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.9em;
-}
-
-/* Page frame */
-
-main,
-.site-header,
-.site-footer {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 0 var(--s4);
-}
-
-.site-header {
-  padding-top: var(--s3);
-  padding-bottom: var(--s3);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-/* The logo link only; the menu sheet inside the header has its own link styles. */
-.site-header > a {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
-  /* The name in the logo's colour (decision D28). */
-  color: var(--accent);
-  text-decoration: none;
-}
-
-:root {
-  --header-h: calc(var(--target) + 2 * var(--s3) + 1px);
-}
-
-/* The header with the burger (decision D68): sticky, three columns (an empty 44 px spacer, the
-   logo centred, the burger), so the logo's centre is the page's centre. The admin listener's
-   header has no burger and keeps the plain header above. */
-.site-header-menu {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  anchor-name: --site-header;
-  display: grid;
-  grid-template-columns: var(--target) 1fr var(--target);
-  align-items: center;
-  column-gap: var(--s3);
-  min-height: var(--header-h);
-  border-bottom: 1px solid var(--line);
-  background: var(--bg);
-}
-
-/* The spacer in column 1: no content, so it is neither focusable nor announced. */
-.site-header-menu::before {
-  content: "";
-  grid-column: 1;
-}
-
-.site-header-menu > a {
-  grid-column: 2;
-  justify-self: center;
-  min-width: 0;
-  min-height: var(--target);
-  /* A long name without spaces breaks inside the centre column instead of running under the burger. */
-  overflow-wrap: anywhere;
-}
-
-.site-header-menu > .burger {
-  grid-column: 3;
-}
-
-/* Focused controls and # targets stay clear of the sticky header. */
-html:has(.site-header-menu) {
-  scroll-padding-top: var(--header-h);
-}
-
-/* The mark before the site's name (decision D28), as a mask like the icons below. */
-.logo {
-  flex: none;
-  width: 1.05em;
-  height: 1.6em;
-  background: currentColor;
-  -webkit-mask: url("icons/logo.svg") center / contain no-repeat;
-  mask: url("icons/logo.svg") center / contain no-repeat;
-}
-
-.site-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s3);
-  margin-top: var(--s7);
-  padding-top: var(--s4);
-  padding-bottom: var(--s5);
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
-.powered-by,
-.legal-links {
-  margin: 0;
-}
-
-.legal-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2) var(--s4);
-}
-
-/* One line per setting: label, the select taking what is left, the button as wide as its text;
-   the button is hidden when the script applies a choice at once. The row stays one line at 320 px. */
-.preference {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s2);
-  margin: 0 0 var(--s3);
-}
-
-.preference label {
-  flex: 0 0 5.5rem;
-}
-
-.preference select {
-  flex: 1 1 0;
-  min-width: 0;
-  width: auto;
-  font-size: inherit;
-}
-
-.preference button {
-  flex: none;
-  min-width: 0;
-  padding: var(--s2) var(--s4);
-  font-size: inherit;
-  white-space: nowrap;
-}
-
-/* The menu sheet (decisions D68, I85): links first, a hairline, then the three preference rows. */
-.site-menu-body {
-  font-weight: 400;
-  letter-spacing: normal;
-}
-
-.site-menu-links ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.site-menu-links a {
-  display: flex;
-  align-items: center;
-  min-height: var(--target);
-}
-
-.site-menu-preferences {
-  margin-top: var(--s2);
-  padding-top: var(--s3);
-  border-top: 1px solid var(--line);
-}
-
-.site-menu-preferences .preference:last-child {
-  margin-bottom: 0;
-}
-
-/* Without popover support the content is a plain block under the header, and there is no burger. */
-@supports not selector(:popover-open) {
-  .site-header-menu {
-    position: static;
-  }
-
-  .site-header-menu > #site-menu {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .burger {
-    display: none;
-  }
-
-  .site-menu-body {
-    padding: var(--s3) 0;
+  :root {
+    --header-h: calc(var(--target) + 2 * var(--s3) + 1px);
   }
 }
 
-@supports selector(:popover-open) {
-  #site-menu {
-    position: fixed;
-    inset: var(--header-h) 0 auto 0;
-    width: auto;
-    max-width: none;
-    height: auto;
-    max-height: calc(100dvh - var(--header-h));
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* Elements the map script reveals; author display rules must not show them early. */
+  [hidden] {
+    display: none !important;
+  }
+
+  body {
     margin: 0;
-    padding: 0;
-    overflow-y: auto;
-    border: 0;
-    border-bottom: 1px solid var(--line);
+    overflow-wrap: break-word;
+    background: var(--bg);
+    color: var(--fg);
+    font:
+      var(--text-md) / 1.5 Inter,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1 {
+    margin: var(--s5) 0 var(--s4);
+    overflow-wrap: break-word;
+    hyphens: auto;
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    margin: var(--s6) 0 var(--s3);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    margin: var(--s5) 0 var(--s2);
+    font-size: var(--text-md);
+    font-weight: 700;
+  }
+
+  a {
+    color: var(--accent);
+    text-underline-offset: 0.15em;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9em;
+  }
+}
+
+@layer components {
+  /* Icons: SVG files from public/icons/ as masks, so they take the text colour. */
+
+  .icon {
+    display: inline-block;
+    flex: none;
+    width: 1.15em;
+    height: 1.15em;
+    background: currentColor;
+    vertical-align: -0.2em;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
+  }
+
+  .icon-back {
+    --icon: url("icons/back.svg");
+  }
+
+  .icon-calendar {
+    --icon: url("icons/calendar.svg");
+  }
+
+  .icon-check {
+    --icon: url("icons/check.svg");
+  }
+
+  .icon-flag {
+    --icon: url("icons/flag.svg");
+  }
+
+  .icon-lock {
+    --icon: url("icons/lock.svg");
+  }
+
+  .icon-pin {
+    --icon: url("icons/pin.svg");
+  }
+
+  .icon-search {
+    --icon: url("icons/search.svg");
+  }
+
+  .icon-close {
+    --icon: url("icons/close.svg");
+  }
+
+  .icon-globe {
+    --icon: url("icons/globe.svg");
+  }
+
+  .icon-users {
+    --icon: url("icons/users.svg");
+  }
+
+  /* Buttons: one primary per page, quiet secondaries, red for deleting. */
+
+  .button,
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s2);
+    min-height: var(--target);
+    padding: var(--s2) var(--s5);
+    border: 1px solid transparent;
+    border-radius: var(--r-md);
+    background: var(--accent);
+    color: var(--on-accent);
+    font: inherit;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .button.secondary,
+  button.secondary {
+    border-color: var(--control-line);
     background: var(--surface);
     color: var(--fg);
   }
 
-  /* The header is not at the top while the dev banner is above it, so the sheet starts at the
-     header's real bottom edge instead of the fixed --header-h, or it would cover the burger. */
-  @supports (top: anchor(bottom)) {
-    #site-menu {
-      position-anchor: --site-header;
-      top: anchor(bottom);
-    }
+  .button.danger,
+  button.danger {
+    background: var(--danger);
+    color: var(--on-danger);
   }
 
-  .site-menu-body {
-    max-width: 40rem;
-    margin: 0 auto;
-    padding: var(--s2) var(--s4) var(--s3);
+  /* Main buttons on plan pages use the plan's primary color (spec 3.1). */
+  .plan .button:not(.secondary, .danger),
+  .plan button:not(.secondary, .danger) {
+    background: var(--plan-primary, var(--accent));
+    color: var(--plan-on-primary, var(--on-accent));
   }
 
-  .burger {
-    position: relative;
-    flex: none;
-    width: var(--target);
-    height: var(--target);
+  /* Forms */
+
+  fieldset {
+    margin: var(--s4) 0;
+    padding: var(--s3) var(--s4) var(--s4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+
+  .field {
+    margin: var(--s4) 0;
+  }
+
+  .field label,
+  legend {
+    display: block;
+    margin-bottom: var(--s1);
+    font-weight: 600;
+  }
+
+  legend {
+    padding: 0 var(--s1);
+  }
+
+  .field-row {
+    display: grid;
+    /* minmax(0, 1fr), not 1fr: native date and time inputs are wide on iOS and would stop the columns
+       from shrinking. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s3);
+  }
+
+  .field-row > * {
+    min-width: 0;
+  }
+
+  .field-row > .field {
+    min-width: 0;
+  }
+
+  input:not([type="radio"], [type="checkbox"], [type="color"]),
+  select,
+  textarea {
+    width: 100%;
     min-height: var(--target);
-    padding: 0;
-    border: 1px solid var(--control-line);
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--field-border);
     border-radius: var(--r-sm);
     background: var(--bg);
     color: var(--fg);
+    font: inherit;
   }
 
-  /* Three bars from gradients; an X while the sheet is open. */
-  .burger::before {
-    content: "";
+  /* WebKit falls back to native control metrics (23 px tall, no padding) unless the native look is
+     dropped, and Chromium then loses its arrow too: draw one from two gradients, no asset. This rule
+     follows the generic one above, whose `background` shorthand would reset the image. Forced
+     colours drop background images; the border stays, so the select remains visible. */
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: calc(var(--s3) + 1.75rem);
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--fg) 50%),
+      linear-gradient(135deg, var(--fg) 50%, transparent 50%);
+    background-position:
+      calc(100% - var(--s3) - 0.45rem) calc(50% - 0.1rem),
+      calc(100% - var(--s3)) calc(50% - 0.1rem);
+    background-size: 0.45rem 0.45rem;
+    background-repeat: no-repeat;
+  }
+
+  textarea {
+    min-height: 6rem;
+  }
+
+  input[type="date"],
+  input[type="time"] {
+    min-width: 0;
+    max-width: 100%;
+    text-align: start;
+    /* iOS Safari sizes the native date/time control from its inner editor and ignores width: 100%;
+       dropping the native appearance makes it an ordinary block box that obeys its column. The
+       picker still opens on tap. */
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    box-sizing: border-box;
+    margin: 0;
+  }
+
+  input[type="date"]::-webkit-datetime-edit,
+  input[type="time"]::-webkit-datetime-edit {
+    padding: 0;
+  }
+
+  input::-webkit-date-and-time-value {
+    min-width: 0;
+    text-align: start;
+  }
+
+  input[type="file"] {
+    padding: var(--s1);
+  }
+
+  input[type="file"]::file-selector-button {
+    min-height: calc(var(--target) - 2 * var(--s1) - 2px);
+    margin-right: var(--s3);
+    padding: 0 var(--s4);
+    border: 1px solid var(--control-line);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--fg);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  input[type="color"] {
+    width: 100%;
+    height: var(--target);
+    padding: 2px;
+    border: 1px solid var(--field-border);
+    border-radius: var(--r-sm);
+    background: var(--bg);
+  }
+
+  input[type="radio"],
+  input[type="checkbox"] {
+    flex: none;
     width: 20px;
-    height: 14px;
-    background:
-      linear-gradient(currentColor, currentColor) top / 100% 2px no-repeat,
-      linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat,
-      linear-gradient(currentColor, currentColor) bottom / 100% 2px no-repeat;
-  }
-
-  .site-header:has(#site-menu:popover-open) .burger::before {
     height: 20px;
-    background:
-      linear-gradient(
-          45deg,
-          transparent calc(50% - 1px),
-          currentColor calc(50% - 1px),
-          currentColor calc(50% + 1px),
-          transparent calc(50% + 1px)
-        )
-        center / 100% 100% no-repeat,
-      linear-gradient(
-          -45deg,
-          transparent calc(50% - 1px),
-          currentColor calc(50% - 1px),
-          currentColor calc(50% + 1px),
-          transparent calc(50% + 1px)
-        )
-        center / 100% 100% no-repeat;
-  }
-}
-
-@media (forced-colors: active) {
-  .burger::before {
-    forced-color-adjust: none;
-  }
-}
-
-.dev-banner {
-  margin: 0;
-  padding: var(--s2) var(--s4);
-  background: var(--danger);
-  color: var(--on-danger);
-  text-align: center;
-  font-weight: 600;
-}
-
-/* Icons: SVG files from public/icons/ as masks, so they take the text colour. */
-
-.icon {
-  display: inline-block;
-  flex: none;
-  width: 1.15em;
-  height: 1.15em;
-  background: currentColor;
-  vertical-align: -0.2em;
-  -webkit-mask: var(--icon) center / contain no-repeat;
-  mask: var(--icon) center / contain no-repeat;
-}
-
-/* High-contrast modes replace backgrounds; keep icons in the text colour. */
-@media (forced-colors: active) {
-  .icon,
-  .logo {
-    background: CanvasText;
-    forced-color-adjust: none;
+    margin: 0;
+    accent-color: var(--accent);
   }
 
-  /* The mark beside the site's name, which becomes a system link colour. */
-  .logo {
-    background: LinkText;
+  /* A radio or checkbox with its label; the whole row is the touch target. */
+  .choice {
+    display: flex;
+    gap: var(--s3);
+    align-items: center;
+    min-height: var(--target);
+    padding-block: var(--s1);
+    font-weight: 400;
   }
-}
 
-.icon-back {
-  --icon: url("icons/back.svg");
-}
-
-.icon-calendar {
-  --icon: url("icons/calendar.svg");
-}
-
-.icon-check {
-  --icon: url("icons/check.svg");
-}
-
-.icon-flag {
-  --icon: url("icons/flag.svg");
-}
-
-.icon-lock {
-  --icon: url("icons/lock.svg");
-}
-
-.icon-pin {
-  --icon: url("icons/pin.svg");
-}
-
-.icon-search {
-  --icon: url("icons/search.svg");
-}
-
-.icon-close {
-  --icon: url("icons/close.svg");
-}
-
-.icon-globe {
-  --icon: url("icons/globe.svg");
-}
-
-.icon-users {
-  --icon: url("icons/users.svg");
-}
-
-/* Buttons: one primary per page, quiet secondaries, red for deleting. */
-
-.button,
-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s2);
-  min-height: var(--target);
-  padding: var(--s2) var(--s5);
-  border: 1px solid transparent;
-  border-radius: var(--r-md);
-  background: var(--accent);
-  color: var(--on-accent);
-  font: inherit;
-  font-weight: 600;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.button.secondary,
-button.secondary {
-  border-color: var(--control-line);
-  background: var(--surface);
-  color: var(--fg);
-}
-
-.button.danger,
-button.danger {
-  background: var(--danger);
-  color: var(--on-danger);
-}
-
-/* Main buttons on plan pages use the plan's primary color (spec 3.1). */
-.plan .button:not(.secondary, .danger),
-.plan button:not(.secondary, .danger) {
-  background: var(--plan-primary, var(--accent));
-  color: var(--plan-on-primary, var(--on-accent));
-}
-
-/* Forms */
-
-fieldset {
-  margin: var(--s4) 0;
-  padding: var(--s3) var(--s4) var(--s4);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-}
-
-.field {
-  margin: var(--s4) 0;
-}
-
-.field label,
-legend {
-  display: block;
-  margin-bottom: var(--s1);
-  font-weight: 600;
-}
-
-legend {
-  padding: 0 var(--s1);
-}
-
-.field-row {
-  display: grid;
-  /* minmax(0, 1fr), not 1fr: native date and time inputs are wide on iOS and would stop the columns
-     from shrinking. */
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s3);
-}
-
-.field-row > * {
-  min-width: 0;
-}
-
-.field-row > .field {
-  min-width: 0;
-}
-
-input:not([type="radio"], [type="checkbox"], [type="color"]),
-select,
-textarea {
-  width: 100%;
-  min-height: var(--target);
-  padding: var(--s2) var(--s3);
-  border: 1px solid var(--field-border);
-  border-radius: var(--r-sm);
-  background: var(--bg);
-  color: var(--fg);
-  font: inherit;
-}
-
-/* WebKit falls back to native control metrics (23 px tall, no padding) unless the native look is
-   dropped, and Chromium then loses its arrow too: draw one from two gradients, no asset. This rule
-   follows the generic one above, whose `background` shorthand would reset the image. Forced
-   colours drop background images; the border stays, so the select remains visible. */
-select {
-  -webkit-appearance: none;
-  appearance: none;
-  padding-right: calc(var(--s3) + 1.75rem);
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--fg) 50%),
-    linear-gradient(135deg, var(--fg) 50%, transparent 50%);
-  background-position:
-    calc(100% - var(--s3) - 0.45rem) calc(50% - 0.1rem),
-    calc(100% - var(--s3)) calc(50% - 0.1rem);
-  background-size: 0.45rem 0.45rem;
-  background-repeat: no-repeat;
-}
-
-textarea {
-  min-height: 6rem;
-}
-
-input[type="date"],
-input[type="time"] {
-  min-width: 0;
-  max-width: 100%;
-  text-align: start;
-  /* iOS Safari sizes the native date/time control from its inner editor and ignores width: 100%;
-     dropping the native appearance makes it an ordinary block box that obeys its column. The
-     picker still opens on tap. */
-  -webkit-appearance: none;
-  appearance: none;
-  display: block;
-  inline-size: 100%;
-  min-inline-size: 0;
-  max-inline-size: 100%;
-  box-sizing: border-box;
-  margin: 0;
-}
-
-input[type="date"]::-webkit-datetime-edit,
-input[type="time"]::-webkit-datetime-edit {
-  padding: 0;
-}
-
-input::-webkit-date-and-time-value {
-  min-width: 0;
-  text-align: start;
-}
-
-input[type="file"] {
-  padding: var(--s1);
-}
-
-input[type="file"]::file-selector-button {
-  min-height: calc(var(--target) - 2 * var(--s1) - 2px);
-  margin-right: var(--s3);
-  padding: 0 var(--s4);
-  border: 1px solid var(--control-line);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--fg);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-input[type="color"] {
-  width: 100%;
-  height: var(--target);
-  padding: 2px;
-  border: 1px solid var(--field-border);
-  border-radius: var(--r-sm);
-  background: var(--bg);
-}
-
-input[type="radio"],
-input[type="checkbox"] {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  accent-color: var(--accent);
-}
-
-/* A radio or checkbox with its label; the whole row is the touch target. */
-.choice {
-  display: flex;
-  gap: var(--s3);
-  align-items: center;
-  min-height: var(--target);
-  padding-block: var(--s1);
-  font-weight: 400;
-}
-
-/* A choice that cannot be made reads as unavailable, not only its radio. */
-.choice:has(input:disabled) {
-  color: var(--muted);
-}
-
-.hint {
-  margin: var(--s1) 0 0;
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
-.error {
-  margin: var(--s1) 0 0;
-  color: var(--danger);
-  font-weight: 600;
-}
-
-.field-invalid input,
-.field-invalid select,
-.field-invalid textarea {
-  border-color: var(--danger);
-  border-width: 2px;
-}
-
-/* One field style, the line (decision D73): text-like fields are an underline instead of a box.
-   Date, time, file and select fields get the same line. Radios, checkboxes, colour fields and the menu's preference
-   select keep their look. The 44 px target comes from min-height and padding, not the border. */
-input::placeholder,
-textarea::placeholder {
-  color: var(--placeholder);
-  opacity: 1;
-}
-
-:is(
-  input:not([type]),
-  input[type="text"],
-  input[type="email"],
-  input[type="url"],
-  input[type="search"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="password"],
-  textarea
-),
-:is(input[type="date"], input[type="time"], input[type="file"], .field select) {
-  padding-block: var(--s2);
-  padding-left: 0;
-  border-style: solid;
-  /* The resting underline is thin; focus and error thicken it without moving the text. */
-  border-width: 0 0 1px;
-  border-color: transparent transparent var(--field-border);
-  border-radius: 0;
-  background-color: transparent;
-}
-
-:is(
-  input:not([type]),
-  input[type="text"],
-  input[type="email"],
-  input[type="url"],
-  input[type="search"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="password"],
-  textarea
-) {
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-:is(
-  input:not([type]),
-  input[type="text"],
-  input[type="email"],
-  input[type="url"],
-  input[type="search"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="password"],
-  textarea
-):focus,
-:is(input[type="date"], input[type="time"], input[type="file"], .field select):focus {
-  border-bottom-width: 2px;
-  border-bottom-color: var(--accent);
-  padding-bottom: calc(var(--s2) - 1px);
-}
-
-/* An error, and an empty required field, turn the line red; both outrank the focus colour. */
-.field-invalid
-  :is(
-    input:not([type]),
-    input[type="text"],
-    input[type="email"],
-    input[type="url"],
-    input[type="search"],
-    input[type="number"],
-    input[type="tel"],
-    input[type="password"],
-    textarea
-  ),
-.field-invalid :is(input[type="date"], input[type="time"], input[type="file"], .field select),
-:is(
-    input:not([type]),
-    input[type="text"],
-    input[type="email"],
-    input[type="url"],
-    input[type="search"],
-    input[type="number"],
-    input[type="tel"],
-    input[type="password"],
-    textarea
-  ):required:placeholder-shown:not(:disabled, [readonly]),
-:is(input[type="date"], input[type="time"], input[type="file"], .field select):required:invalid:not(
-    :disabled,
-    [readonly]
-  ) {
-  border-bottom-width: 2px;
-  border-bottom-color: var(--danger);
-  padding-bottom: calc(var(--s2) - 1px);
-}
-
-/* A focused line field shows the 2 px accent underline and no browser frame: the underline is the
-   one focus signal (the area field's row draws it by :focus-within). Buttons, links, selects,
-   checkboxes, radios and date and time inputs keep the global `:focus-visible` ring; summaries
-   have their own inset line (decision D81).
-   An empty required field and a field with an error draw a danger line that outranks the accent
-   one, so they keep the global ring too. Forced colours have no accent, so the line fields keep a
-   system outline there. */
-/* Not in forced colours: the rule below is more specific than the Highlight outline there. */
-@media (forced-colors: none) {
-  :is(
-      input:not([type]),
-      input[type="text"],
-      input[type="email"],
-      input[type="url"],
-      input[type="search"],
-      input[type="number"],
-      input[type="tel"],
-      input[type="password"],
-      textarea
-    ):focus-visible:not(:placeholder-shown:required, .field-invalid *, [readonly]) {
-    outline: none;
+  /* A choice that cannot be made reads as unavailable, not only its radio. */
+  .choice:has(input:disabled) {
+    color: var(--muted);
   }
-}
 
-@media (forced-colors: active) {
-  :is(
-    input:not([type]),
-    input[type="text"],
-    input[type="email"],
-    input[type="url"],
-    input[type="search"],
-    input[type="number"],
-    input[type="tel"],
-    input[type="password"],
-    textarea
-  ):focus-visible {
-    outline: 2px solid Highlight;
-    outline-offset: 2px;
+  .hint {
+    margin: var(--s1) 0 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
   }
-}
 
-/* A field that cannot be edited (decision D74): the placeholder grey, a dotted line, and the
-   not-allowed cursor; no accent on focus. The page says why, in a hint below the field. Radios and
-   checkboxes are not lines; `.choice` dims its own text. */
-:is(
-  input:not([type]),
-  input[type="text"],
-  input[type="email"],
-  input[type="url"],
-  input[type="search"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="password"],
-  textarea
-):is(:disabled, [readonly]),
-:is(input[type="date"], input[type="time"], input[type="file"], .field select):is(
-  :disabled,
-  [readonly]
-) {
-  border-bottom: 1px dotted var(--control-line);
-  padding-bottom: var(--s2);
-  background-color: transparent;
-  color: var(--placeholder);
-  cursor: not-allowed;
-}
+  .error {
+    margin: var(--s1) 0 0;
+    color: var(--danger);
+    font-weight: 600;
+  }
 
-:is(
-    input:not([type]),
-    input[type="text"],
-    input[type="email"],
-    input[type="url"],
-    input[type="search"],
-    input[type="number"],
-    input[type="tel"],
-    input[type="password"],
-    textarea
-  ):is(:disabled, [readonly]):focus,
-:is(input[type="date"], input[type="time"], input[type="file"], .field select):is(
-    :disabled,
-    [readonly]
-  ):focus {
-  border-bottom-width: 1px;
-  border-bottom-color: var(--control-line);
-  padding-bottom: var(--s2);
-}
+  .field-invalid input,
+  .field-invalid select,
+  .field-invalid textarea {
+    border-color: var(--danger);
+    border-width: 2px;
+  }
 
-input:is(:disabled, [readonly])::placeholder,
-textarea:is(:disabled, [readonly])::placeholder {
-  color: var(--placeholder);
-  opacity: 1;
-}
+  /* One field style, the line (decision D73): text-like fields are an underline instead of a box.
+     Date, time, file and select fields get the same line. Radios, checkboxes, colour fields and the menu's preference
+     select keep their look. The 44 px target comes from min-height and padding, not the border. */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--placeholder);
+    opacity: 1;
+  }
 
-/* The title is the same line, large: edited in place as the form's heading (D71). The heading size
-   is scaled down: about 22 characters fit at 320 px; longer text scrolls inside. */
-/* `.plan-form` out-ranks the generic input rules above. */
-.plan-form .page-purpose {
-  margin-bottom: var(--s1);
-  color: var(--muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1.4;
-}
-
-.field-title {
-  margin-top: 0;
-}
-
-.plan-form .title-input {
-  color: inherit;
-  font-size: calc(var(--text-2xl) * 0.8);
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  text-overflow: clip;
-  white-space: nowrap;
-}
-
-/* "Required" under an empty required control (decision D73), pure CSS: hidden unless a rule below
-   shows it. A text-like control has a placeholder (the views give it an example, " " where there is no
-   real one), so `:placeholder-shown` means it is empty; the placeholder text itself is irrelevant.
-   File and select controls have no placeholder: `:invalid` while required means empty. Date and
-   time controls show no hint on a fresh form (decision D74): they keep aria-required, and the
-   error text shows after a failed submit. A disabled or readonly control shows no hint.
-   `:where()` keeps the specificity low so `.field-invalid .required-hint` can always hide it. */
-.required-hint {
-  display: none;
-  margin: var(--s1) 0 0;
-  color: var(--danger);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-:where(:required:placeholder-shown:not(:disabled, [readonly])) ~ .required-hint {
-  display: block;
-}
-
-:where(:is(input[type="file"], select):required:invalid:not(:disabled, [readonly]))
-  ~ .required-hint {
-  display: block;
-}
-
-/* The same for a control in a line-action row (decision D77): the hint is the row's sibling. */
-:where(.inline-input.line-action:has(:required:placeholder-shown:not(:disabled, [readonly])))
-  ~ .required-hint {
-  display: block;
-}
-
-/* After a failed submit the error message replaces the hint. */
-.field-invalid .required-hint {
-  display: none;
-}
-
-@media (forced-colors: active) {
   :is(
     input:not([type]),
     input[type="text"],
@@ -1067,7 +565,29 @@ textarea:is(:disabled, [readonly])::placeholder {
     textarea
   ),
   :is(input[type="date"], input[type="time"], input[type="file"], .field select) {
-    border-bottom-color: GrayText;
+    padding-block: var(--s2);
+    padding-left: 0;
+    border-style: solid;
+    /* The resting underline is thin; focus and error thicken it without moving the text. */
+    border-width: 0 0 1px;
+    border-color: transparent transparent var(--field-border);
+    border-radius: 0;
+    background-color: transparent;
+  }
+
+  :is(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="password"],
+    textarea
+  ) {
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   :is(
@@ -1081,7 +601,13 @@ textarea:is(:disabled, [readonly])::placeholder {
     input[type="password"],
     textarea
   ):focus,
-  :is(input[type="date"], input[type="time"], input[type="file"], .field select):focus,
+  :is(input[type="date"], input[type="time"], input[type="file"], .field select):focus {
+    border-bottom-width: 2px;
+    border-bottom-color: var(--accent);
+    padding-bottom: calc(var(--s2) - 1px);
+  }
+
+  /* An error, and an empty required field, turn the line red; both outrank the focus colour. */
   .field-invalid
     :is(
       input:not([type]),
@@ -1094,995 +620,1828 @@ textarea:is(:disabled, [readonly])::placeholder {
       input[type="password"],
       textarea
     ),
-  .field-invalid :is(input[type="date"], input[type="time"], input[type="file"], .field select) {
-    border-bottom-color: Highlight;
+  .field-invalid :is(input[type="date"], input[type="time"], input[type="file"], .field select),
+  :is(
+      input:not([type]),
+      input[type="text"],
+      input[type="email"],
+      input[type="url"],
+      input[type="search"],
+      input[type="number"],
+      input[type="tel"],
+      input[type="password"],
+      textarea
+    ):required:placeholder-shown:not(:disabled, [readonly]),
+  :is(
+      input[type="date"],
+      input[type="time"],
+      input[type="file"],
+      .field select
+    ):required:invalid:not(:disabled, [readonly]) {
+    border-bottom-width: 2px;
+    border-bottom-color: var(--danger);
+    padding-bottom: calc(var(--s2) - 1px);
   }
 
-  /* The hint is text only here: the red is replaced by the system colour. */
+  /* A focused line field shows the 2 px accent underline and no browser frame: the underline is the
+     one focus signal (the area field's row draws it by :focus-within). Buttons, links, selects,
+     checkboxes, radios and date and time inputs keep the global `:focus-visible` ring; summaries
+     have their own inset line (decision D81).
+     An empty required field and a field with an error draw a danger line that outranks the accent
+     one, so they keep the global ring too. Forced colours have no accent, so the line fields keep a
+     system outline there. */
+  /* Not in forced colours: the rule below is more specific than the Highlight outline there. */
+  @media (forced-colors: none) {
+    :is(
+        input:not([type]),
+        input[type="text"],
+        input[type="email"],
+        input[type="url"],
+        input[type="search"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="password"],
+        textarea
+      ):focus-visible:not(:placeholder-shown:required, .field-invalid *, [readonly]) {
+      outline: none;
+    }
+  }
+
+  /* A field that cannot be edited (decision D74): the placeholder grey, a dotted line, and the
+     not-allowed cursor; no accent on focus. The page says why, in a hint below the field. Radios and
+     checkboxes are not lines; `.choice` dims its own text. */
+  :is(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="password"],
+    textarea
+  ):is(:disabled, [readonly]),
+  :is(input[type="date"], input[type="time"], input[type="file"], .field select):is(
+    :disabled,
+    [readonly]
+  ) {
+    border-bottom: 1px dotted var(--control-line);
+    padding-bottom: var(--s2);
+    background-color: transparent;
+    color: var(--placeholder);
+    cursor: not-allowed;
+  }
+
+  :is(
+      input:not([type]),
+      input[type="text"],
+      input[type="email"],
+      input[type="url"],
+      input[type="search"],
+      input[type="number"],
+      input[type="tel"],
+      input[type="password"],
+      textarea
+    ):is(:disabled, [readonly]):focus,
+  :is(input[type="date"], input[type="time"], input[type="file"], .field select):is(
+      :disabled,
+      [readonly]
+    ):focus {
+    border-bottom-width: 1px;
+    border-bottom-color: var(--control-line);
+    padding-bottom: var(--s2);
+  }
+
+  input:is(:disabled, [readonly])::placeholder,
+  textarea:is(:disabled, [readonly])::placeholder {
+    color: var(--placeholder);
+    opacity: 1;
+  }
+
+  /* The title is the same line, large: edited in place as the form's heading (D71). The heading size
+     is scaled down: about 22 characters fit at 320 px; longer text scrolls inside. */
+  /* `.plan-form` out-ranks the generic input rules above. */
+  .plan-form .page-purpose {
+    margin-bottom: var(--s1);
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 1.4;
+  }
+
+  .field-title {
+    margin-top: 0;
+  }
+
+  .plan-form .title-input {
+    color: inherit;
+    font-size: calc(var(--text-2xl) * 0.8);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  /* "Required" under an empty required control (decision D73), pure CSS: hidden unless a rule below
+     shows it. A text-like control has a placeholder (the views give it an example, " " where there is no
+     real one), so `:placeholder-shown` means it is empty; the placeholder text itself is irrelevant.
+     File and select controls have no placeholder: `:invalid` while required means empty. Date and
+     time controls show no hint on a fresh form (decision D74): they keep aria-required, and the
+     error text shows after a failed submit. A disabled or readonly control shows no hint.
+     `:where()` keeps the specificity low so `.field-invalid .required-hint` can always hide it. */
   .required-hint {
-    color: CanvasText;
+    display: none;
+    margin: var(--s1) 0 0;
+    color: var(--danger);
+    font-size: var(--text-sm);
+    font-weight: 600;
   }
-}
 
-/* Messages */
+  :where(:required:placeholder-shown:not(:disabled, [readonly])) ~ .required-hint {
+    display: block;
+  }
 
-.warning {
-  padding: var(--s3) var(--s4);
-  border: 1px solid var(--warning-line);
-  border-radius: var(--r-md);
-  background: var(--warning-bg);
-}
+  :where(:is(input[type="file"], select):required:invalid:not(:disabled, [readonly]))
+    ~ .required-hint {
+    display: block;
+  }
 
-.notice {
-  padding: var(--s3) var(--s4);
-  border-radius: var(--r-md);
-  background: var(--surface);
-}
+  /* The same for a control in a line-action row (decision D77): the hint is the row's sibling. */
+  :where(.inline-input.line-action:has(:required:placeholder-shown:not(:disabled, [readonly])))
+    ~ .required-hint {
+    display: block;
+  }
 
-.link-box {
-  padding: var(--s3) var(--s4);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  overflow-wrap: anywhere;
-}
+  /* After a failed submit the error message replaces the hint. */
+  .field-invalid .required-hint {
+    display: none;
+  }
 
-/* Lists divided by hairlines */
+  @media (forced-colors: active) {
+    :is(
+      input:not([type]),
+      input[type="text"],
+      input[type="email"],
+      input[type="url"],
+      input[type="search"],
+      input[type="number"],
+      input[type="tel"],
+      input[type="password"],
+      textarea
+    ),
+    :is(input[type="date"], input[type="time"], input[type="file"], .field select) {
+      border-bottom-color: GrayText;
+    }
 
-.list,
-.items,
-.rating-notes,
-.report-attached,
-.contributions,
-.people-actions {
-  padding: 0;
-  list-style: none;
-}
+    :is(
+      input:not([type]),
+      input[type="text"],
+      input[type="email"],
+      input[type="url"],
+      input[type="search"],
+      input[type="number"],
+      input[type="tel"],
+      input[type="password"],
+      textarea
+    ):focus,
+    :is(input[type="date"], input[type="time"], input[type="file"], .field select):focus,
+    .field-invalid
+      :is(
+        input:not([type]),
+        input[type="text"],
+        input[type="email"],
+        input[type="url"],
+        input[type="search"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="password"],
+        textarea
+      ),
+    .field-invalid :is(input[type="date"], input[type="time"], input[type="file"], .field select) {
+      border-bottom-color: Highlight;
+    }
 
-.list > li,
-.item,
-.rating-notes > li,
-.report-attached > li,
-.admin-report,
-.contribution {
-  padding: var(--s3) 0;
-  border-bottom: 1px solid var(--line);
-}
+    /* The hint is text only here: the red is replaced by the system colour. */
+    .required-hint {
+      color: CanvasText;
+    }
+  }
 
-/* Pages about a plan: the way back comes first (decision D27). */
+  /* Messages */
 
-.back-link {
-  margin: var(--s4) 0 0;
-}
+  .warning {
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--warning-line);
+    border-radius: var(--r-md);
+    background: var(--warning-bg);
+  }
 
-.back-link a {
-  display: inline-flex;
-  gap: var(--s1);
-  align-items: center;
-  min-height: var(--target);
-  font-weight: 600;
-  text-decoration: none;
-}
+  .notice {
+    padding: var(--s3) var(--s4);
+    border-radius: var(--r-md);
+    background: var(--surface);
+  }
 
-.back-link a:hover {
-  text-decoration: underline;
-}
+  .link-box {
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    overflow-wrap: anywhere;
+  }
 
-/* The plan a form page manages; forms stay neutral (decision D11). */
-.plan-context {
-  margin: var(--s2) 0 0;
-  color: var(--muted);
-  font-weight: 600;
-  overflow-wrap: break-word;
-}
+  /* Lists divided by hairlines */
 
-.host h1 {
-  margin-top: var(--s2);
-}
+  .list,
+  .items,
+  .rating-notes,
+  .report-attached,
+  .contributions,
+  .people-actions {
+    padding: 0;
+    list-style: none;
+  }
 
-/* Pages in parts (host, template, My data, account, calendar, admin, privacy): each part divided
-   by a hairline (D27). */
-.sectioned > section:not(.status) {
-  margin-top: var(--s6);
-  padding-top: var(--s2);
-  border-top: 1px solid var(--line);
-}
+  .list > li,
+  .item,
+  .rating-notes > li,
+  .report-attached > li,
+  .admin-report,
+  .contribution {
+    padding: var(--s3) 0;
+    border-bottom: 1px solid var(--line);
+  }
 
-/* A part that starts with a form, not a heading, gets room below its line (text and button rows
-   bring their own margin). */
-.sectioned > section:not(.status) > form:first-child {
-  margin-top: var(--s4);
-}
+  /* Pages about a plan: the way back comes first (decision D27). */
 
-/* A plan or template in a list: title, a muted line saying when, then its actions (D27). */
-.item-title {
-  margin: 0;
-  font-weight: 600;
-  overflow-wrap: break-word;
-}
+  .back-link {
+    margin: var(--s4) 0 0;
+  }
 
-.item-meta {
-  margin: var(--s1) 0 0;
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
+  .back-link a {
+    display: inline-flex;
+    gap: var(--s1);
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+    text-decoration: none;
+  }
 
-.item-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2) var(--s4);
-  align-items: baseline;
-  margin-top: var(--s2);
-}
+  .back-link a:hover {
+    text-decoration: underline;
+  }
 
-/* An opened fold takes the whole row. */
-.item-actions details[open] {
-  flex-basis: 100%;
-}
+  /* The plan a form page manages; forms stay neutral (decision D11). */
+  .plan-context {
+    margin: var(--s2) 0 0;
+    color: var(--muted);
+    font-weight: 600;
+    overflow-wrap: break-word;
+  }
 
-/* The section's own hairline follows the last item. */
-.items > .item:last-child,
-.admin-report:last-of-type {
-  border-bottom: 0;
-}
+  .host h1 {
+    margin-top: var(--s2);
+  }
 
-/* Time and place after a hint, e.g. on the admin's plan page. */
-.hint + .when-where {
-  margin-top: var(--s3);
-}
+  /* Pages in parts (host, template, My data, account, calendar, admin, privacy): each part divided
+     by a hairline (D27). */
+  .sectioned > section:not(.status) {
+    margin-top: var(--s6);
+    padding-top: var(--s2);
+    border-top: 1px solid var(--line);
+  }
 
-/* Buttons side by side, wrapping on narrow screens. */
-.button-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-  align-items: center;
-  margin: var(--s4) 0;
-}
+  /* A part that starts with a form, not a heading, gets room below its line (text and button rows
+     bring their own margin). */
+  .sectioned > section:not(.status) > form:first-child {
+    margin-top: var(--s4);
+  }
 
-.button-row form {
-  margin: 0;
-}
+  /* A plan or template in a list: title, a muted line saying when, then its actions (D27). */
+  .item-title {
+    margin: 0;
+    font-weight: 600;
+    overflow-wrap: break-word;
+  }
 
-/* On phones the buttons of a row fill it, so wrapped ones stack evenly; side by side from 600 px. */
-.button-row > * {
-  flex: 1 1 auto;
-}
+  .item-meta {
+    margin: var(--s1) 0 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
 
-.button-row form > button {
-  width: 100%;
-}
+  .item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s4);
+    align-items: baseline;
+    margin-top: var(--s2);
+  }
 
-@media (min-width: 600px) {
+  /* An opened fold takes the whole row. */
+  .item-actions details[open] {
+    flex-basis: 100%;
+  }
+
+  /* The section's own hairline follows the last item. */
+  .items > .item:last-child,
+  .admin-report:last-of-type {
+    border-bottom: 0;
+  }
+
+  /* Buttons side by side, wrapping on narrow screens. */
+  .button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+    align-items: center;
+    margin: var(--s4) 0;
+  }
+
+  .button-row form {
+    margin: 0;
+  }
+
+  /* On phones the buttons of a row fill it, so wrapped ones stack evenly; side by side from 600 px. */
   .button-row > * {
+    flex: 1 1 auto;
+  }
+
+  .button-row form > button {
+    width: 100%;
+  }
+
+  @media (min-width: 600px) {
+    .button-row > * {
+      flex: none;
+    }
+  }
+
+  details > summary {
+    min-height: var(--target);
+    cursor: pointer;
+  }
+
+  /* A focused summary (a fold, the zone and host-name lines, every other disclosure; decision D81,
+     after D78) shows a 2 px accent line under its row instead of the 3 px frame, the same cue as the
+     line fields. Chromium also shows it after a click on a summary. An inset shadow takes no room.
+     Forced colours keep a system outline, inside the row so it is not clipped. */
+  @media (forced-colors: none) {
+    details > summary:focus-visible {
+      outline: none;
+      box-shadow: inset 0 -2px 0 var(--accent);
+    }
+  }
+
+  /* Creation form (decision D61): the time zone and host name as quiet lines, the "Where" block, and
+     folds divided by hairlines, no card boxes. */
+
+  .field-compact select {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .zone-line,
+  .host-name {
+    margin: var(--s2) 0 var(--s4);
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  .zone-line > summary,
+  .host-name > summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s1);
+    min-height: var(--target);
+    list-style: none;
+    overflow-wrap: anywhere;
+  }
+
+  .zone-line > summary::-webkit-details-marker,
+  .host-name > summary::-webkit-details-marker,
+  .fold > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .host-name {
+    font-size: var(--text-md);
+  }
+
+  /* The line reads "Time zone: Europe/Berlin · Change" (decision D80): the title is muted like the
+     line and the zone name has the text colour. Open, the zone field's own label says what it is,
+     so the title is removed, also from the summary's accessible name. */
+  .zone-line [data-zone-name] {
+    color: var(--fg);
+  }
+
+  details[open] > summary .zone-title {
+    display: none;
+  }
+
+  .zone-change {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+
+  /* The link says Change while the fold is closed and Done while it is open; no script needed. */
+  .zone-change-open {
+    display: none;
+  }
+
+  details[open] > summary .zone-change-open {
+    display: inline;
+  }
+
+  details[open] > summary .zone-change-closed {
+    display: none;
+  }
+
+  .zone-line .field,
+  .host-name .field {
+    margin-top: var(--s1);
+    color: var(--fg);
+    font-size: var(--text-md);
+  }
+
+  .where {
+    margin: var(--s5) 0 var(--s4);
+  }
+
+  .where h2 {
+    margin: 0 0 var(--s2);
+  }
+
+  .folds {
+    margin: var(--s5) 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .where .fold {
+    margin-top: var(--s4);
+    border-top: 1px solid var(--line);
+  }
+
+  .fold {
+    position: relative;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .fold > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    min-height: var(--target);
+    padding: var(--s3) 0;
+    list-style: none;
+  }
+
+  .fold > summary::after {
+    content: "";
     flex: none;
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    margin: -6px var(--s2) 0 0;
+    border-right: 3px solid var(--fg);
+    border-bottom: 3px solid var(--fg);
+    transform: rotate(45deg);
+  }
+
+  .fold[open] > summary::after {
+    margin: 6px var(--s2) 0 0;
+    transform: rotate(-135deg);
+  }
+
+  .fold-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .fold-value {
+    color: var(--muted);
+    font-size: var(--text-sm);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  /* A fold marked to show its summary only when closed (decision D79): the value and its hidden
+     separator leave the open summary, and so its accessible name. */
+  details[open].fold-hide-open > summary .fold-value,
+  details[open].fold-hide-open > summary .fold-sep {
+    display: none;
+  }
+
+  /* A suggestion status line is empty (and takes no room) until the script gives it its text. */
+  .hint[data-label-suggested]:empty,
+  .hint[data-description-suggested]:empty {
+    margin: 0;
+  }
+
+  .fold-warning .fold-value {
+    color: var(--danger);
+    font-weight: 600;
+  }
+
+  .fold-body {
+    padding: 0 0 var(--s3);
+  }
+
+  .fold fieldset {
+    min-width: 0;
+    margin: var(--s4) 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .fold fieldset > legend {
+    padding: 0;
+  }
+
+  .fold-body > .field:first-child,
+  .fold-body > fieldset:first-child {
+    margin-top: var(--s1);
+  }
+
+  .map-tools {
+    margin: var(--s3) 0;
+  }
+
+  .map-tools > button {
+    margin: var(--s1) 0;
+  }
+
+  .inline-input {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+    align-items: center;
+  }
+
+  .inline-input .handle-host {
+    overflow-wrap: anywhere;
+  }
+
+  .inline-input input {
+    flex: 1;
+    min-width: 10rem;
+  }
+
+  /* An icon button at the end of a field's line (decision D75): the row draws the one underline
+     under input and button, so the input inside has none. */
+  .inline-input.line-action {
+    flex-wrap: nowrap;
+    gap: 0;
+    border-bottom: 1px solid var(--field-border);
+  }
+
+  .inline-input.line-action:focus-within {
+    margin-bottom: -1px;
+    border-bottom-width: 2px;
+    border-bottom-color: var(--accent);
+  }
+
+  .inline-input.line-action input:is(:not([type]), [type="search"], [type="text"]),
+  .inline-input.line-action input:is(:not([type]), [type="search"], [type="text"]):focus {
+    border-bottom-width: 0;
+    padding-bottom: var(--s2);
+  }
+
+  /* The row takes over the states that colour and thicken a bare input's line, so the line is
+     still drawn once: the input keeps no underline of its own in the focus, empty-required and
+     error states (decision D77). The danger line outranks the focus line, as for a bare input. */
+  .inline-input.line-action
+    input:is(:not([type]), [type="search"], [type="text"]):required:placeholder-shown:not(
+      :disabled,
+      [readonly]
+    ),
+  .field-invalid .inline-input.line-action input:is(:not([type]), [type="search"], [type="text"]) {
+    border-bottom-width: 0;
+    padding-bottom: var(--s2);
+  }
+
+  .inline-input.line-action:has(input:required:placeholder-shown:not(:disabled, [readonly])),
+  .field-invalid .inline-input.line-action {
+    margin-bottom: -1px;
+    border-bottom-width: 2px;
+    border-bottom-color: var(--danger);
+  }
+
+  .inline-input.line-action button.line-action-button {
+    flex: none;
+    width: var(--target);
+    min-width: var(--target);
+    height: var(--target);
+    min-height: var(--target);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--accent);
+  }
+
+  /* No hover fill: the icon stays on the line, only the pointer changes. */
+  .inline-input.line-action button.line-action-button:hover {
+    background: transparent;
+  }
+
+  .inline-input.line-action button.line-action-button:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .inline-input.line-action .icon {
+    width: 1.5em;
+    height: 1.5em;
+    vertical-align: baseline;
+  }
+
+  @media (forced-colors: active) {
+    .inline-input.line-action {
+      border-bottom-color: CanvasText;
+    }
+
+    .inline-input.line-action button.line-action-button {
+      color: ButtonText;
+    }
+  }
+
+  .place-results {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .place-results button {
+    width: 100%;
+    margin: var(--s1) 0;
+    text-align: left;
+  }
+
+  /* The map's mode switch (decision D66): two segments, the active one in the accent. The radios
+     stay in the page for keyboards and screen readers. */
+  .plan-form .mode-switch {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .mode-switch label {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: var(--target);
+    padding: var(--s1) var(--s2);
+    border: 1px solid var(--field-border);
+    background: var(--bg);
+    color: var(--fg);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .mode-switch label:first-of-type {
+    border-radius: var(--r-sm) 0 0 var(--r-sm);
+  }
+
+  .mode-switch label:last-of-type {
+    margin-left: -1px;
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  }
+
+  .mode-switch input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .mode-switch label:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .mode-switch label:has(input:focus-visible) {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .map-caption {
+    margin: var(--s2) 0 var(--s3);
+  }
+
+  /* A point set on the map as one line (exact start, public area), where the map script replaces the coordinate fields. */
+  .point-readout p {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+    align-items: center;
+    margin: var(--s3) 0;
+  }
+
+  /* The status text takes the line's remaining width and wraps on a phone (decision D76). */
+  .point-readout .readout-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* The quiet icon button at the end of a status line: a muted x, no box, 44 px target. Two
+     classes and two elements deep, so the plan page's main-button rule does not paint it. */
+  .point-readout p button.icon-button {
+    flex: none;
+    width: var(--target);
+    min-width: var(--target);
+    height: var(--target);
+    min-height: var(--target);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+  }
+
+  .point-readout p button.icon-button:hover,
+  .point-readout p button.icon-button:focus-visible {
+    background: transparent;
+    color: var(--accent);
+  }
+
+  .point-readout p button.icon-button:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .point-readout p button.icon-button .icon {
+    width: 1.5em;
+    height: 1.5em;
+    vertical-align: baseline;
+  }
+
+  @media (forced-colors: active) {
+    .point-readout p button.icon-button {
+      color: ButtonText;
+    }
   }
 }
 
-.person-name {
-  display: inline-flex;
-  gap: var(--s2);
-  align-items: center;
-  min-width: 0;
-  overflow-wrap: anywhere;
+@layer layout {
+  /* Page frame */
+
+  main,
+  .site-header,
+  .site-footer {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 0 var(--s4);
+  }
+
+  .site-header {
+    padding-top: var(--s3);
+    padding-bottom: var(--s3);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  /* The logo link only; the menu sheet inside the header has its own link styles. */
+  .site-header > a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    /* The name in the logo's colour (decision D28). */
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  /* The header with the burger (decision D68): sticky, three columns (an empty 44 px spacer, the
+     logo centred, the burger), so the logo's centre is the page's centre. The admin listener's
+     header has no burger and keeps the plain header above. */
+  .site-header-menu {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    anchor-name: --site-header;
+    display: grid;
+    grid-template-columns: var(--target) 1fr var(--target);
+    align-items: center;
+    column-gap: var(--s3);
+    min-height: var(--header-h);
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+
+  /* The spacer in column 1: no content, so it is neither focusable nor announced. */
+  .site-header-menu::before {
+    content: "";
+    grid-column: 1;
+  }
+
+  .site-header-menu > a {
+    grid-column: 2;
+    justify-self: center;
+    min-width: 0;
+    min-height: var(--target);
+    /* A long name without spaces breaks inside the centre column instead of running under the burger. */
+    overflow-wrap: anywhere;
+  }
+
+  .site-header-menu > .burger {
+    grid-column: 3;
+  }
+
+  /* Focused controls and # targets stay clear of the sticky header. */
+  html:has(.site-header-menu) {
+    scroll-padding-top: var(--header-h);
+  }
+
+  /* The mark before the site's name (decision D28), as a mask like the icons below. */
+  .logo {
+    flex: none;
+    width: 1.05em;
+    height: 1.6em;
+    background: currentColor;
+    -webkit-mask: url("icons/logo.svg") center / contain no-repeat;
+    mask: url("icons/logo.svg") center / contain no-repeat;
+  }
+
+  .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-top: var(--s7);
+    padding-top: var(--s4);
+    padding-bottom: var(--s5);
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  .powered-by,
+  .legal-links {
+    margin: 0;
+  }
+
+  .legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s4);
+  }
+
+  /* One line per setting: label, the select taking what is left, the button as wide as its text;
+     the button is hidden when the script applies a choice at once. The row stays one line at 320 px. */
+  .preference {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s2);
+    margin: 0 0 var(--s3);
+  }
+
+  .preference label {
+    flex: 0 0 5.5rem;
+  }
+
+  .preference select {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    font-size: inherit;
+  }
+
+  .preference button {
+    flex: none;
+    min-width: 0;
+    padding: var(--s2) var(--s4);
+    font-size: inherit;
+    white-space: nowrap;
+  }
+
+  /* The menu sheet (decisions D68, I85): links first, a hairline, then the three preference rows. */
+  .site-menu-body {
+    font-weight: 400;
+    letter-spacing: normal;
+  }
+
+  .site-menu-links ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-menu-links a {
+    display: flex;
+    align-items: center;
+    min-height: var(--target);
+  }
+
+  .site-menu-preferences {
+    margin-top: var(--s2);
+    padding-top: var(--s3);
+    border-top: 1px solid var(--line);
+  }
+
+  .site-menu-preferences .preference:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Without popover support the content is a plain block under the header, and there is no burger. */
+  @supports not selector(:popover-open) {
+    .site-header-menu {
+      position: static;
+    }
+
+    .site-header-menu > #site-menu {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+
+    .burger {
+      display: none;
+    }
+
+    .site-menu-body {
+      padding: var(--s3) 0;
+    }
+  }
+
+  @supports selector(:popover-open) {
+    #site-menu {
+      position: fixed;
+      inset: var(--header-h) 0 auto 0;
+      width: auto;
+      max-width: none;
+      height: auto;
+      max-height: calc(100dvh - var(--header-h));
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+    }
+
+    /* The header is not at the top while the dev banner is above it, so the sheet starts at the
+       header's real bottom edge instead of the fixed --header-h, or it would cover the burger. */
+    @supports (top: anchor(bottom)) {
+      #site-menu {
+        position-anchor: --site-header;
+        top: anchor(bottom);
+      }
+    }
+
+    .site-menu-body {
+      max-width: 40rem;
+      margin: 0 auto;
+      padding: var(--s2) var(--s4) var(--s3);
+    }
+
+    .burger {
+      position: relative;
+      flex: none;
+      width: var(--target);
+      height: var(--target);
+      min-height: var(--target);
+      padding: 0;
+      border: 1px solid var(--control-line);
+      border-radius: var(--r-sm);
+      background: var(--bg);
+      color: var(--fg);
+    }
+
+    /* Three bars from gradients; an X while the sheet is open. */
+    .burger::before {
+      content: "";
+      width: 20px;
+      height: 14px;
+      background:
+        linear-gradient(currentColor, currentColor) top / 100% 2px no-repeat,
+        linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat,
+        linear-gradient(currentColor, currentColor) bottom / 100% 2px no-repeat;
+    }
+
+    .site-header:has(#site-menu:popover-open) .burger::before {
+      height: 20px;
+      background:
+        linear-gradient(
+            45deg,
+            transparent calc(50% - 1px),
+            currentColor calc(50% - 1px),
+            currentColor calc(50% + 1px),
+            transparent calc(50% + 1px)
+          )
+          center / 100% 100% no-repeat,
+        linear-gradient(
+            -45deg,
+            transparent calc(50% - 1px),
+            currentColor calc(50% - 1px),
+            currentColor calc(50% + 1px),
+            transparent calc(50% + 1px)
+          )
+          center / 100% 100% no-repeat;
+    }
+  }
+
+  .dev-banner {
+    margin: 0;
+    padding: var(--s2) var(--s4);
+    background: var(--danger);
+    color: var(--on-danger);
+    text-align: center;
+    font-weight: 600;
+  }
 }
 
-/* Plan page (decisions D27, D30): the title in a block tinted in the plan's primary colour, the
-   rest without boxes around sections. One column on phones; from 960 px the plan on the left, you
-   and the group on the right. */
+@layer pages {
+  .person-name {
+    display: inline-flex;
+    gap: var(--s2);
+    align-items: center;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 
-/* The title in a block tinted in the plan's primary colour, as in the phone mock-up (D30). */
-.plan-header {
-  margin: var(--s4) 0;
-  padding: var(--s5);
-  border-radius: var(--r-lg);
-  background: var(--plan-primary-tint, var(--surface));
+  /* Plan page (decisions D27, D30): the title in a block tinted in the plan's primary colour, the
+     rest without boxes around sections. One column on phones; from 960 px the plan on the left, you
+     and the group on the right. */
+
+  /* The title in a block tinted in the plan's primary colour, as in the phone mock-up (D30). */
+  .plan-header {
+    margin: var(--s4) 0;
+    padding: var(--s5);
+    border-radius: var(--r-lg);
+    background: var(--plan-primary-tint, var(--surface));
+  }
+
+  .plan-header h1 {
+    margin: 0 0 var(--s2);
+  }
+
+  .plan-byline {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  /* Name and host badge wrap together; a long name still breaks inside the block. */
+  .plan-poster {
+    display: inline-block;
+  }
+
+  /* App text only: names keep their case. */
+  .plan-activity {
+    display: inline-block;
+    margin-right: var(--s2);
+    padding: 2px var(--s2);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--fg);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* Who can find the plan (step 8): a small label with an icon on the byline, like the activity. */
+  .plan-visibility {
+    display: inline-flex;
+    gap: var(--s1);
+    align-items: center;
+    margin-right: var(--s2);
+    padding: 2px var(--s2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--fg);
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0 var(--s2);
+    border-radius: var(--r-pill);
+    background: var(--plan-secondary, var(--plan-secondary-default));
+    color: var(--plan-on-secondary, var(--plan-on-secondary-default));
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .when-where {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+    margin: 0 0 var(--s4);
+  }
+
+  /* Time and place after a hint, e.g. on the admin's plan page. */
+  .hint + .when-where {
+    margin-top: var(--s3);
+  }
+
+  /* Date and place as plain lines on the plan page (D30). */
+  .when-where.lines {
+    display: block;
+    padding: 0 var(--s2);
+    font-size: var(--text-lg);
+  }
+
+  .when-where.lines dd {
+    margin: 0;
+  }
+
+  .when-where.lines div + div {
+    margin-top: var(--s1);
+    color: var(--muted);
+    font-size: var(--text-md);
+  }
+
+  .pill {
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    font-weight: 600;
+  }
+
+  .pill {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .pill dd {
+    display: flex;
+    gap: var(--s2);
+    align-items: baseline;
+    margin: 0;
+  }
+
+  .pill dd > span:last-child {
+    min-width: 0;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+
+  /* Neutral, so any plan colour stays visible (spec 3.1: the primary marks the header and buttons). */
+  .pill .icon {
+    color: var(--muted);
+  }
+
+  .time-zone {
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s5);
+    margin: 0;
+    padding-top: var(--s4);
+    border-top: 1px solid var(--line);
+  }
+
+  .metric {
+    display: flex;
+    gap: var(--s1);
+    align-items: baseline;
+  }
+
+  .metric dt {
+    color: var(--muted);
+  }
+
+  .metric dd {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The measures and the drop policy as equal tiles, value above label (D30). */
+  /* Two per row, so values read on one line (user feedback on D30). */
+  .metrics.tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s2);
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .tiles .metric {
+    flex-direction: column-reverse;
+    gap: 2px;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s3) var(--s2);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    text-align: center;
+    overflow-wrap: break-word;
+  }
+
+  .tiles .metric dt {
+    font-size: var(--text-xs);
+  }
+
+  .note {
+    margin: var(--s4) 0;
+    font-size: var(--text-lg);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  /* Filled with the plan's secondary tint, no border (D30). All text in --fg, the hint and links
+     too: muted grey and the accent blue fall below 4.5:1 on dark secondaries' tints. */
+  .exact-start {
+    --muted: var(--fg);
+    --accent: var(--fg);
+    margin: var(--s4) 0;
+    padding: var(--s4);
+    border-radius: var(--r-md);
+    background: var(--plan-secondary-tint, var(--surface));
+  }
+
+  .exact-start h2 {
+    display: flex;
+    gap: var(--s2);
+    align-items: center;
+    margin-top: 0;
+  }
+
+  .exact-start .hint {
+    font-style: italic;
+  }
+
+  .plan .share {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: var(--s4) 0;
+    padding-top: var(--s4);
+    border-top: 1px solid var(--line);
+  }
+
+  .plan .share h2 {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .plan .share .hint {
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  .plan .share .hint:empty {
+    display: none;
+  }
+
+  /* You and the group */
+
+  .plan-side {
+    margin-top: var(--s5);
+    padding-top: var(--s2);
+    border-top: 1px solid var(--line);
+  }
+
+  .plan .plan-side > *,
+  .plan .plan-after > * {
+    margin: var(--s5) 0;
+  }
+
+  .plan-after {
+    margin-top: var(--s5);
+    border-top: 1px solid var(--line);
+  }
+
+  .plan-side h2 {
+    margin-top: 0;
+  }
+
+  .status {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--s1) var(--s3);
+    align-items: center;
+    padding: var(--s4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+  }
+
+  .status-joined,
+  .status-loggedIn {
+    border-color: var(--ok-line);
+    background: var(--ok-bg);
+  }
+
+  .status-text {
+    grid-column: span 2;
+  }
+
+  .status-icon + .status-text {
+    grid-column: auto;
+  }
+
+  .status-text h2 {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .status-joined .status-text h2,
+  .status-loggedIn .status-text h2 {
+    color: var(--ok);
+  }
+
+  .status-text p {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: 700;
+  }
+
+  .status-icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--ok);
+    color: var(--ok-bg);
+  }
+
+  .status-action {
+    grid-column: 1 / -1;
+    margin: var(--s1) 0 0;
+  }
+
+  .status-action a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+  }
+
+  /* Counters are a secondary-color fill (spec 3.1); text keeps the normal color. */
+  .counts {
+    display: inline-block;
+    padding: 2px var(--s3);
+    border-radius: var(--r-pill);
+    background: var(--plan-secondary-tint, var(--surface));
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s2) var(--s3);
+    margin-bottom: var(--s3);
+  }
+
+  .section-head h2,
+  .section-head .counts {
+    margin: 0;
+  }
+
+  .people-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+    gap: var(--s4) var(--s2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* A round initial with the name below, the host's badge on the initial (D30). */
+  .person {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s1);
+    align-items: center;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .person .avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  /* The host's mark: a flag on the initial's top right, in the plan's secondary colour like the
+     host's initial, with a ring in the page colour to set it off. */
+  .host-mark {
+    position: absolute;
+    top: -4px;
+    left: calc(50% + 14px);
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    background: var(--plan-secondary, var(--plan-secondary-default));
+    color: var(--plan-on-secondary, var(--plan-on-secondary-default));
+  }
+
+  .host-mark .icon {
+    width: 14px;
+    height: 14px;
+    vertical-align: 0;
+  }
+
+  .person-label {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  /* Initials coloured from the name (never from an account); the host's in the plan's secondary
+     colour (spec 3.1). */
+  .avatar {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .avatar-0 {
+    background: var(--avatar-0-bg);
+    color: var(--avatar-0-fg);
+  }
+
+  .avatar-1 {
+    background: var(--avatar-1-bg);
+    color: var(--avatar-1-fg);
+  }
+
+  .avatar-2 {
+    background: var(--avatar-2-bg);
+    color: var(--avatar-2-fg);
+  }
+
+  .avatar-3 {
+    background: var(--avatar-3-bg);
+    color: var(--avatar-3-fg);
+  }
+
+  .avatar-4 {
+    background: var(--avatar-4-bg);
+    color: var(--avatar-4-fg);
+  }
+
+  .avatar-5 {
+    background: var(--avatar-5-bg);
+    color: var(--avatar-5-fg);
+  }
+
+  .avatar-6 {
+    background: var(--avatar-6-bg);
+    color: var(--avatar-6-fg);
+  }
+
+  .avatar-7 {
+    background: var(--avatar-7-bg);
+    color: var(--avatar-7-fg);
+  }
+
+  .avatar-host {
+    background: var(--plan-secondary, var(--plan-secondary-default));
+    color: var(--plan-on-secondary, var(--plan-on-secondary-default));
+  }
+
+  .deletion {
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+  }
+
+  .actions .button {
+    flex: 1 1 14rem;
+  }
+
+  @media (min-width: 960px) {
+    .wide {
+      max-width: 72rem;
+    }
+
+    /* The recap sits under the plan, beside you and the group. */
+    .plan {
+      display: grid;
+      grid-template-areas:
+        "main side"
+        "after side"
+        "share share";
+      grid-template-rows: auto 1fr auto;
+      grid-template-columns: minmax(0, 1.6fr) minmax(20rem, 1fr);
+      gap: 0 var(--s6);
+      align-items: start;
+    }
+
+    .plan-main {
+      grid-area: main;
+    }
+
+    .plan-after {
+      grid-area: after;
+    }
+
+    .plan .share {
+      grid-area: share;
+    }
+
+    .plan-side {
+      grid-area: side;
+      margin-top: var(--s4);
+      padding: 0 0 0 var(--s6);
+      border-top: 0;
+      border-left: 1px solid var(--line);
+    }
+
+    .plan-side > :first-child {
+      margin-top: var(--s4);
+    }
+
+    .plan-side .actions {
+      flex-direction: column;
+    }
+
+    .plan-side .actions .button {
+      flex: none;
+    }
+  }
+
+  /* Responding and managing */
+
+  .respond,
+  .manage form {
+    margin: var(--s4) 0;
+  }
+
+  .withdraw {
+    margin: var(--s5) 0;
+  }
+
+  .withdraw summary {
+    color: var(--danger);
+  }
+
+  /* Recap (spec 6 feature 5) */
+
+  .contribution p {
+    margin: var(--s1) 0;
+  }
+
+  .contribution-author {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .contribution-body {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  .contribution-link a {
+    overflow-wrap: anywhere;
+  }
+
+  .service {
+    display: inline-block;
+    padding: 0 var(--s2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .hidden-contribution {
+    opacity: 0.6;
+  }
+
+  .contribution-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    align-items: center;
+  }
+
+  .contribution-actions form {
+    margin: 0;
+  }
+
+  /* Host page */
+
+  .people-actions li {
+    display: flex;
+    gap: var(--s3);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--s2) 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .people-actions form {
+    margin: 0;
+  }
+
+  /* Pending requests on the host page (spec 6 feature 1): name, note, then the two buttons. */
+  .people-actions.requests li {
+    flex-wrap: wrap;
+  }
+
+  .request-note {
+    flex-basis: 100%;
+    margin: 0;
+    white-space: pre-wrap;
+    color: var(--muted);
+  }
+
+  .danger-zone {
+    margin: var(--s5) 0;
+  }
+
+  .danger-zone summary,
+  .danger-zone a {
+    color: var(--danger);
+  }
+
+  .share-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+  }
+
+  /* Notification switch (spec 6 feature 3), shown only where push works. */
+  .push,
+  .email-switch {
+    margin: var(--s5) 0;
+  }
+
+  /* The email setting under the push switch (decision D31), and ntfy in the fold (D33): their notice
+     and buttons close together; the row's forms keep no margin of their own, also where a page gives
+     its forms one (.manage). */
+  .email-switch .notice,
+  .ntfy-switch .notice,
+  .telegram-switch .notice {
+    margin-bottom: var(--s3);
+  }
+
+  .email-switch .button-row form {
+    margin: 0;
+  }
+
+  /* "More ways to be notified" (decision D33): ntfy and later Telegram in one fold under email. */
+  .more-channels {
+    margin: var(--s5) 0;
+  }
+
+  .more-channels h3 {
+    margin: var(--s4) 0 var(--s2);
+    font-size: var(--text-md);
+  }
+
+  .more-channels .button-row {
+    margin-top: var(--s3);
+  }
+
+  /* Each channel its own part: room above the next one's heading. */
+  :is(.ntfy-switch, .telegram-switch) + :is(.telegram-switch, .fediverse-messages-switch) {
+    margin-top: var(--s6);
+  }
+
+  /* As in the email block: the row's forms keep no margin of their own, also on .manage pages. */
+  .more-channels .button-row form {
+    margin: 0;
+  }
+
+  /* "Email me my links" under "Get a new link" (decision D31): its hint over its own button, with
+     room above it and before the fold below. */
+  .link-tools form + form {
+    margin: var(--s4) 0;
+  }
+
+  .link-tools form + form .hint {
+    margin: 0 0 var(--s2);
+  }
+
+  /* Ratings (spec 6a): the own note keeps its line breaks. */
+  .rating-note {
+    white-space: pre-line;
+  }
+
+  /* Reports (spec 7 Moderation): a quiet link at the foot of the plan page; on the admin pages the
+     reporter's details keep their line breaks, and attached copies are listed like ratings. */
+  .report-link {
+    font-size: var(--text-sm);
+  }
+
+  .report-details,
+  .report-attached > li {
+    white-space: pre-line;
+  }
 }
 
-.plan-header h1 {
-  margin: 0 0 var(--s2);
+@layer forced-colors {
+  @media (forced-colors: active) {
+    .burger::before {
+      forced-color-adjust: none;
+    }
+  }
+
+  /* High-contrast modes replace backgrounds; keep icons in the text colour. */
+  @media (forced-colors: active) {
+    .icon,
+    .logo {
+      background: CanvasText;
+      forced-color-adjust: none;
+    }
+
+    /* The mark beside the site's name, which becomes a system link colour. */
+    .logo {
+      background: LinkText;
+    }
+  }
+
+  @media (forced-colors: active) {
+    :is(
+      input:not([type]),
+      input[type="text"],
+      input[type="email"],
+      input[type="url"],
+      input[type="search"],
+      input[type="number"],
+      input[type="tel"],
+      input[type="password"],
+      textarea
+    ):focus-visible {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+  }
+
+  @media (forced-colors: active) {
+    details > summary:focus-visible {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+  }
+
+  /* Forced colours drop the background that shows the checked segment: mark it by outline too,
+     except while it has the keyboard focus, whose own outline must stay visible. */
+  @media (forced-colors: active) {
+    .mode-switch label:has(input:checked):not(:has(input:focus-visible)) {
+      outline: 3px solid Highlight;
+      outline-offset: -3px;
+    }
+  }
 }
 
-.plan-byline {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-/* Name and host badge wrap together; a long name still breaks inside the block. */
-.plan-poster {
-  display: inline-block;
-}
-
-/* App text only: names keep their case. */
-.plan-activity {
-  display: inline-block;
-  margin-right: var(--s2);
-  padding: 2px var(--s2);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--fg);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-/* Who can find the plan (step 8): a small label with an icon on the byline, like the activity. */
-.plan-visibility {
-  display: inline-flex;
-  gap: var(--s1);
-  align-items: center;
-  margin-right: var(--s2);
-  padding: 2px var(--s2);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--fg);
-  font-size: var(--text-xs);
-  font-weight: 600;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0 var(--s2);
-  border-radius: var(--r-pill);
-  background: var(--plan-secondary, var(--plan-secondary-default));
-  color: var(--plan-on-secondary, var(--plan-on-secondary-default));
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.when-where {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-  margin: 0 0 var(--s4);
-}
-
-/* Date and place as plain lines on the plan page (D30). */
-.when-where.lines {
-  display: block;
-  padding: 0 var(--s2);
-  font-size: var(--text-lg);
-}
-
-.when-where.lines dd {
-  margin: 0;
-}
-
-.when-where.lines div + div {
-  margin-top: var(--s1);
-  color: var(--muted);
-  font-size: var(--text-md);
-}
-
-.pill {
-  padding: var(--s2) var(--s3);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  font-weight: 600;
-}
-
-.pill {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.pill dd {
-  display: flex;
-  gap: var(--s2);
-  align-items: baseline;
-  margin: 0;
-}
-
-.pill dd > span:last-child {
-  min-width: 0;
-  overflow-wrap: break-word;
-  hyphens: auto;
-}
-
-/* Neutral, so any plan colour stays visible (spec 3.1: the primary marks the header and buttons). */
-.pill .icon {
-  color: var(--muted);
-}
-
-.time-zone {
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2) var(--s5);
-  margin: 0;
-  padding-top: var(--s4);
-  border-top: 1px solid var(--line);
-}
-
-.metric {
-  display: flex;
-  gap: var(--s1);
-  align-items: baseline;
-}
-
-.metric dt {
-  color: var(--muted);
-}
-
-.metric dd {
-  margin: 0;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* The measures and the drop policy as equal tiles, value above label (D30). */
-/* Two per row, so values read on one line (user feedback on D30). */
-.metrics.tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s2);
-  padding-top: 0;
-  border-top: 0;
-}
-
-.tiles .metric {
-  flex-direction: column-reverse;
-  gap: 2px;
-  align-items: center;
-  justify-content: center;
-  padding: var(--s3) var(--s2);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  text-align: center;
-  overflow-wrap: break-word;
-}
-
-.tiles .metric dt {
-  font-size: var(--text-xs);
-}
-
-.note {
-  margin: var(--s4) 0;
-  font-size: var(--text-lg);
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
+/* Map and Leaflet rules stay outside the layers: Leaflet's own CSS (build/map.css) is not
+   layered and unlayered rules always beat layered ones. */
 
 .map.plan-map {
   height: 300px;
   margin-top: var(--s5);
 }
 
-/* Filled with the plan's secondary tint, no border (D30). All text in --fg, the hint and links
-   too: muted grey and the accent blue fall below 4.5:1 on dark secondaries' tints. */
-.exact-start {
-  --muted: var(--fg);
-  --accent: var(--fg);
-  margin: var(--s4) 0;
-  padding: var(--s4);
-  border-radius: var(--r-md);
-  background: var(--plan-secondary-tint, var(--surface));
-}
-
-.exact-start h2 {
-  display: flex;
-  gap: var(--s2);
-  align-items: center;
-  margin-top: 0;
-}
-
-.exact-start .hint {
-  font-style: italic;
-}
-
-.plan .share {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s3);
-  margin: var(--s4) 0;
-  padding-top: var(--s4);
-  border-top: 1px solid var(--line);
-}
-
-.plan .share h2 {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.plan .share .hint {
-  flex-basis: 100%;
-  margin: 0;
-}
-
-.plan .share .hint:empty {
-  display: none;
-}
-
-/* You and the group */
-
-.plan-side {
-  margin-top: var(--s5);
-  padding-top: var(--s2);
-  border-top: 1px solid var(--line);
-}
-
-.plan .plan-side > *,
-.plan .plan-after > * {
-  margin: var(--s5) 0;
-}
-
-.plan-after {
-  margin-top: var(--s5);
-  border-top: 1px solid var(--line);
-}
-
-.plan-side h2 {
-  margin-top: 0;
-}
-
-.status {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--s1) var(--s3);
-  align-items: center;
-  padding: var(--s4);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface);
-}
-
-.status-joined,
-.status-loggedIn {
-  border-color: var(--ok-line);
-  background: var(--ok-bg);
-}
-
-.status-text {
-  grid-column: span 2;
-}
-
-.status-icon + .status-text {
-  grid-column: auto;
-}
-
-.status-text h2 {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.status-joined .status-text h2,
-.status-loggedIn .status-text h2 {
-  color: var(--ok);
-}
-
-.status-text p {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: 700;
-}
-
-.status-icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--ok);
-  color: var(--ok-bg);
-}
-
-.status-action {
-  grid-column: 1 / -1;
-  margin: var(--s1) 0 0;
-}
-
-.status-action a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--target);
-}
-
-/* Counters are a secondary-color fill (spec 3.1); text keeps the normal color. */
-.counts {
-  display: inline-block;
-  padding: 2px var(--s3);
-  border-radius: var(--r-pill);
-  background: var(--plan-secondary-tint, var(--surface));
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.section-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s2) var(--s3);
-  margin-bottom: var(--s3);
-}
-
-.section-head h2,
-.section-head .counts {
-  margin: 0;
-}
-
-.people-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
-  gap: var(--s4) var(--s2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* A round initial with the name below, the host's badge on the initial (D30). */
-.person {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s1);
-  align-items: center;
-  min-width: 0;
-  text-align: center;
-}
-
-.person .avatar {
-  width: 56px;
-  height: 56px;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-/* The host's mark: a flag on the initial's top right, in the plan's secondary colour like the
-   host's initial, with a ring in the page colour to set it off. */
-.host-mark {
-  position: absolute;
-  top: -4px;
-  left: calc(50% + 14px);
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--bg);
-  border-radius: 50%;
-  background: var(--plan-secondary, var(--plan-secondary-default));
-  color: var(--plan-on-secondary, var(--plan-on-secondary-default));
-}
-
-.host-mark .icon {
-  width: 14px;
-  height: 14px;
-  vertical-align: 0;
-}
-
-.person-label {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-/* Initials coloured from the name (never from an account); the host's in the plan's secondary
-   colour (spec 3.1). */
-.avatar {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  font-size: var(--text-sm);
-  font-weight: 700;
-}
-
-.avatar-0 {
-  background: var(--avatar-0-bg);
-  color: var(--avatar-0-fg);
-}
-.avatar-1 {
-  background: var(--avatar-1-bg);
-  color: var(--avatar-1-fg);
-}
-.avatar-2 {
-  background: var(--avatar-2-bg);
-  color: var(--avatar-2-fg);
-}
-.avatar-3 {
-  background: var(--avatar-3-bg);
-  color: var(--avatar-3-fg);
-}
-.avatar-4 {
-  background: var(--avatar-4-bg);
-  color: var(--avatar-4-fg);
-}
-.avatar-5 {
-  background: var(--avatar-5-bg);
-  color: var(--avatar-5-fg);
-}
-.avatar-6 {
-  background: var(--avatar-6-bg);
-  color: var(--avatar-6-fg);
-}
-.avatar-7 {
-  background: var(--avatar-7-bg);
-  color: var(--avatar-7-fg);
-}
-
-.avatar-host {
-  background: var(--plan-secondary, var(--plan-secondary-default));
-  color: var(--plan-on-secondary, var(--plan-on-secondary-default));
-}
-
-.deletion {
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-}
-
-.actions .button {
-  flex: 1 1 14rem;
-}
-
 @media (min-width: 960px) {
-  .wide {
-    max-width: 72rem;
-  }
-
-  /* The recap sits under the plan, beside you and the group. */
-  .plan {
-    display: grid;
-    grid-template-areas:
-      "main side"
-      "after side"
-      "share share";
-    grid-template-rows: auto 1fr auto;
-    grid-template-columns: minmax(0, 1.6fr) minmax(20rem, 1fr);
-    gap: 0 var(--s6);
-    align-items: start;
-  }
-
-  .plan-main {
-    grid-area: main;
-  }
-
-  .plan-after {
-    grid-area: after;
-  }
-
-  .plan .share {
-    grid-area: share;
-  }
-
-  .plan-side {
-    grid-area: side;
-    margin-top: var(--s4);
-    padding: 0 0 0 var(--s6);
-    border-top: 0;
-    border-left: 1px solid var(--line);
-  }
-
-  .plan-side > :first-child {
-    margin-top: var(--s4);
-  }
-
-  .plan-side .actions {
-    flex-direction: column;
-  }
-
-  .plan-side .actions .button {
-    flex: none;
-  }
-
   .map.plan-map {
     height: 360px;
   }
-}
-
-/* Responding and managing */
-
-.respond,
-.manage form {
-  margin: var(--s4) 0;
-}
-
-.withdraw {
-  margin: var(--s5) 0;
-}
-
-.withdraw summary {
-  color: var(--danger);
-}
-
-/* Recap (spec 6 feature 5) */
-
-.contribution p {
-  margin: var(--s1) 0;
-}
-
-.contribution-author {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.contribution-body {
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-
-.contribution-link a {
-  overflow-wrap: anywhere;
-}
-
-.service {
-  display: inline-block;
-  padding: 0 var(--s2);
-  border: 1px solid var(--line);
-  border-radius: var(--r-pill);
-  background: var(--surface);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.hidden-contribution {
-  opacity: 0.6;
-}
-
-.contribution-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s3);
-  align-items: center;
-}
-
-.contribution-actions form {
-  margin: 0;
-}
-
-/* Host page */
-
-.people-actions li {
-  display: flex;
-  gap: var(--s3);
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--s2) 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.people-actions form {
-  margin: 0;
-}
-
-/* Pending requests on the host page (spec 6 feature 1): name, note, then the two buttons. */
-.people-actions.requests li {
-  flex-wrap: wrap;
-}
-
-.request-note {
-  flex-basis: 100%;
-  margin: 0;
-  white-space: pre-wrap;
-  color: var(--muted);
-}
-
-.danger-zone {
-  margin: var(--s5) 0;
-}
-
-.danger-zone summary,
-.danger-zone a {
-  color: var(--danger);
-}
-
-details > summary {
-  min-height: var(--target);
-  cursor: pointer;
-}
-
-/* A focused summary (a fold, the zone and host-name lines, every other disclosure; decision D81,
-   after D78) shows a 2 px accent line under its row instead of the 3 px frame, the same cue as the
-   line fields. Chromium also shows it after a click on a summary. An inset shadow takes no room.
-   Forced colours keep a system outline, inside the row so it is not clipped. */
-@media (forced-colors: none) {
-  details > summary:focus-visible {
-    outline: none;
-    box-shadow: inset 0 -2px 0 var(--accent);
-  }
-}
-
-@media (forced-colors: active) {
-  details > summary:focus-visible {
-    outline: 2px solid Highlight;
-    outline-offset: -2px;
-  }
-}
-
-/* Creation form (decision D61): the time zone and host name as quiet lines, the "Where" block, and
-   folds divided by hairlines, no card boxes. */
-
-.field-compact select {
-  width: auto;
-  max-width: 100%;
-}
-
-.zone-line,
-.host-name {
-  margin: var(--s2) 0 var(--s4);
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
-.zone-line > summary,
-.host-name > summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s1);
-  min-height: var(--target);
-  list-style: none;
-  overflow-wrap: anywhere;
-}
-
-.zone-line > summary::-webkit-details-marker,
-.host-name > summary::-webkit-details-marker,
-.fold > summary::-webkit-details-marker {
-  display: none;
-}
-
-.host-name {
-  font-size: var(--text-md);
-}
-
-/* The line reads "Time zone: Europe/Berlin · Change" (decision D80): the title is muted like the
-   line and the zone name has the text colour. Open, the zone field's own label says what it is,
-   so the title is removed, also from the summary's accessible name. */
-.zone-line [data-zone-name] {
-  color: var(--fg);
-}
-
-details[open] > summary .zone-title {
-  display: none;
-}
-
-.zone-change {
-  color: var(--accent);
-  text-decoration: underline;
-}
-
-/* The link says Change while the fold is closed and Done while it is open; no script needed. */
-.zone-change-open {
-  display: none;
-}
-
-details[open] > summary .zone-change-open {
-  display: inline;
-}
-
-details[open] > summary .zone-change-closed {
-  display: none;
-}
-
-.zone-line .field,
-.host-name .field {
-  margin-top: var(--s1);
-  color: var(--fg);
-  font-size: var(--text-md);
-}
-
-.where {
-  margin: var(--s5) 0 var(--s4);
-}
-
-.where h2 {
-  margin: 0 0 var(--s2);
-}
-
-.folds {
-  margin: var(--s5) 0;
-  border-top: 1px solid var(--line);
-}
-
-.where .fold {
-  margin-top: var(--s4);
-  border-top: 1px solid var(--line);
-}
-
-.fold {
-  position: relative;
-  border-bottom: 1px solid var(--line);
-}
-
-.fold > summary {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  min-height: var(--target);
-  padding: var(--s3) 0;
-  list-style: none;
-}
-
-.fold > summary::after {
-  content: "";
-  flex: none;
-  box-sizing: border-box;
-  width: 20px;
-  height: 20px;
-  margin: -6px var(--s2) 0 0;
-  border-right: 3px solid var(--fg);
-  border-bottom: 3px solid var(--fg);
-  transform: rotate(45deg);
-}
-
-.fold[open] > summary::after {
-  margin: 6px var(--s2) 0 0;
-  transform: rotate(-135deg);
-}
-
-.fold-text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.fold-value {
-  color: var(--muted);
-  font-size: var(--text-sm);
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-/* A fold marked to show its summary only when closed (decision D79): the value and its hidden
-   separator leave the open summary, and so its accessible name. */
-details[open].fold-hide-open > summary .fold-value,
-details[open].fold-hide-open > summary .fold-sep {
-  display: none;
-}
-
-/* A suggestion status line is empty (and takes no room) until the script gives it its text. */
-.hint[data-label-suggested]:empty,
-.hint[data-description-suggested]:empty {
-  margin: 0;
-}
-
-.fold-warning .fold-value {
-  color: var(--danger);
-  font-weight: 600;
-}
-
-.fold-body {
-  padding: 0 0 var(--s3);
-}
-
-.fold fieldset {
-  min-width: 0;
-  margin: var(--s4) 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-}
-
-.fold fieldset > legend {
-  padding: 0;
-}
-
-.fold-body > .field:first-child,
-.fold-body > fieldset:first-child {
-  margin-top: var(--s1);
 }
 
 /* Maps (spec 3.9, decision D12) */
@@ -2160,121 +2519,6 @@ details[open].fold-hide-open > summary .fold-sep {
   color: var(--accent);
 }
 
-.map-tools {
-  margin: var(--s3) 0;
-}
-
-.map-tools > button {
-  margin: var(--s1) 0;
-}
-
-.inline-input {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-  align-items: center;
-}
-
-.inline-input .handle-host {
-  overflow-wrap: anywhere;
-}
-
-.inline-input input {
-  flex: 1;
-  min-width: 10rem;
-}
-
-/* An icon button at the end of a field's line (decision D75): the row draws the one underline
-   under input and button, so the input inside has none. */
-.inline-input.line-action {
-  flex-wrap: nowrap;
-  gap: 0;
-  border-bottom: 1px solid var(--field-border);
-}
-
-.inline-input.line-action:focus-within {
-  margin-bottom: -1px;
-  border-bottom-width: 2px;
-  border-bottom-color: var(--accent);
-}
-
-.inline-input.line-action input:is(:not([type]), [type="search"], [type="text"]),
-.inline-input.line-action input:is(:not([type]), [type="search"], [type="text"]):focus {
-  border-bottom-width: 0;
-  padding-bottom: var(--s2);
-}
-
-/* The row takes over the states that colour and thicken a bare input's line, so the line is
-   still drawn once: the input keeps no underline of its own in the focus, empty-required and
-   error states (decision D77). The danger line outranks the focus line, as for a bare input. */
-.inline-input.line-action
-  input:is(:not([type]), [type="search"], [type="text"]):required:placeholder-shown:not(
-    :disabled,
-    [readonly]
-  ),
-.field-invalid .inline-input.line-action input:is(:not([type]), [type="search"], [type="text"]) {
-  border-bottom-width: 0;
-  padding-bottom: var(--s2);
-}
-
-.inline-input.line-action:has(input:required:placeholder-shown:not(:disabled, [readonly])),
-.field-invalid .inline-input.line-action {
-  margin-bottom: -1px;
-  border-bottom-width: 2px;
-  border-bottom-color: var(--danger);
-}
-
-.inline-input.line-action button.line-action-button {
-  flex: none;
-  width: var(--target);
-  min-width: var(--target);
-  height: var(--target);
-  min-height: var(--target);
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--accent);
-}
-
-/* No hover fill: the icon stays on the line, only the pointer changes. */
-.inline-input.line-action button.line-action-button:hover {
-  background: transparent;
-}
-
-.inline-input.line-action button.line-action-button:focus-visible {
-  outline-offset: -2px;
-}
-
-.inline-input.line-action .icon {
-  width: 1.5em;
-  height: 1.5em;
-  vertical-align: baseline;
-}
-
-@media (forced-colors: active) {
-  .inline-input.line-action {
-    border-bottom-color: CanvasText;
-  }
-
-  .inline-input.line-action button.line-action-button {
-    color: ButtonText;
-  }
-}
-
-.place-results {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.place-results button {
-  width: 100%;
-  margin: var(--s1) 0;
-  text-align: left;
-}
-
 /* "Find my location" (decision D62): a 44 px square in the zoom buttons' look, the target drawn
    with borders so it takes the text colour. */
 .map .leaflet-bar button.map-locate {
@@ -2321,205 +2565,9 @@ details[open].fold-hide-open > summary .fold-sep {
   background: currentColor;
 }
 
-/* The map's mode switch (decision D66): two segments, the active one in the accent. The radios
-   stay in the page for keyboards and screen readers. */
-.plan-form .mode-switch {
-  display: flex;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.mode-switch label {
-  position: relative;
-  display: flex;
-  flex: 1 1 0;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  min-height: var(--target);
-  padding: var(--s1) var(--s2);
-  border: 1px solid var(--field-border);
-  background: var(--bg);
-  color: var(--fg);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-align: center;
-  cursor: pointer;
-}
-
-.mode-switch label:first-of-type {
-  border-radius: var(--r-sm) 0 0 var(--r-sm);
-}
-
-.mode-switch label:last-of-type {
-  margin-left: -1px;
-  border-radius: 0 var(--r-sm) var(--r-sm) 0;
-}
-
-.mode-switch input {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.mode-switch label:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.mode-switch label:has(input:focus-visible) {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
-}
-
 /* The form map's zoom buttons as large as the locate button under them. */
 .map-picker .map .leaflet-bar a {
   width: var(--target);
   height: var(--target);
   line-height: var(--target);
-}
-
-/* Forced colours drop the background that shows the checked segment: mark it by outline too,
-   except while it has the keyboard focus, whose own outline must stay visible. */
-@media (forced-colors: active) {
-  .mode-switch label:has(input:checked):not(:has(input:focus-visible)) {
-    outline: 3px solid Highlight;
-    outline-offset: -3px;
-  }
-}
-
-.map-caption {
-  margin: var(--s2) 0 var(--s3);
-}
-
-/* A point set on the map as one line (exact start, public area), where the map script replaces the coordinate fields. */
-.point-readout p {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-  align-items: center;
-  margin: var(--s3) 0;
-}
-
-/* The status text takes the line's remaining width and wraps on a phone (decision D76). */
-.point-readout .readout-text {
-  flex: 1;
-  min-width: 0;
-}
-
-/* The quiet icon button at the end of a status line: a muted x, no box, 44 px target. Two
-   classes and two elements deep, so the plan page's main-button rule does not paint it. */
-.point-readout p button.icon-button {
-  flex: none;
-  width: var(--target);
-  min-width: var(--target);
-  height: var(--target);
-  min-height: var(--target);
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--muted);
-}
-
-.point-readout p button.icon-button:hover,
-.point-readout p button.icon-button:focus-visible {
-  background: transparent;
-  color: var(--accent);
-}
-
-.point-readout p button.icon-button:focus-visible {
-  outline-offset: -2px;
-}
-
-.point-readout p button.icon-button .icon {
-  width: 1.5em;
-  height: 1.5em;
-  vertical-align: baseline;
-}
-
-@media (forced-colors: active) {
-  .point-readout p button.icon-button {
-    color: ButtonText;
-  }
-}
-
-.share-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-}
-
-/* Notification switch (spec 6 feature 3), shown only where push works. */
-.push,
-.email-switch {
-  margin: var(--s5) 0;
-}
-
-/* The email setting under the push switch (decision D31), and ntfy in the fold (D33): their notice
-   and buttons close together; the row's forms keep no margin of their own, also where a page gives
-   its forms one (.manage). */
-.email-switch .notice,
-.ntfy-switch .notice,
-.telegram-switch .notice {
-  margin-bottom: var(--s3);
-}
-
-.email-switch .button-row form {
-  margin: 0;
-}
-
-/* "More ways to be notified" (decision D33): ntfy and later Telegram in one fold under email. */
-.more-channels {
-  margin: var(--s5) 0;
-}
-
-.more-channels h3 {
-  margin: var(--s4) 0 var(--s2);
-  font-size: var(--text-md);
-}
-
-.more-channels .button-row {
-  margin-top: var(--s3);
-}
-
-/* Each channel its own part: room above the next one's heading. */
-:is(.ntfy-switch, .telegram-switch) + :is(.telegram-switch, .fediverse-messages-switch) {
-  margin-top: var(--s6);
-}
-
-/* As in the email block: the row's forms keep no margin of their own, also on .manage pages. */
-.more-channels .button-row form {
-  margin: 0;
-}
-
-/* "Email me my links" under "Get a new link" (decision D31): its hint over its own button, with
-   room above it and before the fold below. */
-.link-tools form + form {
-  margin: var(--s4) 0;
-}
-
-.link-tools form + form .hint {
-  margin: 0 0 var(--s2);
-}
-
-/* Ratings (spec 6a): the own note keeps its line breaks. */
-.rating-note {
-  white-space: pre-line;
-}
-
-/* Reports (spec 7 Moderation): a quiet link at the foot of the plan page; on the admin pages the
-   reporter's details keep their line breaks, and attached copies are listed like ratings. */
-.report-link {
-  font-size: var(--text-sm);
-}
-
-.report-details,
-.report-attached > li {
-  white-space: pre-line;
 }

@@ -522,11 +522,18 @@ export class Stylesheet {
     return found;
   }
 
-  /** The position of a rule's layer in the declared order; unlayered rules rank last. */
+  /**
+   * The position of a rule's layer in the declared order; unlayered rules rank last. Rules that sit
+   * directly in a layer that also has nested layers (`outer` next to `outer.inner`) come after
+   * the nested ones, as the CSS cascade has it: they are that layer's own, unlayered-in-it rules.
+   */
   layerRank(rule: CssRule): number {
     const order = this.layerOrder();
     const index = rule.layer === undefined ? -1 : order.indexOf(rule.layer);
-    return index === -1 ? order.length : index;
+    if (index === -1) return order.length;
+    const prefix = `${rule.layer}.`;
+    const lastNested = order.findLastIndex((name) => name.startsWith(prefix));
+    return lastNested === -1 ? index : lastNested + 0.5;
   }
 
   /** A number that grows along the cascade: the layer's rank first, then the source order. */

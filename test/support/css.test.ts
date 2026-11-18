@@ -356,6 +356,14 @@ describe("Stylesheet", () => {
     expect(stylesheet("@layer { .a { b: c; } }").layerOrder()).toEqual([]);
   });
 
+  it("ranks a rule directly in a layer after the layer's nested layers", () => {
+    const sheet = stylesheet("@layer o { .own { q: 1; } @layer i { .inner { q: 2; } } }");
+    const own = sheet.first(".own");
+    const inner = sheet.first(".inner");
+    expect(own.order).toBeLessThan(inner.order);
+    expect(sheet.isLater(own, inner)).toBe(true);
+  });
+
   it("first() is the first rule in source order and throws when there is none", () => {
     const sheet = stylesheet(".a { x: 1; } .a { x: 2; } @media (print) { .a { x: 3; } }");
     expect(sheet.first(".a").body).toBe("x: 1;");
@@ -398,12 +406,22 @@ const onDisk = (name = "app.css") => stylesheet(readCssRaw(name));
 describe("the real public/app.css", () => {
   const app = onDisk();
 
-  /** Top-level selectors found without the parser: lines at column 0, up to the one ending in `{`. */
-  function topLevelSelectors(): string[] {
+  /**
+   * Selectors of the rules that are in no `@media`, found without the parser: lines at column 0
+   * (the unlayered tail) or at indent 2 inside a column-0 `@layer name {` block, up to the one
+   * ending in `{`. The file is formatted that way (`npm run fmt`).
+   */
+  function plainSelectors(): string[] {
     const found: string[] = [];
     let pending = "";
+    let inLayer = false;
     for (const line of stripComments(readCssRaw()).split("\n")) {
-      if (pending === "" && !/^[^\s}@]/.test(line)) continue;
+      if (pending === "") {
+        if (/^@layer .*\{$/.test(line)) inLayer = true;
+        else if (line.startsWith("}")) inLayer = false;
+        const start = inLayer ? /^ {2}[^\s}@]/ : /^[^\s}@]/;
+        if (!start.test(line)) continue;
+      }
       pending += ` ${line}`;
       if (line.trimEnd().endsWith("{")) {
         found.push(normalizeSelector(pending.trim().replace(/\{$/, "")));
@@ -413,6 +431,9 @@ describe("the real public/app.css", () => {
     return found;
   }
 
+  /** Not inside any `@media`, `@supports` or other container but a layer. */
+  const outsideContainers = (r: CssRule) => r.atRules.every((at) => at.startsWith("@layer "));
+
   it("has a plausible number of rules", () => {
     expect(app.all.length).toBeGreaterThan(250);
     expect(app.all.length).toBeLessThan(1000);
@@ -421,11 +442,88 @@ describe("the real public/app.css", () => {
   });
 
   it("finds every top-level selector of the file", () => {
-    const expected = topLevelSelectors();
+    const expected = plainSelectors();
     expect(expected.length).toBeGreaterThan(200);
-    const plain = new Set(app.all.filter((r) => r.atRules.length === 0).map((r) => r.selector));
+    const plain = new Set(app.all.filter(outsideContainers).map((r) => r.selector));
     expect(expected.filter((selector) => !plain.has(selector))).toEqual([]);
-    expect(app.all.filter((r) => r.atRules.length === 0)).toHaveLength(expected.length);
+    expect(app.all.filter(outsideContainers)).toHaveLength(expected.length);
+  });
+
+  it("declares its layers once, first, in the documented order", () => {
+    expect(app.statements.map((s) => s.text)).toEqual([
+      "@layer tokens, base, components, layout, pages, forced-colors",
+    ]);
+    expect(app.layerOrder()).toEqual([
+      "tokens",
+      "base",
+      "components",
+      "layout",
+      "pages",
+      "forced-colors",
+    ]);
+    const first = app.all[0] as CssRule;
+    expect(first.layer).toBe("tokens");
+    expect(first.selector).toBe(":root");
+  });
+
+  it("keeps only map and Leaflet rules outside the layers, after every layered rule", () => {
+    const unlayered = app.all.filter((r) => r.layer === undefined);
+    expect(unlayered.length).toBeGreaterThan(10);
+    // `.map` as a whole class name: `.map-tools` and `.map-caption` are layered on purpose.
+    for (const rule of unlayered)
+      expect(rule.selector).toMatch(/\.map(?![\w-])|leaflet|map-locate/);
+    const lastLayered = Math.max(
+      ...app.all.filter((r) => r.layer !== undefined).map((r) => r.order),
+    );
+    expect(Math.min(...unlayered.map((r) => r.order))).toBeGreaterThan(lastLayered);
+  });
+
+  it("lets the margin after a hint beat the base margin of the time and place pills", () => {
+    // Both are in a layer now, so the layer order decides before the specificity: the `.hint +`
+    // rule must come later in the cascade than `.when-where` (the admin plan page needs the gap).
+    const base = app.first(".when-where", { plain: true });
+    const afterHint = app.first(".hint + .when-where", { plain: true });
+    expect(app.isLater(afterHint, base)).toBe(true);
+  });
+
+  it("keeps three forced-colours rules in components: they must lose to their state rules", () => {
+    // In the last layer they would beat the focus, invalid and hover rules of the same component,
+    // which they lose to in the flat cascade (specificity); that would change the look.
+    const forcedIn = (layer: string) =>
+      app.all.filter(
+        (r) => r.layer === layer && r.atRules.at(-1) === "@media (forced-colors: active)",
+      );
+    const underline = app.rules(
+      ':is(input:not([type]), input[type="text"], input[type="email"], input[type="url"], input[type="search"], input[type="number"], input[type="tel"], input[type="password"], textarea), :is(input[type="date"], input[type="time"], input[type="file"], .field select)',
+      { atRule: "forced-colors: active", layer: "components" },
+    );
+    expect(underline.map((r) => r.body)).toEqual([
+      expect.stringContaining("border-bottom-color: GrayText"),
+    ]);
+    expect(
+      app.rules(".inline-input.line-action", {
+        atRule: "forced-colors: active",
+        layer: "components",
+      }),
+    ).toHaveLength(1);
+    expect(
+      app.rules(".point-readout p button.icon-button", {
+        atRule: "forced-colors: active",
+        layer: "components",
+      }),
+    ).toHaveLength(1);
+    const last = forcedIn("forced-colors").map((r) => r.body);
+    expect(last.length).toBeGreaterThan(0);
+    for (const body of last) expect(body).not.toMatch(/border-bottom-color|ButtonText/);
+  });
+
+  it("puts the tokens in the tokens layer and the forced-colours blocks in the last layer", () => {
+    const { light, dark, darkChosen } = app.tokenBlocks();
+    for (const rule of [...light, ...dark, ...darkChosen]) expect(rule.layer).toBe("tokens");
+    for (const rule of app.forced().filter((r) => r.layer === "forced-colors")) {
+      expect(rule.atRules.at(-1)).toBe("@media (forced-colors: active)");
+    }
+    expect(app.rules(".logo", { layer: "forced-colors" }).length).toBeGreaterThan(0);
   });
 
   it("finds the three token blocks", () => {
@@ -440,14 +538,21 @@ describe("the real public/app.css", () => {
   });
 });
 
-describe("a layered copy of public/app.css", () => {
+// The file has layers of its own now, so the copy is wrapped one level further out: its layers
+// become `shell.tokens` and so on, its unlayered tail becomes `shell` itself.
+describe("a copy of public/app.css wrapped in one more layer", () => {
   const real = onDisk();
-  const layered = stylesheet(wrapInLayer(normalizeCss(readCssRaw()), "components"));
+  const layered = stylesheet(wrapInLayer(normalizeCss(readCssRaw()), "shell"));
 
-  it("has the same rules, all in the layer", () => {
+  it("has the same rules, all inside the outer layer", () => {
     expect(layered.all.map((r) => r.selector)).toEqual(real.all.map((r) => r.selector));
-    expect(layered.all.every((r) => r.layer === "components")).toBe(true);
-    expect(layered.layerOrder()).toEqual(["components"]);
+    expect(layered.all.every((r) => r.layer === "shell" || r.layer?.startsWith("shell."))).toBe(
+      true,
+    );
+    expect(layered.layerOrder()).toEqual([
+      "shell",
+      ...real.layerOrder().map((name) => `shell.${name}`),
+    ]);
   });
 
   it("answers rule() like the real file, for a plain rule and for the :root blocks", () => {
@@ -474,7 +579,9 @@ describe("a layered copy of public/app.css", () => {
   });
 
   it("selects by layer name", () => {
-    expect(layered.rules(".icon-search", { layer: "components" })).toHaveLength(1);
-    expect(real.rules(".icon-search", { layer: "components" })).toHaveLength(0);
+    expect(layered.rules(".icon-search", { layer: "shell.components" })).toHaveLength(1);
+    expect(layered.rules(".icon-search", { layer: "components" })).toHaveLength(0);
+    expect(real.rules(".icon-search", { layer: "components" })).toHaveLength(1);
+    expect(real.rules(".icon-search", { layer: "shell.components" })).toHaveLength(0);
   });
 });

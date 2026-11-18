@@ -196,6 +196,38 @@ test("Text lines: Required hint, 44 px line, placeholder, focus ring and forced 
       expect(await css(page, "#field-areaLabel", "outline-offset")).toBe("2px");
       expect(await css(page, "#field-areaLabel", "outline-width")).toBe("2px");
     });
+    await test.step("In forced colours a field's line is GrayText at rest and Highlight when focused or invalid", async () => {
+      // The owner's decision of 2026-11-18 (D86): the forced-colors layer decides the line colours.
+      // The expected values come from a probe element, so no palette is hard-coded here.
+      await page.emulateMedia({ forcedColors: "active" });
+      await page.goto("/styleguide");
+      const system = (name: string) =>
+        page.evaluate<string>(
+          `(() => { const probe = document.createElement("i"); probe.style.borderBottomColor = ${JSON.stringify(name)}; document.body.append(probe); const colour = getComputedStyle(probe).borderBottomColor; probe.remove(); return colour; })()`,
+        );
+      const grayText = await system("GrayText");
+      const highlight = await system("Highlight");
+      expect(grayText).not.toBe(highlight);
+      const line = (selector: string) => css(page, selector, "border-bottom-color");
+      const row = (id: string) => `.inline-input.line-action:has(#${id})`;
+      // At rest, also empty and required (an empty required field is not an error): GrayText.
+      expect(await line("#sg-text-rest")).toBe(grayText);
+      expect(await line("#sg-text-required")).toBe(grayText);
+      expect(await line("#sg-select-rest")).toBe(grayText);
+      expect(await line(row("sg-line-action"))).toBe(grayText);
+      // Disabled and read-only stay GrayText, also with the focus on a read-only field.
+      expect(await line("#sg-text-disabled")).toBe(grayText);
+      await page.locator("#sg-text-readonly").focus();
+      expect(await line("#sg-text-readonly")).toBe(grayText);
+      // An error: Highlight, for a bare field and for the row of a line field.
+      expect(await line("#sg-text-error")).toBe(highlight);
+      expect(await line(row("sg-area-error"))).toBe(highlight);
+      // The focus: Highlight, for a bare field and for the row.
+      await page.locator("#sg-text-rest").focus();
+      await expect.poll(() => line("#sg-text-rest")).toBe(highlight);
+      await page.locator("#sg-line-action").focus();
+      await expect.poll(() => line(row("sg-line-action"))).toBe(highlight);
+    });
   }
   expect(problems).toEqual([]);
   await context.close();

@@ -831,56 +831,6 @@
     display: none;
   }
 
-  @media (forced-colors: active) {
-    :is(
-      input:not([type]),
-      input[type="text"],
-      input[type="email"],
-      input[type="url"],
-      input[type="search"],
-      input[type="number"],
-      input[type="tel"],
-      input[type="password"],
-      textarea
-    ),
-    :is(input[type="date"], input[type="time"], input[type="file"], .field select) {
-      border-bottom-color: GrayText;
-    }
-
-    :is(
-      input:not([type]),
-      input[type="text"],
-      input[type="email"],
-      input[type="url"],
-      input[type="search"],
-      input[type="number"],
-      input[type="tel"],
-      input[type="password"],
-      textarea
-    ):focus,
-    :is(input[type="date"], input[type="time"], input[type="file"], .field select):focus,
-    .field-invalid
-      :is(
-        input:not([type]),
-        input[type="text"],
-        input[type="email"],
-        input[type="url"],
-        input[type="search"],
-        input[type="number"],
-        input[type="tel"],
-        input[type="password"],
-        textarea
-      ),
-    .field-invalid :is(input[type="date"], input[type="time"], input[type="file"], .field select) {
-      border-bottom-color: Highlight;
-    }
-
-    /* The hint is text only here: the red is replaced by the system colour. */
-    .required-hint {
-      color: CanvasText;
-    }
-  }
-
   /* Messages */
 
   .warning {
@@ -1314,11 +1264,9 @@
     vertical-align: baseline;
   }
 
+  /* The button's colour stays here, not in the forced-colors layer: its hover and focus rules must
+     keep winning over it. The row's line colours are in the forced-colors layer. */
   @media (forced-colors: active) {
-    .inline-input.line-action {
-      border-bottom-color: CanvasText;
-    }
-
     .inline-input.line-action button.line-action-button {
       color: ButtonText;
     }
@@ -2478,6 +2426,72 @@
     .mode-switch label:has(input:checked):not(:has(input:focus-visible)) {
       outline: 3px solid Highlight;
       outline-offset: -3px;
+    }
+  }
+
+  /* The line colours of the fields (decision D86, owner decision 2026-11-18). A field's underline is
+     GrayText at rest and Highlight while it has the focus or an error; a disabled or read-only
+     field stays GrayText. An empty required field is not an error: its hint and the thicker line
+     mark it (widths are not forced). In this layer so the rules win over the danger, required and
+     focus colours of the components layer (forced colours replace those anyway). The line field's
+     row draws the line for its input. */
+  @media (forced-colors: active) {
+    :is(
+      input:not([type]),
+      input[type="text"],
+      input[type="email"],
+      input[type="url"],
+      input[type="search"],
+      input[type="number"],
+      input[type="tel"],
+      input[type="password"],
+      textarea
+    ),
+    :is(input[type="date"], input[type="time"], input[type="file"], .field select),
+    .inline-input.line-action {
+      border-bottom-color: GrayText;
+    }
+
+    :is(
+        input:not([type]),
+        input[type="text"],
+        input[type="email"],
+        input[type="url"],
+        input[type="search"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="password"],
+        textarea
+      ):focus:not(:disabled, [readonly]),
+    :is(input[type="date"], input[type="time"], input[type="file"], .field select):focus:not(
+        :disabled,
+        [readonly]
+      ),
+    .field-invalid
+      :is(
+        input:not([type]),
+        input[type="text"],
+        input[type="email"],
+        input[type="url"],
+        input[type="search"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="password"],
+        textarea
+      ):not(:disabled, [readonly]),
+    .field-invalid
+      :is(input[type="date"], input[type="time"], input[type="file"], .field select):not(
+        :disabled,
+        [readonly]
+      ),
+    .inline-input.line-action:focus-within,
+    .field-invalid .inline-input.line-action {
+      border-bottom-color: Highlight;
+    }
+
+    /* The hint is text only here: the red is replaced by the system colour. */
+    .required-hint {
+      color: CanvasText;
     }
   }
 }

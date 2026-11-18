@@ -486,35 +486,43 @@ describe("the real public/app.css", () => {
     expect(app.isLater(afterHint, base)).toBe(true);
   });
 
-  it("keeps three forced-colours rules in components: they must lose to their state rules", () => {
-    // In the last layer they would beat the focus, invalid and hover rules of the same component,
-    // which they lose to in the flat cascade (specificity); that would change the look.
-    const forcedIn = (layer: string) =>
+  it("draws the forced-colours line colours in the last layer and keeps the ButtonText rules", () => {
+    // Owner decision of 2026-11-18 (D86): the field underlines follow their comments, GrayText at
+    // rest and Highlight with focus or an error. That only works from the last layer: in
+    // `components` the danger, required and focus colours beat them by specificity. The two
+    // ButtonText rules stay in `components`: there the hover and focus rules of the same buttons
+    // keep winning over them, and the aim is the line colours only.
+    const forced = (layer: string) =>
       app.all.filter(
         (r) => r.layer === layer && r.atRules.at(-1) === "@media (forced-colors: active)",
       );
-    const underline = app.rules(
-      ':is(input:not([type]), input[type="text"], input[type="email"], input[type="url"], input[type="search"], input[type="number"], input[type="tel"], input[type="password"], textarea), :is(input[type="date"], input[type="time"], input[type="file"], .field select)',
-      { atRule: "forced-colors: active", layer: "components" },
-    );
-    expect(underline.map((r) => r.body)).toEqual([
-      expect.stringContaining("border-bottom-color: GrayText"),
+    const lineColours = (layer: string) =>
+      forced(layer).filter((r) => /border-bottom-color/.test(r.body));
+    expect(lineColours("components")).toEqual([]);
+    const [resting, highlighted] = lineColours("forced-colors");
+    expect(lineColours("forced-colors")).toHaveLength(2);
+    expect(resting?.body).toBe("border-bottom-color: GrayText;");
+    expect(resting?.selector).toContain(".inline-input.line-action");
+    expect(highlighted?.body).toBe("border-bottom-color: Highlight;");
+    for (const part of [
+      ".inline-input.line-action:focus-within",
+      ".field-invalid .inline-input.line-action",
+      ".field-invalid :is(",
+    ]) {
+      expect(highlighted?.selector).toContain(part);
+    }
+    // Disabled and read-only fields never turn Highlight.
+    expect(highlighted?.selector).toContain(":not(:disabled, [readonly])");
+    expect(
+      app.rules(".required-hint", { atRule: "forced-colors: active", layer: "forced-colors" }),
+    ).toHaveLength(1);
+    // The ButtonText rules.
+    const buttonText = (layer: string) => forced(layer).filter((r) => /ButtonText/.test(r.body));
+    expect(buttonText("forced-colors")).toEqual([]);
+    expect(buttonText("components").map((r) => r.selector)).toEqual([
+      ".inline-input.line-action button.line-action-button",
+      ".point-readout p button.icon-button",
     ]);
-    expect(
-      app.rules(".inline-input.line-action", {
-        atRule: "forced-colors: active",
-        layer: "components",
-      }),
-    ).toHaveLength(1);
-    expect(
-      app.rules(".point-readout p button.icon-button", {
-        atRule: "forced-colors: active",
-        layer: "components",
-      }),
-    ).toHaveLength(1);
-    const last = forcedIn("forced-colors").map((r) => r.body);
-    expect(last.length).toBeGreaterThan(0);
-    for (const body of last) expect(body).not.toMatch(/border-bottom-color|ButtonText/);
   });
 
   it("puts the tokens in the tokens layer and the forced-colours blocks in the last layer", () => {

@@ -71,8 +71,13 @@ describe("the icon button on a line (decision D75)", () => {
   });
 
   it("falls back to system colours in forced-colors mode", () => {
-    expect(forced).toContain(`${ROW} {`);
-    expect(forced).toMatch(/border-bottom-color: CanvasText/);
+    // The row's line colours (owner decision 2026-11-18): GrayText at rest, Highlight with the focus
+    // or an error, from the forced-colors layer so they win over the accent and danger lines.
+    const lines = css.all.filter((r) => r.layer === "forced-colors" && r.selector.includes(ROW));
+    expect(lines.length).toBeGreaterThan(0);
+    expect(forced).toMatch(/border-bottom-color: GrayText/);
+    expect(forced).toContain(`${ROW}:focus-within`);
+    expect(forced).toContain(`.field-invalid ${ROW}`);
     expect(forced).toContain(`${BUTTON} {`);
     expect(forced).toMatch(/color: ButtonText/);
   });

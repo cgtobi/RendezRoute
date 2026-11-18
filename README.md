@@ -80,18 +80,19 @@ These addresses must be https unless `ALLOW_INSECURE_DEV=true`: `BASE_URL`, `OID
 `NTFY_URL`, `TELEGRAM_API_URL` and the map, place-search and weather addresses. The development
 switch also allows private networks.
 
-| Setting               | What it does (default)                    |
-| --------------------- | ----------------------------------------- |
-| `BASE_URL`            | Public https address, no path (required)  |
-| `INSTANCE_NAME`       | Name of the instance (`RendezRoute`)      |
-| `DATA_DIR`            | Absolute path of the data (`/data`)       |
-| `ENCRYPTION_KEY_FILE` | Absolute path of the key file (see below) |
-| `TRUST_PROXY`         | Trust the proxy headers (`false`)         |
-| `CONTACT_EMAIL`       | Identifies you to providers (unset)       |
-| `IMPRINT_URL`         | Link to your imprint page (unset)         |
-| `PRIVACY_URL`         | Link to your own privacy page (unset)     |
-| `DEFAULT_TIMEZONE`    | IANA time zone (`UTC`)                    |
-| `ALLOW_INSECURE_DEV`  | Development only: allow http (`false`)    |
+| Setting               | What it does (default)                         |
+| --------------------- | ---------------------------------------------- |
+| `BASE_URL`            | Public https address, no path (required)       |
+| `INSTANCE_NAME`       | Name of the instance (`RendezRoute`)           |
+| `DATA_DIR`            | Absolute path of the data (`/data`)            |
+| `ENCRYPTION_KEY_FILE` | Absolute path of the key file (see below)      |
+| `TRUST_PROXY`         | Trust the proxy headers (`false`)              |
+| `CONTACT_EMAIL`       | Identifies you to providers (unset)            |
+| `IMPRINT_URL`         | Link to your imprint page (unset)              |
+| `PRIVACY_URL`         | Link to your own privacy page (unset)          |
+| `DEFAULT_TIMEZONE`    | IANA time zone (`UTC`)                         |
+| `ALLOW_INSECURE_DEV`  | Development only: allow http (`false`)         |
+| `E2E_CLOCK_CONTROL`   | Tests only: movable clock, see below (`false`) |
 
 - `BASE_URL` has no path, query or credentials. `INSTANCE_NAME` is 1 to 60 characters.
 - `DEFAULT_TIMEZONE` is such as `Europe/Berlin`.
@@ -100,6 +101,10 @@ switch also allows private networks.
   to `keys/field.key` in `DATA_DIR`. The VAPID and federation keys live in the same directory. Back
   the directory up separately from the data (see [Before going live](#before-going-live)): a key
   file inside the data directory is readable from a leaked data backup.
+- `E2E_CLOCK_CONTROL=true` lets the end-to-end tests move the server clock forward through
+  `POST /__e2e/clock/advance` (`{"ms": 180000}`, at most a day a call and seven days in all), so
+  they need not wait for a plan to start. It is refused unless `ALLOW_INSECURE_DEV=true`, the route
+  does not exist without it, and it is not a Home Assistant option. Never set it on a real instance.
 - `TRUST_PROXY` is needed behind the proxy, or every visitor shares one rate limit. Never set it
   when the app is reachable without the proxy. The one exception is the admin port, see
   [Admin](#admin).

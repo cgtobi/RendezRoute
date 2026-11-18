@@ -10,6 +10,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import BetterSqlite3 from "better-sqlite3";
 import { runApplyRetentionMax, runBackup, type RunningServer, startServer } from "../src/main.ts";
+import { TestClient } from "./support/client.ts";
+import { createPlanViaUi, respondViaUi } from "./support/plans.ts";
 
 const running: RunningServer[] = [];
 const dirs: string[] = [];
@@ -690,5 +692,124 @@ describe("Home Assistant Ingress on the admin listener (decision D56)", () => {
     if (!result.ok) throw new Error(result.errors.join("; "));
     expect(supervisor.seen).toEqual([]);
     expect(result.warnings.join(" ")).toContain("ADMIN_INGRESS_SKIP_VERSION_CHECK=true");
+  });
+});
+
+describe("the end-to-end clock control (decision D87)", () => {
+  const dev = { ALLOW_INSECURE_DEV: "true" };
+  const ADVANCE = "/__e2e/clock/advance";
+
+  async function startOn(extra: Record<string, string>) {
+    const result = await start(env({ ...dev, ...extra }));
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    return result.server;
+  }
+
+  const advance = (server: RunningServer, body: unknown, type = "application/json") =>
+    fetch(new URL(ADVANCE, server.url), {
+      method: "POST",
+      headers: { "content-type": type },
+      body: typeof body === "string" ? body : JSON.stringify(body),
+    });
+
+  /** A browser stand-in that talks to the real socket. */
+  const browser = (server: RunningServer) =>
+    new TestClient({ request: (path, init) => fetch(new URL(path, server.url), init) });
+
+  it("has no clock route in a production-like configuration, nor in development mode alone", async () => {
+    for (const extra of [{}, dev]) {
+      const result = await start(env(extra));
+      if (!result.ok) throw new Error(result.errors.join("; "));
+      // A POST without a form token is refused by the CSRF check on any unknown path alike.
+      const other = await fetch(new URL("/__e2e/clock/other", result.server.url), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ms: 1000 }),
+      });
+      const posted = await advance(result.server, { ms: 1000 });
+      expect(posted.status).toBe(other.status);
+      expect(posted.status).toBeGreaterThanOrEqual(400);
+      await running.pop()?.close();
+    }
+  });
+
+  it("refuses to start with the variable but without ALLOW_INSECURE_DEV", async () => {
+    const result = await start(env({ E2E_CLOCK_CONTROL: "true" }));
+    expect(result).toEqual({
+      ok: false,
+      errors: [expect.stringMatching(/E2E_CLOCK_CONTROL.*ALLOW_INSECURE_DEV/)],
+    });
+  });
+
+  it("advances the clock the app reads: a plan that was open to responses has started", async () => {
+    const server = await startOn({ E2E_CLOCK_CONTROL: "true" });
+    const startsAt = new Date(Math.ceil((Date.now() + 120_000) / 60_000) * 60_000).toISOString();
+    const host = browser(server);
+    const { planId } = await createPlanViaUi(host, {
+      timeZone: "UTC",
+      date: startsAt.slice(0, 10),
+      time: startsAt.slice(11, 16),
+    });
+
+    const before = await respondViaUi(browser(server), planId, "Ben", "joined");
+    expect(before.response.status).toBe(200);
+    expect(before.managePath).toBeDefined();
+
+    // Lea opens the response form while the plan is open, and presses the button after the start.
+    const lea = browser(server);
+    const hidden = await lea.hiddenFields(`/p/${planId}`);
+    expect(hidden).toHaveProperty("_csrf");
+
+    const moved = await advance(server, { ms: 5 * 60_000 });
+    expect(moved.status).toBe(200);
+    const { now } = (await moved.json()) as { now: string };
+    expect(Date.parse(now) - Date.now()).toBeGreaterThan(4 * 60_000);
+
+    const after = await lea.postForm(`/p/${planId}/respond`, {
+      ...hidden,
+      displayName: "Lea",
+      choice: "joined",
+      requestNote: "",
+    });
+    expect(after.status).toBe(409);
+    expect(await after.text()).not.toContain("/m/");
+  });
+
+  it("answers bad requests without moving the clock", async () => {
+    const server = await startOn({ E2E_CLOCK_CONTROL: "true" });
+    for (const type of [
+      "text/plain",
+      "application/x-www-form-urlencoded",
+      "multipart/form-data; boundary=x",
+    ]) {
+      expect((await advance(server, { ms: 1000 }, type)).status).toBe(415);
+    }
+    expect((await advance(server, "not json")).status).toBe(400);
+    expect((await advance(server, {})).status).toBe(400);
+    expect((await advance(server, { ms: "60000" })).status).toBe(400);
+    expect((await advance(server, { ms: -1 })).status).toBe(400);
+    expect((await advance(server, { ms: 25 * 60 * 60 * 1000 })).status).toBe(400);
+    const read = await advance(server, { ms: 0 });
+    const { now } = (await read.json()) as { now: string };
+    expect(Math.abs(Date.parse(now) - Date.now())).toBeLessThan(5_000);
+  });
+
+  it("has no clock route on the admin listener, with the control on or off", async () => {
+    for (const control of [{ E2E_CLOCK_CONTROL: "true" }, {}]) {
+      const adminPort = await freePort();
+      const result = await start(
+        env({ ...dev, ...control, ADMIN_TOKEN, ADMIN_PORT: String(adminPort) }),
+      );
+      if (!result.ok) throw new Error(result.errors.join("; "));
+      const { adminUrl } = result.server;
+      const onAdmin = await fetch(new URL(ADVANCE, adminUrl), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ms: 1000 }),
+      });
+      expect(onAdmin.status).not.toBe(200);
+      expect(onAdmin.status).toBeLessThan(500);
+      await running.pop()?.close();
+    }
   });
 });

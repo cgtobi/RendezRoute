@@ -1,7 +1,9 @@
 # End-to-end environment (spec 2b definition of done): the built image on empty volumes, hardened
-# like production, three times: default settings pointed at fake providers; maps, geocoder and
-# weather disabled; and the 0.7 to 0.9 features (admin, invite-only posting, OIDC and fediverse
-# login, email, against fakes). Started and stopped by global-setup.ts.
+# like production, in several variants: default settings pointed at fake providers; maps, geocoder
+# and weather disabled; the 0.7 to 0.9 features (admin, invite-only posting, OIDC and fediverse
+# login, email, against fakes); the admin listener on its own port and behind Ingress; and two
+# copies with a movable clock for the specs that wait for a plan to start. Started and stopped by
+# global-setup.ts.
 name: rendezroute-e2e
 
 x-app: &app
@@ -147,6 +149,48 @@ services:
       - "3106:3000"
       - "3107:3001"
 
+  # The two specs that wait for a plan to start move the server clock instead (D87, plan I102):
+  # the clock is one per process, so they get containers of their own, with the same settings as
+  # app-default and app-accounts plus E2E_CLOCK_CONTROL, and no other spec uses them.
+  app-clock-default:
+    <<: *app
+    environment:
+      <<: *env
+      BASE_URL: http://localhost:3108
+      E2E_CLOCK_CONTROL: "true"
+    volumes:
+      - clock-default-data:/data
+    ports:
+      - "3108:3000"
+
+  # The fakes are shared with app-accounts, so this one has its own contact address (the report
+  # alert mail of v09-recap's Flag must not reach the mailbox v08 reads) and no ntfy or Telegram
+  # (a second bot poller would take the updates v08 waits for); v09-recap uses neither.
+  app-clock-accounts:
+    <<: *app
+    environment:
+      <<: *env
+      CONTACT_EMAIL: e2e-clock@example.org
+      BASE_URL: http://localhost:3109
+      E2E_CLOCK_CONTROL: "true"
+      TRUST_PROXY: "true"
+      ADMIN_TOKEN: e2e-admin-token-0123456789abcdefghij
+      POSTING_MODE: invite
+      OIDC_ISSUER: http://fakes:8080/oidc
+      OIDC_CLIENT_ID: rendezroute-e2e
+      OIDC_CLIENT_SECRET: e2e-oidc-secret
+      OIDC_NAME: E2E login
+      FEDIVERSE_LOGIN: "true"
+      FEDIVERSE_LOGIN_SERVERS: fakes:8080
+      SMTP_HOST: fakes
+      SMTP_PORT: "2525"
+      SMTP_TLS: none
+      SMTP_FROM: runs@example.org
+    volumes:
+      - clock-accounts-data:/data
+    ports:
+      - "3109:3000"
+
 networks:
   default:
     ipam:
@@ -161,3 +205,5 @@ volumes:
   accounts-data:
   admin-split-data:
   admin-ingress-data:
+  clock-default-data:
+  clock-accounts-data:

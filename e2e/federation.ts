@@ -88,10 +88,15 @@ export const addresses = (value: unknown): string[] =>
   Array.isArray(value) ? (value as string[]) : typeof value === "string" ? [value] : [];
 
 /** Has the fake person sign an activity and post it to the app; returns the app's answer. */
-export async function send(as: string, path: string, activity: Record<string, unknown>) {
+export async function send(
+  as: string,
+  path: string,
+  activity: Record<string, unknown>,
+  app: "default" | "clock" = "default",
+) {
   const answer = await fake("/fedi/send", {
     method: "POST",
-    body: JSON.stringify({ as, path, activity }),
+    body: JSON.stringify({ as, path, activity, app }),
   });
   return (await answer.json()) as { status: number; body: string };
 }

@@ -1,20 +1,23 @@
 // v0.6 in a real browser against the built image (spec 6a, plan step 4): participants rate a plan
 // that has really started, the host closes the recap and sees the counts with the signed note.
-// The image runs on the real clock, so the plan starts about two minutes after it is created.
+// The plan is created a minute or two ahead on the real clock, and the server clock is moved past
+// its start (the container has E2E_CLOCK_CONTROL, decision D87) instead of waiting for it.
 import { expect, test } from "@playwright/test";
-import { fillTimeOffGrid, openZoneLine, person } from "./helpers.ts";
+import { advanceClock, fillTimeOffGrid, openZoneLine, person } from "./helpers.ts";
 
 test("Participants rate a plan; the host sees the result once the recap is closed", async ({
   browser,
   baseURL,
 }) => {
-  test.setTimeout(240_000);
   const problems: string[] = [];
   const base = baseURL ?? "";
   const { page: host } = await person(browser, base, problems);
 
-  // The next full minute at least 90 seconds ahead, in UTC.
-  const startsAt = Math.ceil((Date.now() + 90_000) / 60_000) * 60_000;
+  // The next full minute at least 90 seconds ahead of the SERVER's clock, in UTC. The container's
+  // clock may already be ahead of the real one (earlier runs, E2E_KEEP, retries each add 3
+  // minutes against the 7-day cap), so the start is taken from it, not from this machine.
+  const serverNow = (await advanceClock(base, 0)).getTime();
+  const startsAt = Math.ceil((serverNow + 90_000) / 60_000) * 60_000;
   const iso = new Date(startsAt).toISOString();
   await host.goto("/new");
   await host.getByLabel("Your name").fill("Anna");
@@ -40,12 +43,10 @@ test("Participants rate a plan; the host sees the result once the recap is close
   const [ben, lea] = participants;
   if (ben === undefined || lea === undefined) throw new Error("missing participants");
 
-  // Wait for the start on the server's clock: reload until the rating form appears.
+  // The start, on the server's clock: three minutes pass the latest start (150 seconds ahead).
+  await advanceClock(base, 180_000);
   await ben.goto(planUrl);
-  await expect(async () => {
-    await ben.reload();
-    await expect(ben.getByRole("button", { name: "Save rating" })).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: startsAt - Date.now() + 60_000, intervals: [5_000] });
+  await expect(ben.getByRole("button", { name: "Save rating" })).toBeVisible();
   // The honesty line, in full, under the choice.
   await expect(ben.locator("#rating fieldset")).toContainText(
     "Only the host sees ratings. In a small group they may guess who gave one. Notes show your name.",

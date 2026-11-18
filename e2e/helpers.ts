@@ -19,9 +19,27 @@ const ALLOWED_HOSTS = new Set([
   "localhost:3104",
   "localhost:3105",
   "localhost:3106",
+  "localhost:3108",
+  "localhost:3109",
   "localhost:8080",
   "fakes:8080",
 ]);
+
+/**
+ * Moves the server clock of a clock-controlled container forward (E2E_CLOCK_CONTROL, decision
+ * D87), so a test creates a plan a minute or two ahead and then lets it start at once. The
+ * browser and the test keep the real clock. Returns the server's new time.
+ */
+export async function advanceClock(baseURL: string, ms: number): Promise<Date> {
+  const response = await fetch(new URL("/__e2e/clock/advance", baseURL), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ms }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`clock advance answered ${response.status}`);
+  return new Date(((await response.json()) as { now: string }).now);
+}
 
 /** A 1x1 transparent PNG, standing in for every map tile in WebKit. */
 const TILE_PNG = Buffer.from(

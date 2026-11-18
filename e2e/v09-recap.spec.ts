@@ -3,11 +3,14 @@
 // participant (the fake fediverse server, fakes/fediverse.ts) gets it as a private Note and answers
 // privately, the answer shows on the plan page under its name and goes with its `Delete`; a remote
 // `Flag` reaches the admin as a report (a step of the recap journey, which has an admin and a plan
-// already and waits for the start anyway). Runs only in the "0.7 to 0.9 features" project, in a
-// worker of its own; every name carries the run, since the fakes container keeps its state with
-// E2E_KEEP.
+// already and needs the start anyway). Runs only in the "clock: 0.7 to 0.9 features" project, on a
+// container with E2E_CLOCK_CONTROL (decision D87): the plan is created a minute or two ahead and
+// the server clock is moved past its start. Fedify signs and checks the HTTP signatures' `Date` by
+// the real time, so the move never skews them. Every name carries the run, since the fakes
+// container keeps its state with E2E_KEEP.
 import { expect, test } from "@playwright/test";
 import {
+  advanceClock,
   adminLogIn,
   fillHostName,
   fillTimeOffGrid,
@@ -20,10 +23,8 @@ import {
 } from "./helpers.ts";
 import {
   addresses,
-  APP,
   expectSigned,
   FAKES_HOST,
-  INSTANCE,
   received,
   recipientsOf,
   send,
@@ -36,10 +37,14 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
   browser,
   baseURL,
 }) => {
-  // About 90 seconds for the start, then three or four deliveries that wait for the job runner.
-  test.setTimeout(300_000);
+  // Three or four deliveries that wait for the job runner (every 10 seconds).
+  test.setTimeout(150_000);
   const problems: string[] = [];
   const base = baseURL ?? "";
+  const appHost = new URL(base).host;
+  const instance = `${base}/actors/instance`;
+  const sendToApp = (as: string, path: string, activity: Record<string, unknown>) =>
+    send(as, path, activity, "clock");
   const title = `Recap run ${RUN}`;
   const handle = `rc_${RUN}`;
   const fan = `recapfan-${RUN}`;
@@ -63,17 +68,21 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
   await host.getByLabel("Your name in the fediverse").fill(handle);
   await host.getByRole("button", { name: "Turn on my fediverse profile" }).click();
   await expect(host.getByText(`Your fediverse profile is @${handle}@localhost.`)).toBeVisible();
-  const finger = await fetch(`${APP}/.well-known/webfinger?resource=acct:${handle}@localhost:3103`);
+  const finger = await fetch(`${base}/.well-known/webfinger?resource=acct:${handle}@${appHost}`);
   const { links } = (await finger.json()) as { links: { rel: string; href: string }[] };
   const actor = links.find((link) => link.rel === "self")?.href ?? "";
-  expect(actor).toMatch(/^http:\/\/localhost:3103\/actors\/[^/]+$/);
+  expect(actor).toMatch(/^http:\/\/localhost:3109\/actors\/[^/]+$/);
 
-  // 2. The remote person follows; the plan is created so that it starts about 90 seconds later.
+  // 2. The remote person follows; the plan is created so that it starts a minute or two later
+  // (on the server's clock).
   const follow = { id: `${fanId}#follow-1`, type: "Follow", object: actor };
-  expect((await send(fan, `${new URL(actor).pathname}/inbox`, follow)).status).toBe(202);
+  expect((await sendToApp(fan, `${new URL(actor).pathname}/inbox`, follow)).status).toBe(202);
   const oldLength = (await received(fan)).length;
-  // The next full minute at least 90 seconds ahead, in UTC.
-  const startsAt = Math.ceil((Date.now() + 90_000) / 60_000) * 60_000;
+  // The next full minute at least 90 seconds ahead of the SERVER's clock, in UTC. The container's
+  // clock may already be ahead of the real one (earlier runs, E2E_KEEP, retries each add 3
+  // minutes against the 7-day cap), so the start is taken from it, not from this machine.
+  const serverNow = (await advanceClock(base, 0)).getTime();
+  const startsAt = Math.ceil((serverNow + 90_000) / 60_000) * 60_000;
   const iso = new Date(startsAt).toISOString();
   await host.goto("/new");
   await fillHostName(host, "Anna");
@@ -90,11 +99,11 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
   await host.getByRole("button", { name: "Create plan" }).click();
   await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
   const planUrl = (await host.locator(".links .link-box a").textContent()) ?? "";
-  expect(planUrl).toMatch(/^http:\/\/localhost:3103\/p\/[A-Za-z0-9_-]{22}$/);
+  expect(planUrl).toMatch(/^http:\/\/localhost:3109\/p\/[A-Za-z0-9_-]{22}$/);
 
   // 3. The remote person joins (open mode: accepted at once) and gets the exact start in a Note.
   const join = { id: `${fanId}#join-1`, type: "Join", object: planUrl };
-  expect((await send(fan, "/inbox", join)).status).toBe(202);
+  expect((await sendToApp(fan, "/inbox", join)).status).toBe(202);
   await waitFor(fan, (a) => a.type === "Accept" && JSON.stringify(a).includes(join.id), oldLength);
   await waitFor(
     fan,
@@ -114,11 +123,11 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
     const flag = {
       id: `${FAKES_HOST}/fedi/users/${reporter}#flag-1`,
       type: "Flag",
-      to: [INSTANCE],
+      to: [instance],
       object: [planUrl],
       content: REASON,
     };
-    expect((await send(reporter, "/inbox", flag)).status).toBe(202);
+    expect((await sendToApp(reporter, "/inbox", flag)).status).toBe(202);
 
     // The report is among the open reports; the plan's page shows the reason "other" and the text.
     await expect(async () => {
@@ -141,12 +150,11 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
     await expect(admin.getByText("1 resolved report")).toBeVisible();
   });
 
-  // 4. Wait for the start on the server's clock: reload until the recap form is there.
+  // 4. The start, on the server's clock: three minutes pass the latest start (150 seconds ahead).
+  // The recap form is there at once.
+  await advanceClock(base, 180_000);
   await host.goto(planUrl);
-  await expect(async () => {
-    await host.reload();
-    await expect(host.locator("#field-body")).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: startsAt - Date.now() + 60_000, intervals: [5_000] });
+  await expect(host.locator("#field-body")).toBeVisible();
 
   // 5. The host adds to the recap; the remote participant gets it as a private Note.
   const sinceContribution = (await received(fan)).length;
@@ -188,20 +196,20 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
   const reply = {
     id: `${fanId}/statuses/1/activity`,
     type: "Create",
-    to: [INSTANCE],
+    to: [instance],
     cc: [],
     object: {
       id: `${fanId}/statuses/1`,
       type: "Note",
       attributedTo: fanId,
       inReplyTo: contributionId,
-      to: [INSTANCE],
+      to: [instance],
       cc: [],
       content: `<p>${REPLY_TEXT} <a href="${REPLY_LINK}" rel="nofollow noopener">${REPLY_LINK}</a></p>`,
       published: new Date().toISOString(),
     },
   };
-  expect((await send(fan, "/inbox", reply)).status).toBe(202);
+  expect((await sendToApp(fan, "/inbox", reply)).status).toBe(202);
   // It shows on the plan page under the name web participants see (no port), with its link.
   const shown = host.locator(".contribution").filter({ hasText: REPLY_TEXT });
   await expect(async () => {
@@ -217,10 +225,10 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
   const gone = {
     id: `${fanId}/statuses/1/delete`,
     type: "Delete",
-    to: [INSTANCE],
+    to: [instance],
     object: { id: `${fanId}/statuses/1`, type: "Tombstone" },
   };
-  expect((await send(fan, "/inbox", gone)).status).toBe(202);
+  expect((await sendToApp(fan, "/inbox", gone)).status).toBe(202);
   await expect(async () => {
     await host.reload();
     await expect(shown).toHaveCount(0, { timeout: 1_000 });

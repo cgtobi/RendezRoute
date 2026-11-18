@@ -310,5 +310,8 @@ describe("what the configuration makes of the mapped environment", () => {
     const written = [...HA_OPTION_ENVIRONMENT_NAMES, ...Object.keys(FIXED_ENVIRONMENT)];
     expect(written.filter((name) => !known.has(name))).toEqual([]);
     expect(written.length).toBe(38 + 5);
+    // Development switches are never Home Assistant options nor fixed values (decision D87).
+    expect(written).not.toContain("E2E_CLOCK_CONTROL");
+    expect(written).not.toContain("ALLOW_INSECURE_DEV");
   });
 });

@@ -46,6 +46,11 @@ export interface Config {
   geocoder: { enabled: boolean; url: URL };
   weather: { enabled: boolean; url: URL };
   allowInsecureDev: boolean;
+  /**
+   * The end-to-end tests may move the clock forward (decision D87). Refused unless
+   * `allowInsecureDev` is on; never a Home Assistant option.
+   */
+  e2eClockControl: boolean;
   /** The instance admin's login secret (spec 7 Moderation); admin pages exist only when set. */
   adminToken: string | undefined;
   /**
@@ -251,6 +256,13 @@ export function loadConfig(
 
   const allowInsecureDev = bool("ALLOW_INSECURE_DEV", false);
 
+  const e2eClockControl = bool("E2E_CLOCK_CONTROL", false);
+  if (e2eClockControl && !allowInsecureDev) {
+    errors.push(
+      "E2E_CLOCK_CONTROL=true needs ALLOW_INSECURE_DEV=true (end-to-end tests only, never in production).",
+    );
+  }
+
   /** URLs this instance serves or calls must use HTTPS, except in development mode. */
   const requireHttps = (name: string, url: URL): boolean => {
     if (url.protocol === "https:" || allowInsecureDev) return true;
@@ -296,6 +308,12 @@ export function loadConfig(
     warnings.push(
       "ALLOW_INSECURE_DEV=true: running in development mode; cookies are not marked Secure and " +
         "outbound requests may use http and private networks. Never use this in production.",
+    );
+  }
+  if (e2eClockControl && allowInsecureDev) {
+    warnings.push(
+      "E2E_CLOCK_CONTROL=true: the clock can be moved forward through /__e2e/clock/advance. " +
+        "End-to-end tests only; never use this in production.",
     );
   }
 
@@ -754,6 +772,7 @@ export function loadConfig(
       geocoder: { enabled: geocoderSetting && contactEmail !== undefined, url: geocoderUrl },
       weather: { enabled: weatherEnabled, url: weatherUrl },
       allowInsecureDev,
+      e2eClockControl,
       adminToken,
       admin,
       postingMode,

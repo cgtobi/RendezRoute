@@ -31,6 +31,7 @@ describe("defaults (spec section 10)", () => {
     expect(config.maxPlanHorizonDays).toBe(180);
     expect(config.defaultTimezone).toBe("UTC");
     expect(config.allowInsecureDev).toBe(false);
+    expect(config.e2eClockControl).toBe(false);
     expect(config.adminToken).toBeUndefined();
     expect(config.maps).toEqual({
       enabled: true,
@@ -630,6 +631,41 @@ describe("BASE_URL", () => {
   });
 });
 
+describe("E2E_CLOCK_CONTROL (decision D87)", () => {
+  const dev = { ...minimal, ALLOW_INSECURE_DEV: "true" };
+
+  it("is off by default, also in development mode", () => {
+    expect(ok(minimal).config.e2eClockControl).toBe(false);
+    expect(ok(dev).config.e2eClockControl).toBe(false);
+    expect(ok({ ...dev, E2E_CLOCK_CONTROL: "false" }).config.e2eClockControl).toBe(false);
+  });
+
+  it("is accepted with ALLOW_INSECURE_DEV=true, with a warning", () => {
+    const { config, warnings } = ok({ ...dev, E2E_CLOCK_CONTROL: "true" });
+    expect(config.e2eClockControl).toBe(true);
+    expect(warnings).toContainEqual(expect.stringContaining("E2E_CLOCK_CONTROL=true"));
+  });
+
+  it("is refused without ALLOW_INSECURE_DEV, naming both settings", () => {
+    for (const extra of [{}, { ALLOW_INSECURE_DEV: "false" }]) {
+      const found = errors({ ...minimal, ...extra, E2E_CLOCK_CONTROL: "true" });
+      expect(found).toEqual([
+        expect.stringMatching(
+          /E2E_CLOCK_CONTROL.*ALLOW_INSECURE_DEV|ALLOW_INSECURE_DEV.*E2E_CLOCK_CONTROL/,
+        ),
+      ]);
+    }
+  });
+
+  it("is refused for values other than true or false, also in development mode", () => {
+    for (const bad of ["1", "yes", "TRUE", ""]) {
+      expect(errors({ ...dev, E2E_CLOCK_CONTROL: bad })).toEqual([
+        expect.stringContaining("E2E_CLOCK_CONTROL"),
+      ]);
+    }
+  });
+});
+
 describe("booleans", () => {
   it.each([
     "TRUST_PROXY",
@@ -637,6 +673,7 @@ describe("booleans", () => {
     "GEOCODER_ENABLED",
     "WEATHER_ENABLED",
     "ALLOW_INSECURE_DEV",
+    "E2E_CLOCK_CONTROL",
   ])("%s accepts only true or false", (name) => {
     expect(errors({ ...minimal, [name]: "yes" })).toEqual([expect.stringContaining(name)]);
     expect(() => ok({ ...minimal, [name]: "false" })).not.toThrow();

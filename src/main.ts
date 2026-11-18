@@ -32,7 +32,7 @@ import {
 import { runDueJobs } from "./application/jobs.ts";
 import type { PlanDeps } from "./application/plans.ts";
 import { runReminders } from "./application/reminders.ts";
-import type { Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
+import type { Clock, Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
 import { createAdminApp } from "./adapters/in/http/admin-app.tsx";
 import { type AccountWiring, createApp } from "./adapters/in/http/app.tsx";
 import { createIngressAdminAuth } from "./adapters/out/admin/ingress-admin-auth.ts";
@@ -104,6 +104,10 @@ import { createFediverseProvider } from "./adapters/out/identity/fediverse.ts";
 import { fediverseCallbackUri } from "./adapters/in/http/routes/account.tsx";
 import { createTrustedFetch } from "./adapters/out/http/trusted-fetch.ts";
 import { createResponseRepository } from "./adapters/out/sqlite/responses.ts";
+import {
+  type ControllableClock,
+  createControllableClock,
+} from "./adapters/out/controllable-clock.ts";
 import { systemClock } from "./adapters/out/system-clock.ts";
 import { createTokenService } from "./adapters/out/tokens.ts";
 import {
@@ -142,7 +146,7 @@ function outboundHttp(
 }
 
 /** Place search (spec 3.9): at most one request per second, results cached for at most 7 days. */
-function createGeocoder(config: Config): Geocoder | undefined {
+function createGeocoder(config: Config, clock: Clock): Geocoder | undefined {
   if (!config.geocoder.enabled || config.contactEmail === undefined) return undefined;
   const geocoder = createNominatimGeocoder({
     http: outboundHttp(config, config.contactEmail),
@@ -150,21 +154,21 @@ function createGeocoder(config: Config): Geocoder | undefined {
     throttle: createThrottle({ minIntervalMs: 1000, maxWaitMs: 5000 }),
   });
   return createCachedGeocoder(geocoder, {
-    clock: systemClock,
+    clock,
     ttlMs: SERVICE_CACHE_MS,
     maxEntries: 1000,
   });
 }
 
 /** Forecasts on plan pages (spec 3.9), cached in memory for an hour per point and hour. */
-function createWeather(config: Config, logger: Logger): WeatherProvider | undefined {
+function createWeather(config: Config, logger: Logger, clock: Clock): WeatherProvider | undefined {
   if (!config.weather.enabled) return undefined;
   const weather = createOpenMeteoWeather({
     http: outboundHttp(config, config.contactEmail),
     baseUrl: config.weather.url,
   });
   return createCachedWeather(weather, {
-    clock: systemClock,
+    clock,
     ttlMs: WEATHER_CACHE_MS,
     failureTtlMs: WEATHER_FAILURE_CACHE_MS,
     maxEntries: 1000,
@@ -175,13 +179,13 @@ function createWeather(config: Config, logger: Logger): WeatherProvider | undefi
 }
 
 /** Link preview cards (spec 3.3), with a rough-area map when tiles may be fetched server-side. */
-function createRenderer(config: Config): PreviewRenderer {
+function createRenderer(config: Config, clock: Clock): PreviewRenderer {
   const tiles =
     config.maps.serverSideTiles && config.contactEmail !== undefined
       ? createMapTiles({
           http: outboundHttp(config, config.contactEmail),
           tileUrl: config.maps.tileUrl,
-          clock: systemClock,
+          clock,
           ttlMs: SERVICE_CACHE_MS,
           maxEntries: 500,
         })
@@ -221,6 +225,8 @@ interface Instance {
   database: Database;
   keys: InstanceKeys;
   planDeps: PlanDeps;
+  /** Set only with E2E_CLOCK_CONTROL; the same instance every consumer reads (decision D87). */
+  clockControl: ControllableClock | undefined;
   /** The instance actor's keys and the remote requests of federation; undefined while it is off. */
   federation:
     | { instanceKeys: SigningKeyPair[]; http: OutboundHttp; outbound: FederationOutbound }
@@ -242,10 +248,13 @@ async function openInstance(
   if (!loaded.ok) return loaded;
   const { config } = loaded;
   const warnings = [...loaded.warnings];
+  // Decision D87: the clock the whole instance reads; movable only in the end-to-end mode.
+  const clockControl = config.e2eClockControl ? createControllableClock() : undefined;
+  const clock: Clock = clockControl ?? systemClock;
 
   mkdirSync(config.dataDir, { recursive: true });
   const database = await openDatabase(databasePath(config), {
-    backups: { dir: backupDir(config), now: () => systemClock.now() },
+    backups: { dir: backupDir(config), now: () => clock.now() },
   });
 
   let keys: InstanceKeys;
@@ -330,7 +339,7 @@ async function openInstance(
   );
   const contributionNotes = createContributionNoteRepository(database, keys.identityLookup);
   const jobs = createJobQueue(database, keys.cipher, ids);
-  const channels = createChannelRepository(database, keys.cipher, ids, () => systemClock.now());
+  const channels = createChannelRepository(database, keys.cipher, ids, () => clock.now());
   const identities = createIdentityRepository(database, keys.cipher);
   const federation = config.federationEnabled
     ? await (async () => {
@@ -338,7 +347,7 @@ async function openInstance(
         const http = outboundHttp(config, config.contactEmail);
         const outbound = createFederationOutbound({
           jobs,
-          clock: systemClock,
+          clock,
           ids,
           baseUrl: config.baseUrl,
           instanceKeys,
@@ -361,7 +370,7 @@ async function openInstance(
     routeParser: createGpxRouteParser(),
     tokens: createTokenService(),
     ids,
-    clock: systemClock,
+    clock,
     limits: { horizonDays: config.maxPlanHorizonDays, maxRetentionDays: config.maxRetentionDays },
     calendarFeeds: createCalendarFeedRepository(database),
     recap: createRecapRepository(database, keys.cipher),
@@ -432,6 +441,7 @@ async function openInstance(
       database,
       keys,
       planDeps,
+      clockControl,
       federation,
       warnings,
       deliveries: { email: email?.delivery, ntfy: ntfy?.delivery, telegram: telegram?.delivery },
@@ -464,7 +474,7 @@ export async function startServer(
 ): Promise<StartResult> {
   const opened = await openInstance(env, { ingressVersionVerified });
   if (!opened.ok) return opened;
-  const { config, database, keys, planDeps, warnings } = opened.instance;
+  const { config, database, keys, planDeps, clockControl, warnings } = opened.instance;
   if (config.admin?.port === port) {
     await database.close();
     return {
@@ -666,14 +676,15 @@ export async function startServer(
     csrfKey: keys.csrfKey,
     logger,
     planDeps,
-    geocoder: createGeocoder(config),
-    previewRenderer: createRenderer(config),
-    weather: createWeather(config, logger),
+    geocoder: createGeocoder(config, planDeps.clock),
+    previewRenderer: createRenderer(config, planDeps.clock),
+    weather: createWeather(config, logger, planDeps.clock),
     rateLimits,
     vapidPublicKey: vapid.publicKey,
     adminAuth,
     accounts,
     federation,
+    clockControl,
   });
   // The admin pages on their own listener (decision D55): its own CSRF key, the same limits.
   const adminApp =

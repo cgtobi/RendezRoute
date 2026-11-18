@@ -9,8 +9,14 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 const ORIGIN = "http://fakes:8080";
 const ISSUER = `${ORIGIN}/oidc`;
 const OIDC_CLIENT = { id: "rendezroute-e2e", secret: "e2e-oidc-secret" };
-/** The redirect URI registered for the OIDC client, as on a real provider. */
-const OIDC_REDIRECT_URI = "http://localhost:3103/login/oidc/callback";
+/**
+ * The redirect URIs registered for the OIDC client, as on a real provider: the accounts container
+ * and the one with the controllable clock (compose.yaml).
+ */
+const OIDC_REDIRECT_URIS = new Set([
+  "http://localhost:3103/login/oidc/callback",
+  "http://localhost:3109/login/oidc/callback",
+]);
 const OIDC_PERSON = { sub: "e2e-oidc-person", name: "Erika E2E" };
 const FEDIVERSE_PERSON = { id: "42", username: "erika", display_name: "Erika (fediverse)" };
 
@@ -141,7 +147,7 @@ export async function handleIdentity(
     const scopes = (query.get("scope") ?? "").split(" ");
     if (
       query.get("client_id") !== OIDC_CLIENT.id ||
-      query.get("redirect_uri") !== OIDC_REDIRECT_URI ||
+      !OIDC_REDIRECT_URIS.has(query.get("redirect_uri") ?? "") ||
       query.get("response_type") !== "code" ||
       !scopes.includes("openid") ||
       query.get("code_challenge_method") !== "S256"

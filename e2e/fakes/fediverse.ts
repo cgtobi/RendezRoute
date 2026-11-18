@@ -4,13 +4,21 @@
 // delivers. The spec drives the people from the Node side: POST /fedi/send signs an activity as a
 // person (draft-cavage HTTP signatures, node:crypto only, the headers Fedify's own signRequest
 // sends) and posts it to the app container, which the fakes container reaches as
-// `app-accounts:3000` while the app's BASE_URL stays `http://localhost:3103`.
+// `app-accounts:3000` while the app's BASE_URL stays `http://localhost:3103`. A spec may name the
+// other accounts container, the one with the controllable clock (`app: "clock"`, decision D87).
 import { createHash, createSign, generateKeyPairSync } from "node:crypto";
 import { request as httpRequest, type IncomingMessage, type ServerResponse } from "node:http";
 
 const ORIGIN = "http://fakes:8080";
-const APP_URL = new URL(process.env.APP_ACCOUNTS_URL ?? "http://app-accounts:3000");
-const HOST_HEADER = process.env.HOST_HEADER ?? "localhost:3103";
+/** The app containers a person may post to: where the fakes reach it, and its public Host. */
+const APPS = {
+  default: {
+    url: new URL(process.env.APP_ACCOUNTS_URL ?? "http://app-accounts:3000"),
+    host: process.env.HOST_HEADER ?? "localhost:3103",
+  },
+  clock: { url: new URL("http://app-clock-accounts:3000"), host: "localhost:3109" },
+};
+type AppName = keyof typeof APPS;
 const CONTEXT = ["https://www.w3.org/ns/activitystreams", "https://w3id.org/security/v1"];
 
 interface Person {
@@ -62,12 +70,17 @@ function personOf(name: string): Person {
 }
 
 /** The headers of a POST signed like Fedify's signRequest: draft-cavage, rsa-sha256. */
-function signedHeaders(person: Person, path: string, payload: string): Record<string, string> {
+function signedHeaders(
+  person: Person,
+  path: string,
+  payload: string,
+  host: string,
+): Record<string, string> {
   const headers: Record<string, string> = {
     "content-type": "application/activity+json",
     date: new Date().toUTCString(),
     digest: `SHA-256=${createHash("sha256").update(payload).digest("base64")}`,
-    host: HOST_HEADER,
+    host,
   };
   const names = ["content-type", "date", "digest", "host"];
   const text = [
@@ -80,10 +93,15 @@ function signedHeaders(person: Person, path: string, payload: string): Record<st
 }
 
 /** Posts to the app container with the Host header of its public address. */
-function postToApp(path: string, headers: Record<string, string>, payload: string) {
+function postToApp(
+  app: { url: URL },
+  path: string,
+  headers: Record<string, string>,
+  payload: string,
+) {
   return new Promise<{ status: number; body: string }>((resolve, reject) => {
     const outgoing = httpRequest(
-      { host: APP_URL.hostname, port: APP_URL.port, path, method: "POST", headers },
+      { host: app.url.hostname, port: app.url.port, path, method: "POST", headers },
       (incoming) => {
         const chunks: Buffer[] = [];
         incoming.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -178,7 +196,14 @@ export async function handleFediverse(
       as: string;
       path: string;
       activity: Record<string, unknown>;
+      app?: AppName;
     };
+    const appName = send.app ?? "default";
+    if (!Object.hasOwn(APPS, appName)) {
+      json(response, 400, { error: `unknown app "${appName}"` });
+      return true;
+    }
+    const app = APPS[appName];
     const person = personOf(send.as);
     const payload = JSON.stringify({
       "@context": "https://www.w3.org/ns/activitystreams",
@@ -188,7 +213,7 @@ export async function handleFediverse(
     json(
       response,
       200,
-      await postToApp(send.path, signedHeaders(person, send.path, payload), payload),
+      await postToApp(app, send.path, signedHeaders(person, send.path, payload, app.host), payload),
     );
     return true;
   }

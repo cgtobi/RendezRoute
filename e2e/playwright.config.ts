@@ -12,6 +12,17 @@ const ADMIN_SPLIT_SPECS = /v10-admin-split\.spec\.ts$/;
 const ADMIN_INGRESS_SPECS = /v10-admin-ingress\.spec\.ts$/;
 
 /**
+ * The two specs written for a controllable server clock (D87, plan I102): they create a plan a
+ * minute or two ahead and advance the clock instead of waiting. The clock is one per container,
+ * so each has a container of its own (compose.yaml) and these projects never share one.
+ * Within a container the runs must be sequential: `--repeat-each` needs `--workers=1` for these two, as
+ * a second copy's clock advance would start the first copy's plan. Retries are sequential anyway.
+ */
+const CLOCK_DEFAULT_SPECS = /v06\.spec\.ts$/;
+const CLOCK_ACCOUNTS_SPECS = /v09-recap\.spec\.ts$/;
+const CLOCK_SPECS = /(?:v06|v09-recap)\.spec\.ts$/;
+
+/**
  * The specs that also run in WebKit (D72, plan I98): the layout specs and the ones that read
  * `/new` or `/styleguide` only. They create no plan, so they can share the default containers.
  */
@@ -19,12 +30,11 @@ const LAYOUT_SPECS = /(?:layout-phone|styleguide|css-snapshot|field-style|map-pi
 
 /**
  * Specs that do not depend on the maps, geocoder and weather settings (they read the style guide,
- * the header menu, or only need a plan without maps, and the 90 s v06 test is about ratings), so
+ * or the header menu, or only need a plan without maps), so
  * they run in the "default settings" project only (D84, plan I101). The two config-dependent
  * variants of a flow stay in core-loop and the area/field specs.
  */
-const CONFIG_INDEPENDENT_SPECS =
-  /(?:v06|styleguide|theme|css-state-coverage|css-snapshot)\.spec\.ts$/;
+const CONFIG_INDEPENDENT_SPECS = /(?:styleguide|theme|css-state-coverage|css-snapshot)\.spec\.ts$/;
 
 /** Specs that need the map and the geocoder, which the maps-off project turns off. */
 const MAPS_ONLY_SPECS = /area-suggestions\.spec\.ts$/;
@@ -57,7 +67,7 @@ export default defineConfig({
   projects: [
     {
       name: "default settings",
-      testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS, ADMIN_INGRESS_SPECS],
+      testIgnore: [ACCOUNT_SPECS, ADMIN_SPLIT_SPECS, ADMIN_INGRESS_SPECS, CLOCK_SPECS],
       use: { baseURL: "http://localhost:3101" },
     },
     {
@@ -68,6 +78,7 @@ export default defineConfig({
         ADMIN_INGRESS_SPECS,
         CONFIG_INDEPENDENT_SPECS,
         MAPS_ONLY_SPECS,
+        CLOCK_SPECS,
       ],
       grepInvert: CONFIG_INDEPENDENT_TESTS,
       use: { baseURL: "http://localhost:3102" },
@@ -91,7 +102,20 @@ export default defineConfig({
     {
       name: "0.7 to 0.9 features",
       testMatch: ACCOUNT_SPECS,
+      testIgnore: CLOCK_SPECS,
       use: { baseURL: "http://localhost:3103" },
+    },
+    // The two clock specs, each on its own container with E2E_CLOCK_CONTROL (default settings; the
+    // 0.7 to 0.9 configuration with the federation fakes).
+    {
+      name: "clock: default settings",
+      testMatch: CLOCK_DEFAULT_SPECS,
+      use: { baseURL: "http://localhost:3108" },
+    },
+    {
+      name: "clock: 0.7 to 0.9 features",
+      testMatch: CLOCK_ACCOUNTS_SPECS,
+      use: { baseURL: "http://localhost:3109" },
     },
     {
       name: "0.10 admin listener",

@@ -19,10 +19,12 @@ import type { Theme } from "../../../domain/theme.ts";
 import type { Units } from "../../../domain/units.ts";
 import type { Language, Translate } from "../../i18n/i18n.ts";
 import type { Logger } from "../../logging.ts";
+import type { ControllableClock } from "../../out/controllable-clock.ts";
 import { toGpx } from "../../out/gpx/write-gpx.ts";
 import { composeCommonStack, STATIC_ROOT } from "./app-common.tsx";
 import { readDeviceToken } from "./device-cookie.ts";
 import { clientKey, type RateLimits } from "./rate-limit.ts";
+import { registerClockControlRoute } from "./routes/e2e-clock.ts";
 import { registerCalendarRoutes } from "./routes/calendar.tsx";
 import { registerHostRoutes } from "./routes/host.tsx";
 import { registerNotificationRoutes } from "./routes/notifications.ts";
@@ -104,6 +106,8 @@ export interface AppDeps {
   accounts?: AccountWiring | undefined;
   /** The instance in the fediverse; undefined while FEDERATION_ENABLED is false (step 9a). */
   federation?: Federation<void> | undefined;
+  /** Only with E2E_CLOCK_CONTROL (decision D87): the clock the test route may advance. */
+  clockControl?: ControllableClock | undefined;
 }
 
 export type AccountWiring = Omit<AccountDeps, keyof PlanDeps>;
@@ -135,6 +139,7 @@ export function createApp({
   adminAuth,
   accounts,
   federation,
+  clockControl,
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -148,6 +153,7 @@ export function createApp({
     // since remote servers sign their posts instead of sending a form token. Anything not for
     // ActivityPub clients (the plan page in a browser) passes on to the routes below.
     beforeCsrf: (stack) => {
+      if (clockControl !== undefined) registerClockControlRoute(stack, clockControl);
       if (federation === undefined) return;
       // Inbox posts are rate limited per client (spec 3.11): each may make the instance fetch the
       // sender's key.

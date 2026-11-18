@@ -49,27 +49,67 @@
 @layer tokens, base, components, layout, pages, forced-colors;
 
 @layer tokens {
+  /* Design tokens (decisions D27, D64, D83).
+     Order below: the light values with every group, then the theme blocks (color-scheme, the
+     dark set twice), then --header-h. test/design/tokens.test.ts reads the colours of each scheme
+     and checks the contrast pairs named per token; the style guide (/styleguide) shows them live.
+     A token that no pair names has no contrast test (it is said where that is the case).
+
+     Dark values exist twice on purpose (D64): the @media (prefers-color-scheme: dark) block,
+     guarded by :root:not([data-theme="light"]), follows the system unless Light was chosen, and
+     :root[data-theme="dark"] applies a chosen Dark. CSS cannot share one rule between a media
+     query and an attribute selector. Both blocks must hold the same names and values: the test
+     "the two dark token blocks" in tokens.test.ts fails on the first difference. Change both. */
   :root {
-    /* Colour */
+    /* Colour: page and surfaces, text */
+    /* --bg: page, site header, field and mode-switch backgrounds; the base of the plan tints
+       (color-mix in theme-css.ts). Pairs: --fg, --muted, --placeholder, --accent at 4.5:1;
+       --field-border, --focus, --danger (4.5:1) on it. */
     --bg: #ffffff;
+    /* --fg: body text. Pairs: on --bg, --surface, --warning-bg, --ok-bg at 4.5:1; also on the
+       plan tints of the title block and the exact start card for every plan colour. */
     --fg: #16181d;
+    /* --muted: secondary text (hints, metadata). Pairs: on --bg, --surface, --ok-bg at 4.5:1; on
+       the title block's tint (byline) for every plan colour. .exact-start remaps it to --fg. */
     --muted: #5c636e;
+    /* --placeholder: placeholder and disabled-field text (D74). Pairs: on --bg, --surface at
+       4.5:1; a test also keeps it different from --muted and lighter than it on the light page. */
     --placeholder: #687079;
+    /* --line: hairlines and dividers. No contrast test (decoration). */
     --line: #e4e7eb;
+    /* --control-line: border of secondary buttons, file buttons, the burger, dotted line fields
+       at rest. No contrast test. */
     --control-line: #c5cad1;
+    /* --field-border: border of text inputs, textareas, colour inputs, the mode switch, the field
+       underline. Pairs: on --bg, --surface at 3:1 (WCAG 1.4.11). */
     --field-border: #858c97;
+    /* --surface: raised areas (secondary and file buttons, notices, link box, menu sheet, tiles,
+       status block) and the fallback of the plan tints. Pairs: --fg, --muted, --placeholder, --accent, --field-border sit on it. */
     --surface: #f3f4f6;
+    /* --accent: links, primary buttons, checked mode switch, selected underline. Pairs: on --bg,
+       --surface, --ok-bg at 4.5:1. .exact-start remaps it to --fg. */
     --accent: #2c67a8;
+    /* --on-accent: text on --accent (buttons, checked mode switch). Pair: on --accent at 4.5:1. */
     --on-accent: #ffffff;
+    /* --focus: the 3 px focus ring (:focus-visible, the mode switch). Pair: on --bg at 3:1. */
     --focus: #2c67a8;
+    /* Colour: danger, warning, ok */
+    /* --danger: errors, invalid-field line, the delete button, the dev banner. Pair: on --bg at
+       4.5:1 (not tested on --surface). */
     --danger: #b3261e;
+    /* --on-danger: text on --danger (delete button, dev banner). Pair: on --danger at 4.5:1. */
     --on-danger: #ffffff;
+    /* --warning-bg, --warning-line: fill and border of .warning. Pair: --fg on --warning-bg at
+       4.5:1; the line has no contrast test. */
     --warning-bg: #fff4e5;
     --warning-line: #f3d19c;
+    /* --ok, --ok-bg, --ok-line: the logged-in status block (text and icon, fill, border). Pairs:
+       --ok, --fg, --muted, --accent on --ok-bg at 4.5:1; the line has no contrast test. */
     --ok: #1a6e3e;
     --ok-bg: #ebf8f0;
     --ok-line: #b9e4c9;
-    /* Name colours for initials: background and text */
+    /* Name colours for initials: background and text (.avatar-0 to .avatar-7). Pairs: each -fg on
+       its -bg at 4.5:1; AVATAR_COLOURS in avatar.tsx says how many exist. */
     --avatar-0-bg: #fde2e4;
     --avatar-0-fg: #8a1c2b;
     --avatar-1-bg: #dbe8ff;
@@ -86,16 +126,21 @@
     --avatar-6-fg: #84205f;
     --avatar-7-bg: #e5e9d0;
     --avatar-7-fg: #4d5a12;
-    /* The secondary plan colour where a page has no plan theme (spec 3.1 default) */
+    /* The secondary plan colour where a page has no plan theme (spec 3.1 default). Used for
+       .badge, .host-mark and .avatar-host; no contrast pair in tokens.test.ts. The --plan-* colours themselves come from the per-plan stylesheet
+       (theme-css.ts) and are not set in this file; they are the same in light and dark. */
     --plan-secondary-default: #ff7a45;
     --plan-on-secondary-default: #111111;
-    /* Type: 16 px base; headings tight and heavy */
+    /* Type scale: 16 px base; headings tight and heavy. Names say the step; no contrast tests.
+       --text-xs: plan chips and tile labels; --text-sm: hints and metadata; --text-md: body;
+       --text-lg: h2 and lead text; --text-2xl: h1, fluid between 1.75 and 2.5 rem. */
     --text-xs: 0.8125rem;
     --text-sm: 0.875rem;
     --text-md: 1rem;
     --text-lg: 1.125rem;
     --text-2xl: clamp(1.75rem, 1.35rem + 1.8vw, 2.5rem);
-    /* Space: a 4 px scale */
+    /* Space scale, 4 px steps (--s1 to --s7), used for gaps, padding and margins; --s7 only for
+       the footer's top margin */
     --s1: 4px;
     --s2: 8px;
     --s3: 12px;
@@ -103,13 +148,15 @@
     --s5: 24px;
     --s6: 32px;
     --s7: 48px;
-    /* Shape */
+    /* Radii: which component takes which is listed in the header comment above */
     --r-sm: 8px;
     --r-md: 12px;
     --r-lg: 16px;
     --r-pill: 999px;
-    /* Smallest touch target (WCAG 2.5.8 asks 24 px; 44 px for thumbs) */
+    /* Size: smallest touch target (WCAG 2.5.8 asks 24 px; 44 px for thumbs); min-height of
+       buttons and fields, and the base of --header-h */
     --target: 44px;
+    /* Follow the system; the next two rules pin it for a chosen theme */
     color-scheme: light dark;
   }
 
@@ -117,6 +164,8 @@
     color-scheme: light;
   }
 
+  /* Dark for the system (first of the two dark sets, see the block at the top). No dark
+     values for the type, space, radius and size tokens: they do not change with the theme. */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #121316;
@@ -157,7 +206,8 @@
   }
 
   /* The same colours again for a chosen dark theme: CSS cannot share one rule between a media
-     query and an attribute. test/design/tokens.test.ts keeps the two blocks identical. */
+     query and an attribute. test/design/tokens.test.ts keeps the two blocks identical (decision
+     D64). */
   :root[data-theme="dark"] {
     color-scheme: dark;
     --bg: #121316;
@@ -196,6 +246,8 @@
     --avatar-7-fg: #e9eec8;
   }
 
+  /* Size: height of the sticky site header .site-header-menu (one target plus its padding and
+     border); the menu sheet and the scroll padding start below it. Declared last because it reads --target and --s3. */
   :root {
     --header-h: calc(var(--target) + 2 * var(--s3) + 1px);
   }

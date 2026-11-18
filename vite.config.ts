@@ -123,5 +123,11 @@ export default defineConfig({
     environment: "node",
     // RSA key generation and real listeners are slow when the machine is loaded.
     testTimeout: 15_000,
+    // Reuse the forked workers across files instead of one fresh worker per file (decision D84).
+    // Measured on 232 files and 3072 tests: about 27-28 s down to about 19-20 s. Risk: module
+    // state, process.env, globals and fake timers now persist between files in one worker. Three
+    // plain runs and four shuffled runs (files and tests, different seeds) passed; a new test
+    // that leaks such state may fail an unrelated file, so restore fakes in afterEach.
+    isolate: false,
   },
 });

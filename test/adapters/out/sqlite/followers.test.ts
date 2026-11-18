@@ -38,7 +38,8 @@ describe("followers in SQLite (decision D38)", () => {
     const repository = followers();
     await repository.add("actor-1", ben, fixtureNow);
     await repository.add("actor-1", { ...ben, sharedInbox: undefined }, fixtureNow);
-    await repository.add("actor-1", cleo, fixtureNow);
+    // A later time keeps the listed order independent of the random row ids.
+    await repository.add("actor-1", cleo, new Date(fixtureNow.getTime() + 1000));
     await repository.add("instance", ben, fixtureNow);
     expect(await repository.count("actor-1")).toBe(2);
     expect(await repository.list("actor-1")).toEqual([{ ...ben, sharedInbox: undefined }, cleo]);

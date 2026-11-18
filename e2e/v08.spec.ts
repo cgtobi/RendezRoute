@@ -2,8 +2,8 @@
 // D31, D33, D34, D35):
 // email notifications confirmed by their link and turned off from every email, "Email me my
 // links", and report alerts, against the fake mail server; ntfy and Telegram against their fakes;
-// Nearby with a public plan (step 8). Runs only in the "0.7 and 0.8 features" project.
-import { expect, test } from "@playwright/test";
+// Nearby with a public plan (step 8). Runs only in the "0.7 to 0.9 features" project.
+import { expect, type Page, test } from "@playwright/test";
 import {
   adminLogIn,
   createPlan,
@@ -42,114 +42,49 @@ async function nextMail(to: string, after: number): Promise<Mail> {
 /** The email's link back to this instance. */
 const linkIn = (mail: Mail) => /http:\/\/localhost:3103\/e\/[^\s"<>]+/.exec(mail.text)?.[0] ?? "";
 
-test("Email: confirm by link, a new link, notifications, one-click off, report alerts", async ({
+/** Opens "More ways to be notified" unless it is open (it opens by itself while one is on). */
+async function openMoreWays(page: Page) {
+  const fold = page.locator("details.more-channels");
+  if ((await fold.getAttribute("open")) === null) await fold.locator("> summary").click();
+  await expect(fold).toHaveAttribute("open", "");
+}
+
+/** The fold is closed by default; once one channel is on or waiting it opens by itself. */
+async function expectMoreWaysClosed(page: Page) {
+  await expect(page.locator("details.more-channels")).not.toHaveAttribute("open", "");
+}
+
+// The three channels of one participant on one plan: they are independent (each has its own link,
+// topic or chat), and the one cancellation reaches all of them, as test/acceptance/v0.8.test.ts:48
+// proves for every channel at once.
+test("Notifications: email, ntfy and Telegram confirmed on one plan, then one cancel, one-click off, report alerts", async ({
   browser,
   baseURL,
   request,
 }) => {
+  test.setTimeout(120_000);
   const problems: string[] = [];
   const base = baseURL ?? "";
   const ben = `ben-${RUN}@example.org`;
   const { page: admin } = await person(browser, base, problems);
   const { page: host } = await person(browser, base, problems);
   const { page: joiner } = await person(browser, base, problems);
+  let planUrl = "";
+  let link = "";
+  let topic = "";
+  let chat = "";
+  let channelProblems = 0;
+  let ntfyConfirmationLink: string | undefined;
 
-  await adminLogIn(admin);
-  await useInvite(host, await newInvite(admin));
-  const planUrl = await createPlan(host, `Email run ${RUN}`);
-
-  // Ben joins and asks for emails on his manage page.
-  await joiner.goto(planUrl);
-  await joiner.getByLabel("Your name").fill("Ben");
-  await joiner.getByRole("button", { name: "I'm in" }).click();
-  await joiner.goto(`${planUrl}/me`);
-  await joiner.getByLabel("Email for news about this plan").fill(ben);
-  await joiner.getByRole("button", { name: "Send confirmation link" }).click();
-  await expect(joiner.getByText(`Open the link we sent to ${ben}`)).toBeVisible();
-
-  // Only the confirmation link arrives; opening it in another browser changes nothing yet.
-  const confirmation = await nextMail(ben, 0);
-  const link = linkIn(confirmation);
-  expect(link).not.toBe("");
-  const { page: mailApp } = await person(browser, base, problems);
-  await mailApp.goto(link);
-  await expect(mailApp.getByRole("heading", { name: "Confirm your email address" })).toBeVisible();
-  await mailApp.getByRole("button", { name: "Confirm address" }).click();
-  await expect(mailApp.getByText("Address confirmed.")).toBeVisible();
-  await joiner.reload();
-  await expect(joiner.getByText(`Emails about this plan go to ${ben}.`)).toBeVisible();
-
-  // "Email me my links": a new manage link by email; the page says older ones stopped working.
-  await joiner.getByRole("button", { name: "Email me a new link" }).click();
-  await expect(joiner.getByText(`We sent a new link to ${ben}.`)).toBeVisible();
-  const newLink = await nextMail(ben, 1);
-  expect(newLink.text).toMatch(/http:\/\/localhost:3103\/m\/[A-Za-z0-9_-]{43}/);
-
-  // The host cancels: Ben gets an email with the link to turn them off.
-  await host.goto(`${planUrl}/host`);
-  await host.getByText("Cancel plan…").click();
-  await host.getByRole("button", { name: "Cancel this plan" }).click();
-  const cancelled = await nextMail(ben, 2);
-  expect(cancelled.text).toContain("The plan was cancelled.");
-  expect(cancelled.text).toContain("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
-  expect(linkIn(cancelled)).toBe(link);
-
-  // One click in the mail app turns them off, without cookies; the link then no longer works.
-  const off = await request.post(link, {
-    form: { "List-Unsubscribe": "One-Click" },
-  });
-  expect(off.status()).toBe(200);
-  await joiner.reload();
-  await expect(joiner.getByLabel("Email for news about this plan")).toBeVisible();
-  expect((await request.get(link)).status()).toBe(404);
-
-  // A report alerts the contact address, without the report's content.
-  const alerts = (await (await fetch(`${MAIL}?to=e2e@example.org`)).json()) as Mail[];
-  const { page: visitor } = await person(browser, base, problems);
-  await visitor.goto(planUrl);
-  await visitor.getByRole("link", { name: "Report this plan" }).click();
-  await visitor.getByLabel("Spam or advertising").check();
-  await visitor.getByLabel("Details").fill(`SENTINEL-${RUN}`);
-  await visitor.getByRole("button", { name: "Send report" }).click();
-  const alert = await nextMail("e2e@example.org", alerts.length);
-  expect(alert.text).toContain("http://localhost:3103/admin/");
-  expect(alert.text).not.toContain("SENTINEL");
-
-  // Chrome logs the deliberate 404 of the used link as an error; nothing else may appear.
-  expect(problems.filter((problem) => !problem.includes("status of 404"))).toEqual([]);
-});
-
-test("ntfy: a secret topic, confirmed by tapping the posted link, then notifications", async ({
-  browser,
-  baseURL,
-}) => {
-  const problems: string[] = [];
-  const base = baseURL ?? "";
-  const { page: admin } = await person(browser, base, problems);
-  const { page: host } = await person(browser, base, problems);
-  const { page: joiner } = await person(browser, base, problems);
-  await adminLogIn(admin);
-  await useInvite(host, await newInvite(admin));
-  const planUrl = await createPlan(host, `ntfy run ${RUN}`);
-
-  await joiner.goto(planUrl);
-  await joiner.getByLabel("Your name").fill("Ben");
-  await joiner.getByRole("button", { name: "I'm in" }).click();
-  await joiner.goto(`${planUrl}/me`);
-  await joiner.getByText("More ways to be notified").click();
-  await joiner.getByRole("button", { name: "Set up ntfy" }).click();
-  const topicUrl = (await joiner.locator("#ntfy .link-box code").textContent()) ?? "";
-  const topic = topicUrl.split("/").pop() ?? "";
-  expect(topic).toMatch(/^[A-Za-z0-9_-]{43}$/);
-
-  const messages = async (count: number) => {
-    let all: { click?: string; message?: string; actions?: { url: string }[] }[] = [];
+  type Ntfy = { click?: string; message?: string; actions?: { url: string }[] };
+  const ntfyMessages = async (count: number) => {
+    let all: Ntfy[] = [];
     await expect
       .poll(
         async () => {
           all = (await (
             await fetch(`http://localhost:8080/ntfy-messages?topic=${topic}`)
-          ).json()) as typeof all;
+          ).json()) as Ntfy[];
           return all.length;
         },
         { timeout: 40_000, intervals: [1_000] },
@@ -157,80 +92,152 @@ test("ntfy: a secret topic, confirmed by tapping the posted link, then notificat
       .toBeGreaterThanOrEqual(count);
     return all;
   };
-  const [confirmation] = await messages(1);
-  const { page: phone } = await person(browser, base, problems);
-  await phone.goto(confirmation?.click ?? "");
-  await phone.getByRole("button", { name: "Confirm" }).click();
-  await expect(phone.getByText("ntfy notifications are on.")).toBeVisible();
 
-  await host.goto(`${planUrl}/host`);
-  await host.getByText("Cancel plan…").click();
-  await host.getByRole("button", { name: "Cancel this plan" }).click();
-  const all = await messages(2);
-  expect(all[1]?.message).toContain("The plan was cancelled.");
-  expect(all[1]?.actions?.[0]?.url).toBe(confirmation?.click);
-  expect(problems).toEqual([]);
-});
-
-test("Telegram: Start in the bot confirms, then notifications with a button to turn them off", async ({
-  browser,
-  baseURL,
-}) => {
-  const problems: string[] = [];
-  const base = baseURL ?? "";
-  const { page: admin } = await person(browser, base, problems);
-  const { page: host } = await person(browser, base, problems);
-  const { page: joiner } = await person(browser, base, problems);
-  await adminLogIn(admin);
-  await useInvite(host, await newInvite(admin));
-  const planUrl = await createPlan(host, `Telegram run ${RUN}`);
-
-  await joiner.goto(planUrl);
-  await joiner.getByLabel("Your name").fill("Ben");
-  await joiner.getByRole("button", { name: "I'm in" }).click();
-  await joiner.goto(`${planUrl}/me`);
-  await joiner.getByText("More ways to be notified").click();
-  await joiner.getByRole("button", { name: "Connect Telegram" }).click();
-  const deepLink =
-    (await joiner.getByRole("link", { name: "Open Telegram" }).getAttribute("href")) ?? "";
-  const code = new URL(deepLink).searchParams.get("start") ?? "";
-  expect(deepLink).toMatch(/^https:\/\/t\.me\/rendezroute_e2e_bot\?start=/);
-
-  // Pressing Start in the bot, from a chat of this run: the fakes keep messages across runs.
-  const chat = String(Date.now());
-  await fetch("http://localhost:8080/telegram-test/start", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chatId: chat, text: `/start ${code}` }),
+  await test.step("Setup: an invited host, a plan, and Ben who joins", async () => {
+    await adminLogIn(admin);
+    await useInvite(host, await newInvite(admin));
+    planUrl = await createPlan(host, `Notifications run ${RUN}`);
+    await joiner.goto(planUrl);
+    await joiner.getByLabel("Your name").fill("Ben");
+    await joiner.getByRole("button", { name: "I'm in" }).click();
   });
-  await expect
-    .poll(
-      async () => {
-        await joiner.reload();
-        return joiner.getByText("Telegram notifications are on.").isVisible();
-      },
-      { timeout: 30_000, intervals: [1_000] },
-    )
-    .toBe(true);
 
-  await host.goto(`${planUrl}/host`);
-  await host.getByText("Cancel plan…").click();
-  await host.getByRole("button", { name: "Cancel this plan" }).click();
-  let messages: { text: string }[] = [];
-  await expect
-    .poll(
-      async () => {
-        messages = (await (
-          await fetch(`http://localhost:8080/telegram-test/messages?chat=${chat}`)
-        ).json()) as { text: string }[];
-        return messages.length;
-      },
-      { timeout: 40_000, intervals: [1_000] },
-    )
-    .toBe(2);
-  expect(messages[0]?.text).toContain("are on");
-  expect(messages[1]?.text).toContain("The plan was cancelled.");
-  expect(problems).toEqual([]);
+  await test.step("Email: asked for on the manage page, confirmed by the link in another browser", async () => {
+    await joiner.goto(`${planUrl}/me`);
+    await joiner.getByLabel("Email for news about this plan").fill(ben);
+    await joiner.getByRole("button", { name: "Send confirmation link" }).click();
+    await expect(joiner.getByText(`Open the link we sent to ${ben}`)).toBeVisible();
+
+    // Only the confirmation link arrives; opening it in another browser changes nothing yet.
+    const confirmation = await nextMail(ben, 0);
+    link = linkIn(confirmation);
+    expect(link).not.toBe("");
+    const { page: mailApp } = await person(browser, base, problems);
+    await mailApp.goto(link);
+    await expect(
+      mailApp.getByRole("heading", { name: "Confirm your email address" }),
+    ).toBeVisible();
+    await mailApp.getByRole("button", { name: "Confirm address" }).click();
+    await expect(mailApp.getByText("Address confirmed.")).toBeVisible();
+    await joiner.reload();
+    await expect(joiner.getByText(`Emails about this plan go to ${ben}.`)).toBeVisible();
+  });
+
+  await test.step("Email: a new manage link by email", async () => {
+    // "Email me my links": the page says older ones stopped working.
+    await joiner.getByRole("button", { name: "Email me a new link" }).click();
+    await expect(joiner.getByText(`We sent a new link to ${ben}.`)).toBeVisible();
+    const newLink = await nextMail(ben, 1);
+    expect(newLink.text).toMatch(/http:\/\/localhost:3103\/m\/[A-Za-z0-9_-]{43}/);
+  });
+
+  await test.step("ntfy: a secret topic, confirmed by tapping the posted link", async () => {
+    channelProblems = problems.length;
+    await joiner.goto(`${planUrl}/me`);
+    await expectMoreWaysClosed(joiner);
+    await openMoreWays(joiner);
+    await joiner.getByRole("button", { name: "Set up ntfy" }).click();
+    const topicUrl = (await joiner.locator("#ntfy .link-box code").textContent()) ?? "";
+    topic = topicUrl.split("/").pop() ?? "";
+    expect(topic).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const [confirmation] = await ntfyMessages(1);
+    ntfyConfirmationLink = confirmation?.click;
+    const { page: phone } = await person(browser, base, problems);
+    await phone.goto(ntfyConfirmationLink ?? "");
+    await phone.getByRole("button", { name: "Confirm" }).click();
+    await expect(phone.getByText("ntfy notifications are on.")).toBeVisible();
+  });
+
+  await test.step("Telegram: Start in the bot confirms", async () => {
+    await joiner.goto(`${planUrl}/me`);
+    await openMoreWays(joiner);
+    await joiner.getByRole("button", { name: "Connect Telegram" }).click();
+    const deepLink =
+      (await joiner.getByRole("link", { name: "Open Telegram" }).getAttribute("href")) ?? "";
+    const code = new URL(deepLink).searchParams.get("start") ?? "";
+    expect(deepLink).toMatch(/^https:\/\/t\.me\/rendezroute_e2e_bot\?start=/);
+
+    // Pressing Start in the bot, from a chat of this run: the fakes keep messages across runs.
+    chat = String(Date.now());
+    await fetch("http://localhost:8080/telegram-test/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chatId: chat, text: `/start ${code}` }),
+    });
+    await expect
+      .poll(
+        async () => {
+          await joiner.reload();
+          return joiner.getByText("Telegram notifications are on.").isVisible();
+        },
+        { timeout: 30_000, intervals: [1_000] },
+      )
+      .toBe(true);
+  });
+
+  await test.step("The host cancels: one message on every channel", async () => {
+    await host.goto(`${planUrl}/host`);
+    await host.getByText("Cancel plan…").click();
+    await host.getByRole("button", { name: "Cancel this plan" }).click();
+  });
+
+  await test.step("Email: the cancellation carries the link and header to turn it off", async () => {
+    const cancelled = await nextMail(ben, 2);
+    expect(cancelled.text).toContain("The plan was cancelled.");
+    expect(cancelled.text).toContain("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
+    expect(linkIn(cancelled)).toBe(link);
+  });
+
+  await test.step("ntfy: the cancellation message offers the same link as the confirmation", async () => {
+    const all = await ntfyMessages(2);
+    expect(all[1]?.message).toContain("The plan was cancelled.");
+    expect(all[1]?.actions?.[0]?.url).toBe(ntfyConfirmationLink);
+  });
+
+  await test.step("Telegram: confirmation and cancellation, with a button to turn them off", async () => {
+    let messages: { text: string }[] = [];
+    await expect
+      .poll(
+        async () => {
+          messages = (await (
+            await fetch(`http://localhost:8080/telegram-test/messages?chat=${chat}`)
+          ).json()) as { text: string }[];
+          return messages.length;
+        },
+        { timeout: 40_000, intervals: [1_000] },
+      )
+      .toBe(2);
+    expect(messages[0]?.text).toContain("are on");
+    expect(messages[1]?.text).toContain("The plan was cancelled.");
+    // The planned 404 is the email link; the ntfy and Telegram steps need a clean console.
+    expect(problems.slice(channelProblems)).toEqual([]);
+  });
+
+  await test.step("Email: one click in the mail app turns it off, without cookies", async () => {
+    const off = await request.post(link, {
+      form: { "List-Unsubscribe": "One-Click" },
+    });
+    expect(off.status()).toBe(200);
+    await joiner.reload();
+    await expect(joiner.getByLabel("Email for news about this plan")).toBeVisible();
+    expect((await request.get(link)).status()).toBe(404);
+  });
+
+  await test.step("Email: a report alerts the contact address, without the report's content", async () => {
+    const alerts = (await (await fetch(`${MAIL}?to=e2e@example.org`)).json()) as Mail[];
+    const { page: visitor } = await person(browser, base, problems);
+    await visitor.goto(planUrl);
+    await visitor.getByRole("link", { name: "Report this plan" }).click();
+    await visitor.getByLabel("Spam or advertising").check();
+    await visitor.getByLabel("Details").fill(`SENTINEL-${RUN}`);
+    await visitor.getByRole("button", { name: "Send report" }).click();
+    const alert = await nextMail("e2e@example.org", alerts.length);
+    expect(alert.text).toContain("http://localhost:3103/admin/");
+    expect(alert.text).not.toContain("SENTINEL");
+  });
+
+  // Chrome logs the deliberate 404 of the used link as an error; nothing else may appear.
+  expect(problems.filter((problem) => !problem.includes("status of 404"))).toEqual([]);
 });
 
 test("Nearby: a public plan found from the device's location and from a typed place", async ({

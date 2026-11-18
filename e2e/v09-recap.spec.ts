@@ -2,14 +2,15 @@
 // 13b2, decision D51): after a plan has really started the host adds to the recap, the remote
 // participant (the fake fediverse server, fakes/fediverse.ts) gets it as a private Note and answers
 // privately, the answer shows on the plan page under its name and goes with its `Delete`; a remote
-// `Flag` reaches the admin as a report. Runs only in the "0.7 to 0.9 features" project, in a worker
-// of its own; every name carries the run, since the fakes container keeps its state with E2E_KEEP.
-import { expect, type Page, test } from "@playwright/test";
+// `Flag` reaches the admin as a report (a step of the recap journey, which has an admin and a plan
+// already and waits for the start anyway). Runs only in the "0.7 to 0.9 features" project, in a
+// worker of its own; every name carries the run, since the fakes container keeps its state with
+// E2E_KEEP.
+import { expect, test } from "@playwright/test";
 import {
   adminLogIn,
   fillHostName,
   fillTimeOffGrid,
-  inFiveDays,
   newInvite,
   oidcLogIn,
   openFold,
@@ -31,7 +32,7 @@ import {
 
 const RUN = Date.now().toString(36);
 
-test("Recap: a contribution goes to the remote participant, whose private reply shows and can be deleted", async ({
+test("Recap: a contribution goes to the remote participant, whose private reply shows and can be deleted; a remote Flag reaches the admin", async ({
   browser,
   baseURL,
 }) => {
@@ -100,6 +101,45 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
     (a) => typeof a.object === "object" && (a.object.content ?? "").includes(START),
     oldLength,
   );
+
+  // 3b. While the plan waits for its start: a remote `Flag` of the plan reaches the admin (this
+  // admin and plan are the recap's own; local reporting is proved by v07.spec.ts; resolving a
+  // remote report is asserted here).
+  // Flag limits are kept in memory per signer origin (a burst of 5, then 10 an hour): a sixth quick
+  // run on unchanged kept containers fails until the app container is restarted.
+  await test.step("Flag: a remote report of the plan reaches the admin without its sender", async () => {
+    const reporter = `flagger-${RUN}`;
+    const REASON = `Spam in the fediverse ${RUN}`;
+    // A signed Flag naming the plan's Event, from a person on a server of its own.
+    const flag = {
+      id: `${FAKES_HOST}/fedi/users/${reporter}#flag-1`,
+      type: "Flag",
+      to: [INSTANCE],
+      object: [planUrl],
+      content: REASON,
+    };
+    expect((await send(reporter, "/inbox", flag)).status).toBe(202);
+
+    // The report is among the open reports; the plan's page shows the reason "other" and the text.
+    await expect(async () => {
+      await admin.goto("/admin/");
+      await expect(admin.getByRole("link", { name: title })).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 45_000, intervals: [2_000] });
+    const home = await admin.content();
+    await admin.getByRole("link", { name: title }).click();
+    await expect(admin.getByText("Something else")).toBeVisible();
+    await expect(admin.getByText(REASON)).toBeVisible();
+    await expect(admin.getByText("1 open report")).toBeVisible();
+    // Nobody is named: neither the person nor its server appears on the admin's pages.
+    const planPage = await admin.content();
+    for (const page of [home, planPage]) {
+      expect(page).not.toContain(reporter);
+      expect(page).not.toContain("fakes");
+    }
+    // Resolving works as for a web report.
+    await admin.getByRole("button", { name: "Mark as resolved" }).click();
+    await expect(admin.getByText("1 resolved report")).toBeVisible();
+  });
 
   // 4. Wait for the start on the server's clock: reload until the recap form is there.
   await host.goto(planUrl);
@@ -217,67 +257,5 @@ test("Recap: a contribution goes to the remote participant, whose private reply 
   }
 
   // Chrome logs nothing here; no foreign request, no console error.
-  expect(problems).toEqual([]);
-});
-
-/** Opens the admin's page for a plan from the home page's open reports; waits for the report. */
-async function openReportedPlan(admin: Page, title: string) {
-  await expect(async () => {
-    await admin.goto("/admin/");
-    await expect(admin.getByRole("link", { name: title })).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: 45_000, intervals: [2_000] });
-}
-
-// Flag limits are kept in memory per signer origin (a burst of 5, then 10 an hour): a sixth quick
-// run on unchanged kept containers fails until the app container is restarted.
-test("Flag: a remote report of a plan reaches the admin without its sender", async ({
-  browser,
-  baseURL,
-}) => {
-  test.setTimeout(120_000);
-  const problems: string[] = [];
-  const base = baseURL ?? "";
-  const title = `Flagged run ${RUN}`;
-  const reporter = `flagger-${RUN}`;
-  const REASON = `Spam in the fediverse ${RUN}`;
-  const { page: admin } = await person(browser, base, problems);
-  const { page: host } = await person(browser, base, problems);
-  await adminLogIn(admin);
-  await useInvite(host, await newInvite(admin));
-  await fillHostName(host, "Anna");
-  await host.getByLabel("Title").fill(title);
-  await host.getByLabel("Date").fill(inFiveDays());
-  await host.getByLabel("Start time").fill("08:30");
-  await host.locator("#field-areaLabel").fill("Flaucher");
-  await host.getByRole("button", { name: "Create plan" }).click();
-  await expect(host.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
-  const planUrl = (await host.locator(".links .link-box a").textContent()) ?? "";
-
-  // A signed Flag naming the plan's Event, from a person on a server of its own.
-  const flag = {
-    id: `${FAKES_HOST}/fedi/users/${reporter}#flag-1`,
-    type: "Flag",
-    to: [INSTANCE],
-    object: [planUrl],
-    content: REASON,
-  };
-  expect((await send(reporter, "/inbox", flag)).status).toBe(202);
-
-  // The report is among the open reports; the plan's page shows the reason "other" and the text.
-  await openReportedPlan(admin, title);
-  const home = await admin.content();
-  await admin.getByRole("link", { name: title }).click();
-  await expect(admin.getByText("Something else")).toBeVisible();
-  await expect(admin.getByText(REASON)).toBeVisible();
-  await expect(admin.getByText("1 open report")).toBeVisible();
-  // Nobody is named: neither the person nor its server appears on the admin's pages.
-  const planPage = await admin.content();
-  for (const page of [home, planPage]) {
-    expect(page).not.toContain(reporter);
-    expect(page).not.toContain("fakes");
-  }
-  // Resolving works as for a web report.
-  await admin.getByRole("button", { name: "Mark as resolved" }).click();
-  await expect(admin.getByText("1 resolved report")).toBeVisible();
   expect(problems).toEqual([]);
 });

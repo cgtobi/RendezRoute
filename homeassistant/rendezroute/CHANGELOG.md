@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.7
+
+- The menu now has a "Calendar" entry, so the calendar subscription page can be reached from every page.
+
 ## 0.18.6
 
 - Security: a calendar feed made on a browser no longer picks up the plans of an account that logs in on that browser later. A feed now lists an account's plans only while the account it was made under is still logged in. Feeds you made while logged in and want to keep with your account's plans need to be turned on again once.

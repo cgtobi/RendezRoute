@@ -279,6 +279,14 @@ describe("plan map (spec 3.6, decision D12)", () => {
     expect(await (await host.get(`/p/${planId}`)).text()).not.toContain("data-plan-map");
   });
 
+  it("names the page map a region, so the full-screen icon inside it reaches screen readers (ADR 008)", async () => {
+    const { planId, newClient } = await setup();
+    const tag = mapTag(await (await newClient().get(`/p/${planId}`)).text());
+    expect(tag).toContain('role="region"');
+    expect(tag).toContain('aria-label="Map of the area"');
+    expect(tag).not.toContain('role="img"');
+  });
+
   it("serves the route as GeoJSON to participants and the host only (decision D12)", async () => {
     const { host, planId, newClient } = await setup();
     const response = await host.get(`/p/${planId}/route.geojson`);
@@ -289,6 +297,227 @@ describe("plan map (spec 3.6, decision D12)", () => {
     expect(geojson.type).toBe("MultiLineString");
     expect(geojson.coordinates[0]?.[0]).toEqual([10.98765, 47.12345, 800]);
     expect((await newClient().get(`/p/${planId}/route.geojson`)).status).toBe(404);
+  });
+});
+
+describe("the plan map's full-screen view (ADR 008)", () => {
+  async function setup(env: Record<string, string> = {}) {
+    const test = await createTestApp({ env });
+    const host = new TestClient(test.app);
+    const hidden = await host.hiddenFields("/new");
+    const created = await host.postMultipart(
+      "/new",
+      { ...hidden, ...planForm() },
+      { gpx: { name: "run.gpx", content: sampleGpx() } },
+    );
+    const planId = /\/p\/([A-Za-z0-9_-]{22})/.exec(await created.text())?.[1] ?? "";
+    return { ...test, host, planId, newClient: () => new TestClient(test.app) };
+  }
+  const template = (html: string) =>
+    /<template data-map-dialog="plan"[^>]*>[\s\S]*?<\/template>/.exec(html)?.[0] ?? "";
+  const legend = (html: string) =>
+    [...template(html).matchAll(/<li data-legend="(\w+)">/g)].map((match) => match[1]);
+
+  it("puts the template right after the page map, with the open label, the title and the time", async () => {
+    const { planId, newClient } = await setup();
+    const html = await (await newClient().get(`/p/${planId}`)).text();
+    // Next to the map: the script finds it as the map's next sibling.
+    expect(html).toMatch(/<div[^>]*data-plan-map=""[^>]*><\/div><template data-map-dialog="plan"/);
+    const found = template(html);
+    expect(found).toContain('data-open-label="Show the map full screen"');
+    expect(found).toMatch(
+      /<dialog class="map-dialog map-dialog-plan" aria-labelledby="map-dialog-title" data-close-label="Close full-screen map"/,
+    );
+    expect(found).toContain(
+      '<h2 class="map-dialog-title" id="map-dialog-title">Easy Sunday run</h2>',
+    );
+    // The start names the plan's time zone as the page does, so nobody reads it in their own.
+    expect(found).toContain(
+      '<p class="map-dialog-when">Sunday, 7 June 2026, 07:30 <span class="time-zone" data-time-zone="Europe/Berlin">(Europe/Berlin time)</span></p>',
+    );
+    // The dialog's map takes the focus when it opens; a region with the page map's name.
+    expect(found).toMatch(
+      /<div class="map map-dialog-map" tabindex="0" autofocus="" role="region" aria-label="Map of the area"><\/div>/,
+    );
+    expect(found).toContain('data-locate-title="Show where I am"');
+    expect(found).toContain('data-locate-denied="Location access was refused"');
+    expect(found).toContain('data-locate-unavailable="Your position is not available"');
+    expect(found).toMatch(
+      /<p class="visually-hidden" role="status" data-map-status="" data-text="Your position is shown on the map\."><\/p>/,
+    );
+    expect(found).toContain(
+      '<ul class="map-dialog-legend" data-map-legend="" aria-label="Map key">',
+    );
+    // No button of its own: the icons are Leaflet controls the script builds.
+    expect(found).not.toContain("<button");
+    // One plan map, one template.
+    expect(html.split("data-map-dialog=").length - 1).toBe(1);
+  });
+
+  it("speaks German and French", async () => {
+    const { app, planId } = await setup();
+    for (const [language, open, close, me] of [
+      ["de", "Karte im Vollbild zeigen", "Vollbildkarte schließen", "Zeigen, wo ich bin"],
+      [
+        "fr",
+        "Afficher la carte en plein écran",
+        "Fermer la carte en plein écran",
+        "Montrer où je suis",
+      ],
+    ] as const) {
+      const response = await app.request(`/p/${planId}`, {
+        headers: { "accept-language": language },
+      });
+      const found = template(await response.text());
+      expect(found).toContain(`data-open-label="${open}"`);
+      expect(found).toContain(`data-close-label="${close}"`);
+      expect(found).toContain(`data-locate-title="${me}"`);
+    }
+  });
+
+  it("gives a viewer a key with the public area only", async () => {
+    const { planId, newClient } = await setup();
+    const html = await (await newClient().get(`/p/${planId}`)).text();
+    expect(legend(html)).toEqual(["area"]);
+    expect(template(html)).toContain("Public area");
+    expect(template(html)).not.toContain("Exact start");
+    expect(template(html)).not.toContain(">Route<");
+  });
+
+  it("gives the host and a participant the exact start and the route in the key", async () => {
+    const { host, planId, newClient } = await setup();
+    const ben = newClient();
+    await respondViaUi(ben, planId, "Ben", "joined");
+    for (const client of [host, ben]) {
+      const html = await (await client.get(`/p/${planId}`)).text();
+      expect(legend(html)).toEqual(["area", "exact", "route"]);
+    }
+  });
+
+  it("holds labels only: no coordinates, no route address, no point data (spec 3.6)", async () => {
+    const { host, planId, newClient } = await setup();
+    const ben = newClient();
+    await respondViaUi(ben, planId, "Ben", "joined");
+    for (const client of [host, ben, newClient()]) {
+      const html = await (await client.get(`/p/${planId}`)).text();
+      const found = template(html);
+      expect(found).not.toBe("");
+      for (const leak of ["data-exact", "data-area-lat", "data-area-lng", "data-route-url"]) {
+        expect(found).not.toContain(leak);
+      }
+      expect(found).not.toContain("route.geojson");
+      expect(found).not.toContain("route.gpx");
+      // The exact start (48.16321, 11.60147) and the public point (48.16, 11.6) in any form.
+      expect(found).not.toMatch(/48[.,]16|11[.,]6/);
+    }
+  });
+
+  it("is absent with maps disabled: no template, no dialog markup", async () => {
+    const { host, planId, newClient } = await setup({ MAPS_ENABLED: "false" });
+    for (const client of [host, newClient()]) {
+      const html = await (await client.get(`/p/${planId}`)).text();
+      expect(html).not.toContain("data-map-dialog");
+      expect(html).not.toContain("map-dialog");
+      expect(html).not.toContain("<template");
+    }
+  });
+});
+
+describe("the form map's full-screen view (ADR 008)", () => {
+  const template = (html: string) =>
+    /<template data-map-dialog="pick"[^>]*>[\s\S]*?<\/template>/.exec(html)?.[0] ?? "";
+
+  it("puts the template inside the picker, after its lines, with the open label and the dialog's name", async () => {
+    const html = await page();
+    const found = template(html);
+    expect(found).not.toBe("");
+    expect(html.indexOf("data-map-picker")).toBeLessThan(html.indexOf("data-map-dialog="));
+    expect(html.indexOf("data-area-readout")).toBeLessThan(html.indexOf("data-map-dialog="));
+    expect(html.indexOf("data-map-dialog=")).toBeLessThan(html.indexOf('id="field-areaLabel"'));
+    expect(found).toContain('data-open-label="Show the map full screen"');
+    expect(found).toMatch(
+      /<dialog class="map-dialog map-dialog-pick" aria-label="Full-screen map" data-close-label="Close full-screen map">/,
+    );
+    expect(found).toMatch(
+      /<div class="map map-dialog-map" tabindex="0" autofocus="" role="application" aria-label="Map for choosing a point"><\/div>/,
+    );
+    expect(html.split("data-map-dialog=").length - 1).toBe(1);
+  });
+
+  it("has its own mode switch, mapModeFull, and none of the page's mapMode radios", async () => {
+    const found = template(await page());
+    const radios = [...found.matchAll(/<input[^>]*type="radio"[^>]*>/g)].map((m) => m[0]);
+    expect(radios).toHaveLength(2);
+    for (const radio of radios) expect(radio).toContain('name="mapModeFull"');
+    expect(found).not.toContain('name="mapMode"');
+    expect(radios[0]).toContain('id="map-dialog-mode-area"');
+    expect(radios[0]).toContain('value="area"');
+    expect(radios[0]).toContain("checked");
+    expect(radios[1]).toContain('id="map-dialog-mode-exact"');
+    expect(radios[1]).not.toContain("checked");
+    expect(found).toContain('<legend class="visually-hidden">Tapping the map sets</legend>');
+    // The caption with its three texts, as on the page.
+    const caption = /<p[^>]*data-map-caption=""[^>]*>[^<]*<\/p>/.exec(found)?.[0] ?? "";
+    expect(caption).toContain('aria-live="polite"');
+    expect(caption).toContain('data-caption-area="Tap the map to set the public area');
+    expect(caption).toContain('data-caption-exact="Tap the map to set the exact start.');
+    expect(caption).toContain('data-caption-area-follows="The public area follows the exact start');
+  });
+
+  it("has Done, a focusable status line of three texts and a hidden Remove point in its foot", async () => {
+    const found = template(await page());
+    const foot = found.slice(found.indexOf('<div class="map-dialog-foot">'));
+    expect(foot).toMatch(
+      /^<div class="map-dialog-foot"><button type="button" class="map-dialog-done" data-map-dialog-close="">Done<\/button>/,
+    );
+    expect(foot).toContain(
+      '<p class="map-dialog-status" data-point-status="" tabindex="-1" aria-live="polite">' +
+        '<span data-status="exact" hidden="">Exact start set</span>' +
+        '<span data-status="area" hidden="">Public area set</span>' +
+        '<span data-status="none">No point set yet</span></p>',
+    );
+    expect(foot).toContain(
+      '<button type="button" class="map-dialog-remove" data-point-remove="" hidden="">Remove point</button>',
+    );
+  });
+
+  it("gives no control a form name but the mode radios, and holds no coordinates", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    // A saved exact start (48.16321, 11.60147) and its public point (48.16, 11.6) on the edit page.
+    const { planId } = await createPlanViaUi(host);
+    const html = await (await host.get(`/p/${planId}/host`)).text();
+    expect(html).toContain('name="exactLat" value="48.16321"');
+    const found = template(html);
+    expect(found).not.toBe("");
+    const named = [...found.matchAll(/<(input|select|textarea|button)\b[^>]*>/g)]
+      .map((m) => m[0])
+      .filter((tag) => /\sname="/.test(tag));
+    expect(named.length).toBe(2);
+    for (const tag of named) expect(tag).toMatch(/type="radio"[^>]*name="mapModeFull"/);
+    expect(found).not.toMatch(/data-(exact|area)-(lat|lng)|data-default-center|value="\d/);
+    expect(found).not.toMatch(/48[.,]16|11[.,]6\b|11[.,]60/);
+  });
+
+  it("speaks German and French", async () => {
+    const { app } = await createTestApp();
+    for (const [language, open, label, remove] of [
+      ["de", "Karte im Vollbild zeigen", "Vollbildkarte", "Punkt entfernen"],
+      ["fr", "Afficher la carte en plein écran", "Carte en plein écran", "Retirer le point"],
+    ] as const) {
+      const response = await app.request("/new", { headers: { "accept-language": language } });
+      const found = template(await response.text());
+      expect(found).toContain(`data-open-label="${open}"`);
+      expect(found).toContain(`aria-label="${label}"`);
+      expect(found).toContain(`>${remove}</button>`);
+    }
+  });
+
+  it("is absent with maps disabled", async () => {
+    const html = await page({ MAPS_ENABLED: "false" });
+    expect(html).not.toContain("data-map-dialog");
+    expect(html).not.toContain("mapModeFull");
+    expect(html).not.toContain("<template");
   });
 });
 

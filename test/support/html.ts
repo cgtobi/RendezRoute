@@ -9,12 +9,20 @@ export function escaped(text: string): string {
 }
 
 /**
+ * The markup without its `<template>` contents (never nested): a template is not rendered, so the
+ * full-screen map's dialog (ADR 008) with its own Done is not part of the page it sits in.
+ */
+export function withoutTemplates(html: string): string {
+  return html.replace(/<template\b[^>]*>[\s\S]*?<\/template>/g, "");
+}
+
+/**
  * The page's main (primary) buttons and button links between `from` and `to`, each as its text:
  * buttons and `.button` links that are neither secondary nor danger (decision D27). An icon
  * button on a field's line (`line-action-button`, D75) is not a main action either; nor is the quiet icon button in a status line (`icon-button`, D76).
  */
 export function primaries(html: string, from = "<main", to = "</main>"): string[] {
-  const part = html.slice(html.indexOf(from), html.indexOf(to));
+  const part = withoutTemplates(html.slice(html.indexOf(from), html.indexOf(to)));
   return [...part.matchAll(/<(button|a)\b([^>]*)>([\s\S]*?)<\/\1>/g)]
     .filter(([, tag, attributes = ""]) => {
       const classes = /class="([^"]*)"/.exec(attributes)?.[1]?.split(" ") ?? [];

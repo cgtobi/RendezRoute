@@ -12,9 +12,17 @@ export interface ControlState {
 /** Control types that hold no value the host edits: the buttons. */
 const UNTRACKED_TYPES = new Set(["button", "submit", "reset", "image"]);
 
+/**
+ * Named controls that are not saved: the form map's mode switch (ADR 008). The full-screen map
+ * mirrors its mode to the page, which must not make the form dirty by itself.
+ */
+const UNTRACKED_NAMES = new Set(["mapMode"]);
+
 /** Whether a control is part of the form's values. Unnamed controls (search boxes) are not submitted. */
 export function isTracked(control: Pick<ControlState, "type" | "name">): boolean {
-  return control.name !== "" && !UNTRACKED_TYPES.has(control.type);
+  return (
+    control.name !== "" && !UNTRACKED_TYPES.has(control.type) && !UNTRACKED_NAMES.has(control.name)
+  );
 }
 
 /**

@@ -203,6 +203,108 @@ describe("the Nearby page (spec 7 Visibility and Nearby plans)", () => {
   });
 });
 
+describe("Nearby's full-screen map (ADR 008)", () => {
+  const template = (html: string) =>
+    /<template data-map-dialog="nearby"[^>]*>[\s\S]*?<\/template>/.exec(html)?.[0] ?? "";
+
+  it("puts the template right after the page map, with its labels, search, Done and locate", async () => {
+    const { client } = await setup();
+    const html = await (await client().get("/nearby")).text();
+    // Next to the map: the script finds it as the map's next sibling.
+    expect(html).toMatch(
+      /<div[^>]*data-nearby-map=""[^>]*><\/div><template data-map-dialog="nearby"/,
+    );
+    const found = template(html);
+    expect(found).toContain('data-open-label="Show the map full screen"');
+    expect(found).toMatch(
+      /<dialog class="map-dialog map-dialog-nearby" aria-label="Full-screen map" data-close-label="Close full-screen map"/,
+    );
+    expect(found).toMatch(
+      /<div class="map map-dialog-map" tabindex="0" autofocus="" role="application" aria-label="Tap the map to search around that spot"><\/div>/,
+    );
+    // The place search: no form name, a visually hidden label, the magnifier, a status line.
+    expect(found).toContain('<label class="visually-hidden" for="map-dialog-place">Place</label>');
+    const input = /<input[^>]*id="map-dialog-place"[^>]*>/.exec(found)?.[0] ?? "";
+    expect(input).toContain('type="search"');
+    expect(input).toContain('autocomplete="off"');
+    expect(input).toContain('maxlength="100"');
+    expect(input).toContain('enterkeyhint="search"');
+    expect(input).toContain(`placeholder="${escaped(en("placeholder.place"))}"`);
+    expect(input).not.toContain("name=");
+    expect(found).toContain('<span class="visually-hidden">Search</span>');
+    expect(found).toMatch(
+      /<p class="hint" role="status" data-search-status="" data-no-results="No places found\." data-unavailable="Place search is not available right now\."><\/p>/,
+    );
+    // The foot: Done first, the chosen-spot line and "Use my location", both hidden.
+    expect(found).toContain(
+      '<button type="button" class="map-dialog-done" data-map-dialog-close="">Done</button>',
+    );
+    expect(found).toMatch(/<p class="map-dialog-status" data-nearby-status="" hidden="">/);
+    expect(found).toContain(escaped(en("nearby.atPoint")));
+    expect(found).toMatch(
+      /<button type="button" class="secondary" data-dialog-locate="" data-locate-denied="Location access was refused" data-locate-unavailable="Your position is not available" hidden="">Use my location<\/button>/,
+    );
+    // No control in it is part of the search form.
+    expect(found).not.toMatch(/\sname="/);
+    expect(found).not.toContain("data-nearby-locate");
+    expect(html.split("data-map-dialog=").length - 1).toBe(1);
+  });
+
+  it("speaks German and French", async () => {
+    const { app } = await setup();
+    for (const [language, open, label] of [
+      ["de", "Karte im Vollbild zeigen", "Vollbildkarte"],
+      ["fr", "Afficher la carte en plein écran", "Carte en plein écran"],
+    ] as const) {
+      const response = await app.request("/nearby", { headers: { "accept-language": language } });
+      const found = template(await response.text());
+      expect(found).toContain(`data-open-label="${open}"`);
+      expect(found).toContain(`aria-label="${label}"`);
+    }
+  });
+
+  it("holds no coordinates, even with a point in the address", async () => {
+    const { client } = await setup();
+    const html = await (await client().get(`/nearby?${NEAR}`)).text();
+    const found = template(html);
+    expect(found).not.toBe("");
+    expect(found).not.toMatch(/data-(area|exact|lat|lng)/);
+    expect(found).not.toMatch(/48[.,]16|11[.,]6\b|value="/);
+  });
+
+  it("has no place search without the geocoder", async () => {
+    const { client } = await setup({ ...PUBLIC, GEOCODER_ENABLED: "false" });
+    const found = template(await (await client().get("/nearby")).text());
+    expect(found).toContain('<dialog class="map-dialog map-dialog-nearby"');
+    expect(found).not.toContain("map-dialog-place");
+    expect(found).not.toContain("data-search-status");
+    expect(found).toContain("data-dialog-locate");
+  });
+
+  it("gives the page's Use my location the translated reasons it shows once refused", async () => {
+    const { app } = await setup();
+    for (const [language, denied, unavailable] of [
+      ["en", "Location access was refused", "Your position is not available"],
+      ["de", "Der Standortzugriff wurde verweigert", "Deine Position ist nicht verfügbar"],
+    ] as const) {
+      const response = await app.request("/nearby", { headers: { "accept-language": language } });
+      const button = /<button[^>]*data-nearby-locate=""[^>]*>/.exec(await response.text())?.[0];
+      expect(button).toContain(`data-locate-denied="${denied}"`);
+      expect(button).toContain(`data-locate-unavailable="${unavailable}"`);
+      // aria-disabled is set by the script on failure; the markup never disables it.
+      expect(button).not.toMatch(/\sdisabled|aria-disabled/);
+    }
+  });
+
+  it("is absent with maps disabled", async () => {
+    const { client } = await setup({ ...PUBLIC, MAPS_ENABLED: "false" });
+    const html = await (await client().get("/nearby")).text();
+    expect(html).not.toContain("data-map-dialog");
+    expect(html).not.toContain("map-dialog");
+    expect(html).not.toContain("<template");
+  });
+});
+
 describe("Nearby turned off (NEARBY_ENABLED=false)", () => {
   it("offers no public plans: in 0.8 they would be listed nowhere (decision I59)", async () => {
     const { client } = await setup({ ...PUBLIC, NEARBY_ENABLED: "false" });

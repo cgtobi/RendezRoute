@@ -104,7 +104,7 @@ export const en = {
   "privacy.calendar":
     "If you create a calendar link, your calendar app’s server fetches it. That server sees the public details of your plans and that you responded to them.",
   "privacy.location":
-    "“Find my location” on the map asks your browser for your position only to move the map; it is not sent to this server and fills in nothing.",
+    "“Find my location” on the map asks your browser for your position only to move the map; it is not sent to this server and fills in nothing. “Show where I am” on a plan’s full-screen map shows your position on your map only; it is not sent to this server and not stored.",
   "privacy.locationMap":
     "The map then shows your area, so your browser loads map images of that area from the map service.",
   "privacy.share": "WhatsApp is contacted only when you use its share link.",
@@ -200,6 +200,16 @@ export const en = {
   "map.planLabel": "Map of the area",
   "map.zoomIn": "Zoom in",
   "map.zoomOut": "Zoom out",
+  "map.fullOpen": "Show the map full screen",
+  "map.fullClose": "Close full-screen map",
+  "map.showMe": "Show where I am",
+  "map.showMeDone": "Your position is shown on the map.",
+  "map.legend": "Map key",
+  "map.fullLabel": "Full-screen map",
+  "map.fullExactSet": "Exact start set",
+  "map.fullAreaSet": "Public area set",
+  "map.fullNone": "No point set yet",
+  "map.removePoint": "Remove point",
   "form.distance": "Distance ({unit}, optional)",
   "form.elevation": "Elevation gain ({unit}, optional)",
   "form.pace": "Pace or speed (optional)",

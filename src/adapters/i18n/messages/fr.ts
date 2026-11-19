@@ -107,7 +107,7 @@ export const fr: Messages = {
   "privacy.calendar":
     "Si vous créez un lien de calendrier, le serveur de votre application de calendrier le récupère. Ce serveur voit les informations publiques de vos sorties et que vous y avez répondu.",
   "privacy.location":
-    "« Trouver ma position » sur la carte demande votre position à votre navigateur, uniquement pour déplacer la carte ; elle n’est pas envoyée à ce serveur et ne remplit rien.",
+    "« Trouver ma position » sur la carte demande votre position à votre navigateur, uniquement pour déplacer la carte ; elle n’est pas envoyée à ce serveur et ne remplit rien. « Montrer où je suis » sur la carte en plein écran d’une sortie affiche votre position sur votre carte uniquement ; elle n’est pas envoyée à ce serveur et n’est pas enregistrée.",
   "privacy.locationMap":
     "La carte montre ensuite votre région, et votre navigateur charge donc des images de cette zone depuis le service de cartes.",
   "privacy.share": "WhatsApp n’est contacté que si vous utilisez son lien de partage.",
@@ -210,6 +210,16 @@ export const fr: Messages = {
   "map.planLabel": "Carte de la zone",
   "map.zoomIn": "Zoom avant",
   "map.zoomOut": "Zoom arrière",
+  "map.fullOpen": "Afficher la carte en plein écran",
+  "map.fullClose": "Fermer la carte en plein écran",
+  "map.showMe": "Montrer où je suis",
+  "map.showMeDone": "Votre position est affichée sur la carte.",
+  "map.legend": "Légende",
+  "map.fullLabel": "Carte en plein écran",
+  "map.fullExactSet": "Départ exact défini",
+  "map.fullAreaSet": "Zone publique définie",
+  "map.fullNone": "Aucun point défini pour l’instant",
+  "map.removePoint": "Retirer le point",
   "form.distance": "Distance ({unit}, facultatif)",
   "form.elevation": "Dénivelé positif ({unit}, facultatif)",
   "form.pace": "Allure ou vitesse (facultatif)",

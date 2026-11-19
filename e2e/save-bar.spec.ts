@@ -1,7 +1,9 @@
 // The host page's save bar (decision 006) on the phone viewport: untouched form, no bar; edit the
 // title, the bar sticks to the bottom with Save where it was; Discard restores; saving works and
-// the bar goes away; a chosen route file counts and Discard clears it (ADR 007); a problem render
-// shows the bar from the start; without JavaScript only the Save button shows.
+// the bar goes away; a chosen route file counts and Discard clears it (ADR 007); with the map, a
+// tap in the full-screen form map counts while it is open and after Done, its mode switch alone
+// does not, and Discard takes the point off the fields and the page map (ADR 008); a problem
+// render shows the bar from the start; without JavaScript only the Save button shows.
 //
 // Then the route file in the host's "Save changes" (ADR 007), on the same plan: a chosen file is
 // saved with the other edits, all or nothing, and cut at the meeting point of the same submission;
@@ -10,11 +12,24 @@
 // settings (the exact start is a map tap) and maps, geocoder and weather disabled (typed
 // coordinates).
 //
-// One plan for both tests: the default containers do not trust proxy headers, so every spec there
-// shares one client and its burst of 5 plan creations; this file creates one, leaving headroom.
-// The tests run in order, and the route test is skipped if the save bar test fails.
+// Then, in the default project only, the plan map's full-screen view (ADR 008, map-full-checks.ts)
+// on the same plan: the host uploads a route again (the route test removed its own), then the
+// host, a participant and a viewer open the full-screen map.
+//
+// One plan for all tests: the default containers do not trust proxy headers, so every spec there
+// shares one client and its burst of 5 plan creations (src/adapters/in/http/rate-limit.ts). Plans
+// created per container: default settings: core-loop 1, save-bar 1, v05 2 = 4 (map-full uses this
+// file's plan); maps off: core-loop 1, save-bar 1, v05 1, map-full 1 = 4. One left in each.
+// The route uploads here count against the route limit (10): 4 in the default container.
+// The tests run in order, and the later ones are skipped if the save bar test fails.
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { createPlan, fillHostName, openFold, person } from "./helpers.ts";
+import {
+  type FullMapPlan,
+  hostOpensFullMap,
+  participantAndViewer,
+  showWhereIAm,
+} from "./map-full-checks.ts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -40,7 +55,7 @@ async function box(page: Page, selector: string) {
 test("The save bar sticks while the form has changes, and Discard and Save clear it", async ({
   browser,
   baseURL,
-}) => {
+}, testInfo) => {
   const problems: string[] = [];
   const { context, page } = await person(browser, baseURL ?? "", problems);
   await page.goto("/new");
@@ -111,6 +126,33 @@ test("The save bar sticks while the form has changes, and Discard and Save clear
   await expect(trim).toBeHidden();
   await expect(bar).not.toHaveAttribute("data-dirty", /.*/);
   await expect(save).toBeFocused();
+
+  // The full-screen form map writes the page form's fields (ADR 008): a tap there is a change,
+  // its own mode switch is not (the page's follows it, and `mapMode` is not a saved field).
+  if (testInfo.project.name === "default settings") {
+    const dialog = page.locator("dialog.map-dialog");
+    const exactLat = page.locator("#field-exactLat");
+    await page.getByRole("button", { name: "Show the map full screen" }).click();
+    await expect(page.locator("dialog.map-dialog:modal")).toHaveCount(1);
+    await dialog.locator(".mode-switch label", { hasText: "Exact start" }).click();
+    await expect(dialog.getByRole("radio", { name: "Exact start" })).toBeChecked();
+    await expect(page.locator("[data-save-bar]")).not.toHaveAttribute("data-dirty", /.*/);
+    await dialog.locator(".map-dialog-map").click({ position: { x: 200, y: 260 } });
+    await expect(exactLat).not.toHaveValue("");
+    await expect(page.locator("[data-save-bar][data-dirty]")).toHaveCount(1);
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator("[data-save-bar][data-dirty]")).toHaveCount(1);
+    await expect(page.locator(".map-picker path.map-exact")).toHaveCount(1);
+    // Discard restores the empty point: the fields and the page map's markers.
+    await discard.click();
+    await expect(exactLat).toHaveValue("");
+    await expect(page.locator("#field-exactLng")).toHaveValue("");
+    await expect(page.locator(".map-picker path.map-exact")).toHaveCount(0);
+    await expect(page.locator(".map-picker path.map-area")).toHaveCount(0);
+    await expect(bar).not.toHaveAttribute("data-dirty", /.*/);
+    await expect(save).toBeFocused();
+  }
 
   // Saving works and the bar goes away.
   await page.getByLabel("Title").fill("Bar test run, saved");
@@ -325,4 +367,57 @@ test("The host saves a route with the other edits, keeps them on a bad file, and
   expect(problems.filter((problem) => !/status of 422/.test(problem))).toEqual([]);
   await plain.context.close();
   await context.close();
+});
+
+/** The plan with its route again, for the full-screen map tests below (default project only). */
+let fullMap: FullMapPlan | undefined;
+
+test("The host uploads a route again and opens the plan map full screen: modal, over the header, keyboard, Escape and Close", async ({
+  browser,
+  baseURL,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "default settings", "needs the map");
+  if (shared === undefined) throw new Error("the save bar test above creates the plan");
+  const problems: string[] = [];
+  const { context, page } = await person(browser, baseURL ?? "", problems);
+  await context.addCookies(shared.cookies);
+  const planPath = new URL(shared.planUrl).pathname;
+
+  await test.step("Upload a route through the exact start the route test set", async () => {
+    await page.goto(`${planPath}/host`);
+    const lat = await page.locator("#field-exactLat").inputValue();
+    const lng = await page.locator("#field-exactLng").inputValue();
+    expect(lat, "the route test set an exact start").not.toBe("");
+    await chooseRoute(page, routeThrough(lat, lng));
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByText("Changes saved.")).toBeVisible();
+    await expect(routeFold(page).locator("> summary")).toContainText("Route added");
+    fullMap = {
+      planUrl: shared?.planUrl ?? "",
+      title: await page.getByLabel("Title").inputValue(),
+      cookies: await context.cookies(),
+    };
+  });
+  expect(problems).toEqual([]);
+  await context.close();
+  if (fullMap === undefined) throw new Error("no route");
+  await hostOpensFullMap(browser, baseURL ?? "", fullMap);
+});
+
+test("A participant sees the exact start and the route full screen; a viewer only the area, without a route request", async ({
+  browser,
+  baseURL,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "default settings", "needs the map");
+  if (fullMap === undefined) throw new Error("the test above uploads the route");
+  await participantAndViewer(browser, baseURL ?? "", fullMap);
+});
+
+test("Show where I am draws the position without sending it; a refusal disables the button", async ({
+  browser,
+  baseURL,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "default settings", "needs the map");
+  if (fullMap === undefined) throw new Error("the test above uploads the route");
+  await showWhereIAm(browser, baseURL ?? "", fullMap);
 });

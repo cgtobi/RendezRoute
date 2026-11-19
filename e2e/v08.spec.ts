@@ -299,3 +299,85 @@ test("Nearby: a public plan found from the device's location and from a typed pl
   await expect(typer.getByRole("link", { name: title })).toBeVisible();
   expect(problems).toEqual([]);
 });
+
+// Nearby's full-screen map (ADR 008): a modal dialog over the page, opened by the icon on the
+// Nearby map. It sets the same hidden point as the page map, through the same rounding, and its
+// own place search looks the place up without sending the form. Creates no plan.
+test("Nearby full screen: a tap, Use my location and a place search set the point, never the form", async ({
+  browser,
+  baseURL,
+}) => {
+  const problems: string[] = [];
+  const { page } = await person(browser, baseURL ?? "", problems, {
+    context: {
+      geolocation: { latitude: 48.1371, longitude: 11.5754 },
+      permissions: ["geolocation"],
+    },
+  });
+  // Every request the page makes: nothing may carry the typed place or the device's position.
+  const sent: string[] = [];
+  page.on("request", (request) => sent.push(`${request.method()} ${request.url()}`));
+  await page.goto("/nearby");
+  const address = page.url();
+  const lat = page.locator('form[data-nearby] input[name="lat"]');
+  const lng = page.locator('form[data-nearby] input[name="lng"]');
+  const open = page.getByRole("button", { name: "Show the map full screen" });
+  const dialog = page.locator("dialog.map-dialog");
+  const openFull = async () => {
+    await open.click();
+    await expect(page.locator("dialog.map-dialog:modal")).toHaveCount(1);
+    await expect(dialog.locator("img.leaflet-tile").first()).toBeVisible();
+  };
+
+  await test.step("A tap in the dialog fills the hidden point; closed, the page says so", async () => {
+    await expect(page.locator("[data-nearby-point]")).toBeHidden();
+    await openFull();
+    await expect(dialog.getByText("Around the spot you chose")).toBeHidden();
+    await dialog.locator(".map-dialog-map").click();
+    await expect(lat).toHaveValue(/^-?\d+(\.\d{1,2})?$/);
+    await expect(lng).toHaveValue(/^-?\d+(\.\d{1,2})?$/);
+    await expect(dialog.getByText("Around the spot you chose")).toBeVisible();
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(open).toBeFocused();
+    await expect(page.getByText("Around the spot you chose")).toBeVisible();
+    expect(page.url()).toBe(address);
+  });
+
+  await test.step("Use my location in the dialog sets the device's grid point", async () => {
+    await openFull();
+    const locate = dialog.getByRole("button", { name: "Use my location" });
+    await expect(locate).toBeVisible();
+    await locate.click();
+    await expect(lat).toHaveValue("48.14");
+    await expect(lng).toHaveValue("11.58");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByText("Around the spot you chose")).toBeVisible();
+  });
+
+  await test.step("The dialog's place search sets the found place's grid point, not the form", async () => {
+    await openFull();
+    const field = dialog.getByRole("searchbox", { name: "Place" });
+    await field.fill("Atlantis");
+    await field.press("Enter");
+    await expect(dialog.getByRole("status").filter({ hasText: "No places found." })).toBeVisible();
+    await expect(lat).toHaveValue("48.14");
+    await field.fill("Flaucher");
+    await dialog.getByRole("button", { name: "Search" }).click();
+    await expect(lat).toHaveValue("48.12");
+    await expect(lng).toHaveValue("11.56");
+    await field.press("Enter");
+    await expect(dialog).toHaveCount(1);
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toHaveCount(0);
+    // The search went through the place search endpoint (POST); the form was never sent.
+    expect(page.url()).toBe(address);
+    expect(sent.filter((line) => line.startsWith("GET ") && /flaucher/i.test(line))).toEqual([]);
+    expect(sent.filter((line) => /POST .*\/geocode$/.test(line)).length).toBeGreaterThan(0);
+  });
+
+  // Never the device's own coordinates, only the grid point (and only once the viewer searches).
+  expect(sent.filter((line) => /48\.137|11\.575/.test(line))).toEqual([]);
+  expect(problems).toEqual([]);
+});

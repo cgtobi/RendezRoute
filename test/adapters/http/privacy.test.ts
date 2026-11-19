@@ -76,6 +76,20 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect(withoutMaps).not.toContain(en("privacy.locationMap"));
   });
 
+  it("says that “Show where I am” shows the position on the map only, never sent or stored (ADR 008)", () => {
+    expect(en("privacy.location")).toContain(
+      "“Show where I am” on a plan’s full-screen map shows your position on your map only; it is not sent to this server and not stored.",
+    );
+    // The button's own name, quoted, and the promise in each language.
+    const de = translator("de")("privacy.location");
+    expect(de).toContain(`„${translator("de")("map.showMe")}“`);
+    expect(de).toContain("nicht gespeichert");
+    const fr = translator("fr")("privacy.location");
+    expect(fr).toContain(`« ${translator("fr")("map.showMe")} »`);
+    expect(fr).toContain("n’est pas enregistrée");
+    expect(en("privacy.location")).toContain(`“${en("map.showMe")}”`);
+  });
+
   it("says that the exact point is sent for a description suggestion and the lookups are not cached (D77)", () => {
     for (const lang of ["en", "de", "fr"] as const) {
       const text = translator(lang)("privacy.geocoder", { host: "geo.example", days: 7 });

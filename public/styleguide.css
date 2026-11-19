@@ -112,3 +112,27 @@
 .sg-samples h3 {
   margin: 0 0 var(--s2);
 }
+
+/* The full-screen map's chrome (ADR 008) as a static block: the real head, key and foot, a plain
+   surface standing in for the map. The real one is a modal dialog over the viewport. */
+/* The height follows the parts: a fixed one would push a wrapped foot out of the sample. */
+.sg-map-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(240px, auto) auto;
+  position: static;
+  height: auto;
+  margin: var(--s4) 0;
+  border: 1px solid var(--line);
+}
+
+.sg-map-dialog .map-dialog-stage {
+  min-height: 240px;
+  background: var(--surface);
+}
+
+/* Where Leaflet's bottom-left control corner puts the key on the real map. */
+.sg-map-dialog .map-dialog-legend {
+  position: absolute;
+  bottom: var(--s3);
+  left: var(--s3);
+}

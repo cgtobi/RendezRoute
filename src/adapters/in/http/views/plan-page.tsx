@@ -77,6 +77,17 @@ export function PlanPage(props: {
     (audience.kind === "poster" && audience.view.ratingResult !== undefined) ||
     (audience.kind === "participant" && audience.view.rating !== undefined);
   const calendarIsMain = inFeed && view.status === "active" && !props.hasRecap;
+  // The start in the plan's zone, named after it ("(Europe/Berlin time)"; the script hides the
+  // name for a visitor in that zone): on the page and in the full-screen map's head alike.
+  const when = (
+    <>
+      {formatDay(view.startsAt, view.timeZone, language)},{" "}
+      {formatTime(view.startsAt, view.timeZone, language)}{" "}
+      <span class="time-zone" data-time-zone={view.timeZone}>
+        ({t("plan.timeZone", { zone: view.timeZone })})
+      </span>
+    </>
+  );
   const counts = (
     <p class="counts">
       {t("plan.counts", {
@@ -133,19 +144,7 @@ export function PlanPage(props: {
           </p>
         )}
 
-        <WhenWhereLines
-          t={t}
-          when={
-            <>
-              {formatDay(view.startsAt, view.timeZone, language)},{" "}
-              {formatTime(view.startsAt, view.timeZone, language)}{" "}
-              <span class="time-zone" data-time-zone={view.timeZone}>
-                ({t("plan.timeZone", { zone: view.timeZone })})
-              </span>
-            </>
-          }
-          where={view.area.label}
-        />
+        <WhenWhereLines t={t} when={when} where={view.area.label} />
 
         <PlanMetrics t={t} details={view} units={units} language={language} tiles>
           <div class="metric">
@@ -167,6 +166,8 @@ export function PlanPage(props: {
             area={view.area.point}
             exact={insider ? audience.view.exactStart?.point : undefined}
             routeUrl={insider && audience.view.hasRoute ? `/p/${view.id}/route.geojson` : undefined}
+            title={view.title}
+            when={when}
           />
         )}
 

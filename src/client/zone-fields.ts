@@ -15,8 +15,15 @@ export function initZones(): void {
     if (pick !== undefined) select.value = pick;
   }
   followZoneSelects();
-  for (const label of document.querySelectorAll<HTMLElement>("[data-time-zone]")) {
-    if (label.dataset.timeZone === zone) label.hidden = true;
+  // Also inside the full-screen map's <template> (ADR 008), whose dialog head repeats the start.
+  const roots: ParentNode[] = [
+    document,
+    ...[...document.querySelectorAll("template")].map((template) => template.content),
+  ];
+  for (const root of roots) {
+    for (const label of root.querySelectorAll<HTMLElement>("[data-time-zone]")) {
+      if (label.dataset.timeZone === zone) label.hidden = true;
+    }
   }
 }
 

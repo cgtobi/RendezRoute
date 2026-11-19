@@ -430,6 +430,23 @@
     border-radius: 0;
   }
 
+  /* The full-screen map (ADR 008): the head and the foot keep their flat 1 px hairlines; the
+     plan's title in regular weight like the plan page's, the key without a card's rounded
+     corners (its fill stays the page colour: the key is read over the map), and the foot's
+     buttons in regular weight like the plan page's. */
+  :root[data-palette="mono"] .map-dialog-title {
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  :root[data-palette="mono"] .map-dialog-legend {
+    border-radius: 0;
+  }
+
+  :root[data-palette="mono"] .map-dialog-foot button {
+    font-weight: 400;
+  }
+
   /* A dot in the plan's own colour after the activity on the plan page; blue (--focus) when the plan has none. */
   :root[data-palette="mono"] .plan-activity::after {
     content: "";

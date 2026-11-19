@@ -20,6 +20,7 @@ import {
   DARK_MEDIA,
   loadStylesheet,
   MEDIA_SELECTOR,
+  normalizeSelector,
   splitSelectorList,
   resolveToken,
   stylesheet,
@@ -600,6 +601,27 @@ describe("mono's component rules", () => {
     }
   });
 
+  it("keeps the full-screen map flat: a regular-weight title, a square key, regular buttons", () => {
+    const rule = (selector: string) => mono.first(`:root[data-palette="mono"] ${selector}`);
+    expect(rule(".map-dialog-title").body).toContain("font-weight: 400");
+    const legend = rule(".map-dialog-legend").body;
+    expect(legend).toContain("border-radius: 0");
+    // The key is read over the map: its fill stays the page colour app.css gives it.
+    expect(legend).not.toContain("background");
+    expect(css.rule(".map-dialog-legend")).toContain("background: var(--bg)");
+    expect(rule(".map-dialog-foot button").body).toBe("font-weight: 400;");
+    // The head and foot keep app.css's 1 px hairlines: mono draws no heavier rule there.
+    const dialogRules = componentRules.filter((item) => item.selector.includes(".map-dialog"));
+    expect(dialogRules.length).toBe(3);
+    for (const item of dialogRules) {
+      expect(item.body).not.toMatch(/border(?:-\w+)*:\s*(?:[2-9]|\d{2,})px/);
+    }
+    expect(css.rule(".map-dialog-head")).toContain("border-bottom: 1px solid var(--line)");
+    expect(css.first(".map-dialog-foot", { layer: "components" }).body).toContain(
+      "border-top: 1px solid var(--line)",
+    );
+  });
+
   it("never changes outlines, target sizes or --target in the plan and host rules", () => {
     const added = mono.text.slice(mono.text.indexOf("The plan page and the host page"));
     expect(added).not.toMatch(/outline|--target|min-height|min-width|!important/);
@@ -658,9 +680,21 @@ describe("bold's component rules", () => {
   it("uses no !important and sits in pages, except the unlayered map frames", () => {
     const body = rules.map((rule) => rule.body).join("\n");
     expect(body).not.toContain("!important");
-    const unlayered = [`${scope} .map`, `${scope} .map.plan-map`];
+    // The full-screen map (ADR 008) takes the frame off again: unlayered, to beat `.map`'s. Its
+    // square controls and the page map's full-screen icon are Leaflet's, unlayered as well.
+    const unlayered = [
+      `${scope} .map`,
+      `${scope} .map.plan-map`,
+      `${scope} .map-dialog .map`,
+      `${scope} .map-dialog .map .leaflet-bar`,
+      `${scope} .map .leaflet-bar:has(> button.map-expand)`,
+      `${scope} .map-dialog .map .leaflet-bar a`,
+      `${scope} .map-dialog .map .leaflet-bar button`,
+      `${scope} .map .leaflet-bar button.map-expand`,
+    ].map(normalizeSelector);
     for (const rule of rules) {
-      const expected = unlayered.includes(rule.selector) ? undefined : "pages";
+      const items = splitSelectorList(rule.selector).map(normalizeSelector);
+      const expected = items.every((item) => unlayered.includes(item)) ? undefined : "pages";
       expect([rule.selector, rule.layer]).toEqual([rule.selector, expected]);
     }
     const order = css.layerOrder();
@@ -1082,13 +1116,117 @@ describe("bold's component rules", () => {
     expect(css.rule('input[type="radio"], input[type="checkbox"]')).toContain(
       "accent-color: var(--accent)",
     );
-    // Only the host page: the plan page's own colouring is the --plan-primary rules above.
-    expect(css.all.filter((r) => /--accent:\s*var\(--plan-ink\)/.test(r.body)).length).toBe(1);
+    // Only the host page and the form map's full-screen view opened from it (ADR 008: the dialog
+    // is in <body>, outside .host): the plan page's own colouring is the --plan-primary rules above.
+    const inked = css.all.filter((r) => /--accent:\s*var\(--plan-ink\)/.test(r.body));
+    expect(inked.map((r) => r.selector)).toEqual([
+      `${scope} .host`,
+      `${scope} body:has(.host:not(.template)) > dialog.map-dialog`,
+    ]);
+    expect(inked[1]?.body).toBe(host?.body);
+    expect(inked[1]?.layer).toBe("pages");
   });
 
   it("changes no focus outline and no target size", () => {
     const body = rules.map((rule) => rule.body).join("\n");
     expect(body).not.toMatch(/outline|min-height|--target/);
+  });
+
+  // The full-screen map (ADR 008) in bold: the plan's head is the plan page's poster band, the
+  // other heads and the foot get the 2 px rule, the key and the controls are square.
+  describe("the full-screen map", () => {
+    it("sets the plan dialog's head as the poster band, in the band's own colour pair", () => {
+      const band = css.first(`${scope} .map-dialog-plan .map-dialog-head`);
+      expect(band.layer).toBe("pages");
+      for (const part of [
+        "background: var(--plan-primary, var(--accent))",
+        "color: var(--plan-on-primary, var(--on-accent))",
+        "border-bottom: 2px solid var(--line)",
+      ]) {
+        expect(band.body).toContain(part);
+      }
+      // The same pair as the plan page's band, whose contrast the domain guarantees.
+      const header = css.rule(`${scope} .plan-header`);
+      expect(header).toContain("background: var(--plan-primary, var(--accent))");
+      expect(header).toContain("color: var(--plan-on-primary, var(--on-accent))");
+      const type = css.rule(`${scope} .map-dialog-title, ${scope} .map-dialog-when`);
+      for (const part of [
+        "color: inherit",
+        "font-weight: 800",
+        "text-transform: uppercase",
+        "letter-spacing: -0.02em",
+        "overflow-wrap: break-word",
+        "min-width: 0",
+      ]) {
+        expect(type).toContain(part);
+      }
+    });
+
+    it("keeps the band readable without a plan colour: on-accent on accent is 4.5:1 in both schemes", () => {
+      // The plan page's root is an event page, so --accent stays bold's red there.
+      for (const tokens of [boldTokens.light, boldTokens.dark]) {
+        expect(
+          contrastRatio(tokens["--accent"] ?? "", tokens["--on-accent"] ?? ""),
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    it("draws 2 px rules under the heads and over the foot", () => {
+      expect(css.rule(`${scope} .map-dialog-head`)).toBe("border-bottom-width: 2px;");
+      expect(css.rule(`${scope} .map-dialog-foot`)).toBe("border-top-width: 2px;");
+    });
+
+    it("squares Done with bold's button corner and the key card (the swatches keep the map's shapes)", () => {
+      expect(css.rule(`${scope} .map-dialog-foot button.map-dialog-done`)).toBe(
+        "border-radius: var(--r-button);",
+      );
+      expect(firstBlock(boldBlocks.light)["--r-button"]).toBe("0px");
+      const legend = css.rule(`${scope} .map-dialog-legend`);
+      for (const part of [
+        "border: 2px solid var(--line)",
+        "border-radius: 0",
+        "box-shadow: none",
+      ]) {
+        expect(legend).toContain(part);
+      }
+      // The swatches keep the map's own shapes: no bold rule squares them.
+      expect(css.text).not.toContain(`${scope} .map-key`);
+    });
+
+    it("squares the dialog's Leaflet controls and the page map's full-screen icon only", () => {
+      const bar = css.first(
+        `${scope} .map-dialog .map .leaflet-bar, ${scope} .map .leaflet-bar:has(> button.map-expand)`,
+      );
+      expect(bar.layer).toBeUndefined();
+      for (const part of [
+        "border: 2px solid var(--line)",
+        "border-radius: 0",
+        "box-shadow: none",
+      ]) {
+        expect(bar.body).toContain(part);
+      }
+      const buttons = css.first(
+        `${scope} .map-dialog .map .leaflet-bar a, ${scope} .map-dialog .map .leaflet-bar button, ${scope} .map .leaflet-bar button.map-expand`,
+      );
+      expect(buttons.layer).toBeUndefined();
+      expect(buttons.body).toContain("border-radius: 0");
+      // The icon buttons have no border: only the zoom buttons' dividing rule takes the line colour.
+      expect(buttons.body).not.toContain("border-bottom-color");
+      const zoom = css.first(`${scope} .map-dialog .map .leaflet-bar a`);
+      expect(zoom.layer).toBeUndefined();
+      expect(zoom.body).toBe("border-bottom-color: var(--line);");
+      // No bold rule squares a page map's own zoom buttons or "Find my location" (lead decision 3).
+      const items = rules.flatMap((rule) => splitSelectorList(rule.selector));
+      expect(
+        items.filter((item) => /leaflet-bar/.test(item) && !/map-dialog|map-expand/.test(item)),
+      ).toEqual([]);
+    });
+
+    it("gives the dialog opened from the host page the host page's plan ink", () => {
+      const dialog = css.first(`${scope} body:has(.host:not(.template)) > dialog.map-dialog`);
+      expect(dialog.layer).toBe("pages");
+      expect(dialog.body).toBe("--accent: var(--plan-ink); --on-accent: var(--bg);");
+    });
   });
 
   it("keeps bold.css to token-layer rules", () => {

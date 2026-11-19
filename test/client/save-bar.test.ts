@@ -21,6 +21,12 @@ describe("isTracked (decision 006)", () => {
     expect(isTracked({ type: "image", name: "x" })).toBe(false);
     expect(isTracked({ type: "search", name: "" })).toBe(false);
   });
+
+  it("leaves out the map's mode switch: not a saved field, and the full-screen map mirrors it (ADR 008)", () => {
+    expect(isTracked({ type: "radio", name: "mapMode" })).toBe(false);
+    // Only that name: other radios still count.
+    expect(isTracked({ type: "radio", name: "mapModeX" })).toBe(true);
+  });
 });
 
 describe("stateKey", () => {

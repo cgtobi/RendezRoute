@@ -14,7 +14,7 @@ import { MenuSheetBody } from "../layout.tsx";
 import { Initial, PersonName } from "./avatar.tsx";
 import { BackLink } from "./back-link.tsx";
 import { LinkTools } from "./link-tools.tsx";
-import { AreaSearch, ModeSwitch } from "./maps.tsx";
+import { AreaSearch, ModeSwitch, NearbyMapDialog, PickMapDialog, PlanMapDialog } from "./maps.tsx";
 import { ExactStartSection } from "./plan-page.tsx";
 import { RequiredHint } from "./line-field.tsx";
 import { Fold, PlanForm, RouteRemoveForm, type VisibilityChoice } from "./plan-form.tsx";
@@ -59,6 +59,7 @@ export const SECTION_IDS = [
   "sg-header-sheet",
   "sg-footer",
   "sg-badges",
+  "sg-map-dialog",
   "sg-theme-colors",
 ] as const;
 
@@ -797,6 +798,31 @@ export function StyleGuide(props: StyleGuideProps) {
             buttons={["copy", "native", "whatsApp"]}
           />
         </article>
+      </Section>
+
+      <Section
+        id="sg-map-dialog"
+        title="Full-screen map"
+        note="The chrome of the full-screen maps (ADR 008), static, one per kind. The plan's head with its title and time, and its key with all three entries (a participant's or the host's view). The form map's mode switch (real ModeSwitch, its own mapModeFull group) and caption, and its foot with Done, the status line and Remove point (shown here as with the exact start set). Nearby's place search, caption and foot with Done, the chosen-spot line and Use my location (revealed here; the script reveals them on the page). A plain surface stands in for the Leaflet map; the Close, zoom and locate icons are Leaflet controls the script builds, so they are not here. The real ones are modal dialogs over the whole viewport."
+      >
+        <PlanMapDialog
+          t={t}
+          title="Easy Sunday run"
+          when={
+            <>
+              Sun, 7 Jun 2031, 07:30{" "}
+              <span class="time-zone" data-time-zone="Europe/Berlin">
+                ({t("plan.timeZone", { zone: "Europe/Berlin" })})
+              </span>
+            </>
+          }
+          exact
+          route
+          idPrefix="sg-map-dialog-plan"
+          sample
+        />
+        <PickMapDialog t={t} idPrefix="sg-map-dialog-pick" sample />
+        <NearbyMapDialog t={t} placeSearch idPrefix="sg-map-dialog-nearby" sample />
       </Section>
 
       <Section

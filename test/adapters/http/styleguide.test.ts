@@ -18,6 +18,7 @@ const SECTIONS = [
   "sg-header-sheet",
   "sg-footer",
   "sg-badges",
+  "sg-map-dialog",
   "sg-theme-colors",
 ];
 
@@ -122,6 +123,59 @@ describe("the style guide with ALLOW_INSECURE_DEV on", () => {
     expect(section).toContain(
       '<button type="button" class="line-action-button"><span class="icon icon-search" aria-hidden="true"></span><span class="visually-hidden">Search</span></button>',
     );
+  });
+
+  it("shows the full-screen plan map's head and key as a static block, no dialog (ADR 008)", async () => {
+    const { html } = await guide();
+    const section = html.slice(
+      html.indexOf('id="sg-map-dialog"'),
+      html.indexOf('id="sg-theme-colors"'),
+    );
+    // A plain div: a <dialog> would stay closed, and a name on a div is not allowed.
+    expect(section).toContain('<div class="map-dialog map-dialog-plan sg-map-dialog">');
+    expect(section).not.toContain("<dialog");
+    expect(section).not.toContain("<template");
+    expect(section).not.toMatch(/aria-labelledby|data-close-label|data-locate-/);
+    expect(section).toContain(
+      '<h2 class="map-dialog-title" id="sg-map-dialog-plan-title">Easy Sunday run</h2>',
+    );
+    // The start with the plan's time zone, as the plan page shows it.
+    expect(section).toMatch(
+      /<p class="map-dialog-when">Sun, 7 Jun 2031, 07:30 <span class="time-zone" data-time-zone="Europe\/Berlin">\(Europe\/Berlin time\)<\/span><\/p>/,
+    );
+    // The key with all three entries; no Leaflet map element stands in the stage.
+    expect([...section.matchAll(/<li data-legend="(\w+)">/g)].map((m) => m[1])).toEqual([
+      "area",
+      "exact",
+      "route",
+    ]);
+    expect(section).not.toContain("map-dialog-map");
+  });
+
+  it("shows the form map's and Nearby's full-screen chrome too, with their hidden parts revealed (ADR 008)", async () => {
+    const { html } = await guide();
+    const section = html.slice(
+      html.indexOf('id="sg-map-dialog"'),
+      html.indexOf('id="sg-theme-colors"'),
+    );
+    for (const kind of ["plan", "pick", "nearby"]) {
+      expect(section).toContain(`<div class="map-dialog map-dialog-${kind} sg-map-dialog">`);
+    }
+    expect(section).not.toMatch(/aria-label="Full-screen map"|data-close-label/);
+    // The form map's: its own radio group and ids, the exact start shown as set, Remove point.
+    expect(section).toContain('id="sg-map-dialog-pick-mode-area" name="mapModeFull"');
+    expect(section).toContain('<span data-status="exact">Exact start set</span>');
+    expect(section).toContain('<span data-status="none" hidden="">No point set yet</span>');
+    expect(section).toContain(
+      '<button type="button" class="map-dialog-remove" data-point-remove="">Remove point</button>',
+    );
+    // Nearby's: the place search with its own id, the chosen-spot line and Use my location shown.
+    expect(section).toContain('for="sg-map-dialog-nearby-place"');
+    expect(section).toContain('<p class="map-dialog-status" data-nearby-status="">');
+    expect(section).toContain(
+      '<button type="button" class="secondary" data-dialog-locate="">Use my location</button>',
+    );
+    expect(section.split('class="map-dialog-done"').length - 1).toBe(2);
   });
 
   it("shows the quiet remove icon button in the status line sample (D76)", async () => {

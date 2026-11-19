@@ -105,7 +105,7 @@ export const de: Messages = {
   "privacy.calendar":
     "Wenn du einen Kalender-Link erstellst, ruft der Server deiner Kalender-App ihn ab. Dieser Server sieht die öffentlichen Angaben deiner Treffen und dass du darauf geantwortet hast.",
   "privacy.location":
-    "„Meinen Standort finden“ auf der Karte fragt deinen Browser nach deiner Position, nur um die Karte zu verschieben; sie wird nicht an diesen Server gesendet, und es wird nichts ausgefüllt.",
+    "„Meinen Standort finden“ auf der Karte fragt deinen Browser nach deiner Position, nur um die Karte zu verschieben; sie wird nicht an diesen Server gesendet, und es wird nichts ausgefüllt. „Zeigen, wo ich bin“ auf der Vollbildkarte eines Treffens zeigt deine Position nur auf deiner Karte; sie wird nicht an diesen Server gesendet und nicht gespeichert.",
   "privacy.locationMap":
     "Die Karte zeigt dann deine Gegend, sodass dein Browser Kartenbilder dieser Gegend vom Kartendienst lädt.",
   "privacy.share": "WhatsApp wird nur kontaktiert, wenn du den Teilen-Link benutzt.",
@@ -207,6 +207,16 @@ export const de: Messages = {
   "map.planLabel": "Karte des Gebiets",
   "map.zoomIn": "Vergrößern",
   "map.zoomOut": "Verkleinern",
+  "map.fullOpen": "Karte im Vollbild zeigen",
+  "map.fullClose": "Vollbildkarte schließen",
+  "map.showMe": "Zeigen, wo ich bin",
+  "map.showMeDone": "Deine Position wird auf der Karte angezeigt.",
+  "map.legend": "Legende",
+  "map.fullLabel": "Vollbildkarte",
+  "map.fullExactSet": "Genauer Start gesetzt",
+  "map.fullAreaSet": "Öffentliches Gebiet gesetzt",
+  "map.fullNone": "Noch kein Punkt gesetzt",
+  "map.removePoint": "Punkt entfernen",
   "form.distance": "Distanz ({unit}, optional)",
   "form.elevation": "Höhenmeter ({unit}, optional)",
   "form.pace": "Pace oder Tempo (optional)",

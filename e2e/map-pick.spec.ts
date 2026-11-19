@@ -228,3 +228,120 @@ test("Without maps the coordinate fields stay and there is no map, switch or loc
   await expect(page.locator("#field-exactLng")).toBeVisible();
   await expect(page.locator("[data-exact-readout]")).toHaveCount(0);
 });
+
+// The form map's full-screen view (ADR 008): a modal dialog with its own mode switch, which starts
+// as the page's and sets the page's; its taps write the same form fields as the page map. Its
+// status line names the point that is set, and Remove point removes that one (lead decision 2).
+test("The full-screen form map: its switch follows the page, taps set the points, Remove point and Done", async ({
+  browser,
+  baseURL,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name === NO_MAP_PROJECT,
+    "needs the map, which the other project turns off",
+  );
+  const problems: string[] = [];
+  const { page } = await person(browser, baseURL ?? "", problems);
+  await page.goto("/new");
+  const f = fields(page);
+  const open = page.getByRole("button", { name: "Show the map full screen" });
+  const dialog = page.locator("dialog.map-dialog");
+  const dialogMap = dialog.locator(".map-dialog-map");
+  // Its three texts are spans, two of them hidden: the inner text is the one shown.
+  const status = dialog.locator("[data-point-status]");
+  const remove = dialog.getByRole("button", { name: "Remove point" });
+  const dialogMode = (name: string) => dialog.locator(".mode-switch label", { hasText: name });
+  const openFull = async () => {
+    await open.click();
+    await expect(page.locator("dialog.map-dialog:modal")).toHaveCount(1);
+    await expect(dialog.locator("img.leaflet-tile").first()).toBeVisible();
+  };
+
+  await test.step("Tapping the open icon sets nothing; the switch starts as the page's; Escape closes", async () => {
+    const box = await open.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(48);
+    expect(box?.height).toBeGreaterThanOrEqual(48);
+    await openFull();
+    for (const field of Object.values(f)) await expect(field).toHaveValue("");
+    await expect(dialog.getByRole("radio", { name: "Public area" })).toBeChecked();
+    await expect(dialog.locator("[data-map-caption]")).toHaveText(/set the public area/);
+    await expect(status).toHaveText("No point set yet", { useInnerText: true });
+    await expect(remove).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(open).toBeFocused();
+  });
+
+  await test.step("Exact start in the dialog: a tap fills it; Remove point empties it and focuses the line", async () => {
+    await openFull();
+    await dialogMode("Exact start").click();
+    await expect(dialog.getByRole("radio", { name: "Exact start" })).toBeChecked();
+    await expect(dialog.locator("[data-map-caption]")).toHaveText(/exact start\./);
+    await dialogMap.click({ position: { x: 200, y: 260 } });
+    await expect(f.exactLat).not.toHaveValue("");
+    await expect(f.exactLng).not.toHaveValue("");
+    await expect(f.areaLat).toHaveValue("");
+    await expect(status).toHaveText("Exact start set", { useInnerText: true });
+    await expect(dialog.locator("path.map-exact")).toHaveCount(1);
+    await remove.click();
+    await expect(f.exactLat).toHaveValue("");
+    await expect(f.exactLng).toHaveValue("");
+    await expect(status).toBeFocused();
+    await expect(status).toHaveText("No point set yet", { useInnerText: true });
+    await expect(remove).toBeHidden();
+    await expect(dialog.locator("path.map-exact")).toHaveCount(0);
+  });
+
+  await test.step("An area tap while the exact start is set leaves the area as it was", async () => {
+    await dialogMode("Public area").click();
+    await dialogMap.click({ position: { x: 150, y: 220 } });
+    await expect(f.areaLat).not.toHaveValue("");
+    await expect(status).toHaveText("Public area set", { useInnerText: true });
+    const area = [await f.areaLat.inputValue(), await f.areaLng.inputValue()];
+    await dialogMode("Exact start").click();
+    await dialogMap.click({ position: { x: 250, y: 320 } });
+    await expect(f.exactLat).not.toHaveValue("");
+    await expect(status).toHaveText("Exact start set", { useInnerText: true });
+    await dialogMode("Public area").click();
+    await expect(dialog.locator("[data-map-caption]")).toHaveText(/follows the exact start/);
+    await dialogMap.click({ position: { x: 180, y: 380 } });
+    await expect(status).toHaveText("Exact start set", { useInnerText: true });
+    expect([await f.areaLat.inputValue(), await f.areaLng.inputValue()]).toEqual(area);
+    // Back to the exact start: the page's switch follows it.
+    await dialogMode("Exact start").click();
+  });
+
+  await test.step("Done: the focus is back on the icon, the page's switch and map show the same", async () => {
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(open).toBeFocused();
+    await expect(page.locator('.map-picker input[name="mapMode"][value="exact"]')).toBeChecked();
+    await expect(page.locator(".map-picker path.map-exact")).toHaveCount(1);
+    await expect(page.locator(".map-picker path.map-area")).toHaveCount(1);
+    await expect(page.locator("[data-map-caption]")).toHaveText(/exact start\./);
+    await expect(f.exactLat).not.toHaveValue("");
+    await expect(f.areaLat).not.toHaveValue("");
+  });
+
+  await test.step("Set on the page, the switch opens as the page's: Public area, then Exact start", async () => {
+    const pageMode = (name: string) =>
+      page.locator(".map-picker .mode-switch label", { hasText: name });
+    // Public area first: the page was left on Exact start by the dialog above.
+    for (const [name, other] of [
+      ["Public area", "Exact start"],
+      ["Exact start", "Public area"],
+    ] as const) {
+      // The page's own switch, not the dialog's: the dialog is closed here.
+      await pageMode(name).click();
+      await expect(page.locator(".map-picker").getByRole("radio", { name })).toBeChecked();
+      await openFull();
+      await expect(dialog.getByRole("radio", { name })).toBeChecked();
+      await expect(dialog.getByRole("radio", { name: other })).not.toBeChecked();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+    }
+    // Opening and closing set nothing.
+    await expect(page.locator(".map-picker path.map-exact")).toHaveCount(1);
+  });
+  expect(problems).toEqual([]);
+});

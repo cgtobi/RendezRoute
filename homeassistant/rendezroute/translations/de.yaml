@@ -51,8 +51,8 @@ configuration:
     name: "Farbpalette"
     description: "Die Standardfarben der Seiten auf dieser Instanz; Besucher können sie im Menü unter Stil ändern. default: Blau. mono: Schwarz und Weiß. bold: Weiß und Schwarz mit Signalrot, harten Rasterlinien und eckigen Ecken."
   public_requires_login:
-    name: "Öffentliche Liste nur mit Anmeldung"
-    description: "Die Liste öffentlicher Treffen nur angemeldeten Personen zeigen. Ausschalten, um sie allen Besucher:innen zu zeigen."
+    name: "Öffentliche Treffen nur mit Konto"
+    description: "Nur Personen mit Konto dürfen ein Treffen öffentlich machen, und „In der Nähe“ zeigt ohne Anmeldung nichts an. Ist keine Anmeldung eingerichtet, ausschalten, damit öffentliche Treffen möglich sind."
   nearby_enabled:
     name: "„In der Nähe“ anbieten"
     description: "Die Liste öffentlicher Treffen in der Nähe des Standorts der Besucher:innen anbieten."

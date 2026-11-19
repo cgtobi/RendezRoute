@@ -29,6 +29,3 @@ export function createMap(
 export function themeColor(name: string, fallback: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
-
-/** ~1 km grid cell around the public point (spec 3.1). */
-export const AREA_RADIUS_M = 750;

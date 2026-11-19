@@ -132,6 +132,9 @@
        (theme-css.ts) and are not set in this file; they are the same in light and dark. */
     --plan-secondary-default: #ff7a45;
     --plan-on-secondary-default: #111111;
+    /* --font-body: the page's typeface (body), and text inside a map, where Leaflet's
+       .leaflet-container would set its own (the full-screen map's key). */
+    --font-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     /* Type scale: 16 px base; headings tight and heavy. Names say the step; no contrast tests.
        --text-xs: plan chips and tile labels; --text-sm: hints and metadata; --text-md: body;
        --text-lg: h2 and lead text; --text-2xl: h1, fluid between 1.75 and 2.5 rem. */
@@ -273,13 +276,7 @@
     overflow-wrap: break-word;
     background: var(--bg);
     color: var(--fg);
-    font:
-      var(--text-md) / 1.5 Inter,
-      system-ui,
-      -apple-system,
-      "Segoe UI",
-      Roboto,
-      sans-serif;
+    font: var(--text-md) / 1.5 var(--font-body);
     -webkit-font-smoothing: antialiased;
   }
 
@@ -376,6 +373,11 @@
 
   .icon-close {
     --icon: url("icons/close.svg");
+  }
+
+  /* The full-screen map's icon on a map (ADR 008): four corners. */
+  .icon-expand {
+    --icon: url("icons/expand.svg");
   }
 
   .icon-globe {
@@ -1362,8 +1364,10 @@
   }
 
   /* The map's mode switch (decision D66): two segments, the active one in the accent. The radios
-     stay in the page for keyboards and screen readers. */
-  .plan-form .mode-switch {
+     stay in the page for keyboards and screen readers. The form map's full-screen view (ADR 008)
+     has its own, outside the form. */
+  .plan-form .mode-switch,
+  .map-dialog .mode-switch {
     display: flex;
     margin: 0;
     padding: 0;
@@ -1471,6 +1475,166 @@
     .point-readout p button.icon-button {
       color: ButtonText;
     }
+  }
+
+  /* The full-screen map (ADR 008): a modal dialog over the whole viewport, the page's colours, its
+     head on top, the map in the row that takes the rest, an optional foot. 100vh first for
+     browsers without dvh; dvh follows the phone's toolbars. The grid only while open: a closed
+     dialog must keep the browser's display: none. The map's own rules (frame, size) are in the
+     unlayered tail with the other .map rules. */
+  dialog.map-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--bg);
+    color: var(--fg);
+    overscroll-behavior: contain;
+  }
+
+  dialog.map-dialog[open] {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  /* No light dismiss: the dialog covers the viewport and the backdrop is the page colour. */
+  .map-dialog::backdrop {
+    background: var(--bg);
+  }
+
+  .map-dialog-head {
+    min-width: 0;
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .map-dialog-title {
+    margin: 0;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    font-size: var(--text-lg);
+  }
+
+  .map-dialog-when {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  /* The map fills this row; Leaflet's controls sit inside the map. */
+  .map-dialog-stage {
+    position: relative;
+    min-height: 0;
+  }
+
+  /* The key of the plan's full-screen map: a small card at the bottom left. */
+  .map-dialog-legend {
+    display: grid;
+    gap: var(--s1);
+    margin: 0;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--bg);
+    color: var(--fg);
+    /* The page's typeface, not the Helvetica Leaflet gives the map around it. */
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    list-style: none;
+  }
+
+  .map-dialog-legend li {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+  }
+
+  /* The swatches, in the colours the map draws with (src/client/plan-map.ts). */
+  .map-key {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+  }
+
+  .map-key-area {
+    border: 2px solid var(--plan-secondary, var(--plan-secondary-default));
+  }
+
+  .map-key-exact {
+    border: 2px solid var(--plan-primary, var(--accent));
+    background: var(--plan-primary, var(--accent));
+  }
+
+  .map-key-route {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--plan-primary, var(--accent));
+  }
+
+  /* The form map's and Nearby's heads: the mode switch or the place search, then the caption. */
+  .map-dialog-head .map-caption {
+    margin: var(--s2) 0 0;
+  }
+
+  /* Nearby's search status takes no room until it has something to say. */
+  .map-dialog-search .hint[data-search-status]:empty {
+    margin: 0;
+  }
+
+  /* The foot: Done first, a pill on the left; the status line takes the rest of the row; Remove
+     point or Use my location at the far end. Clear of the phone's home indicator. */
+  .map-dialog-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s2) var(--s3);
+    padding: var(--s3) var(--s4) max(var(--s3), env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+  }
+
+  .map-dialog-foot button.map-dialog-done {
+    border-radius: var(--r-pill);
+  }
+
+  .map-dialog-status {
+    flex: 1 1 5rem;
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .map-dialog-foot .map-dialog-status ~ button {
+    margin-left: auto;
+  }
+
+  /* Remove point: a quiet danger text button, underlined, still a 44 px target. */
+  .map-dialog-foot button.map-dialog-remove {
+    min-height: var(--target);
+    padding: var(--s2);
+    border-color: transparent;
+    background: transparent;
+    color: var(--danger);
+    font-weight: 400;
+    text-decoration: underline;
+  }
+
+  .map-dialog-foot button.map-dialog-remove:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  /* Nearby's "Use my location" once the browser refused or failed: aria-disabled (it keeps the
+     focus), its title says why; it looks inactive. Disabled controls need no contrast minimum. */
+  .map-tools button.secondary[aria-disabled="true"],
+  .map-dialog-foot button.secondary[aria-disabled="true"] {
+    color: var(--muted);
+    cursor: not-allowed;
   }
 }
 
@@ -1740,6 +1904,11 @@
     color: var(--on-danger);
     text-align: center;
     font-weight: 600;
+  }
+
+  /* The page under an open full-screen map does not scroll (ADR 008). */
+  :root:has(dialog.map-dialog[open]) {
+    overflow: hidden;
   }
 }
 
@@ -2866,6 +3035,61 @@
     --on-accent: var(--bg);
   }
 
+  /* The form map's full-screen view on the host page (ADR 008) lives in <body>, outside .host, so
+     it takes the same plan ink itself: the dialog's mode switch and Done match the page under it. */
+  :root[data-palette="bold"] body:has(.host:not(.template)) > dialog.map-dialog {
+    --accent: var(--plan-ink);
+    --on-accent: var(--bg);
+  }
+
+  /* The full-screen map (ADR 008) in bold's look. The plan's head is the plan page's poster band:
+     the plan's primary colour (bold's red without one), its text the plan's --plan-on-primary (at
+     least 4.5:1, the fallback pair as the band above). The dialog is in <body> of the plan page,
+     whose root is an event page, so the red stays red there. The other heads and the foot get the
+     2 px grid rule. */
+  :root[data-palette="bold"] .map-dialog-head {
+    border-bottom-width: 2px;
+  }
+
+  :root[data-palette="bold"] .map-dialog-plan .map-dialog-head {
+    border-bottom: 2px solid var(--line);
+    background: var(--plan-primary, var(--accent));
+    color: var(--plan-on-primary, var(--on-accent));
+  }
+
+  /* The title and the time in the band's text colour, uppercase and heavy like the band's h1 and
+     byline; no muted grey on the band. */
+  :root[data-palette="bold"] .map-dialog-title,
+  :root[data-palette="bold"] .map-dialog-when {
+    min-width: 0;
+    color: inherit;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    overflow-wrap: break-word;
+  }
+
+  :root[data-palette="bold"] .map-dialog-title {
+    line-height: 1.1;
+  }
+
+  :root[data-palette="bold"] .map-dialog-foot {
+    border-top-width: 2px;
+  }
+
+  /* Done takes bold's square button corner (--r-button: 0px) instead of the pill. */
+  :root[data-palette="bold"] .map-dialog-foot button.map-dialog-done {
+    border-radius: var(--r-button);
+  }
+
+  /* The key: a square card in a 2 px rule. The swatches keep the shapes the map draws (a circle for
+     the public area and the exact start). */
+  :root[data-palette="bold"] .map-dialog-legend {
+    border: 2px solid var(--line);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
   /* From 960 px the group column stands beside the plan: a vertical rule, not a top one. The bands
      of the plan column reach the left edge and the rule (through the gap between the columns); the
      bands of the group column reach the rule and the right edge. */
@@ -2890,6 +3114,19 @@
 @layer forced-colors {
   @media (forced-colors: active) {
     .burger::before {
+      forced-color-adjust: none;
+    }
+  }
+
+  /* The full-screen map's key: its swatches are the map's colours, which forced colours keep. */
+  @media (forced-colors: active) {
+    .map-key {
+      forced-color-adjust: none;
+    }
+
+    /* The centre dot of "Find my location" and "Show where I am" is a background in the button's
+       text colour, which forced colours would drop: kept, so the icon stays a target, not a ring. */
+    .map-locate-icon::before {
       forced-color-adjust: none;
     }
   }
@@ -3163,4 +3400,102 @@
   width: var(--target);
   height: var(--target);
   line-height: var(--target);
+}
+
+/* The full-screen map (ADR 008): the map fills the dialog's middle row, edge to edge, no frame. */
+.map-dialog .map {
+  position: absolute;
+  inset: 0;
+  height: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+/* Bold's square map frame is (0,3,0): without this it would frame the full-screen map. */
+:root[data-palette="bold"] .map-dialog .map {
+  border: 0;
+}
+
+/* Bold's square controls (lead decision 3): in the full-screen map, and the full-screen icon's bar
+   on a page map, a 2 px rule in the line colour, no corners, no shadow. More specific than
+   Leaflet's .leaflet-touch .leaflet-bar and its first and last child corners, which load later. */
+:root[data-palette="bold"] .map-dialog .map .leaflet-bar,
+:root[data-palette="bold"] .map .leaflet-bar:has(> button.map-expand) {
+  border: 2px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:root[data-palette="bold"] .map-dialog .map .leaflet-bar a,
+:root[data-palette="bold"] .map-dialog .map .leaflet-bar button,
+:root[data-palette="bold"] .map .leaflet-bar button.map-expand {
+  border-radius: 0;
+}
+
+/* The rule between the zoom buttons; the icon buttons have no border to colour. */
+:root[data-palette="bold"] .map-dialog .map .leaflet-bar a {
+  border-bottom-color: var(--line);
+}
+
+/* The full-screen icon on a page map and the Close icon in the dialog: 48 px squares in the zoom
+   buttons' look, the icon in the text colour. */
+.map .leaflet-bar button.map-expand,
+.map .leaflet-bar button.map-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  min-height: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.map .leaflet-bar button.map-expand:hover,
+.map .leaflet-bar button.map-expand:focus,
+.map .leaflet-bar button.map-close:hover,
+.map .leaflet-bar button.map-close:focus {
+  background: var(--line);
+}
+
+.map .leaflet-bar button.map-expand .icon,
+.map .leaflet-bar button.map-close .icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* The full-screen map is as large as the viewport, so an outline around it would be cut off, and
+   one inside its edge would be painted over by Leaflet's panes. The keyboard focus ring (only
+   :focus-visible: a tap or click on the full-screen icon shows none) is a 3 px frame in --focus
+   above the panes and controls, which lets every tap through. */
+.map-dialog .map:focus-visible {
+  outline-offset: -3px;
+}
+
+.map-dialog .map:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  border: 3px solid var(--focus);
+  pointer-events: none;
+}
+
+/* In the full-screen map the zoom buttons are as large as the icons. More specific than
+   Leaflet's .leaflet-touch .leaflet-bar a, which loads after this file. */
+.map-dialog .map.leaflet-container .leaflet-bar a {
+  width: 48px;
+  height: 48px;
+  line-height: 48px;
+}
+
+/* And the locate button under them ("Show where I am", "Find my location") as large as both. */
+.map-dialog .map .leaflet-bar button.map-locate {
+  width: 48px;
+  min-height: 48px;
+  height: 48px;
 }

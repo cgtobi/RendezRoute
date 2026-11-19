@@ -84,3 +84,19 @@ export function publicCircleCenter(
 /** Zoom for "Find my location": street level, or wider when the fix is coarser than 2 km. */
 export const zoomForAccuracy = (accuracyMeters: number): number =>
   accuracyMeters > 2000 ? 13 : 15;
+
+/** ~1 km grid cell around the public point (spec 3.1): the area circle's radius on every map. */
+export const AREA_RADIUS_M = 750;
+
+const EARTH_RADIUS_M = 6_371_000;
+
+/** Great-circle distance in metres (haversine), for "near enough to show both" decisions only. */
+export function distanceMeters(a: Point, b: Point): number {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
+}

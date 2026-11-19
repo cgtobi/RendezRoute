@@ -51,8 +51,8 @@ configuration:
     name: "Colour palette"
     description: "The default colours of the pages on this instance; visitors can override them under Style in the menu. default: blue. mono: black and white. bold: white and black with signal red, hard grid rules and square corners."
   public_requires_login:
-    name: "Public listings need login"
-    description: "Keep the list of public runs, rides and hikes visible only to signed-in people. Turn off to show it to every visitor."
+    name: "Public plans need an account"
+    description: "Only people with an account may make a plan public, and Nearby lists nothing without a login. With no login set up, turn this off to allow public plans."
   nearby_enabled:
     name: "Show nearby listings"
     description: "Offer the list of public runs, rides and hikes near a visitor's location."

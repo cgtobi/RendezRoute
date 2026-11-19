@@ -51,8 +51,8 @@ configuration:
     name: "Palette de couleurs"
     description: "Les couleurs par défaut des pages de cette instance ; les visiteurs peuvent les changer sous Style dans le menu. default : bleu. mono : noir et blanc. bold : blanc et noir avec du rouge signal, des filets rigides et des coins carrés."
   public_requires_login:
-    name: "Liste publique réservée aux comptes"
-    description: "Réserver la liste des sorties publiques aux personnes connectées. Désactivez pour l’afficher à tous les visiteurs."
+    name: "Sorties publiques réservées aux comptes"
+    description: "Seules les personnes avec un compte peuvent rendre une sortie publique, et « À proximité » n’affiche rien sans connexion. Si aucune connexion n’est configurée, désactivez cette option pour autoriser les sorties publiques."
   nearby_enabled:
     name: "Proposer « À proximité »"
     description: "Proposer la liste des sorties publiques proches de la position du visiteur."

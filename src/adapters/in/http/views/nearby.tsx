@@ -17,7 +17,7 @@ import type { Units } from "../../../../domain/units.ts";
 import type { Translate } from "../../../i18n/i18n.ts";
 import { fieldErrorMessage, formatDistance, itemWhen } from "./format.ts";
 import { Item } from "./item.tsx";
-import type { MapSettings } from "./maps.tsx";
+import { type MapSettings, NearbyMapDialog } from "./maps.tsx";
 import { PlanMetrics } from "./plan-metrics.tsx";
 
 export interface NearbyPageProps {
@@ -133,21 +133,34 @@ function SearchForm(props: NearbyPageProps & { errors: readonly NearbyFieldError
         </p>
       )}
       <div class="map-tools">
-        <button type="button" class="secondary" data-nearby-locate="" hidden>
+        <button
+          type="button"
+          class="secondary"
+          data-nearby-locate=""
+          data-locate-denied={t("map.locateDenied")}
+          data-locate-unavailable={t("map.locateUnavailable")}
+          hidden
+        >
           {t("nearby.locate")}
         </button>
         {props.map !== undefined && (
-          <div
-            class="map nearby-map"
-            data-nearby-map=""
-            data-tile-url={props.map.tileUrl}
-            data-attribution={props.map.attribution}
-            data-zoom-in={t("map.zoomIn")}
-            data-zoom-out={t("map.zoomOut")}
-            role="application"
-            aria-label={t("nearby.mapLabel")}
-            hidden
-          ></div>
+          <>
+            <div
+              class="map nearby-map"
+              data-nearby-map=""
+              data-tile-url={props.map.tileUrl}
+              data-attribution={props.map.attribution}
+              data-zoom-in={t("map.zoomIn")}
+              data-zoom-out={t("map.zoomOut")}
+              role="application"
+              aria-label={t("nearby.mapLabel")}
+              hidden
+            ></div>
+            {/* The full-screen view (ADR 008): labels only, opened by the script alone. */}
+            <template data-map-dialog="nearby" data-open-label={t("map.fullOpen")}>
+              <NearbyMapDialog t={t} placeSearch={props.placeSearch !== undefined} />
+            </template>
+          </>
         )}
       </div>
 

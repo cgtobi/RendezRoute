@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.4
+
+- The preview card that chat apps show for a shared plan now follows the instance's look (the `palette` option): the colours, and for "bold" the square corners and black borders. Cached previews are replaced when the option changes.
+
 ## 0.18.3
 
 - Security: a crafted GPX file could keep the server busy for a very long time while it was checked. The check now takes the same short time for any file, and rejects files with unfinished comments, tags or processing instructions.

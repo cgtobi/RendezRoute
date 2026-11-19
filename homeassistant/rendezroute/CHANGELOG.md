@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.5
+
+- New look "Archivo": the mono look set in the narrow Archivo Narrow font, with bold headings. Choose it in the Style menu, or set the `palette` option to `archivo` to make it the default. Its font is only loaded for people who use it. The preview card of shared plans follows it too.
+
 ## 0.18.4
 
 - The preview card that chat apps show for a shared plan now follows the instance's look (the `palette` option): the colours, and for "bold" the square corners and black borders. Cached previews are replaced when the option changes.

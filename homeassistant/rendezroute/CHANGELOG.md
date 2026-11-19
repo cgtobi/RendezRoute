@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.18.0
+
+- Every map can now be opened full screen. A button in the top right corner of the plan map, of the
+  map on the plan form and of the Nearby map opens it, and the same spot closes it again (so does
+  Escape, and focus goes back to the button). On the plan map it shows the same public area, and for
+  people who joined and the host the exact start and the route, as the page does, with a key. Nothing
+  new is sent: the full-screen view uses what the page already shows you.
+- On the plan map the full-screen view has "Show where I am". It shows your position and its accuracy
+  on the map, only in your browser: it is not sent anywhere and not stored.
+- On the plan form the full-screen map has its own switch between the public area and the exact
+  start, a "Done" button and "Remove point". The Nearby map has a place search and "Use my location".
+  Your changes go to the same fields as on the page, so the "Unsaved changes" bar reacts.
+- The map buttons "Use my location" and "Find my location" are no longer disabled when your browser
+  refuses: they stay in place and say why. Taps on a repeated copy of the world map in Nearby no
+  longer produce a longitude over 180.
+- The option "Public listings need login" is now called "Public plans need an account" and says
+  what it does: only people with an account may make a plan public, and Nearby lists nothing
+  without a login. With no login set up, turn it off to allow public plans (also in German and
+  French).
+- Nothing else needs to be configured for this update.
+
 ## 0.17.0
 
 - Colour palettes. The new `palette` option (`PALETTE`) sets the colours of the site: `default`,

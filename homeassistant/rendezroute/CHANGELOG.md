@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.17.0
+
+- Colour palettes. The new `palette` option (`PALETTE`) sets the colours of the site: `default`,
+  `mono` (black and white, with round buttons) or `bold` (a poster look with square corners and
+  heavy rules). Visitors can pick their own under **Style** in the menu, like the language, and
+  **Site default** brings back your setting. The choice is stored in a cookie in their browser, and
+  light, dark and system still work with each palette. The admin pages keep the default colours.
+  In `bold`, plan and manage pages use the plan's own colour for the header, links and the logo, and
+  other pages are black.
+- The "Save changes" button on a plan's manage page now stays at the bottom of the screen while the
+  form has unsaved changes. Next to it are "Unsaved changes" and "Discard". After an error it shows
+  how many problems there are and links to the first one. Without JavaScript the page works as before.
+- The route file is now chosen in the same form and saved with "Save changes". Before, "Replace
+  route" reloaded the page and dropped changes you had not saved. If the file is not usable, nothing
+  is saved and the form shows the error. The route is cut at the meeting point you are saving.
+  Distance and elevation you changed in the same save are kept, and otherwise they follow the route.
+  Browsers do not keep a chosen file when a page is shown again, so choose it again after an error.
+  "Remove route…" is a separate action with a confirmation.
+- A route file is now sent to `/p/{id}/host` (up to 5.5 MB), and the old address `/p/{id}/host/route`
+  no longer exists. If you run a reverse proxy with a small request-size limit (nginx allows 1 MB by
+  default), allow at least 6 MB there.
+- Fixed: for plans in miles and feet, the distance and elevation taken from a route file were read as
+  miles and feet instead of kilometres and metres.
+- Nothing else needs to be configured for this update.
+
 ## 0.16.0
 
 - Plans can now be a hike, besides a run, trail run, ride, gravel ride or mountain bike ride. Hikes

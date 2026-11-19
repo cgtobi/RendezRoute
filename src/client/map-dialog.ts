@@ -18,6 +18,23 @@ export interface MapDialogSession {
 
 export type MapDialogSetup = (session: MapDialogSession) => void;
 
+/** The end of an animated zoom in Leaflet 1.9: not in its typings, see `endZoomAnimation`. */
+interface ZoomAnimationEnd {
+  _onZoomTransitionEnd?: () => void;
+}
+
+/**
+ * Ends an animated zoom that is still running (a key, the wheel, a double tap, an animated
+ * setView or fitBounds), at its target view. Leaflet ends one on `transitionend` or in a 250 ms
+ * timer that `remove()` does not cancel: a map removed meanwhile has no map pane, and that timer
+ * then throws "Cannot read properties of undefined (reading '_leaflet_pos')". Ended here, before
+ * the map goes, the timer finds no zoom running and does nothing. Without a zoom running this does
+ * nothing. A pan needs nothing: `remove()` stops its animation.
+ */
+function endZoomAnimation(map: L.Map): void {
+  (map as L.Map & ZoomAnimationEnd)._onZoomTransitionEnd?.();
+}
+
 /** Browsers without a modal <dialog> (iOS before 15.4) get no full-screen icon at all. */
 export function dialogSupported(): boolean {
   return (
@@ -126,6 +143,15 @@ export function openMapDialog(request: MapDialogRequest): MapDialogSession | und
   dialog.addEventListener(
     "close",
     () => {
+      // First, so the cleanups read the view the zoom was going to, and Leaflet's own zoom end
+      // runs on a whole map: see endZoomAnimation.
+      if (map !== undefined) {
+        try {
+          endZoomAnimation(map);
+        } catch {
+          // Closing goes on: the map and the dialog must still go.
+        }
+      }
       for (const cleanup of cleanups.splice(0)) {
         try {
           cleanup();

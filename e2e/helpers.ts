@@ -123,6 +123,63 @@ export async function person(
   return { context, page };
 }
 
+/** True once the full-screen map's zoom animation runs (checked every frame), false after 5 s. */
+const ZOOM_ANIMATION_STARTS = `new Promise((resolve) => {
+  const until = performance.now() + 5000;
+  const check = () => {
+    if (document.querySelector(".map-dialog .leaflet-zoom-anim") !== null) resolve(true);
+    else if (performance.now() > until) resolve(false);
+    else requestAnimationFrame(check);
+  };
+  check();
+})`;
+
+/** What moves the full-screen map just before it is closed: a key, or a wheel turn. */
+export type MapMove = "ArrowRight" | "ArrowLeft" | "+" | "-" | "wheel in" | "wheel out";
+
+/**
+ * Closes the full-screen map with Escape while the move it just started still runs, once per move
+ * (`open` opens it again each time): a pan at once, a zoom while its 250 ms animation runs. Leaflet
+ * ends a zoom in a timer that removing the map does not cancel, and that timer threw "Cannot read
+ * properties of undefined (reading '_leaflet_pos')" on the removed map (map-dialog.ts). Then no
+ * page error may follow. Not the wheel in mobile WebKit, which Playwright cannot turn.
+ */
+export async function closeWhileTheMapMoves(
+  page: Page,
+  open: () => Promise<void>,
+  moves: readonly MapMove[],
+  problems: readonly string[],
+): Promise<void> {
+  const before = problems.length;
+  const map = page.locator(".map-dialog .map-dialog-map");
+  for (const move of moves) {
+    await open();
+    await expect(map).toBeFocused();
+    if (move === "wheel in" || move === "wheel out") {
+      const box = await map.boundingBox();
+      await page.mouse.move(
+        (box?.x ?? 0) + (box?.width ?? 0) / 2,
+        (box?.y ?? 0) + (box?.height ?? 0) / 2,
+      );
+      await page.mouse.wheel(0, move === "wheel in" ? -300 : 300);
+    } else {
+      await page.keyboard.press(move);
+    }
+    // A zoom: closed only once its animation runs, inside the window the timer was left in.
+    // Watched each frame in the page: polled from here, a slow engine could miss the 250 ms.
+    // (waitForFunction would build a function from the text, which the app's CSP refuses.)
+    if (move !== "ArrowRight" && move !== "ArrowLeft") {
+      const zooming = await page.evaluate<boolean>(ZOOM_ANIMATION_STARTS);
+      expect(zooming, `${move} starts a zoom animation`).toBe(true);
+    }
+    await page.keyboard.press("Escape");
+    await expect(page.locator("dialog.map-dialog")).toHaveCount(0);
+  }
+  // The timer runs 250 ms after its zoom started: by now the last one has run.
+  await page.waitForTimeout(400);
+  expect(problems.slice(before), "page errors after closing a moving map").toEqual([]);
+}
+
 // The instance with admin, invites, logins and email (third container, decisions D21, D31).
 const ADMIN_TOKEN = "e2e-admin-token-0123456789abcdefghij";
 

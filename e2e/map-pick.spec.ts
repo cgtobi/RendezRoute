@@ -1,7 +1,7 @@
 // The form map (decisions D62, D66): mode switch, area and exact taps, the exact readout and
 // "Find my location". Reads /new only, so no plan is created (the plans share a rate limit).
 import { expect, test, type Page } from "@playwright/test";
-import { openFold, person } from "./helpers.ts";
+import { closeWhileTheMapMoves, openFold, person } from "./helpers.ts";
 
 /** The project whose app has maps, geocoder and weather turned off; the default and WebKit projects have the map. */
 const NO_MAP_PROJECT = "maps, geocoder and weather disabled";
@@ -342,6 +342,12 @@ test("The full-screen form map: its switch follows the page, taps set the points
     }
     // Opening and closing set nothing.
     await expect(page.locator(".map-picker path.map-exact")).toHaveCount(1);
+  });
+
+  await test.step("Closed while a key still pans or zooms it: no page error", async () => {
+    // Zoom in and out by turns: the page map takes the dialog's view on close.
+    await closeWhileTheMapMoves(page, openFull, ["ArrowRight", "+", "-", "+", "-"], problems);
+    await expect(open).toBeFocused();
   });
   expect(problems).toEqual([]);
 });

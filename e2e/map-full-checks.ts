@@ -3,13 +3,14 @@
 // that spec's route test removed its own), so the default containers' shared burst of 5 plan
 // creations keeps one in reserve: see the budget note in save-bar.spec.ts. The host, a participant
 // and a viewer open it. Checks: it is modal and over the sticky header, the page does not scroll,
-// Escape and Close bring the focus back to the icon, the keyboard moves the map at once, the layers
+// Escape and Close bring the focus back to the icon, the keyboard moves the map at once, closing it
+// while a key or the wheel still pans or zooms it leaves no page error, the layers
 // and the key follow what the page map has (spec 3.6), the route file is fetched once for the page
 // and the dialog together, "Show where I am" shows the position without sending it, a refusal
 // disables the button, axe passes inside it. Without maps there is no icon (map-full.spec.ts).
 import AxeBuilder from "@axe-core/playwright";
 import { type Browser, type BrowserContext, expect, type Page, test } from "@playwright/test";
-import { person } from "./helpers.ts";
+import { closeWhileTheMapMoves, person } from "./helpers.ts";
 
 /** A plan with an exact start and a route, and its host's cookies. */
 export interface FullMapPlan {
@@ -195,7 +196,17 @@ export async function hostOpensFullMap(
     await expect(openButton(page)).toBeFocused();
   });
 
-  // One request for the page and all three opens together (lead decision 4).
+  await test.step("Closed while a key or the wheel still moves the map: no page error", async () => {
+    await closeWhileTheMapMoves(
+      page,
+      () => openFull(page),
+      ["ArrowRight", "+", "-", "wheel in", "wheel out", "+", "ArrowLeft", "-"],
+      problems,
+    );
+    await expect(openButton(page)).toBeFocused();
+  });
+
+  // One request for the page and all the opens together (lead decision 4).
   expect(routeRequests()).toBe(1);
   expect(problems).toEqual([]);
   await context.close();

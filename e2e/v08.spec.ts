@@ -6,6 +6,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import {
   adminLogIn,
+  closeWhileTheMapMoves,
   createPlan,
   fillHostName,
   inFiveDays,
@@ -375,6 +376,30 @@ test("Nearby full screen: a tap, Use my location and a place search set the poin
     expect(page.url()).toBe(address);
     expect(sent.filter((line) => line.startsWith("GET ") && /flaucher/i.test(line))).toEqual([]);
     expect(sent.filter((line) => /POST .*\/geocode$/.test(line)).length).toBeGreaterThan(0);
+  });
+
+  await test.step("Closed right after a tap, a key or a wheel turn: no page error", async () => {
+    const before = problems.length;
+    // A tap moves the view to the new point: closed at once, while it moves. Off the centre, where
+    // the last tap's point is shown.
+    const dialogMap = dialog.locator(".map-dialog-map");
+    for (let tap = 0; tap < 3; tap += 1) {
+      await openFull();
+      const box = await dialogMap.boundingBox();
+      const position = { x: (box?.width ?? 0) / 2 + 60, y: (box?.height ?? 0) / 2 + 60 };
+      await dialogMap.click({ position });
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+    }
+    expect(problems.slice(before)).toEqual([]);
+    // In and out by turns: the page map takes the dialog's view on close.
+    await closeWhileTheMapMoves(
+      page,
+      openFull,
+      ["ArrowRight", "+", "-", "wheel in", "wheel out"],
+      problems,
+    );
+    await expect(open).toBeFocused();
   });
 
   // Never the device's own coordinates, only the grid point (and only once the viewer searches).

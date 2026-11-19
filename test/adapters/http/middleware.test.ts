@@ -56,6 +56,31 @@ describe("security headers (spec 3.8)", () => {
     });
     expect((await hono.request("/a/x")).headers.get("referrer-policy")).toBe("no-referrer");
   });
+
+  it("sets HSTS for an https base URL on every response, and not for http", async () => {
+    const https = app(config());
+    for (const path of ["/ok", "/missing", "/boom"]) {
+      expect((await https.request(path)).headers.get("strict-transport-security")).toBe(
+        "max-age=31536000",
+      );
+    }
+    const dev = config({ BASE_URL: "http://localhost:3000", ALLOW_INSECURE_DEV: "true" });
+    expect((await app(dev).request("/ok")).headers.get("strict-transport-security")).toBeNull();
+  });
+
+  it("defaults HTML to private, no-cache but never overrides a route's cache-control", async () => {
+    const hono = new Hono();
+    hono.use(securityHeaders(config()));
+    hono.get("/page", (c) => c.html("<p>x</p>"));
+    hono.get("/gated", (c) => {
+      c.header("cache-control", "private, no-store");
+      return c.html("<p>x</p>");
+    });
+    hono.get("/text", (c) => c.text("plain"));
+    expect((await hono.request("/page")).headers.get("cache-control")).toBe("private, no-cache");
+    expect((await hono.request("/gated")).headers.get("cache-control")).toBe("private, no-store");
+    expect((await hono.request("/text")).headers.get("cache-control")).toBeNull();
+  });
 });
 
 describe("CSRF protection (spec 3.8, decision I8)", () => {

@@ -82,6 +82,45 @@ describe("GPX parsing (spec 5 feature 2, 3.8 Uploads)", () => {
     expect(parser.parse(bytes(file)).ok).toBe(true);
   });
 
+  describe("linear-time nesting scan (hostile input at the 5 MB limit)", () => {
+    const fill = (unit: string, prefix = "") =>
+      bytes(
+        prefix + unit.repeat(Math.floor((ROUTE_LIMITS.maxBytes - prefix.length) / unit.length)),
+      );
+    const unsafe = { ok: false, error: "route_unsafe" };
+
+    it("rejects an endless run of unterminated tags quickly", () => {
+      expect(quickly(() => parser.parse(fill("<a", "<gpx>")))).toEqual(unsafe);
+    });
+
+    it("rejects an endless run of unterminated comments quickly", () => {
+      expect(quickly(() => parser.parse(fill("<!--")))).toEqual(unsafe);
+    });
+
+    it("rejects an endless run of unterminated CDATA quickly", () => {
+      expect(quickly(() => parser.parse(fill("<![CDATA[", "<gpx>")))).toEqual(unsafe);
+    });
+
+    it("rejects an unterminated processing instruction and a tag containing <", () => {
+      expect(parser.parse(bytes("<gpx><?x never ends"))).toEqual(unsafe);
+      expect(parser.parse(bytes("<gpx><a <b></gpx>"))).toEqual(unsafe);
+    });
+
+    it("does not let closing tags inside a processing instruction hide real nesting", () => {
+      const hidden = `<?x ${"</a>".repeat(100)} ?>`;
+      const file = gpx(`${hidden}${"<x>".repeat(100)}${"</x>".repeat(100)}`);
+      expect(quickly(() => parser.parse(bytes(file)))).toEqual(unsafe);
+    });
+
+    it("still parses valid files with processing instructions, comments, CDATA and quoted >", () => {
+      const file = gpx(
+        `<?pi </a></a> ?><!-- <x> --><trk><name><![CDATA[<<>> </x>]]></name><trkseg x=">">` +
+          `<trkpt lat="1" lon="1"/><trkpt lat="1" lon="2"></trkpt></trkseg></trk>`,
+      );
+      expect(parser.parse(bytes(file)).ok).toBe(true);
+    });
+  });
+
   it("rejects malformed XML and files without a route", () => {
     expect(parser.parse(bytes("<gpx><trk>"))).toEqual({ ok: false, error: "route_unreadable" });
     expect(parser.parse(bytes("not xml at all"))).toEqual({ ok: false, error: "route_unreadable" });
@@ -95,7 +134,7 @@ describe("GPX parsing (spec 5 feature 2, 3.8 Uploads)", () => {
     // A broken tail makes any built document "unreadable"; counting the points first answers
     // "too many points" instead. This checks the order without timing it (user decision
     // 2026-11-09; the test used to require 200 ms, which failed on busy machines).
-    const brokenTail = "<trk><trkseg><trkpt";
+    const brokenTail = "<trk><trkseg><trkpt>";
     const file = (count: number) =>
       bytes(
         gpx(`<trk><trkseg>${'<trkpt lat="1" lon="1"/>'.repeat(count)}</trkseg></trk>${brokenTail}`),

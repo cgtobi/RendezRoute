@@ -27,8 +27,17 @@ export function securityHeaders(
     "form-action 'self'",
   ].join("; ");
 
+  const hsts = config.baseUrl.protocol === "https:";
+
   return async (c, next) => {
     await next();
+    if (hsts) c.res.headers.set("strict-transport-security", "max-age=31536000");
+    // Pages are per-viewer; a route that sets its own cache-control keeps it.
+    if (
+      !c.res.headers.has("cache-control") &&
+      (c.res.headers.get("content-type") ?? "").toLowerCase().startsWith("text/html")
+    )
+      c.res.headers.set("cache-control", "private, no-cache");
     c.res.headers.set("content-security-policy", csp);
     c.res.headers.set("x-content-type-options", "nosniff");
     // Secret-link responses set the stricter no-referrer themselves (spec 3.2).

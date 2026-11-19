@@ -83,7 +83,7 @@ describe("the home page's own plans", () => {
     expect(otherHtml).not.toContain("Hill repeats");
 
     const first = await client().get("/");
-    expect(first.headers.get("cache-control")).toBeNull();
+    expect(first.headers.get("cache-control")).toBe("private, no-cache");
     const html = await first.text();
     expect(html).not.toContain(en("home.upcoming"));
     expect(html).not.toContain(en("home.recent"));

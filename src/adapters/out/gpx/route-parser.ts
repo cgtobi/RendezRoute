@@ -9,14 +9,67 @@ import { err } from "../../../domain/result.ts";
 
 const MAX_DEPTH = 32;
 
-/** Deepest element nesting, ignoring comments, CDATA and processing instructions. */
+/**
+ * Index of the `>` that ends the tag starting at `from`; -1 when a `<` appears first (malformed);
+ * the text length when the file simply ends inside the tag (truncated, the XML parser rejects it).
+ */
+function tagEnd(xml: string, from: number): number {
+  for (let i = from; i < xml.length; i++) {
+    const code = xml.charCodeAt(i);
+    if (code === 62) return i; // ">"
+    if (code === 60) return -1; // "<" inside a tag is malformed
+    if (code === 34 || code === 39) {
+      // A quoted attribute value may contain ">".
+      const close = xml.indexOf(xml[i] ?? '"', i + 1);
+      if (close === -1) return xml.length;
+      i = close;
+    }
+  }
+  return xml.length;
+}
+
+/**
+ * Deepest element nesting, ignoring comments, CDATA and processing instructions. One linear
+ * pass with no backtracking, so hostile input cannot stall the event loop. Anything left
+ * unterminated (comment, CDATA, PI, tag) is malformed and reported as infinitely deep.
+ */
 function maxDepth(xml: string): number {
-  const text = xml.replace(/<!--[\s\S]*?-->/g, "").replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, "");
   let depth = 0;
   let deepest = 0;
-  for (const tag of text.matchAll(/<(\/?)[A-Za-z_][^>]*?(\/?)>/g)) {
-    if (tag[1] === "/") depth--;
-    else if (tag[2] !== "/") deepest = Math.max(deepest, ++depth);
+  let i = xml.indexOf("<");
+  while (i !== -1) {
+    let next: number;
+    if (xml.startsWith("<!--", i)) {
+      const end = xml.indexOf("-->", i + 4);
+      if (end === -1) return Number.POSITIVE_INFINITY;
+      next = end + 3;
+    } else if (xml.startsWith("<![CDATA[", i)) {
+      const end = xml.indexOf("]]>", i + 9);
+      if (end === -1) return Number.POSITIVE_INFINITY;
+      next = end + 3;
+    } else if (xml.startsWith("<?", i)) {
+      const end = xml.indexOf("?>", i + 2);
+      if (end === -1) return Number.POSITIVE_INFINITY;
+      next = end + 2;
+    } else if (xml.startsWith("<!", i)) {
+      const end = tagEnd(xml, i + 2);
+      if (end === -1) return Number.POSITIVE_INFINITY;
+      next = end + 1;
+    } else if (xml.charCodeAt(i + 1) === 47) {
+      // "</"
+      const end = tagEnd(xml, i + 2);
+      if (end === -1) return Number.POSITIVE_INFINITY;
+      depth--;
+      next = end + 1;
+    } else if (/[A-Za-z_]/.test(xml[i + 1] ?? "")) {
+      const end = tagEnd(xml, i + 2);
+      if (end === -1) return Number.POSITIVE_INFINITY;
+      if (end < xml.length && xml.charCodeAt(end - 1) !== 47) deepest = Math.max(deepest, ++depth);
+      next = end + 1;
+    } else {
+      next = i + 1;
+    }
+    i = xml.indexOf("<", next);
   }
   return deepest;
 }

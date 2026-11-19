@@ -58,6 +58,7 @@ export const fr: Messages = {
   "palette.default": "Par défaut",
   "palette.mono": "Mono",
   "palette.bold": "Bold",
+  "palette.archivo": "Archivo",
 
   "privacy.title": "Confidentialité",
   "privacy.intro":

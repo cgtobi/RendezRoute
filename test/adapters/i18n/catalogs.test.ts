@@ -38,7 +38,7 @@ const SAME_EXAMPLES = [
 ];
 
 /** Palette names are proper names (decision 005). */
-const PALETTE_NAMES = ["palette.mono", "palette.bold"];
+const PALETTE_NAMES = ["palette.mono", "palette.bold", "palette.archivo"];
 
 /** Strings that are the same in every language. */
 const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {

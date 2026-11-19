@@ -1,6 +1,6 @@
 // The instance's colour palette (decision 004): the operator picks one for the whole instance.
 // "default" is the colours of public/app.css and renders no attribute and no extra stylesheet.
-export const PALETTES = ["default", "mono", "bold"] as const;
+export const PALETTES = ["default", "mono", "bold", "archivo"] as const;
 
 export type Palette = (typeof PALETTES)[number];
 

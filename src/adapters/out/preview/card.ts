@@ -87,7 +87,7 @@ export function cardElement({
   palette?: Palette;
 }): CardNode {
   const theme = planTheme(colors);
-  const { bg, fg, muted, line, surface, accent, shape } = CARD_PALETTES[palette];
+  const { font, bg, fg, muted, line, surface, accent, shape } = CARD_PALETTES[palette];
   const box = (name: IconName, label: string) =>
     node(
       "div",
@@ -195,7 +195,7 @@ export function cardElement({
       height: CARD_SIZE.height,
       backgroundColor: bg,
       color: fg,
-      fontFamily: "Inter",
+      fontFamily: font,
     },
     map === undefined ? [content] : [content, mapElement(map, theme.secondary)],
   );

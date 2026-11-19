@@ -661,7 +661,7 @@ export function loadConfig(
   // PALETTE: the instance's colours (decision 004).
   const paletteSetting = read("PALETTE") || "default";
   const palette = isPalette(paletteSetting) ? paletteSetting : undefined;
-  if (palette === undefined) errors.push("PALETTE must be default, mono or bold.");
+  if (palette === undefined) errors.push("PALETTE must be default, mono, bold or archivo.");
 
   // SMTP_*: the mail server is trusted configuration, like the OIDC issuer (decision D31).
   const smtp = ((): SmtpConfig | undefined => {

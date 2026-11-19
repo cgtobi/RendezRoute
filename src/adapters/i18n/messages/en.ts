@@ -55,6 +55,7 @@ export const en = {
   "palette.default": "Default",
   "palette.mono": "Mono",
   "palette.bold": "Bold",
+  "palette.archivo": "Archivo",
 
   "privacy.title": "Privacy",
   "privacy.intro":

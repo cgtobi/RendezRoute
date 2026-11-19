@@ -49,7 +49,7 @@ configuration:
     description: "anyone : tous les visiteurs. invite : seulement les personnes ayant un lien d’invitation que vous créez dans les pages d’administration. logged_in : seulement les personnes connectées par l’authentification unique ou la connexion Fediverse ci-dessous."
   palette:
     name: "Palette de couleurs"
-    description: "Les couleurs par défaut des pages de cette instance ; les visiteurs peuvent les changer sous Style dans le menu. default : bleu. mono : noir et blanc. bold : blanc et noir avec du rouge signal, des filets rigides et des coins carrés."
+    description: "Les couleurs par défaut des pages de cette instance ; les visiteurs peuvent les changer sous Style dans le menu. default : bleu. mono : noir et blanc. bold : blanc et noir avec du rouge signal, des filets rigides et des coins carrés. archivo : comme mono, en police Archivo Narrow avec des titres en gras."
   public_requires_login:
     name: "Sorties publiques réservées aux comptes"
     description: "Seules les personnes avec un compte peuvent rendre une sortie publique, et « À proximité » n’affiche rien sans connexion. Si aucune connexion n’est configurée, désactivez cette option pour autoriser les sorties publiques."

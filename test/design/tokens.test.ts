@@ -1,5 +1,7 @@
 // The design tokens in public/app.css meet WCAG 2.2 AA in light and dark mode (decision D27):
 // text 4.5:1 (1.4.3), field borders and focus rings 3:1 against the page (1.4.11).
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import { AVATAR_COLOURS } from "../../src/adapters/in/http/views/avatar.tsx";
 import {
@@ -18,6 +20,7 @@ import {
   colourTokens,
   customProperties,
   DARK_MEDIA,
+  declarations,
   loadStylesheet,
   MEDIA_SELECTOR,
   normalizeSelector,
@@ -289,7 +292,7 @@ const specificity = (selector: string) =>
 
 describe("the shipped palettes list", () => {
   it("has a stylesheet per non-default palette", () => {
-    expect(SHIPPED).toEqual(["mono", "bold"]);
+    expect(SHIPPED).toEqual(["mono", "bold", "archivo"]);
   });
 });
 
@@ -391,6 +394,7 @@ describe.each(SHIPPED)("palette %s", (id) => {
   const BUTTON_RADIUS: Readonly<Record<string, string>> = {
     mono: "var(--r-pill)",
     bold: "0px",
+    archivo: "var(--r-pill)",
   };
   it("sets --r-button only in the light block", () => {
     for (const list of [palette.dark, palette.darkChosen]) {
@@ -414,6 +418,7 @@ describe.each(SHIPPED)("palette %s", (id) => {
     const lengths: Readonly<Record<string, string>> = {
       mono: "999px",
       bold: "0px",
+      archivo: "999px",
     };
     expect(length).toBe(lengths[id] ?? appMd);
   });
@@ -629,11 +634,138 @@ describe("mono's component rules", () => {
   });
 
   it("leaves the other palettes and app.css without such rules", () => {
-    for (const id of SHIPPED.filter((other) => other !== "mono")) {
+    for (const id of SHIPPED.filter((other) => other !== "mono" && other !== "archivo")) {
       const sheet = loadStylesheet(`palettes/${id}.css`);
       expect(sheet.all.filter((rule) => rule.layer !== "tokens")).toEqual([]);
     }
     expect(css.text).not.toContain('data-palette="mono"');
+    expect(css.text).not.toContain('data-palette="archivo"');
+    for (const [id, other] of [
+      ["mono", "archivo"],
+      ["archivo", "mono"],
+      ["bold", "archivo"],
+    ] as const) {
+      expect(loadStylesheet(`palettes/${id}.css`).text).not.toContain(`data-palette="${other}"`);
+    }
+  });
+});
+
+// Archivo (an exact copy of mono in Archivo Narrow with bold headings): the same colours and
+// component rules as mono's, but its own font and its own heading weights.
+describe("the archivo palette sheet", () => {
+  const archivo = loadStylesheet("palettes/archivo.css");
+  const mono = loadStylesheet("palettes/mono.css");
+  const normalised = (text: string) =>
+    text
+      .replaceAll('data-palette="archivo"', 'data-palette="mono"')
+      .replaceAll(/\/\*[\s\S]*?\*\//g, "");
+  const isTokenBlock = (selector: string) =>
+    /^:root\[data-palette="archivo"\](?:\[|:not|$)/.test(selector);
+  const componentRules = archivo.all.filter((rule) => !isTokenBlock(rule.selector));
+
+  it("has mono's colour tokens exactly", () => {
+    const tokens = (sheet: typeof mono, id: string) => {
+      const blocks = sheet.tokenBlocks(id);
+      return [blocks.light, blocks.dark, blocks.darkChosen].map((list) =>
+        list.map((rule) => customProperties(rule)),
+      );
+    };
+    expect(tokens(archivo, "archivo")).toEqual(tokens(mono, "mono"));
+  });
+
+  it("scopes every component rule by its palette, in pages, without !important", () => {
+    expect(componentRules.length).toBeGreaterThan(10);
+    for (const rule of componentRules) {
+      expect(rule.selector.startsWith(':root[data-palette="archivo"] ')).toBe(true);
+      expect(rule.layer).toBe("pages");
+    }
+    expect(archivo.text).not.toContain("!important");
+  });
+
+  it("sets --font-body to Archivo Narrow with app.css's fallback stack", () => {
+    const fallbacks = /--font-body:\s*Inter,\s*([^;]+);/.exec(css.text)?.[1];
+    const rule = archivo.first(':root[data-palette="archivo"] body');
+    expect(rule.layer).toBe("pages");
+    expect(customProperties(rule)["--font-body"]).toBe(`"Archivo Narrow", ${fallbacks}`);
+  });
+
+  it("sets the header and headings h1 to h3 to weight 700", () => {
+    const rule = archivo.first(
+      ':root[data-palette="archivo"] .site-header-menu > a,\n  :root[data-palette="archivo"] :is(h1, h2, h3)',
+    );
+    expect(declarations(rule.body)).toContainEqual({ property: "font-weight", value: "700" });
+    for (const selector of [
+      '.plan-header h1,\n  :root[data-palette="archivo"] .host h1',
+      ".home .item-title",
+      ".map-dialog-title",
+    ]) {
+      expect(archivo.rule(`:root[data-palette="archivo"] ${selector}`)).toContain(
+        "font-weight: 700",
+      );
+    }
+  });
+
+  it("uses no font weight above 700 and no heading in a regular weight", () => {
+    const weights = [...archivo.text.matchAll(/font-weight:\s*(\d+)/g)].map((m) => Number(m[1]));
+    expect(weights.filter((weight) => weight > 700)).toEqual([]);
+    const headings = archivo.all.filter((rule) => /\b(?:h1|h2|h3)\b/.test(rule.selector));
+    expect(headings.length).toBeGreaterThan(0);
+    for (const rule of headings) expect(rule.body).not.toMatch(/font-weight:\s*[1-6]00/);
+  });
+
+  it("differs from mono's rules only in the font and the heading weights", () => {
+    const strip = (text: string) =>
+      normalised(text).replaceAll(/font-weight:\s*(?:400|700);/g, "font-weight: W;");
+    // Every mono rule appears in archivo's sheet, bar the weight of the headings.
+    for (const rule of mono.all.filter((r) => r.layer === "pages")) {
+      const body = strip(`${rule.selector} { ${rule.body} }`).replaceAll(/\s+/g, " ");
+      const found = archivo.all.some(
+        (r) =>
+          strip(`${r.selector.replaceAll("archivo", "mono")} { ${r.body} }`).replaceAll(
+            /\s+/g,
+            " ",
+          ) === body,
+      );
+      expect(found).toBe(true);
+    }
+  });
+});
+
+describe("the archivo font files", () => {
+  const fonts = readFileSync(
+    join(import.meta.dirname, "../../src/client/archivo-fonts.css"),
+    "utf8",
+  );
+  const root = join(import.meta.dirname, "../..");
+
+  it("declares Archivo Narrow at 400, 500, 600 and 700 in latin and latin-ext, as woff2", () => {
+    const weights = [...fonts.matchAll(/font-weight:\s*(\d+)/g)].map((m) => Number(m[1]));
+    expect(weights.toSorted((a, b) => a - b)).toEqual([400, 400, 500, 500, 600, 600, 700, 700]);
+    expect(fonts.match(/font-family: "Archivo Narrow"/g)?.length).toBe(8);
+    expect(fonts.match(/font-display: swap/g)?.length).toBe(8);
+    expect(fonts.match(/format\("woff2"\)/g)?.length).toBe(8);
+  });
+
+  it("references only files that exist in node_modules", () => {
+    const files = [...fonts.matchAll(/url\("([^"]+)"\)/g)].map((m) => m[1] ?? "");
+    expect(files.length).toBe(8);
+    for (const file of files) {
+      expect(existsSync(join(root, "src/client", file))).toBe(true);
+    }
+  });
+
+  it("is built next to fonts.css and covers every weight the sheet uses", () => {
+    const vite = readFileSync(join(root, "vite.config.ts"), "utf8");
+    expect(vite).toContain('"archivo-fonts": "src/client/archivo-fonts.css"');
+    const used = new Set(
+      [
+        ...readFileSync(join(root, "public/palettes/archivo.css"), "utf8").matchAll(
+          /font-weight:\s*(\d+)/g,
+        ),
+      ].map((m) => m[1]),
+    );
+    for (const weight of used)
+      expect(fonts, `weight ${weight}`).toContain(`font-weight: ${weight};`);
   });
 });
 

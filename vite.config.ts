@@ -114,6 +114,8 @@ export default defineConfig({
         sw: "src/client/sw.ts",
         // Inter from the bundle (decision D27); its subsets load only for the characters a page uses.
         fonts: "src/client/fonts.css",
+        // Archivo Narrow for the "archivo" palette only; the layout links it just for that palette.
+        "archivo-fonts": "src/client/archivo-fonts.css",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },

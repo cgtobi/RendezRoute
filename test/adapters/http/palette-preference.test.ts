@@ -41,12 +41,14 @@ describe("palette choice (decision 005)", () => {
     expect(form).toContain('<option value="default">Default</option>');
     expect(form).toContain('<option value="mono">Mono</option>');
     expect(form).toContain('<option value="bold">Bold</option>');
+    expect(form).toContain('<option value="archivo">Archivo</option>');
     // Exactly the shipped palettes, in their order, after the two defaults.
     expect([...form.matchAll(/<option value="([a-z]+)"/g)].map((m) => m[1])).toEqual([
       "site",
       "default",
       "mono",
       "bold",
+      "archivo",
     ]);
     expect(form).toContain("data-auto-submit");
     expect(form).toContain("<button");

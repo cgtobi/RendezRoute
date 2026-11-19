@@ -56,6 +56,7 @@ export const de: Messages = {
   "palette.default": "Standard",
   "palette.mono": "Mono",
   "palette.bold": "Bold",
+  "palette.archivo": "Archivo",
 
   "privacy.title": "Datenschutz",
   "privacy.intro":

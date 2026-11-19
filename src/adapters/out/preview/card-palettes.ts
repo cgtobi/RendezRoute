@@ -13,6 +13,8 @@ function hex(value: string): HexColor {
 }
 
 export interface CardPalette {
+  /** The card's typeface; loaded by renderer.ts. */
+  font: "Inter" | "Archivo Narrow";
   /** The page colour; the title block's tint is mixed against it. */
   bg: HexColor;
   fg: string;
@@ -36,6 +38,7 @@ export interface CardPalette {
 
 export const CARD_PALETTES: Record<Palette, CardPalette> = {
   default: {
+    font: "Inter",
     bg: hex("#ffffff"),
     fg: "#16181d",
     muted: "#5c636e",
@@ -51,6 +54,7 @@ export const CARD_PALETTES: Record<Palette, CardPalette> = {
     },
   },
   mono: {
+    font: "Inter",
     bg: hex("#fefefe"),
     fg: "#111111",
     muted: "#595959",
@@ -66,6 +70,7 @@ export const CARD_PALETTES: Record<Palette, CardPalette> = {
     },
   },
   bold: {
+    font: "Inter",
     bg: hex("#fefefe"),
     fg: "#0a0a0a",
     muted: "#4a4a4a",
@@ -78,6 +83,22 @@ export const CARD_PALETTES: Record<Palette, CardPalette> = {
       boxBorder: 2,
       titleBorder: 2,
       titleBorderColor: "#0a0a0a",
+    },
+  },
+  archivo: {
+    font: "Archivo Narrow",
+    bg: hex("#fefefe"),
+    fg: "#111111",
+    muted: "#595959",
+    line: "#e5e5e5",
+    surface: "#f5f5f5",
+    accent: "#16181d",
+    shape: {
+      titleRadius: 24,
+      boxRadius: 12,
+      boxBorder: 2,
+      titleBorder: 0,
+      titleBorderColor: "#111111",
     },
   },
 };

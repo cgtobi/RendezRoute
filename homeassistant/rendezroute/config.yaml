@@ -1,5 +1,5 @@
 name: RendezRoute
-version: "0.18.4"
+version: "0.18.5"
 slug: rendezroute
 description: Advertise a planned run, ride or hike so others can join, without accounts for guests
 url: https://github.com/cgtobi/RendezRoute
@@ -71,7 +71,7 @@ schema:
   weather_enabled: bool
   weather_url: url?
   posting_mode: list(anyone|invite|logged_in)
-  palette: list(default|mono|bold)
+  palette: list(default|mono|bold|archivo)
   public_requires_login: bool
   nearby_enabled: bool
   federation_enabled: bool

@@ -46,6 +46,7 @@ describe("card palettes (decision 004)", () => {
       default: firstBlock(loadStylesheet("app.css").tokenBlocks().light),
       mono: firstBlock(loadStylesheet("palettes/mono.css").tokenBlocks("mono").light),
       bold: firstBlock(loadStylesheet("palettes/bold.css").tokenBlocks("bold").light),
+      archivo: firstBlock(loadStylesheet("palettes/archivo.css").tokenBlocks("archivo").light),
     };
     for (const palette of PALETTES) {
       const tokens = light[palette];
@@ -70,6 +71,17 @@ describe("card palettes (decision 004)", () => {
     }
     expect(tree).not.toContain("#2c67a8");
     expect(tree).not.toContain("#3c67a8");
+  });
+
+  it("draws archivo like mono, in Archivo Narrow", () => {
+    const { font, shape, ...tokens } = CARD_PALETTES.archivo;
+    const { font: monoFont, shape: monoShape, ...monoTokens } = CARD_PALETTES.mono;
+    expect([font, monoFont]).toEqual(["Archivo Narrow", "Inter"]);
+    expect(tokens).toEqual(monoTokens);
+    expect(shape).toEqual({ ...monoShape, titleBorderColor: shape.titleBorderColor });
+    const root = flatten(render("archivo")).map((n) => n.props.style ?? {})[0];
+    expect(root).toMatchObject({ fontFamily: "Archivo Narrow" });
+    expect(JSON.stringify(render("archivo"))).not.toContain('"Inter"');
   });
 
   it("draws bold with square corners, ink borders and the red accent", () => {

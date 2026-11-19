@@ -44,12 +44,13 @@ describe("Open Graph tags (spec 5 feature 3)", () => {
       const { planId, newClient } = await setup(palette);
       return meta(await (await newClient().get(`/p/${planId}`)).text(), "og:image");
     };
-    const [base, mono, bold] = await Promise.all([
+    const [base, mono, bold, archivo] = await Promise.all([
       imageOf("default"),
       imageOf("mono"),
       imageOf("bold"),
+      imageOf("archivo"),
     ]);
-    expect(new Set([base, mono, bold]).size).toBe(3);
+    expect(new Set([base, mono, bold, archivo]).size).toBe(4);
   });
 
   it("are the same for the host and never contain the exact start or route (spec 2b)", async () => {

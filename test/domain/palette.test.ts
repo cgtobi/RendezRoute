@@ -3,8 +3,8 @@ import { isPalette, PALETTES } from "../../src/domain/palette.ts";
 import { SITE_PALETTE } from "../../src/adapters/in/http/routes/preferences.ts";
 
 describe("palette (decision 004)", () => {
-  it("lists default, mono and bold", () => {
-    expect(PALETTES).toEqual(["default", "mono", "bold"]);
+  it("lists default, mono, bold and archivo", () => {
+    expect(PALETTES).toEqual(["default", "mono", "bold", "archivo"]);
   });
 
   it("keeps the route's site choice from colliding with a palette", () => {

@@ -439,11 +439,12 @@ describe("PALETTE (decision 004)", () => {
     expect(ok({ ...minimal, PALETTE: "default" }).config.palette).toBe("default");
     expect(ok({ ...minimal, PALETTE: "mono" }).config.palette).toBe("mono");
     expect(ok({ ...minimal, PALETTE: "bold" }).config.palette).toBe("bold");
+    expect(ok({ ...minimal, PALETTE: "archivo" }).config.palette).toBe("archivo");
   });
 
   it("rejects an unknown palette", () => {
     expect(errors({ ...minimal, PALETTE: "neon" }).join(" ")).toContain(
-      "PALETTE must be default, mono or bold.",
+      "PALETTE must be default, mono, bold or archivo.",
     );
     expect(errors({ ...minimal, PALETTE: "Bold" }).join(" ")).toContain("PALETTE must be");
   });

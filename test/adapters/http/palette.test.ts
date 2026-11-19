@@ -26,6 +26,21 @@ describe("the palette in the page head", () => {
     expect(html).not.toContain("palettes/bold.css");
   });
 
+  it("links the Archivo Narrow font files before the palette sheet, for archivo only", async () => {
+    const fontsLink = `href="${assetUrl("/", "build/archivo-fonts.css")}"`;
+    for (const palette of ["default", "mono", "bold"]) {
+      const { app } = await createTestApp({ env: { PALETTE: palette } });
+      const html = await (await new TestClient(app).get("/")).text();
+      expect(html).not.toContain("archivo-fonts.css");
+    }
+    const { app } = await createTestApp({ env: { PALETTE: "archivo" } });
+    const html = await (await new TestClient(app).get("/")).text();
+    expect(html).toContain('data-palette="archivo"');
+    expect(html).toContain(fontsLink);
+    expect(html.indexOf(fontsLink)).toBeLessThan(html.indexOf("palettes/archivo.css"));
+    expect(html.indexOf(fontsLink)).toBeGreaterThan(html.indexOf('href="/static/app.css?v='));
+  });
+
   it("adds no attribute and no link for the default palette", async () => {
     for (const env of [{}, { PALETTE: "default" }]) {
       const { app } = await createTestApp({ env });
@@ -47,16 +62,19 @@ describe("the palette in the page head", () => {
 });
 
 describe("the palette stylesheets over /static", () => {
-  it.each(["mono", "bold"])("serves %s with the immutable header for its version", async (id) => {
-    const { app } = await createTestApp({ env: { PALETTE: id } });
-    const client = new TestClient(app);
-    const url = assetUrl("/", `palettes/${id}.css`);
-    const response = await client.get(url);
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("text/css");
-    expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
-    expect(await response.text()).toContain(`:root[data-palette="${id}"]`);
-    const unversioned = await client.get(`/static/palettes/${id}.css`);
-    expect(unversioned.headers.get("cache-control")).toBe("public, max-age=3600");
-  });
+  it.each(["mono", "bold", "archivo"])(
+    "serves %s with the immutable header for its version",
+    async (id) => {
+      const { app } = await createTestApp({ env: { PALETTE: id } });
+      const client = new TestClient(app);
+      const url = assetUrl("/", `palettes/${id}.css`);
+      const response = await client.get(url);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/css");
+      expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+      expect(await response.text()).toContain(`:root[data-palette="${id}"]`);
+      const unversioned = await client.get(`/static/palettes/${id}.css`);
+      expect(unversioned.headers.get("cache-control")).toBe("public, max-age=3600");
+    },
+  );
 });

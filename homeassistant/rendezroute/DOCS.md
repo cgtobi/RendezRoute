@@ -53,7 +53,8 @@ geocoder and weather addresses, the default map center and zoom (`default_map_ce
 the **⋮** menu of the Configuration tab and choose **Show unused optional configuration options**.
 
 The `palette` option sets the instance's default colours: `default` (blue), `mono` (black and
-white) or `bold` (white, black grid rules, signal red, square corners). Visitors can override it
+white), `bold` (white, black grid rules, signal red, square corners) or `archivo` (like `mono`,
+in the Archivo Narrow typeface with bold headings). Visitors can override it
 under Style in the menu. Light and dark mode work with each of them.
 
 ### Reverse proxy and `trust_proxy`

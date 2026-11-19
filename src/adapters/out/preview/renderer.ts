@@ -1,6 +1,7 @@
 // Open Graph card images with Satori (layout to SVG) and resvg (SVG to PNG), spec 2. Map tiles are
 // embedded as data URIs, so no further image library is needed. Fonts are bundled OFL files
-// (Inter, from @fontsource/inter, license included in the package).
+// (Inter, from @fontsource/inter, and Archivo Narrow for the palette "archivo", from
+// @fontsource/archivo-narrow; licenses included in the packages).
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { Resvg } from "@resvg/resvg-js";
@@ -19,23 +20,38 @@ const AREA_RADIUS_M = 750;
 /** Latin, Latin Extended, Cyrillic and Greek; Satori picks per glyph. */
 const FONT_SUBSETS = ["latin", "latin-ext", "cyrillic", "greek"] as const;
 
-type Font = { name: string; data: Buffer; weight: 400 | 700; style: "normal" };
+const ARCHIVO_SUBSETS = ["latin", "latin-ext"] as const;
+
+type Font = { name: "Inter" | "Archivo Narrow"; data: Buffer; weight: 400 | 700; style: "normal" };
 
 let fonts: Promise<Font[]> | undefined;
 function loadFonts(): Promise<Font[]> {
   const require = createRequire(import.meta.url);
-  fonts ??= Promise.all(
-    FONT_SUBSETS.flatMap((subset) =>
-      ([400, 700] as const).map(async (weight) => ({
-        name: "Inter",
-        data: await readFile(
-          require.resolve(`@fontsource/inter/files/inter-${subset}-${weight}-normal.woff`),
-        ),
-        weight,
-        style: "normal" as const,
-      })),
+  const load = (name: Font["name"], pkg: string, file: string, weight: 400 | 700) =>
+    readFile(require.resolve(`${pkg}/files/${file}`)).then((data): Font => ({
+      name,
+      data,
+      weight,
+      style: "normal",
+    }));
+  fonts ??= Promise.all([
+    ...FONT_SUBSETS.flatMap((subset) =>
+      ([400, 700] as const).map((weight) =>
+        load("Inter", "@fontsource/inter", `inter-${subset}-${weight}-normal.woff`, weight),
+      ),
     ),
-  );
+    // The "archivo" palette; Latin and Latin Extended only (satori falls back per glyph).
+    ...ARCHIVO_SUBSETS.flatMap((subset) =>
+      ([400, 700] as const).map((weight) =>
+        load(
+          "Archivo Narrow",
+          "@fontsource/archivo-narrow",
+          `archivo-narrow-${subset}-${weight}-normal.woff`,
+          weight,
+        ),
+      ),
+    ),
+  ]);
   return fonts;
 }
 

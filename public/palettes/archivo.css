@@ -1,0 +1,474 @@
+/* Palette "archivo" (decision 004). Archivo: an exact copy of mono (same colours and layout) in Archivo Narrow,
+   with bold headings (weight 700, the heaviest the font has). The product's own black and white. A pure white page, near-black
+   text and near-black primary controls in light mode; a true-black page, dark grey surfaces and
+   off-white text in dark mode. Blue is not the accent: --accent (links, primary buttons, checked
+   mode switch, selected underline) is near-black, near-white in dark, and links stay underlined
+   by app.css. Blue stays only in --focus, the focus ring, so keyboard focus remains visible
+   against the neutral controls. Danger, ok and warning keep the default hues; the avatar sets are
+   the default ones. The light page is #fefefe, not #ffffff, so it differs from app.css's value
+   (the cascade test in test/design/tokens.test.ts checks that the palette wins).
+   Buttons are pills: the light block also sets --r-button (the one non-colour token a palette may
+   set) to --r-pill. The dark blocks stay colour-only.
+   Loaded after app.css, only when the operator sets PALETTE=archivo or the visitor chooses it (cookie). It redefines the colour tokens
+   of app.css and nothing else (no type, space or size tokens; of the radii only --r-button). Same layer as app.css's
+   tokens, so no !important: layer order is declared there ("tokens" first) and a palette selector
+   ( :root[data-palette] ) is more specific than app.css's :root, :root:not([data-theme="light"])
+   and :root[data-theme="dark"]. --plan-secondary-default and --plan-on-secondary-default stay as
+   app.css has them. Both dark blocks must hold the same values (test/design/tokens.test.ts). */
+@layer tokens {
+  :root[data-palette="archivo"] {
+    --r-button: var(--r-pill);
+    --bg: #fefefe;
+    --fg: #111111;
+    --muted: #595959;
+    --placeholder: #666666;
+    --line: #e5e5e5;
+    --control-line: #cfcfcf;
+    --field-border: #858585;
+    --surface: #f5f5f5;
+    --accent: #16181d;
+    --on-accent: #ffffff;
+    --focus: #2c67a8;
+    --danger: #b3261e;
+    --on-danger: #ffffff;
+    --warning-bg: #fff4e5;
+    --warning-line: #f3d19c;
+    --ok: #1a6e3e;
+    --ok-bg: #eef7f1;
+    --ok-line: #b9e4c9;
+    --avatar-0-bg: #fde2e4;
+    --avatar-0-fg: #8a1c2b;
+    --avatar-1-bg: #dbe8ff;
+    --avatar-1-fg: #1d3f8f;
+    --avatar-2-bg: #d8f3e1;
+    --avatar-2-fg: #17613a;
+    --avatar-3-bg: #ecdfff;
+    --avatar-3-fg: #5b2a99;
+    --avatar-4-bg: #ffe8cc;
+    --avatar-4-fg: #8a4b00;
+    --avatar-5-bg: #d5f2f4;
+    --avatar-5-fg: #0e5c63;
+    --avatar-6-bg: #f7dcef;
+    --avatar-6-fg: #84205f;
+    --avatar-7-bg: #e5e9d0;
+    --avatar-7-fg: #4d5a12;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root[data-palette="archivo"]:not([data-theme="light"]) {
+      --bg: #000000;
+      --fg: #ededed;
+      --muted: #a6a6a6;
+      --placeholder: #8a8a8a;
+      --line: #262626;
+      --control-line: #444444;
+      --field-border: #767676;
+      --surface: #171717;
+      --accent: #f2f2f2;
+      --on-accent: #111111;
+      --focus: #8bb8ea;
+      --danger: #f2b8b5;
+      --on-danger: #111111;
+      --warning-bg: #3a2c12;
+      --warning-line: #6b5120;
+      --ok: #8fd9a8;
+      --ok-bg: #0f1f16;
+      --ok-line: #2b5a3c;
+      --avatar-0-bg: #5a1d26;
+      --avatar-0-fg: #ffd6db;
+      --avatar-1-bg: #1f3463;
+      --avatar-1-fg: #d5e3ff;
+      --avatar-2-bg: #174a2c;
+      --avatar-2-fg: #c9f0d7;
+      --avatar-3-bg: #3f2566;
+      --avatar-3-fg: #e7d9ff;
+      --avatar-4-bg: #5a3608;
+      --avatar-4-fg: #ffe2bf;
+      --avatar-5-bg: #124549;
+      --avatar-5-fg: #c8f1f4;
+      --avatar-6-bg: #57203f;
+      --avatar-6-fg: #ffd6ef;
+      --avatar-7-bg: #3b4214;
+      --avatar-7-fg: #e9eec8;
+    }
+  }
+
+  :root[data-palette="archivo"][data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #000000;
+    --fg: #ededed;
+    --muted: #a6a6a6;
+    --placeholder: #8a8a8a;
+    --line: #262626;
+    --control-line: #444444;
+    --field-border: #767676;
+    --surface: #171717;
+    --accent: #f2f2f2;
+    --on-accent: #111111;
+    --focus: #8bb8ea;
+    --danger: #f2b8b5;
+    --on-danger: #111111;
+    --warning-bg: #3a2c12;
+    --warning-line: #6b5120;
+    --ok: #8fd9a8;
+    --ok-bg: #0f1f16;
+    --ok-line: #2b5a3c;
+    --avatar-0-bg: #5a1d26;
+    --avatar-0-fg: #ffd6db;
+    --avatar-1-bg: #1f3463;
+    --avatar-1-fg: #d5e3ff;
+    --avatar-2-bg: #174a2c;
+    --avatar-2-fg: #c9f0d7;
+    --avatar-3-bg: #3f2566;
+    --avatar-3-fg: #e7d9ff;
+    --avatar-4-bg: #5a3608;
+    --avatar-4-fg: #ffe2bf;
+    --avatar-5-bg: #124549;
+    --avatar-5-fg: #c8f1f4;
+    --avatar-6-bg: #57203f;
+    --avatar-6-fg: #ffd6ef;
+    --avatar-7-bg: #3b4214;
+    --avatar-7-fg: #e9eec8;
+  }
+}
+
+/* Archivo's look (mono's, decision 004): the tokens above are colours, but the design is also centred,
+   quiet type. These rules are the only non-token rules a palette carries. Each one starts with
+   :root[data-palette="archivo"], so no other palette and not the default is touched, and they sit in
+   app.css's last content layer ("pages"), which beats the layers of the components they restyle
+   without !important. Every length is a value app.css already uses or a plain rem. */
+@layer pages {
+  /* The typeface: Archivo Narrow, self-hosted (build/archivo-fonts.css, linked only for this
+     palette). Set on body, which sets the font and passes it on. Weights stay at 700 and below, the heaviest the font has. */
+  :root[data-palette="archivo"] body {
+    --font-body: "Archivo Narrow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  /* The header and the headings: the heaviest weight, in the font's 700 (case as mono's). */
+  :root[data-palette="archivo"] .site-header-menu > a,
+  :root[data-palette="archivo"] :is(h1, h2, h3) {
+    font-weight: 700;
+  }
+
+  /* The header: the mark stays centred and takes the text colour (black on light, white on dark;
+     the wordmark stays in the link for screen readers), and the burger is borderless with two
+     thin bars. */
+  :root[data-palette="archivo"] .site-header-menu {
+    border-bottom-color: transparent;
+  }
+
+  :root[data-palette="archivo"] .site-header-menu > a {
+    color: var(--fg);
+    font-size: 0;
+  }
+
+  :root[data-palette="archivo"] .site-header-menu .logo {
+    width: 1.5rem;
+    height: 2rem;
+  }
+
+  :root[data-palette="archivo"] .burger {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  :root[data-palette="archivo"] .burger::before {
+    width: 24px;
+    height: 9px;
+    background:
+      linear-gradient(currentColor, currentColor) top / 100% 1.5px no-repeat,
+      linear-gradient(currentColor, currentColor) bottom / 100% 1.5px no-repeat;
+  }
+
+  /* The home page: a centred hero, a full-width pill button and a centred link. */
+  :root[data-palette="archivo"] .home > p:not(.notice) {
+    text-align: center;
+  }
+
+  :root[data-palette="archivo"] .home > p:not(.notice):has(+ p > .button) {
+    margin-top: var(--s7);
+    font-size: 1.5rem;
+    line-height: 1.4;
+  }
+
+  :root[data-palette="archivo"] .home > p > .button {
+    display: flex;
+    width: 100%;
+    min-height: 3.25rem;
+    font-weight: 400;
+  }
+
+  :root[data-palette="archivo"] .home > p > a:not(.button) {
+    display: inline-block;
+    padding: var(--s2) 0;
+    color: var(--fg);
+    text-decoration: none;
+  }
+
+  /* The lists: a spaced uppercase label, large titles, a hairline between the groups; later
+     groups (the past ones) in muted grey. */
+  :root[data-palette="archivo"] .home > section > h2 {
+    margin-top: var(--s7);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  :root[data-palette="archivo"] .home > section ~ section {
+    padding-top: var(--s5);
+    border-top: 1px solid var(--line);
+  }
+
+  :root[data-palette="archivo"] .home > section ~ section > h2 {
+    margin-top: 0;
+    color: var(--muted);
+  }
+
+  :root[data-palette="archivo"] .home .item {
+    border-bottom: 0;
+  }
+
+  :root[data-palette="archivo"] .home .item-title {
+    color: var(--fg);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.3;
+    text-decoration: none;
+  }
+
+  :root[data-palette="archivo"] .home .item-meta {
+    margin-top: var(--s2);
+    font-size: 1.0625rem;
+  }
+
+  :root[data-palette="archivo"] .home > section ~ section .item-title {
+    color: var(--muted);
+  }
+
+  /* The footer, centred and without its rule. */
+  :root[data-palette="archivo"] .site-footer {
+    justify-content: center;
+    border-top-color: transparent;
+    text-align: center;
+  }
+
+  :root[data-palette="archivo"] .legal-links {
+    justify-content: center;
+  }
+
+  /* The plan page and the host page in the home page's language: no tinted cards or grey tiles,
+     hairlines and one-sided rules instead of boxes, regular-weight type, spaced uppercase labels. The
+     plan's colours still colour the dot, the avatars, the host badge and the buttons. Only
+     fills, borders, weights, sizes and spacing change: no element, no target size and no focus
+     outline is touched. */
+
+  /* The title block: flat, aligned with the page edge, a calm regular-weight heading. */
+  :root[data-palette="archivo"] .plan-header {
+    padding: 0;
+    background: transparent;
+  }
+
+  :root[data-palette="archivo"] .plan-header h1,
+  :root[data-palette="archivo"] .host h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  :root[data-palette="archivo"] .plan-header h1 {
+    margin-bottom: var(--s3);
+  }
+
+  :root[data-palette="archivo"] .plan-byline {
+    font-weight: 400;
+  }
+
+  /* The activity as a spaced uppercase label, flush with the title, followed by its dot. */
+  :root[data-palette="archivo"] .plan-activity {
+    margin-right: var(--s3);
+    padding: 0;
+    background: transparent;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+  }
+
+  :root[data-palette="archivo"] .plan-visibility {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-weight: 400;
+  }
+
+  /* The date and place lines, flush with the title. */
+  :root[data-palette="archivo"] .when-where.lines {
+    padding: 0;
+    font-size: 1.25rem;
+  }
+
+  :root[data-palette="archivo"] .when-where.lines div + div {
+    font-size: 1.0625rem;
+  }
+
+  /* The measures: open, a label above a regular-weight value, between two hairlines. */
+  :root[data-palette="archivo"] .metrics.tiles {
+    gap: var(--s4);
+    padding: var(--s4) 0;
+    border-block: 1px solid var(--line);
+  }
+
+  :root[data-palette="archivo"] .tiles .metric {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    background: transparent;
+    text-align: left;
+  }
+
+  :root[data-palette="archivo"] .tiles .metric:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  :root[data-palette="archivo"] .tiles .metric dt {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  :root[data-palette="archivo"] .tiles .metric dd {
+    font-size: 1.125rem;
+    font-weight: 400;
+    line-height: 1.3;
+  }
+
+  /* The private start: a hairline above, no fill. */
+  :root[data-palette="archivo"] .exact-start {
+    padding: var(--s4) 0 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  :root[data-palette="archivo"] .exact-start .hint {
+    font-style: normal;
+  }
+
+  /* The section labels on the plan page: spaced uppercase, regular weight. */
+  :root[data-palette="archivo"] .plan .exact-start h2,
+  :root[data-palette="archivo"] .plan .status-text h2,
+  :root[data-palette="archivo"] .plan .section-head h2,
+  :root[data-palette="archivo"] .plan .share h2 {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Your response: no box; the check icon and the large regular line carry it. */
+  :root[data-palette="archivo"] .status {
+    padding: var(--s2) 0;
+    border: 0;
+    background: transparent;
+  }
+
+  :root[data-palette="archivo"] .status-text p {
+    font-size: 1.5rem;
+    font-weight: 400;
+    line-height: 1.3;
+  }
+
+  :root[data-palette="archivo"] .counts {
+    padding: 0;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  /* Notices and warnings: a line of text with a rule on its left, not a box. */
+  :root[data-palette="archivo"] .notice,
+  :root[data-palette="archivo"] .warning {
+    padding: var(--s1) 0 var(--s1) var(--s4);
+    border: 0;
+    border-left: 2px solid var(--control-line);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  :root[data-palette="archivo"] .warning {
+    border-left-color: var(--warning-line);
+  }
+
+  :root[data-palette="archivo"] .link-box {
+    background: transparent;
+  }
+
+  /* Buttons in regular weight, like the home page's. */
+  :root[data-palette="archivo"] .plan .button,
+  :root[data-palette="archivo"] .plan .share .secondary,
+  :root[data-palette="archivo"] .host .button,
+  :root[data-palette="archivo"] .host button[type="submit"] {
+    font-weight: 400;
+  }
+
+  /* The host page and the forms: a spaced label above the title, regular-weight titles and labels,
+     fieldsets as a hairline, not a box. Field borders are untouched. */
+  :root[data-palette="archivo"] .plan-context,
+  :root[data-palette="archivo"] .plan-form .page-purpose {
+    font-size: var(--text-xs);
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  :root[data-palette="archivo"] .plan-form .title-input {
+    font-weight: 700;
+  }
+
+  :root[data-palette="archivo"] .field label,
+  :root[data-palette="archivo"] legend {
+    font-weight: 500;
+  }
+
+  :root[data-palette="archivo"] .host.sectioned > section:not(.status) > h2 {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  :root[data-palette="archivo"] fieldset {
+    padding-inline: 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+  }
+
+  /* The full-screen map (ADR 008): the head and the foot keep their flat 1 px hairlines; the
+     plan's title in regular weight like the plan page's, the key without a card's rounded
+     corners (its fill stays the page colour: the key is read over the map), and the foot's
+     buttons in regular weight like the plan page's. */
+  :root[data-palette="archivo"] .map-dialog-title {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  :root[data-palette="archivo"] .map-dialog-legend {
+    border-radius: 0;
+  }
+
+  :root[data-palette="archivo"] .map-dialog-foot button {
+    font-weight: 400;
+  }
+
+  /* A dot in the plan's own colour after the activity on the plan page; blue (--focus) when the plan has none. */
+  :root[data-palette="archivo"] .plan-activity::after {
+    content: "";
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: var(--s2);
+    border-radius: var(--r-pill);
+    background: var(--plan-primary, var(--focus));
+    vertical-align: middle;
+  }
+}

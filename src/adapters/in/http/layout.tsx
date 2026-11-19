@@ -85,6 +85,9 @@ export function Layout({
         <link rel="apple-touch-icon" href={`${pathBase}static/brand/apple-touch-icon.png`} />
         <link rel="stylesheet" href={assetUrl(pathBase, "build/fonts.css")} />
         <link rel="stylesheet" href={assetUrl(pathBase, "app.css")} />
+        {palette === "archivo" && (
+          <link rel="stylesheet" href={assetUrl(pathBase, "build/archivo-fonts.css")} />
+        )}
         {palette !== "default" && (
           <link rel="stylesheet" href={assetUrl(pathBase, `palettes/${palette}.css`)} />
         )}

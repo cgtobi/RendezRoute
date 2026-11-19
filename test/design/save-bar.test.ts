@@ -75,10 +75,10 @@ describe("the save bar", () => {
     expect(palette.map((rule) => rule.layer)).toEqual(["pages", "pages", "pages"]);
   });
 
-  it("leaves every palette sheet (mono and bold) without a save bar rule", () => {
+  it("leaves every palette sheet (mono, bold and archivo) without a save bar rule", () => {
     const mono = loadStylesheet("palettes/mono.css");
     const sheets = PALETTES.filter((name) => name !== "default");
-    expect(sheets).toEqual(["mono", "bold"]);
+    expect(sheets).toEqual(["mono", "bold", "archivo"]);
     for (const name of sheets) {
       const sheet = loadStylesheet(`palettes/${name}.css`);
       expect(sheet.all.filter((rule) => /save-bar/.test(rule.selector))).toEqual([]);

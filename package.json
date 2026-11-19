@@ -26,6 +26,7 @@
   "dependencies": {
     "@fedify/fedify": "2.4.5",
     "@fedify/hono": "2.4.5",
+    "@fontsource/archivo-narrow": "5.3.0",
     "@fontsource/inter": "5.3.0",
     "@hono/node-server": "2.1.6",
     "@resvg/resvg-js": "2.6.2",

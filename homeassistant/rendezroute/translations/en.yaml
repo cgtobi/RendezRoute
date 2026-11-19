@@ -49,7 +49,7 @@ configuration:
     description: "anyone: every visitor. invite: only people with an invite link that you create in the admin pages. logged_in: only people who signed in with the single sign-on or Fediverse login below."
   palette:
     name: "Colour palette"
-    description: "The default colours of the pages on this instance; visitors can override them under Style in the menu. default: blue. mono: black and white. bold: white and black with signal red, hard grid rules and square corners."
+    description: "The default colours of the pages on this instance; visitors can override them under Style in the menu. default: blue. mono: black and white. bold: white and black with signal red, hard grid rules and square corners. archivo: like mono, in the Archivo Narrow typeface with bold headings."
   public_requires_login:
     name: "Public plans need an account"
     description: "Only people with an account may make a plan public, and Nearby lists nothing without a login. With no login set up, turn this off to allow public plans."

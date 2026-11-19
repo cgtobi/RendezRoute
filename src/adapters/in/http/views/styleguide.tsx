@@ -6,6 +6,7 @@ import type { Config } from "../../../../config.ts";
 import { DEFAULT_COLORS } from "../../../../domain/color.ts";
 import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import { PLAN_INPUT_FIELDS } from "../../../../domain/plan-input.ts";
+import type { Palette } from "../../../../domain/palette.ts";
 import type { Theme } from "../../../../domain/theme.ts";
 import type { Units } from "../../../../domain/units.ts";
 import type { Language, Translate } from "../../../i18n/i18n.ts";
@@ -16,7 +17,7 @@ import { LinkTools } from "./link-tools.tsx";
 import { AreaSearch, ModeSwitch } from "./maps.tsx";
 import { ExactStartSection } from "./plan-page.tsx";
 import { RequiredHint } from "./line-field.tsx";
-import { Fold, PlanForm, type VisibilityChoice } from "./plan-form.tsx";
+import { Fold, PlanForm, RouteRemoveForm, type VisibilityChoice } from "./plan-form.tsx";
 import { PlanMetrics } from "./plan-metrics.tsx";
 import { ShareLinks } from "./share.tsx";
 import { Status } from "./status.tsx";
@@ -67,6 +68,7 @@ interface StyleGuideProps {
   language: Language;
   units: Units;
   theme: Theme;
+  palette: Palette | undefined;
   csrfToken: string;
   returnTo: string;
 }
@@ -330,31 +332,48 @@ function Section({
 }
 
 export function StyleGuide(props: StyleGuideProps) {
-  const { t, config, language, units, theme, csrfToken, returnTo } = props;
+  const { t, config, language, units, theme, palette, csrfToken, returnTo } = props;
   const form = (
     idPrefix: string,
     values: PlanInput,
-    options: { errors?: readonly FieldError[]; edit?: boolean } = {},
+    options: { errors?: readonly FieldError[]; edit?: boolean; gpxDropped?: boolean } = {},
   ) => (
-    <PlanForm
-      t={t}
-      values={values}
-      errors={options.errors ?? []}
-      csrfToken={csrfToken}
-      nonce={options.edit === true ? undefined : "sample-nonce"}
-      timeZones={ZONES}
-      maxRetentionDays={30}
-      action="/styleguide"
-      heading={options.edit === true ? t("host.heading") : t("form.heading")}
-      submitLabel={options.edit === true ? t("host.save") : t("form.submit")}
-      withGpx={options.edit !== true}
-      map={undefined}
-      placeSearch={false}
-      routeTrim=""
-      units={units}
-      visibility={VISIBILITY}
-      idPrefix={idPrefix}
-    />
+    <>
+      <PlanForm
+        t={t}
+        values={values}
+        errors={options.errors ?? []}
+        csrfToken={csrfToken}
+        nonce={options.edit === true ? undefined : "sample-nonce"}
+        timeZones={ZONES}
+        maxRetentionDays={30}
+        action="/styleguide"
+        heading={options.edit === true ? t("host.heading") : t("form.heading")}
+        submitLabel={options.edit === true ? t("host.save") : t("form.submit")}
+        withGpx
+        // The host's samples have a route, so "Remove route…" shows (decision D10).
+        route={
+          options.edit === true
+            ? { present: true, removeFormId: `${idPrefix}-route-remove` }
+            : undefined
+        }
+        gpxDropped={options.gpxDropped ?? false}
+        map={undefined}
+        placeSearch={false}
+        routeTrim=""
+        units={units}
+        visibility={VISIBILITY}
+        idPrefix={idPrefix}
+        saveBar={options.edit === true}
+      />
+      {options.edit === true && (
+        <RouteRemoveForm
+          id={`${idPrefix}-route-remove`}
+          action="/styleguide"
+          csrfToken={csrfToken}
+        />
+      )}
+    </>
   );
   return (
     <div class="sg">
@@ -683,7 +702,7 @@ export function StyleGuide(props: StyleGuideProps) {
       <Section
         id="sg-plan-form"
         title="Plan form"
-        note="The real PlanForm in four states: empty create, create with errors, create with values and public visibility, host edit. Each form has its own id prefix (sg-create, sg-errors, sg-filled, sg-host). The page scripts only act on the real prefix, so these samples stay static."
+        note="The real PlanForm in five states: empty create, create with errors, create with values and public visibility, host edit of a plan with a route (save bar, clean, the route fold with the file field, the hide choice and Remove route…), host edit with errors (save bar, problem state, an unreadable file and the choose-again warning). Each form has its own id prefix (sg-create, sg-errors, sg-filled, sg-host, sg-host-errors); the hidden Remove route form after each host sample is named by its button's form attribute. The page scripts only act on the real prefix, so these samples stay static."
       >
         {form("sg-create", { ...SAMPLE_VALUES, title: t("form.defaultTitle") })}
         <hr />
@@ -692,6 +711,16 @@ export function StyleGuide(props: StyleGuideProps) {
         {form("sg-filled", FILLED_VALUES)}
         <hr />
         {form("sg-host", FILLED_VALUES, { edit: true })}
+        <hr />
+        {form(
+          "sg-host-errors",
+          { ...FILLED_VALUES, title: "" },
+          {
+            edit: true,
+            errors: [{ field: "gpx", code: "route_unreadable" }, ...ERRORS],
+            gpxDropped: true,
+          },
+        )}
       </Section>
 
       <Section
@@ -706,6 +735,7 @@ export function StyleGuide(props: StyleGuideProps) {
             language={language}
             units={units}
             theme={theme}
+            palette={palette}
             languageSwitch={{ csrfToken, returnTo }}
             idPrefix="sg-preference"
           />

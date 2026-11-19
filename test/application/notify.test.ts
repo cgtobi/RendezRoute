@@ -10,7 +10,8 @@ import {
 } from "../../src/application/host.ts";
 import { createPlan, type PlanDeps } from "../../src/application/plans.ts";
 import { respond, withdrawMyResponse } from "../../src/application/responses.ts";
-import { removeRoute, setRoute } from "../../src/application/routes.ts";
+import { removeRoute } from "../../src/application/routes.ts";
+import { uploadRoute } from "../support/route-upload.ts";
 import { planToInput } from "../../src/domain/plan-edit.ts";
 import { endpointOf, FakeChannelRepository } from "../fakes/channels.ts";
 import { FakeClock } from "../fakes/clock.ts";
@@ -293,9 +294,54 @@ describe("what notifies whom (spec 6 feature 3)", () => {
         ],
       ],
     });
-    expect((await setRoute(deps, { planId, deviceToken: host, gpx })).kind).toBe("saved");
+    expect((await uploadRoute(deps, { planId, deviceToken: host, gpx })).kind).toBe("updated");
     expect((await removeRoute(deps, { planId, deviceToken: host })).kind).toBe("removed");
     expect(queued()).toEqual(["changed fr channel-1", "changed fr channel-1"]);
+  });
+
+  it("tells about a route saved alone, even when nothing else changed (decision D10)", async () => {
+    await subscribed("Ben", "requested");
+    const gpx = fakeGpx({
+      segments: [
+        [
+          { lat: 48.16, lng: 11.6, ele: 500 },
+          { lat: 48.17, lng: 11.6, ele: 540 },
+        ],
+      ],
+    });
+    expect((await uploadRoute(deps, { planId, deviceToken: host, gpx })).kind).toBe("updated");
+    const before = await repos.plans.findById(planId);
+    jobs.jobs.clear();
+    // The same file again: distance, elevation and the exact start stay as they are.
+    expect((await uploadRoute(deps, { planId, deviceToken: host, gpx })).kind).toBe("updated");
+    const after = await repos.plans.findById(planId);
+    expect(after).toEqual(before);
+    expect(queued()).toEqual(["changed fr channel-1"]);
+  });
+
+  it("tells once about a title edit and a route saved together (decision D10)", async () => {
+    await subscribed("Ben", "requested");
+    jobs.jobs.clear();
+    const plan = await repos.plans.findById(planId);
+    if (plan === undefined) throw new Error("missing plan");
+    const gpx = fakeGpx({
+      segments: [
+        [
+          { lat: 48.16, lng: 11.6 },
+          { lat: 48.17, lng: 11.6 },
+        ],
+      ],
+    });
+    const result = await editPlan(deps, {
+      planId,
+      deviceToken: host,
+      input: { ...planToInput(plan, "metric"), title: "Renamed" },
+      units: "metric",
+      confirmDeleteNow: false,
+      route: { gpx, trim: "" },
+    });
+    expect(result.kind).toBe("updated");
+    expect(queued()).toEqual(["changed fr channel-1"]);
   });
 
   it("never put the exact start into a notification (spec 3.6)", async () => {

@@ -4,6 +4,7 @@ import {
   editScope,
   planToInput,
   removeResponse,
+  routeFieldsTyped,
   validatePlanEdit,
   validateRetentionEdit,
 } from "../../src/domain/plan-edit.ts";
@@ -83,6 +84,40 @@ describe("planToInput", () => {
     if (!saved.ok) throw new Error(JSON.stringify(saved.errors));
     expect(saved.value.distanceMeters).toBe(12500);
     expect(saved.value.elevationGainMeters).toBe(350);
+  });
+});
+
+describe("routeFieldsTyped (decision D10: values typed in the same save win over a route)", () => {
+  const routed = samplePlan({ distanceMeters: 12500, elevationGainMeters: 350 });
+
+  it("counts a field left as the form showed it as unchanged, in either unit system", () => {
+    for (const units of ["metric", "imperial"] as const) {
+      expect(routeFieldsTyped(planToInput(routed, units), routed, units)).toEqual({
+        distance: false,
+        elevation: false,
+      });
+    }
+  });
+
+  it("ignores a decimal comma, trailing zeros and spaces", () => {
+    expect(
+      routeFieldsTyped({ distanceKm: " 12,50 ", elevationGainM: "0350" }, routed, "metric"),
+    ).toEqual({ distance: false, elevation: false });
+  });
+
+  it("reports each field the host changed or cleared", () => {
+    expect(routeFieldsTyped({ distanceKm: "10", elevationGainM: "350" }, routed, "metric")).toEqual(
+      { distance: true, elevation: false },
+    );
+    expect(routeFieldsTyped({ distanceKm: "12.5", elevationGainM: "" }, routed, "metric")).toEqual({
+      distance: false,
+      elevation: true,
+    });
+    const bare = samplePlan({ distanceMeters: undefined, elevationGainMeters: undefined });
+    expect(routeFieldsTyped({ distanceKm: "", elevationGainM: "200" }, bare, "metric")).toEqual({
+      distance: false,
+      elevation: true,
+    });
   });
 });
 

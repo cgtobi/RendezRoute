@@ -266,10 +266,12 @@ export function createFakeRepositories(): {
         const route = routes.get(planId);
         return route === undefined ? undefined : structuredClone(route);
       },
-      async saveRoute(planId, route) {
-        routes.set(planId, structuredClone(route));
-        const entry = plans.get(planId);
-        if (entry !== undefined) entry.plan = { ...entry.plan, hasRoute: true };
+      async updateWithRoute(plan, route) {
+        const entry = plans.get(plan.id);
+        // Like the foreign key on routes: no route without its plan, and nothing stored then.
+        if (entry === undefined) throw new Error("foreign key constraint failed");
+        entry.plan = { ...structuredClone(plan), hasRoute: true };
+        routes.set(plan.id, structuredClone(route));
       },
       async findPreview(planId, version) {
         const entry = previews.get(planId);

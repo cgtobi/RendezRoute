@@ -19,7 +19,8 @@ import {
 } from "../../src/application/host.ts";
 import { applyRetentionMax, runRetentionSweep } from "../../src/application/maintenance.ts";
 import { deleteMyData } from "../../src/application/my-data.ts";
-import { removeRoute, setRoute } from "../../src/application/routes.ts";
+import { removeRoute } from "../../src/application/routes.ts";
+import { uploadRoute } from "../support/route-upload.ts";
 import { fakeGpx } from "../fakes/route-parser.ts";
 import { routeForNoteLink, syncParticipantNotes } from "../../src/application/participant-notes.ts";
 import { createPlan } from "../../src/application/plans.ts";
@@ -293,8 +294,8 @@ describe("a Note for a participant who joined (decision D43)", () => {
     const device = await logIn();
     const planId = await plan(device);
     expect(
-      await setRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.1)) }),
-    ).toEqual({ kind: "saved" });
+      await uploadRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.1)) }),
+    ).toMatchObject({ kind: "updated" });
     await join(planId, remote("gus"));
     const sent = publisher.sent.find((item) => item.kind === "note");
     const token = sent?.kind === "note" ? sent.note.routeToken : undefined;
@@ -355,14 +356,14 @@ describe("a change that goes to the participants' Notes", () => {
   it("gives a replaced route a new link and revokes the old one; a removed route has none", async () => {
     const { device, planId } = await joined();
     expect(
-      await setRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.1)) }),
-    ).toEqual({ kind: "saved" });
+      await uploadRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.1)) }),
+    ).toMatchObject({ kind: "updated" });
     const first = (publisher.sent.at(-1) as { note: { routeToken?: string } }).note.routeToken;
     expect(noteActivities()).toEqual(["update hal"]);
     expect(first).toBeDefined();
     expect(
-      await setRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.3)) }),
-    ).toEqual({ kind: "saved" });
+      await uploadRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.3)) }),
+    ).toMatchObject({ kind: "updated" });
     const second = (publisher.sent.at(-1) as { note: { routeToken?: string } }).note.routeToken;
     expect(second).toBeDefined();
     expect(second).not.toBe(first);
@@ -373,12 +374,35 @@ describe("a change that goes to the participants' Notes", () => {
     });
     // The same route again changes nothing.
     publisher.sent.length = 0;
-    await setRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.3)) });
+    await uploadRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.3)) });
     expect(noteActivities()).toEqual([]);
     expect(await removeRoute(deps, { planId, deviceToken: device })).toEqual({ kind: "removed" });
     expect(noteActivities()).toEqual(["update hal"]);
     expect(publisher.sent.at(-1)).toMatchObject({ note: { routeToken: undefined } });
     expect(await routeForNoteLink(deps, second ?? "")).toEqual({ kind: "not_found" });
+  });
+
+  it("is one Update with a new route link for a title edit and a route saved together (D10)", async () => {
+    const { device, planId } = await joined();
+    const [before] = await notes().listByPlan(planId);
+    const result = await editPlan(deps, {
+      planId,
+      deviceToken: device,
+      input: { ...planToInput(await stored(planId), "metric"), title: "Renamed" },
+      units: "metric",
+      confirmDeleteNow: false,
+      route: { gpx: fakeGpx(route(47.2)), trim: "" },
+    });
+    expect(result.kind).toBe("updated");
+    expect(noteActivities()).toEqual(["update hal"]);
+    const token = (publisher.sent.at(-1) as { note: { routeToken?: string } }).note.routeToken;
+    expect(token).toBeDefined();
+    expect(token).not.toBe(before?.routeToken);
+    expect(await routeForNoteLink(deps, token ?? "")).toMatchObject({
+      kind: "found",
+      title: "Renamed",
+      route: route(47.2),
+    });
   });
 
   it("keeps the Note when the plan is cancelled", async () => {
@@ -401,7 +425,7 @@ describe("withdrawing a Note", () => {
   it("is a Delete, and the link dies, when the participant leaves, is removed, changes to interested or is deleted", async () => {
     const device = await logIn();
     const planId = await plan(device);
-    await setRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.5)) });
+    await uploadRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.5)) });
     for (const name of ["ivy", "jon", "kim", "lou"]) await join(planId, remote(name));
     const tokens = new Map(
       (await notes().listByPlan(planId)).map((n) => [n.responseId, n.routeToken]),
@@ -654,15 +678,15 @@ describe("a plan with nothing private to send", () => {
     await join(routed, remote("ida"));
     publisher.sent.length = 0;
     expect(
-      await setRoute(deps, { planId: routed, deviceToken: device, gpx: fakeGpx(route(47.4)) }),
-    ).toEqual({ kind: "saved" });
+      await uploadRoute(deps, { planId: routed, deviceToken: device, gpx: fakeGpx(route(47.4)) }),
+    ).toMatchObject({ kind: "updated" });
     expect(noteActivities()).toEqual(["create ida"]);
   });
 
   it("is withdrawn when the last private thing goes, not updated with nothing in it", async () => {
     const device = await logIn();
     const planId = await plan(device, bare);
-    await setRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.4)) });
+    await uploadRoute(deps, { planId, deviceToken: device, gpx: fakeGpx(route(47.4)) });
     await join(planId, remote("jan"));
     const token = (await notes().listByPlan(planId))[0]?.routeToken ?? "";
     expect(token).not.toBe("");

@@ -140,6 +140,28 @@ export function validatePlanEdit(
   });
 }
 
+/**
+ * Which of distance and elevation the host changed in an edit (decision D10): those win over a
+ * route uploaded in the same save. Compared as the form shows them, so imperial values, which do
+ * not convert back to the stored meters exactly, count as unchanged when left alone.
+ */
+export function routeFieldsTyped(
+  input: Pick<PlanInput, "distanceKm" | "elevationGainM">,
+  plan: Plan,
+  units: Units,
+): { distance: boolean; elevation: boolean } {
+  const stored = planToInput(plan, units);
+  const normal = (value: string) => value.trim().replace(",", ".");
+  const changed = (submitted: string, shown: string) => {
+    const [a, b] = [normal(submitted), normal(shown)];
+    return a !== b && (a === "" || b === "" || Number(a) !== Number(b));
+  };
+  return {
+    distance: changed(input.distanceKm, stored.distanceKm),
+    elevation: changed(input.elevationGainM, stored.elevationGainM),
+  };
+}
+
 export interface RetentionEdit {
   template: TemplateOption;
   retentionDays: number;

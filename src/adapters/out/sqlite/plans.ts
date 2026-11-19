@@ -121,6 +121,17 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
           .as("has_route"),
       );
 
+  /** The columns an update stores: all but the ID, host token and creation time. */
+  const updateColumns = (plan: Plan) => {
+    const {
+      id,
+      host_token_hash: _hostTokenHash,
+      created_at: _createdAt,
+      ...fields
+    } = toRow(plan, "");
+    return { id, fields };
+  };
+
   const encryptRoute = (route: Route) => cipher.encrypt(JSON.stringify(toGeoJson(route)), ROUTE);
 
   const deleteMany = async (
@@ -197,13 +208,25 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
     },
 
     async update(plan) {
-      const {
-        id,
-        host_token_hash: _hostTokenHash,
-        created_at: _createdAt,
-        ...fields
-      } = toRow(plan, "");
+      const { id, fields } = updateColumns(plan);
       await database.db.updateTable("plans").set(fields).where("id", "=", id).execute();
+    },
+
+    async updateWithRoute(plan, route) {
+      const { id, fields } = updateColumns(plan);
+      const geojson_enc = encryptRoute(route);
+      await database.db.transaction().execute(async (trx) => {
+        await trx.updateTable("plans").set(fields).where("id", "=", id).execute();
+        // One route per plan, so the plan ID doubles as the route ID; an unknown plan fails here
+        // (foreign key) and rolls the update back with it.
+        await trx
+          .insertInto("routes")
+          .values({ id, plan_id: id, geojson_enc })
+          .onConflict((conflict) => conflict.column("plan_id").doUpdateSet({ geojson_enc }))
+          .execute();
+      });
+      // The replaced route's ciphertext also leaves the WAL.
+      checkpoint(database);
     },
 
     delete: (id) => deleteMany([id]),
@@ -333,17 +356,6 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       return row === undefined
         ? undefined
         : fromGeoJson(JSON.parse(cipher.decrypt(row.geojson_enc, ROUTE)));
-    },
-
-    async saveRoute(planId, route) {
-      const geojson_enc = encryptRoute(route);
-      await database.db
-        .insertInto("routes")
-        .values({ id: planId, plan_id: planId, geojson_enc })
-        .onConflict((conflict) => conflict.column("plan_id").doUpdateSet({ geojson_enc }))
-        .execute();
-      // The replaced route's ciphertext also leaves the WAL.
-      checkpoint(database);
     },
 
     async deleteRoute(planId) {

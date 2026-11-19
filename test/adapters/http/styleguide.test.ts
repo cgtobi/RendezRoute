@@ -248,10 +248,26 @@ describe("the style guide with ALLOW_INSECURE_DEV on", () => {
     expect(html).toMatch(/<link rel="stylesheet" href="\/static\/app\.css\?v=[0-9a-f]{10}"\/>/);
   });
 
-  it("shows the real create form in four states", async () => {
+  it("shows the real plan form in five states, two with the save bar", async () => {
     const { html } = await guide();
-    expect(html.split('class="plan-form"').length - 1).toBe(4);
+    expect(html.split('class="plan-form"').length - 1).toBe(5);
+    expect(html.split('data-save-bar=""').length - 1).toBe(2);
     expect(html).toContain("fold fold-warning");
+  });
+
+  it("shows the route in the host samples: Remove route… with its separate form, and a file error (D10)", async () => {
+    const { html } = await guide();
+    for (const prefix of ["sg-host", "sg-host-errors"]) {
+      expect(html).toContain(`form="${prefix}-route-remove"`);
+      expect(html).toMatch(new RegExp(`<form id="${prefix}-route-remove"[^>]*hidden`));
+    }
+    expect(html.split('class="danger-zone remove-route"').length - 1).toBe(2);
+    const errors = html.slice(html.indexOf('id="sg-host-errors-title"'));
+    expect(errors).toContain('id="sg-host-errors-gpx-error"');
+    expect(errors).toContain('id="sg-host-errors-gpx-again"');
+    const bar = errors.slice(errors.indexOf('data-save-bar=""'));
+    expect(bar).toContain('href="#sg-host-errors-gpx"');
+    expect(bar).toContain("Go to Route (GPX file, optional)");
   });
 
   it("shows a fold that hides its summary when open (D79)", async () => {

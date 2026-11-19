@@ -13,6 +13,10 @@ Everything you set or check when you run RendezRoute yourself. The short version
   set it when the app is reachable without the proxy (the exception is the admin port, see
   [Admin](#admin)).
 - **Access logs** stay off in the proxy: private links carry tokens in their paths.
+- **Request size:** route files of up to 5 MB come with the create form (`/new`) and with the host's
+  edit form (`/p/{id}/host`). A proxy with a smaller body limit (nginx defaults to 1 MB) refuses
+  them, and the host loses the edit with them: allow at least 6 MB there. Caddy has no limit by
+  default.
 - **`CONTACT_EMAIL`** identifies the instance to map and place-search providers, as their policies
   require. Without it, place search and map images in link previews are off.
 - **Weather** comes from [Open-Meteo](https://open-meteo.com/), whose free API is for
@@ -52,11 +56,13 @@ switch also allows private networks.
 | `IMPRINT_URL`         | Link to your imprint page (unset)              |
 | `PRIVACY_URL`         | Link to your own privacy page (unset)          |
 | `DEFAULT_TIMEZONE`    | IANA time zone (`UTC`)                         |
+| `PALETTE`             | Palette: `default`, `mono`, `bold`             |
 | `ALLOW_INSECURE_DEV`  | Development only: allow http (`false`)         |
 | `E2E_CLOCK_CONTROL`   | Tests only: movable clock, see below (`false`) |
 
 - `BASE_URL` has no path, query or credentials. `INSTANCE_NAME` is 1 to 60 characters.
 - `DEFAULT_TIMEZONE` is such as `Europe/Berlin`.
+- `PALETTE` sets the colours of the site (`default`). Visitors can pick another palette for their own browser under "Style" in the menu (a cookie, like the language), and "Site default" brings back this setting. They also still choose light, dark or system. The admin pages keep the default colours.
 - `PRIVACY_URL` unset: the generated page at `/privacy` is used.
 - `ENCRYPTION_KEY_FILE` defaults to `/keys/field.key` when `/keys` is a mounted volume, otherwise
   to `keys/field.key` in `DATA_DIR`. The VAPID and federation keys live in the same directory. Back

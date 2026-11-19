@@ -28,16 +28,23 @@ export function RouteTrimField({
           : t("form.gpxTrimMeters", { meters: String(meters) });
   const current = selected === "" ? String(DEFAULT_ROUTE_TRIM) : selected;
   return (
-    <div class="field">
+    // The browser script hides it until a file is chosen (data-gpx-trim); without it, the second
+    // hint says it matters only with a file.
+    <div class="field" data-gpx-trim="">
       <label for={id}>{t("form.gpxTrim")}</label>
-      <select id={id} name={ROUTE_TRIM_FIELD}>
+      <select id={id} name={ROUTE_TRIM_FIELD} aria-describedby={`${id}-hint ${id}-file`}>
         {ROUTE_TRIM_OPTIONS.map((meters) => (
           <option value={String(meters)} selected={current === String(meters)}>
             {label(meters)}
           </option>
         ))}
       </select>
-      <p class="hint">{t("form.gpxTrimHint")}</p>
+      <p class="hint" id={`${id}-hint`}>
+        {t("form.gpxTrimHint")}
+      </p>
+      <p class="hint" id={`${id}-file`}>
+        {t("form.gpxTrimOnlyWithFile")}
+      </p>
     </div>
   );
 }

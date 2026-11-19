@@ -18,6 +18,7 @@ export const DEFAULT_COLORS = {
 
 export const WHITE = constant("#FFFFFF");
 const NEAR_BLACK = constant("#111111");
+const BLACK = constant("#000000");
 
 export function parseHexColor(value: string): Result<HexColor, "color_invalid"> {
   return /^#[0-9A-Fa-f]{6}$/.test(value)
@@ -67,6 +68,38 @@ export function tintOn(color: HexColor, percent: number, background: HexColor): 
       .padStart(2, "0"),
   );
   return `#${mixed.join("")}`.toUpperCase() as HexColor;
+}
+
+/**
+ * `color` made readable as text or a graphic on `background`: the colour itself when it already
+ * has `minimum`:1 contrast, else the first mix toward black (on a light background) or white (on a
+ * dark one) that does, in 1% steps. Mixing with black or white keeps the hue, so a plan's pink
+ * stays pink, only deeper or paler. Black or white always passes (the last step), so it terminates.
+ */
+export function inkOn(color: HexColor, background: HexColor, minimum: number): HexColor {
+  if (contrastRatio(color, background) >= minimum) return color;
+  const target = relativeLuminance(background) > 0.5 ? BLACK : WHITE;
+  for (let percent = 1; percent < 100; percent += 1) {
+    const mixed = tintOn(target, percent, color);
+    if (contrastRatio(mixed, background) >= minimum) return mixed;
+  }
+  return target;
+}
+
+/**
+ * The page backgrounds the plan's ink is made for: the bold palette's --bg in light and in dark
+ * (palettes/bold.css; a test keeps them equal). Menus and cards are a shade off these, so the
+ * ink aims at INK_CONTRAST, a margin above WCAG's 4.5:1 for text.
+ */
+export const INK_BACKGROUNDS = { light: constant("#FEFEFE"), dark: constant("#0A0A0A") } as const;
+export const INK_CONTRAST = 5;
+
+/** The plan's primary colour as readable ink on a light and on a dark page (bold links, logo, title). */
+export function planInk(primary: HexColor): { onLight: HexColor; onDark: HexColor } {
+  return {
+    onLight: inkOn(primary, INK_BACKGROUNDS.light, INK_CONTRAST),
+    onDark: inkOn(primary, INK_BACKGROUNDS.dark, INK_CONTRAST),
+  };
 }
 
 export interface PlanTheme {

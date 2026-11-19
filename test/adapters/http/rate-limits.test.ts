@@ -4,8 +4,7 @@ import { createTestApp } from "../../support/app.ts";
 import { TestClient } from "../../support/client.ts";
 import { sampleGpx } from "../../support/gpx.ts";
 import { escaped } from "../../support/html.ts";
-import { hiddenFields } from "../../support/client.ts";
-import { createPlanViaUi, planForm, respondViaUi } from "../../support/plans.ts";
+import { createPlanViaUi, planForm, respondViaUi, uploadViaEdit } from "../../support/plans.ts";
 
 /** A browser behind the trusted proxy, seen with the given address. */
 class ClientAt extends TestClient {
@@ -133,21 +132,23 @@ describe("rate limits on responses (spec 5 feature 12)", () => {
 });
 
 describe("rate limits on route files (decision I32, review fix)", () => {
-  const upload = async (client: ClientAt, planId: string) => {
-    const html = await (await client.get(`/p/${planId}/host`)).text();
-    return client.postMultipart(`/p/${planId}/host/route`, hiddenFields(html), {
-      gpx: { name: "run.gpx", content: sampleGpx() },
-    });
-  };
+  const upload = (client: ClientAt, planId: string, overrides: Record<string, string> = {}) =>
+    uploadViaEdit(client, planId, sampleGpx(), { gpxTrim: "0", ...overrides });
 
   it("count every request carrying a route file, also on the host page", async () => {
     const { at } = await setup();
     const host = at("203.0.113.5");
     const { planId } = await createPlanViaUi(host);
     for (let i = 0; i < 10; i++) expect((await upload(host, planId)).status).toBe(303);
-    const refused = await upload(host, planId);
+    // Refused at the file field of the form shown again; nothing of the save is kept (D10).
+    const refused = await upload(host, planId, { title: "Renamed run" });
     expect(refused.status).toBe(429);
     expect(refused.headers.get("retry-after")).toBe("120");
+    const html = await refused.text();
+    expect(html).toContain('id="field-gpx-error"');
+    expect(html).toContain(escaped(en("field.route_rate_limited")));
+    expect(html).toContain('value="Renamed run"');
+    expect(await (await host.get(`/p/${planId}/host`)).text()).toContain('value="Easy Sunday run"');
   });
 
   it("count route files sent with an invalid form, which never create a plan", async () => {

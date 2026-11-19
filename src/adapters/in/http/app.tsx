@@ -16,6 +16,7 @@ import type {
   WeatherProvider,
 } from "../../../application/ports.ts";
 import type { Config } from "../../../config.ts";
+import type { Palette } from "../../../domain/palette.ts";
 import type { Theme } from "../../../domain/theme.ts";
 import type { Units } from "../../../domain/units.ts";
 import type { Language, Translate } from "../../i18n/i18n.ts";
@@ -52,8 +53,9 @@ import { PrivacyPage } from "./views/privacy-page.tsx";
 import { MyPlans } from "./views/my-plans.tsx";
 import { TemplateList } from "./views/templates.tsx";
 
+/** The forms with a GPX file field: creating a plan, and saving the host's edit (decision D10). */
 const isUploadRoute = (method: string, path: string) =>
-  method === "POST" && (path === "/new" || /^\/p\/[^/]+\/host\/route$/.test(path));
+  method === "POST" && (path === "/new" || /^\/p\/[^/]+\/host$/.test(path));
 
 declare module "hono" {
   interface ContextRenderer {
@@ -121,6 +123,8 @@ export type AppEnv = {
     t: Translate;
     units: Units;
     theme: Theme;
+    /** The visitor's own palette (decision 005); undefined means the instance's. */
+    palette: Palette | undefined;
     csrfToken: () => string;
     clientIp: string;
     /** Pages outside /admin/ link relative to the request path (Ingress admin listener). */

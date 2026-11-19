@@ -63,7 +63,7 @@ async function newPlan(input = {}) {
     deviceToken: undefined,
   });
   if (created.kind !== "created") throw new Error("setup failed");
-  await repos.plans.saveRoute(created.planId, route);
+  await repos.plans.updateWithRoute((await repos.plans.findById(created.planId))!, route);
   return { planId: created.planId, host: created.newDeviceToken };
 }
 

@@ -44,6 +44,15 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect(text(html)).toContain(en("privacy.devices", { unlinkedDays: 30, unusedDays: 365 }));
   });
 
+  it("names the palette cookie among the preference cookies, in every language (decision 005)", async () => {
+    const { html } = await page();
+    expect(text(html)).toContain("style (colour palette)");
+    expect(translator("de")("privacy.cookiePreferences", { days: 400 })).toContain("Farbpalette");
+    expect(translator("fr")("privacy.cookiePreferences", { days: 400 })).toContain(
+      "palette de couleurs",
+    );
+  });
+
   it("says that the name of the last plan or template fills the form again, in every language (D67)", async () => {
     const { html } = await page();
     const params = { unlinkedDays: 30, unusedDays: 365 };

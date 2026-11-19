@@ -131,3 +131,25 @@ export async function editForm(
   }
   return fields;
 }
+
+/**
+ * Saves the host page's edit form with a route file, as a browser sends it (decision D10). An
+ * override of `undefined` leaves that field out.
+ */
+export async function uploadViaEdit(
+  client: TestClient,
+  planId: string,
+  gpx: string | Uint8Array,
+  overrides: Record<string, string | undefined> = {},
+): Promise<Response> {
+  const fields: Record<string, string> = {};
+  for (const [name, value] of Object.entries({
+    ...(await editForm(client, planId)),
+    ...overrides,
+  })) {
+    if (value !== undefined && name !== "gpx") fields[name] = value;
+  }
+  return client.postMultipart(`/p/${planId}/host`, fields, {
+    gpx: { name: "route.gpx", content: gpx },
+  });
+}

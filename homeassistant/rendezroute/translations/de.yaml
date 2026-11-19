@@ -47,6 +47,9 @@ configuration:
   posting_mode:
     name: "Wer Treffen anlegen darf"
     description: "anyone: alle Besucher:innen. invite: nur Personen mit einem Einladungslink, den du in den Admin-Seiten erzeugst. logged_in: nur Personen, die sich mit dem Single Sign-on oder dem Fediverse-Login unten angemeldet haben."
+  palette:
+    name: "Farbpalette"
+    description: "Die Standardfarben der Seiten auf dieser Instanz; Besucher können sie im Menü unter Stil ändern. default: Blau. mono: Schwarz und Weiß. bold: Weiß und Schwarz mit Signalrot, harten Rasterlinien und eckigen Ecken."
   public_requires_login:
     name: "Öffentliche Liste nur mit Anmeldung"
     description: "Die Liste öffentlicher Treffen nur angemeldeten Personen zeigen. Ausschalten, um sie allen Besucher:innen zu zeigen."

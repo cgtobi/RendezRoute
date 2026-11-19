@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { createPlan, type PlanDeps } from "../../src/application/plans.ts";
 import { respond } from "../../src/application/responses.ts";
-import { removeRoute, routeForDownload, setRoute } from "../../src/application/routes.ts";
+import { removeRoute, routeForDownload } from "../../src/application/routes.ts";
 import type { Route } from "../../src/domain/route.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
@@ -9,6 +9,7 @@ import { createFakeRepositories } from "../fakes/repositories.ts";
 import { brokenGpx, fakeGpx, FakeRouteParser } from "../fakes/route-parser.ts";
 import { FakeTokenService } from "../fakes/tokens.ts";
 import { fixtureNow, sampleInput } from "../fixtures/plans.ts";
+import { uploadRoute } from "../support/route-upload.ts";
 
 let deps: PlanDeps;
 let repos: ReturnType<typeof createFakeRepositories>;
@@ -148,12 +149,12 @@ describe("host route management (decision D10)", () => {
       ],
     };
     expect(
-      await setRoute(deps, {
+      await uploadRoute(deps, {
         planId: plan.planId,
         deviceToken: plan.newDeviceToken,
         gpx: fakeGpx(other),
       }),
-    ).toEqual({ kind: "saved" });
+    ).toMatchObject({ kind: "updated" });
     expect(await repos.plans.findById(plan.planId)).toMatchObject({
       hasRoute: true,
       distanceMeters: 2224,
@@ -176,11 +177,15 @@ describe("host route management (decision D10)", () => {
   it("is only for the host, and only before the start", async () => {
     const plan = await created();
     expect(
-      await setRoute(deps, { planId: plan.planId, deviceToken: undefined, gpx: fakeGpx(route) }),
+      await uploadRoute(deps, {
+        planId: plan.planId,
+        deviceToken: undefined,
+        gpx: fakeGpx(route),
+      }),
     ).toEqual({ kind: "forbidden" });
     clock.set("2026-06-07T06:00:00Z");
     expect(
-      await setRoute(deps, {
+      await uploadRoute(deps, {
         planId: plan.planId,
         deviceToken: plan.newDeviceToken,
         gpx: fakeGpx(route),
@@ -194,14 +199,14 @@ describe("host route management (decision D10)", () => {
   it("reports unusable files", async () => {
     const plan = await created();
     expect(
-      await setRoute(deps, {
+      await uploadRoute(deps, {
         planId: plan.planId,
         deviceToken: plan.newDeviceToken,
         gpx: brokenGpx("route_too_large"),
       }),
     ).toEqual({
       kind: "invalid",
-      code: "route_too_large",
+      errors: [{ field: "gpx", code: "route_too_large" }],
     });
   });
 });
@@ -299,11 +304,13 @@ describe("hiding the start and end of a route (decision D13)", () => {
       deviceToken: plan.newDeviceToken,
       gpx: fakeGpx(fromHome),
     };
-    expect(await setRoute(deps, { ...request, routeTrim: "500" })).toEqual({
+    expect(await uploadRoute(deps, { ...request, routeTrim: "500" })).toEqual({
       kind: "invalid",
-      code: "route_trimmed_away",
+      errors: [{ field: "gpx", code: "route_trimmed_away" }],
     });
-    expect(await setRoute(deps, { ...request, routeTrim: "200" })).toEqual({ kind: "saved" });
+    expect(await uploadRoute(deps, { ...request, routeTrim: "200" })).toMatchObject({
+      kind: "updated",
+    });
     expect((await repos.plans.findRoute(plan.planId))?.segments[0]?.[0]).toEqual({
       lat: 47.102,
       lng: 10.9,

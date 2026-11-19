@@ -6,6 +6,7 @@ import { isAbsolute } from "node:path";
 import { parseEmailAddress } from "./domain/email.ts";
 import { parseFediverseServer } from "./domain/fediverse.ts";
 import { POSTING_MODES, type PostingMode } from "./domain/invite.ts";
+import { isPalette, type Palette } from "./domain/palette.ts";
 import { validateTimeZone } from "./domain/timezone.ts";
 
 /** The public listener's port inside the container; the admin listener must use another. */
@@ -63,6 +64,8 @@ export interface Config {
     | undefined;
   /** Who may create plans (spec 7 Moderation). */
   postingMode: PostingMode;
+  /** The colour palette of the whole instance (decision 004); "default" adds nothing to the pages. */
+  palette: Palette;
   /** Only plans that belong to an account may be public (spec 7 Visibility and Nearby plans). */
   publicRequiresLogin: boolean;
   /** The Nearby page (spec 7 Visibility and Nearby plans); off: no page, no link, no query. */
@@ -655,6 +658,11 @@ export function loadConfig(
     );
   }
 
+  // PALETTE: the instance's colours (decision 004).
+  const paletteSetting = read("PALETTE") || "default";
+  const palette = isPalette(paletteSetting) ? paletteSetting : undefined;
+  if (palette === undefined) errors.push("PALETTE must be default, mono or bold.");
+
   // SMTP_*: the mail server is trusted configuration, like the OIDC issuer (decision D31).
   const smtp = ((): SmtpConfig | undefined => {
     const host = read("SMTP_HOST") || undefined;
@@ -743,7 +751,8 @@ export function loadConfig(
     return { token, apiUrl };
   })();
 
-  if (errors.length > 0 || postingMode === undefined) return { ok: false, errors };
+  if (errors.length > 0 || postingMode === undefined || palette === undefined)
+    return { ok: false, errors };
 
   return {
     ok: true,
@@ -776,6 +785,7 @@ export function loadConfig(
       adminToken,
       admin,
       postingMode,
+      palette,
       publicRequiresLogin,
       nearbyEnabled,
       federationEnabled,

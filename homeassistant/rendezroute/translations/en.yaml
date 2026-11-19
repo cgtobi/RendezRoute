@@ -47,6 +47,9 @@ configuration:
   posting_mode:
     name: "Who can create runs, rides or hikes"
     description: "anyone: every visitor. invite: only people with an invite link that you create in the admin pages. logged_in: only people who signed in with the single sign-on or Fediverse login below."
+  palette:
+    name: "Colour palette"
+    description: "The default colours of the pages on this instance; visitors can override them under Style in the menu. default: blue. mono: black and white. bold: white and black with signal red, hard grid rules and square corners."
   public_requires_login:
     name: "Public listings need login"
     description: "Keep the list of public runs, rides and hikes visible only to signed-in people. Turn off to show it to every visitor."

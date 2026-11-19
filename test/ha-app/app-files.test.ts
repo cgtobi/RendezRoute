@@ -154,6 +154,7 @@ describe("config.yaml and the options mapper", () => {
         "geocoder_enabled",
         "weather_enabled",
         "posting_mode",
+        "palette",
         "public_requires_login",
         "nearby_enabled",
         "federation_enabled",

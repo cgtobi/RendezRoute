@@ -4,7 +4,7 @@ import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
 import { sampleGpx } from "../../support/gpx.ts";
 import { escaped } from "../../support/html.ts";
-import { planForm, respondViaUi } from "../../support/plans.ts";
+import { editForm, planForm, respondViaUi, uploadViaEdit } from "../../support/plans.ts";
 
 const noExactPoint = { exactLat: "", exactLng: "", distanceKm: "" };
 
@@ -111,71 +111,149 @@ describe("GPX download (spec 3.6, decision D10)", () => {
 });
 
 describe("routes on the host page (decision D10)", () => {
-  it("replaces and removes the route before the start", async () => {
+  it("saves a route with the edit form, which is multipart and has no separate upload", async () => {
     const { host, planId } = await setup();
     const page = await (await host.get(`/p/${planId}/host`)).text();
-    const csrf = hiddenFields(page)._csrf ?? "";
-    expect(page).toContain(`action="/p/${planId}/host/route"`);
-
-    const replaced = await host.postMultipart(
-      `/p/${planId}/host/route`,
-      { _csrf: csrf },
-      { gpx: { name: "new.gpx", content: sampleGpx({ lat: 46.5 }) } },
+    expect(page).toMatch(
+      new RegExp(
+        `<form method="post" action="/p/${planId}/host" class="plan-form" enctype="multipart/form-data"`,
+      ),
     );
-    expect(replaced.status).toBe(303);
-    expect(await (await host.get(`/p/${planId}/route.gpx`)).text()).toContain('lat="46.5"');
+    expect(page).not.toContain(`action="/p/${planId}/host/route"`);
+    expect(page).not.toContain(escaped("Replace route"));
+    expect(page).not.toContain(escaped("Upload route"));
 
-    const removed = await host.postForm(`/p/${planId}/host/route/remove`, { _csrf: csrf });
-    expect(removed.status).toBe(303);
-    expect((await host.get(`/p/${planId}/route.gpx`)).status).toBe(404);
+    const replaced = await uploadViaEdit(host, planId, sampleGpx({ lat: 46.5 }), { gpxTrim: "0" });
+    expect(replaced.status).toBe(303);
+    expect(replaced.headers.get("location")).toBe(`/p/${planId}/host?saved`);
+    expect(await (await host.get(`/p/${planId}/route.gpx`)).text()).toContain('lat="46.5"');
+  });
+
+  it("keeps a title edit made in the same save as the upload", async () => {
+    const { host, planId } = await setup();
+    const response = await uploadViaEdit(host, planId, sampleGpx({ lat: 46.5 }), {
+      title: "Renamed run",
+      gpxTrim: "0",
+    });
+    expect(response.status).toBe(303);
+    expect(await (await host.get(`/p/${planId}/host`)).text()).toContain('value="Renamed run"');
+    expect(await (await host.get(`/p/${planId}/route.gpx`)).text()).toContain('lat="46.5"');
+  });
+
+  it("saves nothing when the file is unusable, and asks for it again", async () => {
+    const { host, planId } = await setup();
+    const before = await (await host.get(`/p/${planId}/route.gpx`)).text();
+    const response = await uploadViaEdit(host, planId, "not xml", {
+      title: "Renamed run",
+      gpxTrim: "200",
+    });
+    expect(response.status).toBe(422);
+    const html = await response.text();
+    expect(html).toContain('value="Renamed run"');
+    expect(html).toContain('id="field-gpx-error"');
+    expect(html).toContain(escaped(en["field.route_unreadable"]));
+    expect(html).toContain(escaped(en["form.gpxChooseAgain"]));
+    expect(html).toMatch(
+      /id="field-gpx"[^>]*aria-describedby="field-gpx-hint field-gpx-again field-gpx-error"/,
+    );
+    expect(html).toContain('<option value="200" selected="">');
+    // The problem bar names the route and leads to the file field (decision 006).
+    expect(html).toContain("data-problem");
+    expect(html).toContain('href="#field-gpx"');
+    expect(html).toContain(escaped(en["form.gpx"]));
+
+    expect(await (await host.get(`/p/${planId}/host`)).text()).toContain('value="Easy Sunday run"');
+    expect(await (await host.get(`/p/${planId}/route.gpx`)).text()).toBe(before);
   });
 
   it("does not claim changes were saved when route changes are refused after the start", async () => {
     const { host, planId, clock } = await setup();
-    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
+    const fields = await editForm(host, planId);
     clock.set("2026-06-07T06:00:00Z");
     const upload = await host.postMultipart(
-      `/p/${planId}/host/route`,
-      { _csrf: csrf },
+      `/p/${planId}/host`,
+      { ...fields, gpx: "" },
       { gpx: { name: "r.gpx", content: sampleGpx() } },
     );
-    const remove = await host.postForm(`/p/${planId}/host/route/remove`, { _csrf: csrf });
+    const remove = await host.postForm(`/p/${planId}/host/route/remove`, {
+      _csrf: fields._csrf ?? "",
+    });
     for (const response of [upload, remove]) {
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe(`/p/${planId}/host`);
     }
   });
 
-  it("shows upload errors on the host page", async () => {
+  it("no longer has a separate upload address", async () => {
     const { host, planId } = await setup();
     const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
     const response = await host.postMultipart(
       `/p/${planId}/host/route`,
       { _csrf: csrf },
-      { gpx: { name: "x.gpx", content: "not xml" } },
+      { gpx: { name: "r.gpx", content: sampleGpx() } },
     );
-    expect(response.status).toBe(422);
-    expect(await response.text()).toContain(escaped(en["field.route_unreadable"]));
+    expect(response.status).toBe(404);
+  });
+
+  it("takes files up to 5 MB with the edit, refuses bigger ones, and keeps 100 KB for removing", async () => {
+    const { host, planId } = await setup();
+    const before = await (await host.get(`/p/${planId}/route.gpx`)).text();
+    const justTooBig = await uploadViaEdit(host, planId, new Uint8Array(5 * 1024 * 1024 + 100), {
+      title: "Renamed run",
+    });
+    expect(justTooBig.status).toBe(422);
+    expect(await justTooBig.text()).toContain(escaped(en["field.route_too_large"]));
+    const huge = await uploadViaEdit(host, planId, new Uint8Array(7 * 1024 * 1024));
+    expect(huge.status).toBe(413);
+    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
+    const bigRemove = await host.postMultipart(
+      `/p/${planId}/host/route/remove`,
+      { _csrf: csrf },
+      { gpx: { name: "x.gpx", content: new Uint8Array(200_000) } },
+    );
+    expect(bigRemove.status).toBe(413);
+    expect(await (await host.get(`/p/${planId}/host`)).text()).toContain('value="Easy Sunday run"');
+    expect(await (await host.get(`/p/${planId}/route.gpx`)).text()).toBe(before);
   });
 });
 
-describe("an upload without a file", () => {
-  it("answers 422 with the message and leaves the route alone", async () => {
+describe("removing the route on the host page (decision D10)", () => {
+  it("is a confirmation inside the route fold whose button submits a separate form", async () => {
     const { host, planId } = await setup();
-    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
-    const before = await (await host.get(`/p/${planId}/route.gpx`)).text();
-    const response = await host.postMultipart(`/p/${planId}/host/route`, { _csrf: csrf }, {});
-    expect(response.status).toBe(422);
-    const html = await response.text();
-    expect(html).toContain(escaped(en["field.gpx_missing"]));
-    expect(html).toContain('id="field-route-error"');
-    expect(await (await host.get(`/p/${planId}/route.gpx`)).text()).toBe(before);
-    const ok = await host.postMultipart(
-      `/p/${planId}/host/route`,
-      { _csrf: csrf },
-      { gpx: { name: "new.gpx", content: sampleGpx({ lat: 46.5 }) } },
-    );
-    expect(ok.status).toBe(303);
+    const page = await (await host.get(`/p/${planId}/host`)).text();
+    const planForm =
+      /<form[^>]*action="\/p\/[^"]+\/host"[^>]*>[\s\S]*?<\/form>/.exec(page)?.[0] ?? "";
+    expect(planForm).toContain('<details class="danger-zone remove-route">');
+    expect(planForm).toContain(escaped(en["host.routeRemoveOpen"]));
+    expect(planForm).toContain('form="route-remove"');
+    expect(planForm).toContain(escaped(en["fold.routeSet"]));
+    expect(planForm).toContain(escaped(en["form.gpxHintReplace"]));
+    // Outside the edit form: forms cannot nest.
+    expect(planForm).not.toContain('id="route-remove"');
+    const removeForm = /<form id="route-remove"[^>]*>[\s\S]*?<\/form>/.exec(page)?.[0] ?? "";
+    expect(removeForm).toContain(`action="/p/${planId}/host/route/remove"`);
+    expect(removeForm).toContain(" hidden");
+
+    const removed = await host.postForm(`/p/${planId}/host/route/remove`, hiddenFields(removeForm));
+    expect(removed.status).toBe(303);
+    expect(removed.headers.get("location")).toBe(`/p/${planId}/host?saved`);
+    expect((await host.get(`/p/${planId}/route.gpx`)).status).toBe(404);
+
+    const after = await (await host.get(`/p/${planId}/host`)).text();
+    expect(after).not.toContain('id="route-remove"');
+    expect(after).not.toContain('form="route-remove"');
+    expect(after).not.toContain("remove-route");
+    expect(after).toContain(escaped(en["fold.routeNone"]));
+    expect(after).toContain(escaped(en["form.gpxHintAdd"]));
+  });
+
+  it("shows the hiding choice and its hint without scripts", async () => {
+    const { host, planId } = await setup();
+    const page = await (await host.get(`/p/${planId}/host`)).text();
+    expect(page).toMatch(/<div class="field" data-gpx-trim="">/);
+    expect(page).not.toMatch(/data-gpx-trim=""[^>]*hidden/);
+    expect(page).toContain(escaped(en["form.gpxTrimOnlyWithFile"]));
+    expect(page).toContain(`data-too-large="${escaped(en["field.route_too_large"])}"`);
   });
 });
 
@@ -227,12 +305,9 @@ describe("hiding the start and end of a route (decision D13)", () => {
 
   it("trims routes uploaded on the host page", async () => {
     const { host, planId } = await setup();
-    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
-    const response = await host.postMultipart(
-      `/p/${planId}/host/route`,
-      { _csrf: csrf, gpxTrim: "200" },
-      { gpx: { name: "new.gpx", content: sampleGpx({ lat: 46.5, count: 10 }) } },
-    );
+    const response = await uploadViaEdit(host, planId, sampleGpx({ lat: 46.5, count: 10 }), {
+      gpxTrim: "200",
+    });
     expect(response.status).toBe(303);
     const gpx = await (await host.get(`/p/${planId}/route.gpx`)).text();
     expect(gpx).toMatch(/<trkseg>\s*<trkpt lat="46.502"/);
@@ -249,12 +324,9 @@ describe("a form posted without the hiding choice (decisions D13, D40)", () => {
     expect(gpx).toMatch(/<trkseg>\s*<trkpt lat="47.12345"/);
     expect(gpx).toContain('lat="47.13245"');
 
-    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
-    await host.postMultipart(
-      `/p/${planId}/host/route`,
-      { _csrf: csrf },
-      { gpx: { name: "new.gpx", content: sampleGpx({ lat: 46.5, count: 10 }) } },
-    );
+    await uploadViaEdit(host, planId, sampleGpx({ lat: 46.5, count: 10 }), {
+      gpxTrim: undefined,
+    });
     const replaced = await (await host.get(`/p/${planId}/route.gpx`)).text();
     expect(replaced).toMatch(/<trkseg>\s*<trkpt lat="46.5"/);
   });
@@ -288,12 +360,7 @@ describe("cutting a route to the meeting point (decision D40)", () => {
     const host = new TestClient(test.app);
     const created = await createWithGpx(host, sampleGpx({ lat: 46.5 }), meeting);
     const planId = /\/p\/([A-Za-z0-9_-]{22})/.exec(await created.text())?.[1] ?? "";
-    const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
-    await host.postMultipart(
-      `/p/${planId}/host/route`,
-      { _csrf: csrf, gpxTrim: "0" },
-      { gpx: { name: "new.gpx", content: sampleGpx({ count: 20 }) } },
-    );
+    await uploadViaEdit(host, planId, sampleGpx({ count: 20 }), { gpxTrim: "0" });
     const gpx = await (await host.get(`/p/${planId}/route.gpx`)).text();
     expect(firstPoint(gpx)).toBe("47.13045");
     // Hiding off: the far end stays.

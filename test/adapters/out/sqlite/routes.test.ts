@@ -75,10 +75,59 @@ describe("routes (spec 4, decision D10)", () => {
 
   it("replaces and removes routes, leaving nothing in the files", async () => {
     await seed(route);
-    await plans().saveRoute("plan-0001", other);
+    await plans().updateWithRoute((await plans().findById("plan-0001"))!, other);
     expect(await plans().findRoute("plan-0001")).toEqual(other);
     await plans().deleteRoute("plan-0001");
     expect(await plans().findById("plan-0001")).toMatchObject({ hasRoute: false });
+    expect(
+      (database.sqlite.prepare("select count(*) as n from routes").get() as { n: number }).n,
+    ).toBe(0);
+  });
+
+  it("stores an edit and its route together, the route encrypted (decision D10)", async () => {
+    await seed(undefined);
+    const plan = await plans().findById("plan-0001");
+    if (plan === undefined) throw new Error("missing plan");
+    await plans().updateWithRoute({ ...plan, title: "Renamed", distanceMeters: 4321 }, route);
+    expect(await plans().findById("plan-0001")).toMatchObject({
+      title: "Renamed",
+      distanceMeters: 4321,
+      hasRoute: true,
+    });
+    expect(await plans().findRoute("plan-0001")).toEqual(route);
+    expect(raw()).not.toContain("47.12345");
+    expect(raw()).not.toContain("47.12399");
+  });
+
+  it("rolls the edit back when its route cannot be stored (decision D10)", async () => {
+    await seed(undefined);
+    const plan = await plans().findById("plan-0001");
+    if (plan === undefined) throw new Error("missing plan");
+    // A real failure inside the transaction, after the plan row was already updated.
+    database.sqlite.exec(
+      "create trigger refuse_route before insert on routes begin select raise(abort, 'refused'); end",
+    );
+    const later = new Date(fixtureNow.getTime() + 60_000);
+    await expect(
+      plans().updateWithRoute({ ...plan, title: "Renamed", updatedAt: later }, route),
+    ).rejects.toThrow(/refused/);
+    expect(await plans().findById("plan-0001")).toMatchObject({
+      title: plan.title,
+      updatedAt: plan.updatedAt,
+      hasRoute: false,
+    });
+    expect(
+      (database.sqlite.prepare("select count(*) as n from routes").get() as { n: number }).n,
+    ).toBe(0);
+  });
+
+  it("stores nothing for an unknown plan", async () => {
+    await seed(undefined);
+    const plan = await plans().findById("plan-0001");
+    if (plan === undefined) throw new Error("missing plan");
+    await expect(plans().updateWithRoute({ ...plan, id: "plan-0002" }, route)).rejects.toThrow(
+      /FOREIGN KEY/,
+    );
     expect(
       (database.sqlite.prepare("select count(*) as n from routes").get() as { n: number }).n,
     ).toBe(0);

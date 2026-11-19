@@ -20,6 +20,7 @@ export const de: Messages = {
   "fold.exactSet": "Festgelegt · nur Leute, die du annimmst, sehen ihn",
   "fold.route": "Strecke, Tempo und Notiz",
   "fold.routeNone": "Keine Strecke",
+  "fold.routeSet": "Strecke hinzugefügt",
   "fold.routeUnset": "Distanz und Tempo nicht angegeben",
   "fold.noteAdded": "Notiz hinzugefügt",
   "fold.noteNone": "keine Notiz",
@@ -49,6 +50,12 @@ export const de: Messages = {
   "theme.system": "System",
   "theme.light": "Hell",
   "theme.dark": "Dunkel",
+  "layout.palette": "Stil",
+  "palette.site": "Standard der Instanz",
+  "palette.siteNamed": "Standard der Instanz ({palette})",
+  "palette.default": "Standard",
+  "palette.mono": "Mono",
+  "palette.bold": "Bold",
 
   "privacy.title": "Datenschutz",
   "privacy.intro":
@@ -80,7 +87,7 @@ export const de: Messages = {
   "privacy.cookieCsrf":
     "Ein Sitzungs-Cookie, das Formulare vor gefälschten Absendungen schützt. Browser löschen es beim Schließen, außer sie stellen deine letzte Sitzung wieder her.",
   "privacy.cookiePreferences":
-    "Cookies für Sprache, Einheiten und Darstellung (hell oder dunkel), nur wenn du unten auf einer Seite eine Sprache, Einheiten oder eine Darstellung wählst, {days} Tage lang gespeichert.",
+    "Cookies für Sprache, Einheiten, Darstellung (hell oder dunkel) und Stil (Farbpalette), nur wenn du im Menü eine Sprache, Einheiten, eine Darstellung oder einen Stil wählst, {days} Tage lang gespeichert.",
   "privacy.cookieAdmin":
     "Die Administration erhält nach der Anmeldung ein eigenes Login-Cookie, das {hours} Stunden gilt. Besucher:innen erhalten es nie.",
   "privacy.cookieOthers": "Keine anderen Cookies und keine von anderen Websites.",
@@ -304,12 +311,19 @@ export const de: Messages = {
   "form.gpxTrim": "Anfang und Ende der Route ausblenden",
   "form.gpxTrimHint":
     "Hat der Treffpunkt eine Stelle auf der Karte, wird die Route so gekürzt, dass sie dort beginnt, und dort endet, wenn sie zurückkommt. Jeder andere Start und jedes andere Ende, zum Beispiel deine Wohnung, wird um die hier gewählte Strecke ausgeblendet. Entferntes wird nie gespeichert.",
+  "form.gpxTrimOnlyWithFile": "Gilt nur für eine oben gewählte Datei.",
   "form.gpxTrimOff": "Ganze Route zeigen",
   "form.gpxTrimMeters": "{meters} m an jedem Ende ausblenden",
   "form.gpxTrimKilometers": "{km} km an jedem Ende ausblenden",
   "form.gpxTrimMiles": "Etwa {miles} mi an jedem Ende ausblenden",
   "form.gpxHint":
     "Füllt Distanz, Höhenmeter und den genauen Treffpunkt aus. Nur wer zusagt, kann die Route sehen und herunterladen. Wenn das Formular einen Fehler zeigt, wähle die Datei noch einmal aus.",
+  "form.gpxHintAdd":
+    "Die Route wird beim Speichern hinzugefügt. Distanz und Höhenmeter richten sich dann nach ihr, außer du änderst sie hier ebenfalls. Nur wer zusagt, kann die Route sehen und herunterladen.",
+  "form.gpxHintReplace":
+    "Dieses Treffen hat eine Route. Eine hier gewählte Datei ersetzt sie beim Speichern. Distanz und Höhenmeter richten sich dann nach der neuen Route, außer du änderst sie hier ebenfalls.",
+  "form.gpxChooseAgain":
+    "Wähle die Datei noch einmal aus: Browser behalten eine gewählte Datei nicht, wenn die Seite neu geladen wird.",
 
   "field.invalid": "Dieser Wert ist ungültig.",
   "field.contribution_empty": "Schreib einen Kommentar oder füge einen Link hinzu.",
@@ -342,13 +356,14 @@ export const de: Messages = {
   "field.route_unsafe":
     "Diese Datei kann nicht sicher gelesen werden. Bitte exportiere sie noch einmal als einfache GPX-Datei.",
   "field.route_unreadable": "Das sieht nicht nach einer GPX-Datei aus.",
-  "field.gpx_missing": "Wähle eine GPX-Datei aus.",
   "field.route_empty": "Die Datei enthält keinen Track und keine Route.",
   "field.route_too_many_points": "Die Route hat mehr als 50.000 Punkte.",
   "field.route_invalid": "Die Datei enthält ungültige Koordinaten.",
   "field.route_too_long": "Die Route ist länger als 1.000 km.",
   "field.route_trimmed_away":
     "Ohne Anfang und Ende bliebe nichts von der Route übrig. Wähle eine kürzere Strecke.",
+  "field.route_rate_limited":
+    "Zu viele Routendateien in kurzer Zeit. Es wurde nichts gespeichert: Versuche es später noch einmal.",
   "field.name_taken_by_host":
     "Diesen Namen verwendet die Organisator:in des Treffens. Bitte nimm einen anderen.",
   "field.name_taken_by_response": "Diesen Namen verwendet schon eine Person, die geantwortet hat.",
@@ -705,17 +720,18 @@ export const de: Messages = {
   "calendar.deletionEntry": "„{title}“ wird heute gelöscht",
   "calendar.exactStart": "Genauer Treffpunkt: {start}",
 
-  "host.route": "Route",
-  "host.routeNone": "Noch keine Route.",
-  "host.routePresent": "Dieses Treffen hat eine Route.",
-  "host.routeUpload": "Route hochladen",
-  "host.routeReplace": "Route ersetzen",
   "host.routeRemove": "Route entfernen",
-  "host.routeHint": "Distanz und Höhenmeter werden aus der Route übernommen.",
+  "host.routeRemoveOpen": "Route entfernen…",
+  "host.routeRemoveExplain":
+    "Die Route wird sofort für alle gelöscht. Distanz und Höhenmeter bleiben. Nicht gespeicherte Änderungen im Formular gehen verloren.",
 
   "host.heading": "Dein Treffen verwalten",
   "host.saved": "Änderungen gespeichert.",
   "host.save": "Änderungen speichern",
+  "saveBar.unsaved": "Nicht gespeicherte Änderungen",
+  "saveBar.discard": "Verwerfen",
+  "saveBar.problems": { one: "{count} Problem zu beheben", other: "{count} Probleme zu beheben" },
+  "saveBar.goTo": "Zu {field}",
   "host.retentionOnly":
     "Das Treffen hat begonnen oder wurde abgesagt. Du kannst noch ändern, wann es gelöscht wird.",
   "host.deletesNowWarning": "Damit wird das Treffen sofort gelöscht.",

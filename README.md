@@ -147,6 +147,7 @@ options in the Configuration tab. All of them, with their defaults and rules, ar
 | `TRUST_PROXY`        | Trust the proxy headers (`false`)        |
 | `CONTACT_EMAIL`      | Identifies you to providers (unset)      |
 | `POSTING_MODE`       | Who may create plans (`anyone`)          |
+| `PALETTE`            | Colour palette (`default`)               |
 | `ADMIN_TOKEN`        | Turns on `/admin` (unset)                |
 | `SMTP_HOST`          | Mail server; turns email on (unset)      |
 | `FEDERATION_ENABLED` | Join the fediverse (on)                  |

@@ -105,6 +105,7 @@ describe("page layout", () => {
       'action="/language"',
       'action="/units"',
       'action="/theme"',
+      'action="/palette"',
       'href="/my-data"',
       'href="/nearby"',
     ]) {
@@ -112,15 +113,16 @@ describe("page layout", () => {
     }
     // Each form keeps its Change button and the instant-apply marker.
     expect(sheet.match(/<button type="submit" class="secondary">Change<\/button>/g)).toHaveLength(
-      3,
+      4,
     );
-    expect(sheet.match(/<select [^>]*data-auto-submit/g)).toHaveLength(3);
-    // The links come before the three preference rows.
+    expect(sheet.match(/<select [^>]*data-auto-submit/g)).toHaveLength(4);
+    // The links come before the four preference rows.
     const lastLink = sheet.lastIndexOf("<a ");
     expect(lastLink).toBeGreaterThan(-1);
     expect(lastLink).toBeLessThan(sheet.indexOf('action="/language"'));
     expect(sheet.indexOf('action="/language"')).toBeLessThan(sheet.indexOf('action="/units"'));
     expect(sheet.indexOf('action="/units"')).toBeLessThan(sheet.indexOf('action="/theme"'));
+    expect(sheet.indexOf('action="/theme"')).toBeLessThan(sheet.indexOf('action="/palette"'));
   });
 
   it("keeps only the legal links in the footer (decision D68)", async () => {

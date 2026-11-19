@@ -16,12 +16,13 @@ import { readDeviceToken } from "../device-cookie.ts";
 import { DeleteConfirm, HostPage } from "../views/host-page.tsx";
 import { recapWindowParam } from "../views/recap.tsx";
 import { MapAssets } from "../views/maps.tsx";
+import { themeVersion } from "../views/theme-css.ts";
 import { ROUTE_TRIM_FIELD } from "../views/route-trim.tsx";
 import { deleteRecap } from "../../../../application/recap.ts";
 import { emailProps, registerEmailForms } from "./email.tsx";
 import { ntfyProps, registerNtfyForms } from "./ntfy.tsx";
 import { registerTelegramForms, telegramProps } from "./telegram.tsx";
-import { removeRoute, setRoute } from "../../../../application/routes.ts";
+import { removeRoute } from "../../../../application/routes.ts";
 import {
   badRequest,
   formField,
@@ -35,7 +36,6 @@ import {
   localizedInput,
   newNonce,
   TIME_ZONES,
-  tooManyRequests,
   signedOutCount,
   visibilityChoice,
 } from "./shared.tsx";
@@ -55,8 +55,9 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       errors?: readonly FieldError[];
       confirmDeleteNow?: boolean;
       confirmAcceptPending?: number;
-      routeError?: string;
       routeTrim?: string;
+      /** A file was chosen but not saved: the browser does not keep it for the page shown again. */
+      gpxDropped?: boolean;
       email?: { value: string; error: string };
     } = {},
   ) => {
@@ -103,8 +104,8 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
           deviceToken: readDeviceToken(c, config),
         })}
         linkNonce={newNonce()}
-        routeError={form.routeError}
         routeTrim={form.routeTrim ?? ""}
+        gpxDropped={form.gpxDropped ?? false}
         map={mapSettings(config)}
         placeSearch={geocoder !== undefined}
         email={email}
@@ -118,7 +119,19 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       {
         title: c.get("t")("host.heading"),
         // Map tools exist only in the full edit form; the form stays neutral (decision D11).
-        head: page.scope === "all" ? <MapAssets pathBase="/" /> : undefined,
+        // The bold palette alone takes the plan's colour here (links, controls, the logo), so
+        // only then is the plan's public theme stylesheet linked; other palettes render as before.
+        head: (
+          <>
+            {(c.get("palette") ?? config.palette) === "bold" && (
+              <link
+                rel="stylesheet"
+                href={`/p/${page.planId}/theme.css?v=${themeVersion({ primary: page.input.primaryColor, secondary: page.input.secondaryColor })}`}
+              />
+            )}
+            {page.scope === "all" && <MapAssets pathBase="/" />}
+          </>
+        ),
       },
     );
   };
@@ -142,17 +155,40 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     rerender: (c, email) => render(c, { email }),
   });
 
+  /** The edit form, with a route file if one was chosen: saved all or nothing (decision D10). */
   app.post("/p/:id/host", async (c) => {
     const body = await readForm(c);
     if (body === undefined) return badRequest(c);
     const values = planInput((field) => formField(body, field));
     const { planId } = request(c);
+    // An empty file part is no file.
+    const gpx = await formFile(body, "gpx");
+    const routeTrim = formField(body, ROUTE_TRIM_FIELD);
+    // Shown again, the page has lost the chosen file: the host is asked to choose it again.
+    const gpxDropped = gpx !== undefined;
+    if (gpx !== undefined) {
+      // Every route file counts: parsing it is the costly part (decision I32). Nothing is saved.
+      const allowed = limits.route.take(clientOf(c));
+      if (!allowed.ok) {
+        c.header("retry-after", String(allowed.retryAfterSeconds));
+        c.status(429);
+        // Like the 422 below, this re-render drops a submitted confirmAcceptPending (and
+        // confirmDeleteNow): the host is asked again with the next save, never accepted silently.
+        return render(c, {
+          values,
+          errors: [{ field: "gpx", code: "route_rate_limited" }],
+          routeTrim,
+          gpxDropped,
+        });
+      }
+    }
     const result = await editPlan(planDeps, {
       ...request(c),
       input: values,
       units: c.get("units"),
       confirmDeleteNow: formField(body, "confirmDeleteNow") === "1",
       confirmAcceptPending: Number(formField(body, "confirmAcceptPending")) || undefined,
+      route: gpx === undefined ? undefined : { gpx, trim: routeTrim },
     });
     switch (result.kind) {
       case "updated": {
@@ -167,10 +203,16 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       case "confirm_delete_now":
         return render(c, { values, confirmDeleteNow: true });
       case "confirm_accept_pending":
-        return render(c, { values, confirmAcceptPending: result.count });
+        return render(c, {
+          values,
+          confirmAcceptPending: result.count,
+          routeTrim,
+          gpxDropped,
+        });
       case "invalid":
+        // A submitted confirmAcceptPending is not passed on: the next save asks the host again.
         c.status(422);
-        return render(c, { values, errors: result.errors });
+        return render(c, { values, errors: result.errors, routeTrim, gpxDropped });
       default:
         return afterAction(c, result, `/p/${planId}`);
     }
@@ -211,27 +253,7 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     return afterAction(c, result, `/p/${request(c).planId}`);
   });
 
-  app.post("/p/:id/host/route", async (c) => {
-    const body = await readForm(c);
-    if (body === undefined) return badRequest(c);
-    const gpx = await formFile(body, "gpx");
-    const routeTrim = formField(body, ROUTE_TRIM_FIELD);
-    if (gpx === undefined) {
-      // No file chosen: the page again with a message, like any other upload error.
-      c.status(422);
-      return render(c, { routeError: "gpx_missing", routeTrim });
-    }
-    // Every route file counts: parsing it is the costly part (decision I32).
-    const allowed = limits.route.take(clientOf(c));
-    if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
-    const result = await setRoute(planDeps, { ...request(c), gpx, routeTrim });
-    if (result.kind === "invalid") {
-      c.status(422);
-      return render(c, { routeError: result.code, routeTrim });
-    }
-    return afterAction(c, result, `/p/${request(c).planId}/host?saved`);
-  });
-
+  /** "Remove route…" on the host page: a separate form, outside the edit form (decision D10). */
   app.post("/p/:id/host/route/remove", async (c) => {
     const result = await removeRoute(planDeps, request(c));
     return afterAction(c, result, `/p/${request(c).planId}/host?saved`);

@@ -19,6 +19,7 @@ export const en = {
   "fold.exactSet": "Set · only people you accept see it",
   "fold.route": "Route, pace and note",
   "fold.routeNone": "No route",
+  "fold.routeSet": "Route added",
   "fold.routeUnset": "distance and pace not set",
   "fold.noteAdded": "note added",
   "fold.noteNone": "no note",
@@ -48,6 +49,12 @@ export const en = {
   "theme.system": "System",
   "theme.light": "Light",
   "theme.dark": "Dark",
+  "layout.palette": "Style",
+  "palette.site": "Site default",
+  "palette.siteNamed": "Site default ({palette})",
+  "palette.default": "Default",
+  "palette.mono": "Mono",
+  "palette.bold": "Bold",
 
   "privacy.title": "Privacy",
   "privacy.intro":
@@ -79,7 +86,7 @@ export const en = {
   "privacy.cookieCsrf":
     "A session cookie that protects forms against forged submissions. Browsers delete it when you close them, unless they restore your previous session.",
   "privacy.cookiePreferences":
-    "Language, units and theme cookies, only when you choose a language, units or theme at the bottom of a page, kept for {days} days.",
+    "Language, units, theme and style (colour palette) cookies, only when you choose a language, units, theme or style in the menu, kept for {days} days.",
   "privacy.cookieAdmin":
     "The instance admin, after logging in, gets a separate login cookie that lasts {hours} hours. Visitors never get it.",
   "privacy.cookieOthers": "No other cookies, and none from other sites.",
@@ -292,12 +299,19 @@ export const en = {
   "form.gpxTrim": "Hide the start and end of the route",
   "form.gpxTrimHint":
     "Where the meeting point has a spot on the map, the route is cut to start there, and to end there if it comes back. Any other start or end, for example your home, is hidden by the distance chosen here. What is removed is never stored.",
+  "form.gpxTrimOnlyWithFile": "Only used for a file chosen above.",
   "form.gpxTrimOff": "Show the whole route",
   "form.gpxTrimMeters": "Hide {meters} m at each end",
   "form.gpxTrimKilometers": "Hide {km} km at each end",
   "form.gpxTrimMiles": "Hide about {miles} mi at each end",
   "form.gpxHint":
     "Fills in distance, elevation and the exact start. Only people who join can see and download the route. If the form shows an error, choose the file again.",
+  "form.gpxHintAdd":
+    "The route is added when you save. Distance and elevation then follow it, unless you change them here too. Only people who join can see and download the route.",
+  "form.gpxHintReplace":
+    "This plan has a route. A file chosen here replaces it when you save. Distance and elevation then follow the new route, unless you change them here too.",
+  "form.gpxChooseAgain":
+    "Choose the file again: browsers do not keep a chosen file when the page reloads.",
 
   "field.invalid": "This value is not valid.",
   "field.contribution_empty": "Write a comment or add a link.",
@@ -330,13 +344,14 @@ export const en = {
   "field.route_unsafe":
     "This file can't be read safely. Please export it again as a plain GPX file.",
   "field.route_unreadable": "This doesn't look like a GPX file.",
-  "field.gpx_missing": "Choose a GPX file.",
   "field.route_empty": "The file contains no track or route.",
   "field.route_too_many_points": "The route has more than 50,000 points.",
   "field.route_invalid": "The file contains invalid coordinates.",
   "field.route_too_long": "The route is longer than 1,000 km.",
   "field.route_trimmed_away":
     "Hiding the start and end would remove the whole route. Choose a shorter distance.",
+  "field.route_rate_limited":
+    "Too many route files in a short time. Nothing was saved: try again later.",
   "field.name_taken_by_host": "That's the host's name. Please use a different one.",
   "field.name_taken_by_response": "Someone who responded already uses this name.",
 
@@ -676,17 +691,18 @@ export const en = {
   "calendar.deletionEntry": "“{title}” will be deleted today",
   "calendar.exactStart": "Exact start: {start}",
 
-  "host.route": "Route",
-  "host.routeNone": "No route yet.",
-  "host.routePresent": "This plan has a route.",
-  "host.routeUpload": "Upload route",
-  "host.routeReplace": "Replace route",
   "host.routeRemove": "Remove route",
-  "host.routeHint": "Distance and elevation are taken from the route.",
+  "host.routeRemoveOpen": "Remove route…",
+  "host.routeRemoveExplain":
+    "The route is deleted now, for everyone. Distance and elevation stay. Changes in the form you have not saved are lost.",
 
   "host.heading": "Manage your plan",
   "host.saved": "Changes saved.",
   "host.save": "Save changes",
+  "saveBar.unsaved": "Unsaved changes",
+  "saveBar.discard": "Discard",
+  "saveBar.problems": { one: "{count} problem to fix", other: "{count} problems to fix" },
+  "saveBar.goTo": "Go to {field}",
   "host.retentionOnly":
     "The plan has started or was cancelled. You can still change when it is deleted.",
   "host.deletesNowWarning": "This will delete the plan now.",

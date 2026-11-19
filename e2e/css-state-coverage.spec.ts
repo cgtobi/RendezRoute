@@ -22,6 +22,11 @@ const UNCOVERED: readonly { pattern: RegExp; reason: string }[] = [
       "set on <html> by the theme preference: css-snapshot.spec.ts sets it in its theme variants",
   },
   {
+    pattern: /data-palette/,
+    reason:
+      "set on <html> by the palette setting: the style guide renders in the default palette, and test/design/tokens.test.ts checks the bold rules",
+  },
+  {
     pattern: /popover-open|\.site-header-menu|#site-menu/,
     reason:
       "open header menu popover: opened by the burger, the style guide shows the sheet body only",

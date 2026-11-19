@@ -24,7 +24,7 @@ import {
 } from "../../src/application/following.ts";
 import { cancelPlan, deletePlan, editPlan, viewHostPage } from "../../src/application/host.ts";
 import { applyRetentionMax, runRetentionSweep } from "../../src/application/maintenance.ts";
-import { setRoute } from "../../src/application/routes.ts";
+import { uploadRoute } from "../support/route-upload.ts";
 import { fakeGpx } from "../fakes/route-parser.ts";
 import { createPlan } from "../../src/application/plans.ts";
 import { visibilityChoices } from "../../src/application/public-plans.ts";
@@ -677,7 +677,7 @@ describe("publishing plans (decisions D38, D39)", () => {
     const planId = await plan(device, { visibility: "public", exactLat: "", exactLng: "" });
     const before = publisher.sent.at(-1);
     expect(
-      await setRoute(deps, {
+      await uploadRoute(deps, {
         planId,
         deviceToken: device,
         gpx: fakeGpx({
@@ -689,7 +689,7 @@ describe("publishing plans (decisions D38, D39)", () => {
           ],
         }),
       }),
-    ).toEqual({ kind: "saved" });
+    ).toMatchObject({ kind: "updated" });
     const update = publisher.sent.at(-1);
     expect(update).toMatchObject({ kind: "update", audience: "public" });
     expect(update).not.toEqual(before);
@@ -704,6 +704,34 @@ describe("publishing plans (decisions D38, D39)", () => {
       kind: "cancelled",
     });
     expect(publisher.sent).toHaveLength(sent);
+  });
+
+  it("sends one Update for a title edit and a route saved together (decision D10)", async () => {
+    const { device } = await sharing();
+    const planId = await plan(device, { visibility: "public", exactLat: "", exactLng: "" });
+    const sent = publisher.sent.length;
+    const result = await editPlan(deps, {
+      planId,
+      deviceToken: device,
+      input: { ...planToInput(await stored(planId), "metric"), title: "Renamed" },
+      units: "metric",
+      confirmDeleteNow: false,
+      route: {
+        gpx: fakeGpx({
+          segments: [
+            [
+              { lat: 47.1, lng: 10.9 },
+              { lat: 47.11, lng: 10.9 },
+            ],
+          ],
+        }),
+        trim: "",
+      },
+    });
+    expect(result.kind).toBe("updated");
+    expect(publisher.sent.slice(sent)).toEqual([
+      expect.objectContaining({ kind: "update", audience: "public" }),
+    ]);
   });
 
   it("leaves a retired profile's plans to the actor's Delete, and never sends them again", async () => {

@@ -154,8 +154,11 @@ export interface PlanRepository {
   findWithRetentionAbove(maxRetentionDays: number): Promise<Plan[]>;
   /** The route, decrypted; only for audiences that may see it (spec 3.6). */
   findRoute(planId: string): Promise<Route | undefined>;
-  /** Adds or replaces the plan's route. */
-  saveRoute(planId: string, route: Route): Promise<void>;
+  /**
+   * Stores every field of an existing plan and adds or replaces its route, in one transaction
+   * (decision D10: a host edit with a route is saved all or nothing).
+   */
+  updateWithRoute(plan: Plan, route: Route): Promise<void>;
   /** Removes the plan's route, physically (spec 3.10). */
   deleteRoute(planId: string): Promise<void>;
   /** The cached preview image of this plan version, if any; deleted with the plan (spec 3.10). */

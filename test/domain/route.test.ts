@@ -94,9 +94,18 @@ describe("applyRouteDefaults (decision P8, D10)", () => {
     start: { lat: 48.16321, lng: 11.60147 },
   };
   const empty = { ...sampleInput, distanceKm: "", elevationGainM: "", exactLat: "", exactLng: "" };
+  const typed = {
+    ...empty,
+    distanceKm: "10",
+    elevationGainM: "100",
+    exactLat: "48",
+    exactLng: "11",
+  };
+  const fill = { distance: false, elevation: false };
+  const replace = { distance: true, elevation: true };
 
   it("fills empty distance, elevation and exact start coordinates when creating", () => {
-    expect(applyRouteDefaults(empty, stats, "fill")).toMatchObject({
+    expect(applyRouteDefaults(empty, stats, { units: "metric", replace: fill })).toMatchObject({
       distanceKm: "12.345",
       elevationGainM: "210",
       exactLat: "48.16321",
@@ -105,14 +114,7 @@ describe("applyRouteDefaults (decision P8, D10)", () => {
   });
 
   it("keeps values the poster typed when creating", () => {
-    const typed = {
-      ...empty,
-      distanceKm: "10",
-      elevationGainM: "100",
-      exactLat: "48",
-      exactLng: "11",
-    };
-    expect(applyRouteDefaults(typed, stats, "fill")).toMatchObject({
+    expect(applyRouteDefaults(typed, stats, { units: "metric", replace: fill })).toMatchObject({
       distanceKm: "10",
       elevationGainM: "100",
       exactLat: "48",
@@ -121,18 +123,45 @@ describe("applyRouteDefaults (decision P8, D10)", () => {
   });
 
   it("sets distance and elevation from a route uploaded on the host page, keeping exact start coordinates", () => {
-    const typed = {
-      ...empty,
-      distanceKm: "10",
-      elevationGainM: "100",
-      exactLat: "48",
-      exactLng: "11",
-    };
-    expect(applyRouteDefaults(typed, stats, "replace")).toMatchObject({
+    expect(applyRouteDefaults(typed, stats, { units: "metric", replace })).toMatchObject({
       distanceKm: "12.345",
       elevationGainM: "210",
       exactLat: "48",
       exactLng: "11",
+    });
+  });
+
+  it("replaces each field on its own, so a value the host typed in the same save is kept", () => {
+    expect(
+      applyRouteDefaults(typed, stats, {
+        units: "metric",
+        replace: { distance: false, elevation: true },
+      }),
+    ).toMatchObject({ distanceKm: "10", elevationGainM: "210" });
+    expect(
+      applyRouteDefaults(typed, stats, {
+        units: "metric",
+        replace: { distance: true, elevation: false },
+      }),
+    ).toMatchObject({ distanceKm: "12.345", elevationGainM: "100" });
+  });
+
+  it("gives miles and feet for imperial forms (review fix: they were read as km and m)", () => {
+    expect(applyRouteDefaults(empty, stats, { units: "imperial", replace: fill })).toMatchObject({
+      distanceKm: "7.671",
+      elevationGainM: "689",
+    });
+    expect(applyRouteDefaults(typed, stats, { units: "imperial", replace })).toMatchObject({
+      distanceKm: "7.671",
+      elevationGainM: "689",
+    });
+  });
+
+  it("leaves the elevation alone for a route without elevation data", () => {
+    const flat = { ...stats, elevationGainMeters: undefined };
+    expect(applyRouteDefaults(typed, flat, { units: "metric", replace })).toMatchObject({
+      distanceKm: "12.345",
+      elevationGainM: "100",
     });
   });
 });

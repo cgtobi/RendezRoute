@@ -429,6 +429,26 @@ describe("NEARBY_ENABLED (spec 7 Visibility and Nearby plans)", () => {
   });
 });
 
+describe("PALETTE (decision 004)", () => {
+  it("is default unless set", () => {
+    expect(ok(minimal).config.palette).toBe("default");
+    expect(ok({ ...minimal, PALETTE: "" }).config.palette).toBe("default");
+  });
+
+  it("accepts the shipped palettes", () => {
+    expect(ok({ ...minimal, PALETTE: "default" }).config.palette).toBe("default");
+    expect(ok({ ...minimal, PALETTE: "mono" }).config.palette).toBe("mono");
+    expect(ok({ ...minimal, PALETTE: "bold" }).config.palette).toBe("bold");
+  });
+
+  it("rejects an unknown palette", () => {
+    expect(errors({ ...minimal, PALETTE: "neon" }).join(" ")).toContain(
+      "PALETTE must be default, mono or bold.",
+    );
+    expect(errors({ ...minimal, PALETTE: "Bold" }).join(" ")).toContain("PALETTE must be");
+  });
+});
+
 describe("POSTING_MODE (spec 7 Moderation)", () => {
   it("lets anyone post by default", () => {
     expect(ok(minimal).config.postingMode).toBe("anyone");

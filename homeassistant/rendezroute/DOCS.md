@@ -52,6 +52,10 @@ starts and names the setting in the log (for example CONTACT_EMAIL). The advance
 geocoder and weather addresses, the default map center and zoom (`default_map_center` such as `48.1374,11.5755`, `default_map_zoom` 2 to 12), Fediverse login servers, the email port) are hidden until you open
 the **⋮** menu of the Configuration tab and choose **Show unused optional configuration options**.
 
+The `palette` option sets the instance's default colours: `default` (blue), `mono` (black and
+white) or `bold` (white, black grid rules, signal red, square corners). Visitors can override it
+under Style in the menu. Light and dark mode work with each of them.
+
 ### Reverse proxy and `trust_proxy`
 
 Turn **Trust the reverse proxy** (`trust_proxy`) on only when a reverse proxy or tunnel sits in

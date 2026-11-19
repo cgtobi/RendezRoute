@@ -1,5 +1,12 @@
 /* Only for the dev-only style guide (decision D72), loaded by /styleguide alone. */
 
+/* The static samples: a save bar in the problem state is sticky from the start (the real host page
+   shows it that way, e2e/save-bar.spec.ts tests it there), which would lay it over the sample's own
+   fields at the viewport's bottom. Here it stays in the flow, so the page's overlap check is exact. */
+.sg-section .save-bar[data-dirty] {
+  position: static;
+}
+
 .sg-section {
   margin: var(--s6) 0;
   padding-top: var(--s4);

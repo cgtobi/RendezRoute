@@ -18,8 +18,8 @@
 //   normalizeSelector / splitSelectorList / declarations   the building blocks
 //
 // A `Stylesheet` offers `text`, `all` (every rule in source order), `statements`, `rules`, `rule`,
-// `first`, `hasRule`, `within`, `inMedia`, `forced`, `ruleText`, `tokenBlocks`, `layerOrder`,
-// `cascadeIndex`, `isLater` and `earliest`. A rule is
+// `first`, `hasRule`, `within`, `inMedia`, `forced`, `ruleText`, `tokenBlocks` (a palette sheet's three blocks when given its
+// id), `layerOrder`, `cascadeIndex`, `isLater` and `earliest`. A rule is
 // `{ selector, body, atRules, layer, order }`:
 //   selector  the selector list, normalised (`a,b` and `a , b` are `a, b`; combinators are
 //             surrounded by single spaces; text in strings and `[...]` is left alone). For
@@ -599,11 +599,13 @@ export class Stylesheet {
   }
 
   /** The rules of the three colour scheme blocks, kept apart, see `TokenBlocks`. */
-  tokenBlocks(): TokenBlocks {
+  tokenBlocks(palette?: string): TokenBlocks {
+    // A palette sheet (decision 004) scopes the same three blocks with its own attribute.
+    const root = palette === undefined ? ":root" : `:root[data-palette="${palette}"]`;
     return {
-      light: this.rules(":root", { plain: true }),
-      dark: this.rules(MEDIA_SELECTOR, { atRule: DARK_MEDIA }),
-      darkChosen: this.rules(ATTRIBUTE_SELECTOR, { plain: true }),
+      light: this.rules(root, { plain: true }),
+      dark: this.rules(`${root}:not([data-theme="light"])`, { atRule: DARK_MEDIA }),
+      darkChosen: this.rules(`${root}[data-theme="dark"]`, { plain: true }),
     };
   }
 }
@@ -628,4 +630,97 @@ export function loadStylesheet(name = "app.css"): Stylesheet {
 /** The colour tokens (`#rrggbb` values only) of a block from `tokenBlocks()`. */
 export function colourTokens(block: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(block).filter(([, v]) => /^#[0-9a-f]{6}$/i.test(v)));
+}
+
+/** What a page looks like to the cascade: the `data-theme`, `data-palette` and the system scheme. */
+export type PageState = {
+  readonly theme?: "light" | "dark";
+  readonly palette?: string;
+  readonly systemDark: boolean;
+  /**
+   * The classes the page's main holds, for `:root:not(:has(...))` rules (a plan page has "plan", the
+   * host's page "host"). Resolving a rule that uses `:has()` without it throws.
+   */
+  readonly contains?: readonly string[];
+};
+
+/** Whether the page has an element matching `.a` or `.a:not(.b)`, an item of a `:has()` list. */
+function hasItem(item: string, page: PageState, selector: string): boolean {
+  const found = /^\.([a-z-]+)(?::not\(\.([a-z-]+)\))?$/.exec(item);
+  if (found === null) throw new Error(`cannot resolve selector "${selector}"`);
+  if (page.contains === undefined) throw new Error(`page has no "contains" for "${selector}"`);
+  const [, name, not] = found;
+  const classes = page.contains;
+  // The test models one element carrying all the classes; ".host:not(.template)" needs host without template.
+  return classes.includes(name ?? "") && (not === undefined || !classes.includes(not));
+}
+
+/** Whether a `:root...` selector matches the page, and its specificity. Throws on anything else. */
+function matchRoot(selector: string, page: PageState): { matches: boolean; specificity: number } {
+  if (!selector.startsWith(":root")) throw new Error(`cannot resolve selector "${selector}"`);
+  let rest = selector.slice(":root".length);
+  let matches = true;
+  let specificity = 1;
+  const part = /^(?:\[data-(theme|palette)="([a-z]+)"\]|:not\(\[data-theme="([a-z]+)"\]\))/;
+  while (rest !== "") {
+    // `:not(:has(.a, .b:not(.c)))`: :not() and :has() take the specificity of their most specific item.
+    const absent = /^:not\(:has\(((?:[^()]|\([^()]*\))*)\)\)/.exec(rest);
+    if (absent !== null) {
+      const items = splitSelectorList(absent[1] ?? "");
+      // A rule of another palette never matches, whatever the page holds: nothing to evaluate.
+      if (matches) matches = !items.some((item) => hasItem(item, page, selector));
+      specificity += Math.max(...items.map((item) => (item.match(/\./g) ?? []).length));
+      rest = rest.slice(absent[0].length);
+      continue;
+    }
+    const found = part.exec(rest);
+    if (found === null) throw new Error(`cannot resolve selector "${selector}"`);
+    const [whole, attribute, value, negated] = found;
+    specificity += 1;
+    if (negated !== undefined) matches &&= page.theme !== negated;
+    else matches &&= (attribute === "theme" ? page.theme : page.palette) === value;
+    rest = rest.slice((whole ?? "").length);
+  }
+  return { matches, specificity };
+}
+
+/**
+ * The final value of a custom property on `:root` for a page, resolved from the cascade of a
+ * stylesheet (concatenate app.css and a palette sheet to include both): layer order first, then
+ * specificity, then source order. Only `:root` rules, inside `@layer` and the dark `@media`, are
+ * read; any other selector or at-rule on a rule that declares the property throws. Returns
+ * undefined when no matching rule declares it.
+ */
+export function resolveToken(sheet: Stylesheet, name: string, page: PageState): string | undefined {
+  let best: { key: readonly number[]; value: string } | undefined;
+  for (const rule of sheet.all) {
+    const value = customProperties(rule)[name];
+    if (value === undefined) continue;
+    // A rule for a component that redefines the token (.exact-start) is not a :root rule.
+    // Nor is a rule scoped under :root for a component (bold's `:root[data-palette="bold"] .exact-start`).
+    if (!rule.selector.startsWith(":root") || /\s/.test(rule.selector.replace(/,\s*/g, ",")))
+      continue;
+    let inMedia = true;
+    for (const at of rule.atRules) {
+      if (at.startsWith("@layer")) continue;
+      if (at === `@media (${DARK_MEDIA})`) inMedia = page.systemDark;
+      else throw new Error(`cannot resolve at-rule "${at}"`);
+    }
+    if (!inMedia) continue;
+    for (const selector of splitSelectorList(rule.selector)) {
+      const { matches, specificity } = matchRoot(selector, page);
+      if (!matches) continue;
+      const key = [sheet.layerRank(rule), specificity, rule.order];
+      if (best === undefined || compareKeys(key, best.key) > 0) best = { key, value };
+    }
+  }
+  return best?.value;
+}
+
+function compareKeys(a: readonly number[], b: readonly number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
 }

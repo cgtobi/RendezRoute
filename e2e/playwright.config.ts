@@ -34,7 +34,8 @@ const LAYOUT_SPECS = /(?:layout-phone|styleguide|css-snapshot|field-style|map-pi
  * they run in the "default settings" project only (D84, plan I101). The two config-dependent
  * variants of a flow stay in core-loop and the area/field specs.
  */
-const CONFIG_INDEPENDENT_SPECS = /(?:styleguide|theme|css-state-coverage|css-snapshot)\.spec\.ts$/;
+const CONFIG_INDEPENDENT_SPECS =
+  /(?:styleguide|theme|palette|css-state-coverage|css-snapshot)\.spec\.ts$/;
 
 /** Specs that need the map and the geocoder, which the maps-off project turns off. */
 const MAPS_ONLY_SPECS = /area-suggestions\.spec\.ts$/;

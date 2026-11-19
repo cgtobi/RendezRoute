@@ -1,6 +1,6 @@
 // The "Required" hint and aria-required on every required control outside the plan form
 // (decision D73, plan I90): the respond and manage forms, the admin login and plan search, the
-// fediverse server, the email address, the host page's route upload and the template repeat form.
+// fediverse server, the email address, the host page's route file and the template repeat form.
 // The plan form's own fields are in plan-form.test.tsx.
 import { describe, expect, it } from "vite-plus/test";
 import { translator } from "../../../src/adapters/i18n/i18n.ts";
@@ -9,7 +9,7 @@ import { EmailSwitch } from "../../../src/adapters/in/http/views/email-switch.ts
 import { RespondForm } from "../../../src/adapters/in/http/views/respond-form.tsx";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
-import { createPlanViaUi, respondViaUi } from "../../support/plans.ts";
+import { createPlanViaUi, respondViaUi, uploadViaEdit } from "../../support/plans.ts";
 
 const t = translator("en");
 const TOKEN = "admin-token-for-tests-0123456789abcdef";
@@ -170,29 +170,41 @@ describe("pages", () => {
     const host = new TestClient(app);
     const { planId } = await createPlanViaUi(host);
     const html = await (await host.get(`/p/${planId}/host`)).text();
-    const input = tagOf(html, "field-route");
+    const input = tagOf(html, "field-gpx");
     expect(input).not.toMatch(/\srequired[\s=>]/);
     expect(attribute(input, "aria-required")).toBeUndefined();
-    expect(html).not.toContain('id="field-route-required"');
+    expect(html).not.toContain('id="field-gpx-required"');
     expect(html).toContain(messages["form.gpx"]);
-    expect(attribute(input, "aria-describedby")).toBe("field-route-hint");
-    const refused = await host.postMultipart(
-      `/p/${planId}/host/route`,
-      { _csrf: hiddenFields(html)._csrf ?? "" },
-      { gpx: { name: "bad.gpx", content: "not a route" } },
+    expect(attribute(input, "aria-describedby")).toBe("field-gpx-hint");
+    // The trim choice names both of its hints, the "only with a file" one included.
+    expect(attribute(tagOf(html, "field-gpxTrim"), "aria-describedby")).toBe(
+      "field-gpxTrim-hint field-gpxTrim-file",
     );
+    expect(html).toContain(`<p class="hint" id="field-gpxTrim-file">`);
+    expectDescribedByResolves(html);
+    // The route is saved with the edit form (decision D10).
+    const refused = await uploadViaEdit(host, planId, "not a route");
     expect(refused.status).toBe(422);
     const refusedHtml = await refused.text();
-    expect(attribute(tagOf(refusedHtml, "field-route"), "aria-invalid")).toBe("true");
-    expect(refusedHtml).toContain('id="field-route-error"');
-    expectDescribedByResolves(refusedHtml);
-    const empty = await host.postMultipart(
-      `/p/${planId}/host/route`,
-      { _csrf: hiddenFields(html)._csrf ?? "" },
-      {},
+    expect(attribute(tagOf(refusedHtml, "field-gpx"), "aria-invalid")).toBe("true");
+    expect(refusedHtml).toContain('id="field-gpx-error"');
+    expect(attribute(tagOf(refusedHtml, "field-gpx"), "aria-describedby")).toBe(
+      "field-gpx-hint field-gpx-again field-gpx-error",
     );
-    expect(empty.status).toBe(422);
-    expect(await empty.text()).toContain(`id="field-route-error"`);
+    expect(attribute(tagOf(refusedHtml, "field-gpxTrim"), "aria-describedby")).toBe(
+      "field-gpxTrim-hint field-gpxTrim-file",
+    );
+    expectDescribedByResolves(refusedHtml);
+  });
+
+  it("names the trim hints on the new plan form", async () => {
+    const { app } = await createTestApp();
+    const html = await (await new TestClient(app).get("/new")).text();
+    expect(attribute(tagOf(html, "field-gpxTrim"), "aria-describedby")).toBe(
+      "field-gpxTrim-hint field-gpxTrim-file",
+    );
+    expect(html).toContain(messages["form.gpxTrimOnlyWithFile"]);
+    expectDescribedByResolves(html);
   });
 
   it("marks the admin token and the plan search", async () => {

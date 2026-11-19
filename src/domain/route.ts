@@ -2,6 +2,7 @@
 import { distanceMeters, type GeoPoint, validateGeoPoint } from "./geo.ts";
 import type { PlanInput } from "./plan-input.ts";
 import { err, ok, type Result } from "./result.ts";
+import { metersToDistance, metersToElevation, type Units } from "./units.ts";
 
 export interface RoutePoint {
   lat: number;
@@ -205,24 +206,32 @@ export function routeStats(route: Route): RouteStats {
 }
 
 /**
- * Form values from a route (decision P8, D10). "fill" (creating) sets only empty distance and
- * elevation; "replace" (host page upload) sets them from the route. Both set the exact start
- * coordinates only when none are given.
+ * Form values from a route (decision P8, D10), in the form's units. Distance and elevation the
+ * route has are set where `replace` says so for that field, else only where the field is empty:
+ * creating fills empty fields, the host page replaces the values the host did not change in the
+ * same save. The exact start coordinates are set only when none are given.
  */
 export function applyRouteDefaults(
   input: PlanInput,
   stats: RouteStats,
-  mode: "fill" | "replace",
+  { units, replace }: { units: Units; replace: { distance: boolean; elevation: boolean } },
 ): PlanInput {
-  const set = (current: string, value: string | undefined) =>
-    value === undefined ? current : mode === "replace" || current.trim() === "" ? value : current;
+  const set = (current: string, value: string | undefined, replaces: boolean) =>
+    value === undefined ? current : replaces || current.trim() === "" ? value : current;
   const noExactPoint = input.exactLat.trim() === "" && input.exactLng.trim() === "";
   return {
     ...input,
-    distanceKm: set(input.distanceKm, String(stats.distanceMeters / 1000)),
+    distanceKm: set(
+      input.distanceKm,
+      String(Number(metersToDistance(stats.distanceMeters, units).toFixed(3))),
+      replace.distance,
+    ),
     elevationGainM: set(
       input.elevationGainM,
-      stats.elevationGainMeters === undefined ? undefined : String(stats.elevationGainMeters),
+      stats.elevationGainMeters === undefined
+        ? undefined
+        : String(Math.round(metersToElevation(stats.elevationGainMeters, units))),
+      replace.elevation,
     ),
     exactLat: noExactPoint ? String(stats.start.lat) : input.exactLat,
     exactLng: noExactPoint ? String(stats.start.lng) : input.exactLng,

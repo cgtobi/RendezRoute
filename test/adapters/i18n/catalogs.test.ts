@@ -37,15 +37,18 @@ const SAME_EXAMPLES = [
   "placeholder.distanceTo",
 ];
 
+/** Palette names are proper names (decision 005). */
+const PALETTE_NAMES = ["palette.mono", "palette.bold"];
+
 /** Strings that are the same in every language. */
 const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
   de: [
     ...UNITS,
     // "System" is the same word in German (decision D64).
     "theme.system",
+    ...PALETTE_NAMES,
     "plan.pace",
     "plan.route",
-    "host.route",
     "privacy.cookiesHeading",
     "recap.link",
     // "Link: {link}" is the same word in German (decision D44).
@@ -64,6 +67,9 @@ const SAME_AS_ENGLISH: Readonly<Record<string, readonly string[]>> = {
     "form.latitude",
     "form.longitude",
     "layout.menu",
+    // "Style" is the same word in French (decision 005).
+    "layout.palette",
+    ...PALETTE_NAMES,
     "plan.distance",
     "privacy.cookiesHeading",
     ...SAME_EXAMPLES,

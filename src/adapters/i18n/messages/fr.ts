@@ -22,6 +22,7 @@ export const fr: Messages = {
   "fold.exactSet": "Défini · seules les personnes que vous acceptez le voient",
   "fold.route": "Parcours, allure et remarque",
   "fold.routeNone": "Pas de parcours",
+  "fold.routeSet": "Parcours ajouté",
   "fold.routeUnset": "distance et allure non indiquées",
   "fold.noteAdded": "remarque ajoutée",
   "fold.noteNone": "pas de remarque",
@@ -51,6 +52,12 @@ export const fr: Messages = {
   "theme.system": "Système",
   "theme.light": "Clair",
   "theme.dark": "Sombre",
+  "layout.palette": "Style",
+  "palette.site": "Style du site",
+  "palette.siteNamed": "Style du site ({palette})",
+  "palette.default": "Par défaut",
+  "palette.mono": "Mono",
+  "palette.bold": "Bold",
 
   "privacy.title": "Confidentialité",
   "privacy.intro":
@@ -82,7 +89,7 @@ export const fr: Messages = {
   "privacy.cookieCsrf":
     "Un cookie de session qui protège les formulaires contre les envois falsifiés. Les navigateurs le suppriment à leur fermeture, sauf s’ils restaurent votre session précédente.",
   "privacy.cookiePreferences":
-    "Des cookies de langue, d’unités et de thème, seulement si vous choisissez une langue, des unités ou un thème en bas d’une page, conservés {days} jours.",
+    "Des cookies de langue, d’unités, de thème et de style (palette de couleurs), seulement si vous choisissez une langue, des unités, un thème ou un style dans le menu, conservés {days} jours.",
   "privacy.cookieAdmin":
     "L’administration reçoit, après connexion, un cookie de connexion distinct valable {hours} heures. Les visiteur·euse·s ne le reçoivent jamais.",
   "privacy.cookieOthers": "Aucun autre cookie, et aucun cookie d’autres sites.",
@@ -305,12 +312,19 @@ export const fr: Messages = {
   "form.gpxTrim": "Masquer le début et la fin du parcours",
   "form.gpxTrimHint":
     "Si le point de rendez-vous a un emplacement sur la carte, le parcours est coupé pour commencer là, et pour y finir s’il y revient. Tout autre départ ou arrivée, par exemple votre domicile, est masqué sur la distance choisie ici. Ce qui est retiré n’est jamais enregistré.",
+  "form.gpxTrimOnlyWithFile": "Utilisé seulement pour un fichier choisi ci-dessus.",
   "form.gpxTrimOff": "Afficher tout le parcours",
   "form.gpxTrimMeters": "Masquer {meters} m à chaque extrémité",
   "form.gpxTrimKilometers": "Masquer {km} km à chaque extrémité",
   "form.gpxTrimMiles": "Masquer environ {miles} mi à chaque extrémité",
   "form.gpxHint":
     "Remplit la distance, le dénivelé et le point de départ exact. Seules les personnes inscrites peuvent voir et télécharger le parcours. Si le formulaire affiche une erreur, choisissez à nouveau le fichier.",
+  "form.gpxHintAdd":
+    "Le parcours est ajouté à l’enregistrement. La distance et le dénivelé en sont alors repris, sauf si vous les modifiez aussi ici. Seules les personnes inscrites peuvent voir et télécharger le parcours.",
+  "form.gpxHintReplace":
+    "Cette sortie a un parcours. Un fichier choisi ici le remplace à l’enregistrement. La distance et le dénivelé sont alors repris du nouveau parcours, sauf si vous les modifiez aussi ici.",
+  "form.gpxChooseAgain":
+    "Choisissez à nouveau le fichier : les navigateurs ne gardent pas un fichier choisi quand la page se recharge.",
 
   "field.invalid": "Cette valeur n’est pas valide.",
   "field.contribution_empty": "Écrivez un commentaire ou ajoutez un lien.",
@@ -343,13 +357,14 @@ export const fr: Messages = {
   "field.route_unsafe":
     "Ce fichier ne peut pas être lu en toute sécurité. Veuillez l’exporter à nouveau en fichier GPX simple.",
   "field.route_unreadable": "Cela ne ressemble pas à un fichier GPX.",
-  "field.gpx_missing": "Choisissez un fichier GPX.",
   "field.route_empty": "Le fichier ne contient ni trace ni itinéraire.",
   "field.route_too_many_points": "Le parcours compte plus de 50 000 points.",
   "field.route_invalid": "Le fichier contient des coordonnées non valides.",
   "field.route_too_long": "Le parcours dépasse 1 000 km.",
   "field.route_trimmed_away":
     "Masquer le début et la fin supprimerait tout le parcours. Choisissez une distance plus courte.",
+  "field.route_rate_limited":
+    "Trop de fichiers de parcours en peu de temps. Rien n’a été enregistré : réessayez plus tard.",
   "field.name_taken_by_host": "C’est le nom de l’organisateur·rice. Veuillez en choisir un autre.",
   "field.name_taken_by_response": "Une personne ayant répondu utilise déjà ce nom.",
 
@@ -705,17 +720,18 @@ export const fr: Messages = {
   "calendar.deletionEntry": "« {title} » sera supprimée aujourd’hui",
   "calendar.exactStart": "Point de départ exact : {start}",
 
-  "host.route": "Parcours",
-  "host.routeNone": "Pas encore de parcours.",
-  "host.routePresent": "Cette sortie a un parcours.",
-  "host.routeUpload": "Importer un parcours",
-  "host.routeReplace": "Remplacer le parcours",
   "host.routeRemove": "Retirer le parcours",
-  "host.routeHint": "La distance et le dénivelé sont repris du parcours.",
+  "host.routeRemoveOpen": "Retirer le parcours…",
+  "host.routeRemoveExplain":
+    "Le parcours est supprimé tout de suite, pour tout le monde. La distance et le dénivelé restent. Les modifications du formulaire non enregistrées sont perdues.",
 
   "host.heading": "Gérer votre sortie",
   "host.saved": "Modifications enregistrées.",
   "host.save": "Enregistrer les modifications",
+  "saveBar.unsaved": "Modifications non enregistrées",
+  "saveBar.discard": "Annuler les modifications",
+  "saveBar.problems": { one: "{count} problème à corriger", other: "{count} problèmes à corriger" },
+  "saveBar.goTo": "Aller à {field}",
   "host.retentionOnly":
     "La sortie a commencé ou a été annulée. Vous pouvez encore changer la date de sa suppression.",
   "host.deletesNowWarning": "Cela supprimera la sortie immédiatement.",

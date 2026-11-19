@@ -589,10 +589,11 @@ describe("the three pages that share the form", () => {
     expect(foldValue(exact)).toBe("Set · anyone who joins sees it");
     expect(isOpen(exact)).toBe(true);
     expect(folds(root)).toHaveLength(5);
-    expect(
-      folds(root).flatMap((fold) => named(fold, "gpx")),
-      "the route has its own section on the host page, not in a fold",
-    ).toHaveLength(0);
+    // The route file is saved with the edit, in the route fold as when creating (decision D10).
+    const route = foldByTitle(root, en["fold.route"]);
+    expect(named(route, "gpx")).toHaveLength(1);
+    expect(named(route, "gpxTrim")).toHaveLength(1);
+    expect(foldValue(route)).toContain(en["fold.routeNone"]);
   });
 });
 

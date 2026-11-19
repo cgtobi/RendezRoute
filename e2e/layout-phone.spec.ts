@@ -119,7 +119,7 @@ for (const viewport of WIDTHS) {
     const sheet = page.locator("#site-menu");
     await expect(sheet).toBeVisible();
     const rows = sheet.locator(".preference");
-    await expect(rows).toHaveCount(3);
+    await expect(rows).toHaveCount(4);
 
     const links = sheet.locator(".site-menu-links a");
     expect(await links.count(), "navigation links in the sheet").toBeGreaterThan(0);
@@ -128,7 +128,7 @@ for (const viewport of WIDTHS) {
       expect(box?.height, `link ${index} height`).toBeGreaterThanOrEqual(44);
     }
 
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index < 4; index += 1) {
       const row = rows.nth(index);
       const label = await row.locator("label").boundingBox();
       const select = await row.locator("select").boundingBox();

@@ -229,7 +229,10 @@ export async function createPlan(
     });
     if (!parsed.ok) return { kind: "invalid", errors: [{ field: "gpx", code: parsed.error }] };
     route = parsed.value;
-    input = applyRouteDefaults(input, routeStats(route), "fill");
+    input = applyRouteDefaults(input, routeStats(route), {
+      units: request.units,
+      replace: { distance: false, elevation: false },
+    });
   }
 
   const draft = validatePlanInput(input, rules, request.units);

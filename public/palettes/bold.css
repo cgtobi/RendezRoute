@@ -1,0 +1,127 @@
+/* Palette "bold" (decision 004): poster and ticket stub. A pure white page and near-black ink in
+   light mode, a near-black page and warm off-white ink in dark mode. The rules and borders
+   (--line, --control-line, --field-border) are as strong as the text: hard black grid rules in
+   light, hard white ones in dark. The accent is signal red (links, primary buttons, checked mode
+   switch, selected underline), a lighter coral in dark mode. Buttons have sharp corners
+   (--r-button: 0px, light block only). Blue stays only in --focus, the focus ring. Danger, ok
+   and warning keep the default hues; the avatar sets are the default ones.
+   Colour tokens only, in the same layer as app.css's tokens, with the same two identical dark
+   blocks as every palette (test/design/tokens.test.ts). The structural bold rules (zero
+   shadows, grid rules, poster numerals, the perforated stub) live in public/app.css, scoped by
+   :root[data-palette="bold"]. */
+@layer tokens {
+  :root[data-palette="bold"] {
+    --r-button: 0px;
+    --bg: #fefefe;
+    --fg: #0a0a0a;
+    --muted: #4a4a4a;
+    --placeholder: #595959;
+    --line: #0a0a0a;
+    --control-line: #0a0a0a;
+    --field-border: #0a0a0a;
+    --surface: #f4f4f2;
+    --accent: #d8261c;
+    --on-accent: #ffffff;
+    --focus: #0044cc;
+    --danger: #b3261e;
+    --on-danger: #ffffff;
+    --warning-bg: #fff4e5;
+    --warning-line: #f3d19c;
+    --ok: #1a6e3e;
+    --ok-bg: #eef7f1;
+    --ok-line: #b9e4c9;
+    --avatar-0-bg: #fde2e4;
+    --avatar-0-fg: #8a1c2b;
+    --avatar-1-bg: #dbe8ff;
+    --avatar-1-fg: #1d3f8f;
+    --avatar-2-bg: #d8f3e1;
+    --avatar-2-fg: #17613a;
+    --avatar-3-bg: #ecdfff;
+    --avatar-3-fg: #5b2a99;
+    --avatar-4-bg: #ffe8cc;
+    --avatar-4-fg: #8a4b00;
+    --avatar-5-bg: #d5f2f4;
+    --avatar-5-fg: #0e5c63;
+    --avatar-6-bg: #f7dcef;
+    --avatar-6-fg: #84205f;
+    --avatar-7-bg: #e5e9d0;
+    --avatar-7-fg: #4d5a12;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root[data-palette="bold"]:not([data-theme="light"]) {
+      --bg: #0a0a0a;
+      --fg: #f7f7f5;
+      --muted: #b0b0ad;
+      --placeholder: #949490;
+      --line: #f7f7f5;
+      --control-line: #f7f7f5;
+      --field-border: #d4d4d0;
+      --surface: #161615;
+      --accent: #ff6b63;
+      --on-accent: #0a0a0a;
+      --focus: #8bb8ea;
+      --danger: #f2b8b5;
+      --on-danger: #0a0a0a;
+      --warning-bg: #3a2c12;
+      --warning-line: #6b5120;
+      --ok: #8fd9a8;
+      --ok-bg: #0f1f16;
+      --ok-line: #2b5a3c;
+      --avatar-0-bg: #5a1d26;
+      --avatar-0-fg: #ffd6db;
+      --avatar-1-bg: #1f3463;
+      --avatar-1-fg: #d5e3ff;
+      --avatar-2-bg: #174a2c;
+      --avatar-2-fg: #c9f0d7;
+      --avatar-3-bg: #3f2566;
+      --avatar-3-fg: #e7d9ff;
+      --avatar-4-bg: #5a3608;
+      --avatar-4-fg: #ffe2bf;
+      --avatar-5-bg: #124549;
+      --avatar-5-fg: #c8f1f4;
+      --avatar-6-bg: #57203f;
+      --avatar-6-fg: #ffd6ef;
+      --avatar-7-bg: #3b4214;
+      --avatar-7-fg: #e9eec8;
+    }
+  }
+
+  :root[data-palette="bold"][data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0a0a0a;
+    --fg: #f7f7f5;
+    --muted: #b0b0ad;
+    --placeholder: #949490;
+    --line: #f7f7f5;
+    --control-line: #f7f7f5;
+    --field-border: #d4d4d0;
+    --surface: #161615;
+    --accent: #ff6b63;
+    --on-accent: #0a0a0a;
+    --focus: #8bb8ea;
+    --danger: #f2b8b5;
+    --on-danger: #0a0a0a;
+    --warning-bg: #3a2c12;
+    --warning-line: #6b5120;
+    --ok: #8fd9a8;
+    --ok-bg: #0f1f16;
+    --ok-line: #2b5a3c;
+    --avatar-0-bg: #5a1d26;
+    --avatar-0-fg: #ffd6db;
+    --avatar-1-bg: #1f3463;
+    --avatar-1-fg: #d5e3ff;
+    --avatar-2-bg: #174a2c;
+    --avatar-2-fg: #c9f0d7;
+    --avatar-3-bg: #3f2566;
+    --avatar-3-fg: #e7d9ff;
+    --avatar-4-bg: #5a3608;
+    --avatar-4-fg: #ffe2bf;
+    --avatar-5-bg: #124549;
+    --avatar-5-fg: #c8f1f4;
+    --avatar-6-bg: #57203f;
+    --avatar-6-fg: #ffd6ef;
+    --avatar-7-bg: #3b4214;
+    --avatar-7-fg: #e9eec8;
+  }
+}

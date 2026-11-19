@@ -12,6 +12,7 @@ import {
 } from "../../../../domain/plan.ts";
 import type { FieldError, PlanField, PlanInput } from "../../../../domain/plan-input.ts";
 import { PLAN_LIMITS, SHARE_BUTTON_FIELDS } from "../../../../domain/plan-input.ts";
+import { ROUTE_LIMITS } from "../../../../domain/route.ts";
 import {
   defaultRecapWindow,
   defaultRetentionDays,
@@ -24,6 +25,7 @@ import { describedBy, isTextLike, RequiredHint } from "./line-field.tsx";
 import { AreaSearch, MapTools, type MapSettings } from "./maps.tsx";
 import { RecapWindowSelect } from "./recap.tsx";
 import { RouteTrimField } from "./route-trim.tsx";
+import { SaveBar } from "./save-bar.tsx";
 import { TemplateOptions } from "./templates.tsx";
 import type { Units } from "../../../../domain/units.ts";
 
@@ -66,8 +68,18 @@ export interface PlanFormProps {
   action: string;
   heading: string;
   submitLabel: string;
-  /** Offer the optional GPX file field (create form only; the host page has its own route section). */
+  /**
+   * Offer the optional GPX file field and its "hide start and end" choice, which make the form
+   * multipart: creating, and the host's edit form, where the route is saved with the edit (D10).
+   */
   withGpx: boolean;
+  /**
+   * The host's edit form (decision D10): whether the plan has a route, and the id of the separate
+   * "Remove route" form outside this one, which the confirm button submits.
+   */
+  route?: { present: boolean; removeFormId: string } | undefined;
+  /** A chosen file was not saved and the browser does not keep it: ask to choose it again. */
+  gpxDropped?: boolean;
   /** Tile settings for the pick map; undefined when maps are disabled. */
   map: MapSettings | undefined;
   /** Offer place search (geocoder enabled). */
@@ -97,6 +109,11 @@ export interface PlanFormProps {
    * the default prefix.
    */
   idPrefix?: string;
+  /**
+   * Make the submit button a save bar that sticks to the bottom while the form has unsaved changes
+   * (decision 006). The host page's form only; the create and template forms keep the plain button.
+   */
+  saveBar?: boolean;
 }
 
 export interface VisibilityChoice {
@@ -204,6 +221,8 @@ export function PlanForm({
   heading,
   submitLabel,
   withGpx,
+  route,
+  gpxDropped = false,
   map,
   placeSearch,
   routeTrim,
@@ -214,6 +233,7 @@ export function PlanForm({
   notice,
   visibility,
   idPrefix = DEFAULT_ID_PREFIX,
+  saveBar = false,
 }: PlanFormProps) {
   const errorFor = (field: PlanField) => errors.find((error) => error.field === field);
   const fid = (name: string) => `${idPrefix}-${name}`;
@@ -349,7 +369,7 @@ export function PlanForm({
         : "unit.minPerKm",
   );
   const routeParts = [
-    withGpx ? t("fold.routeNone") : undefined,
+    withGpx ? t(route?.present === true ? "fold.routeSet" : "fold.routeNone") : undefined,
     ...(values.distanceKm.trim() === "" &&
     values.paceFrom.trim() === "" &&
     values.paceTo.trim() === ""
@@ -398,6 +418,9 @@ export function PlanForm({
     days: t("fold.days", { count: Number(retentionDays) }),
     recap: recapDays === 0 ? t("fold.recapNone") : t("fold.recapDays", { count: recapDays }),
   });
+
+  const submitText =
+    confirmAcceptPending === undefined ? submitLabel : t("host.acceptPendingConfirm");
 
   return (
     <form
@@ -616,15 +639,17 @@ export function PlanForm({
         <Fold
           title={t("fold.route")}
           value={routeSummary}
-          open={hasError(
-            "distanceKm",
-            "elevationGainM",
-            "paceFrom",
-            "paceTo",
-            "dropPolicy",
-            "gpx",
-            "note",
-          )}
+          open={
+            hasError(
+              "distanceKm",
+              "elevationGainM",
+              "paceFrom",
+              "paceTo",
+              "dropPolicy",
+              "gpx",
+              "note",
+            ) || gpxDropped
+          }
         >
           <div class="field-row">
             <Field
@@ -699,15 +724,30 @@ export function PlanForm({
                 type="file"
                 name="gpx"
                 accept=".gpx,application/gpx+xml"
+                // For the browser's size check before uploading (decision D10).
+                data-max-bytes={String(ROUTE_LIMITS.maxBytes)}
+                data-too-large={t("field.route_too_large")}
                 aria-invalid={hasError("gpx") ? "true" : undefined}
                 aria-describedby={describedBy(
                   fid("gpx-hint"),
+                  gpxDropped ? fid("gpx-again") : undefined,
                   hasError("gpx") ? fid("gpx-error") : undefined,
                 )}
               />
               <p class="hint" id={fid("gpx-hint")}>
-                {t("form.gpxHint")}
+                {t(
+                  route === undefined
+                    ? "form.gpxHint"
+                    : route.present
+                      ? "form.gpxHintReplace"
+                      : "form.gpxHintAdd",
+                )}
               </p>
+              {gpxDropped && (
+                <p class="warning" id={fid("gpx-again")}>
+                  {t("form.gpxChooseAgain")}
+                </p>
+              )}
               {errors
                 .filter((e) => e.field === "gpx")
                 .map((e, index) => (
@@ -719,6 +759,17 @@ export function PlanForm({
           )}
           {withGpx && (
             <RouteTrimField t={t} id={fid("gpxTrim")} selected={routeTrim} units={units} />
+          )}
+          {withGpx && route?.present === true && (
+            // Its own action, not part of saving: the button submits the separate form named by
+            // `form`, outside this one (forms cannot nest), so the save bar never counts it.
+            <details class="danger-zone remove-route">
+              <summary>{t("host.routeRemoveOpen")}</summary>
+              <p>{t("host.routeRemoveExplain")}</p>
+              <button type="submit" class="danger" form={route.removeFormId}>
+                {t("host.routeRemove")}
+              </button>
+            </details>
           )}
 
           <Field field="note" label={t("form.note")} hint={t("form.publicHint")}>
@@ -875,9 +926,11 @@ export function PlanForm({
           </p>
         </>
       )}
-      <button type="submit">
-        {confirmAcceptPending === undefined ? submitLabel : t("host.acceptPendingConfirm")}
-      </button>
+      {saveBar ? (
+        <SaveBar t={t} label={submitText} errors={errors} idPrefix={idPrefix} />
+      ) : (
+        <button type="submit">{submitText}</button>
+      )}
     </form>
   );
 }
@@ -1004,5 +1057,25 @@ function VisibilityFieldset({
         </p>
       )}
     </fieldset>
+  );
+}
+
+/**
+ * The hidden form behind "Remove route" on the host page (decision D10): it carries only the CSRF
+ * value, sits outside the edit form, and is submitted by the confirm button's `form` attribute.
+ */
+export function RouteRemoveForm({
+  id,
+  action,
+  csrfToken,
+}: {
+  id: string;
+  action: string;
+  csrfToken: string;
+}) {
+  return (
+    <form id={id} method="post" action={action} hidden>
+      <input type="hidden" name={CSRF_FIELD} value={csrfToken} />
+    </form>
   );
 }

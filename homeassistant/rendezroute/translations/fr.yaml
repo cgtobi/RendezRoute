@@ -47,6 +47,9 @@ configuration:
   posting_mode:
     name: "Qui peut créer des sorties"
     description: "anyone : tous les visiteurs. invite : seulement les personnes ayant un lien d’invitation que vous créez dans les pages d’administration. logged_in : seulement les personnes connectées par l’authentification unique ou la connexion Fediverse ci-dessous."
+  palette:
+    name: "Palette de couleurs"
+    description: "Les couleurs par défaut des pages de cette instance ; les visiteurs peuvent les changer sous Style dans le menu. default : bleu. mono : noir et blanc. bold : blanc et noir avec du rouge signal, des filets rigides et des coins carrés."
   public_requires_login:
     name: "Liste publique réservée aux comptes"
     description: "Réserver la liste des sorties publiques aux personnes connectées. Désactivez pour l’afficher à tous les visiteurs."

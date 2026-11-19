@@ -16,10 +16,12 @@ import {
   isMaterialChange,
   planToInput,
   removeResponse,
+  routeFieldsTyped,
   validatePlanEdit,
   validateRetentionEdit,
 } from "../domain/plan-edit.ts";
-import type { FieldError, PlanInput } from "../domain/plan-input.ts";
+import type { FieldError, PlanDraft, PlanInput, Validation } from "../domain/plan-input.ts";
+import { applyRouteDefaults, type Route, routeStats } from "../domain/route.ts";
 import { ratingsClosed, ratingsClosedAtAfter } from "../domain/rating.ts";
 import { hasRecap, shortenedRecapWindow } from "../domain/recap.ts";
 import type { RecapWindow } from "../domain/schedule.ts";
@@ -35,7 +37,7 @@ import { syncNoteOf, syncParticipantNotes } from "./participant-notes.ts";
 import { answerRemoteResponse } from "./remote-participants.ts";
 import { ratingResultDue, ratingResultFor, type RatingResultView } from "./plan-views.ts";
 import { freezeRatingTally } from "./ratings.ts";
-import type { PlanDeps } from "./plans.ts";
+import { type PlanDeps, readRoute } from "./plans.ts";
 import { deletePlansKeepingTemplates } from "./templates.ts";
 
 export type Denied = { kind: "not_found" } | { kind: "forbidden" };
@@ -152,7 +154,9 @@ export type EditPlanResult =
   | { kind: "confirm_delete_now" }
   /** Switching to open mode accepts pending requests; ask "N pending requests will be accepted" first (spec 3.4). */
   | { kind: "confirm_accept_pending"; count: number }
-  | { kind: "deleted" };
+  | { kind: "deleted" }
+  /** A route came with an edit after the start: routes change only before it; nothing was saved. */
+  | { kind: "not_allowed" };
 
 export async function editPlan(
   deps: PlanDeps,
@@ -165,13 +169,23 @@ export async function editPlan(
     confirmDeleteNow: boolean;
     /** The N of a confirmed "N pending requests will be accepted"; asked again if it changed. */
     confirmAcceptPending?: number | undefined;
+    /**
+     * A GPX file chosen in the same form, with the submitted "hide start and end" choice (D10,
+     * D13); an empty file counts as none. The whole save is refused if it cannot be used.
+     */
+    route?: { gpx: Uint8Array; trim: string } | undefined;
   },
 ): Promise<EditPlanResult> {
   const plan = await asHost(deps, request.planId, request.deviceToken);
   if (isDenied(plan)) return plan;
   const now = deps.clock.now();
+  // An empty file counts as none.
+  const upload =
+    request.route !== undefined && request.route.gpx.byteLength > 0 ? request.route : undefined;
 
   if (editScope(plan, now) === "retention") {
+    // The route changes only before the start; the retention edit is not saved without it either.
+    if (upload !== undefined) return { kind: "not_allowed" };
     const edit = validateRetentionEdit(request.input, plan, now, deps.limits.maxRetentionDays);
     if (!edit.ok) return { kind: "invalid", errors: edit.errors };
     if (edit.value.deletesNow) {
@@ -200,6 +214,7 @@ export async function editPlan(
     };
   }
 
+  // The form first: parsing a large file is the costly part (as when creating).
   const draft = validatePlanEdit(request.input, plan, { now, ...deps.limits }, request.units);
   if (!draft.ok) return { kind: "invalid", errors: draft.errors };
   const choices = await visibilityChoices(deps, { plan });
@@ -214,13 +229,23 @@ export async function editPlan(
   if (pending.length > 0 && request.confirmAcceptPending !== pending.length) {
     return { kind: "confirm_accept_pending", count: pending.length };
   }
+  let edited = draft.value;
+  let route: Route | undefined;
+  if (upload !== undefined) {
+    const withRoute = editWithRoute(deps, plan, { ...request, now }, upload, edited);
+    if (!withRoute.ok) return { kind: "invalid", errors: withRoute.errors };
+    ({ route, draft: edited } = withRoute.value);
+  }
   const updated: Plan = {
     ...plan,
-    ...draft.value,
-    federatedAt: federatedAtFor(draft.value.visibility, choices, plan.federatedAt, now),
+    ...edited,
+    hasRoute: plan.hasRoute || route !== undefined,
+    federatedAt: federatedAtFor(edited.visibility, choices, plan.federatedAt, now),
     updatedAt: now,
   };
-  await deps.plans.update(updated);
+  // With a route, both are stored in one transaction, or neither (decision D10).
+  if (route === undefined) await deps.plans.update(updated);
+  else await deps.plans.updateWithRoute(updated, route);
   for (const response of pending) {
     const accepted = requests.acceptRequest(response, plan, now);
     if (accepted.ok) {
@@ -230,15 +255,58 @@ export async function editPlan(
       await syncNoteOf(deps, updated, response.id, response.kind, accepted.value.kind);
     }
   }
-  if (isMaterialChange(plan, updated)) await notifyResponders(deps, updated, "changed");
+  // A new route is a change participants and interested people hear about (spec 3.1), once.
+  if (route !== undefined || isMaterialChange(plan, updated)) {
+    await notifyResponders(deps, updated, "changed");
+  }
   // Last, so people here are told even if the fediverse cannot be (D38).
   await syncPublication(deps, plan, updated);
-  // And the private Notes of remote participants, if the exact start or the time changed (D43).
+  // And the private Notes of remote participants, if the exact start, the time or the route
+  // changed (D43).
   await syncParticipantNotes(deps, updated);
   return {
     kind: "updated",
     recapWindowShortened: shortenedRecapWindow(request.input.recapWindow, updated.recapWindow),
   };
+}
+
+/**
+ * The edit with a route uploaded in the same save (decisions D10, D13, D40): the file is cut at
+ * the meeting point of this submission and its ends hidden as chosen, and distance and elevation
+ * follow it unless the host changed them in this save. What is cut or hidden is never stored.
+ * Validated at the same instant as the form, so both passes agree on what may change.
+ */
+function editWithRoute(
+  deps: PlanDeps,
+  plan: Plan,
+  request: { input: PlanInput; units: Units; now: Date },
+  upload: { gpx: Uint8Array; trim: string },
+  edited: PlanDraft,
+): Validation<{ route: Route; draft: PlanDraft }> {
+  const parsed = readRoute(deps, upload.gpx, {
+    routeTrim: upload.trim,
+    meetingPoint: edited.exactStart?.point,
+  });
+  if (!parsed.ok) return { ok: false, errors: [{ field: "gpx", code: parsed.error }] };
+  const typed = routeFieldsTyped(request.input, plan, request.units);
+  const input = applyRouteDefaults(request.input, routeStats(parsed.value), {
+    units: request.units,
+    replace: { distance: !typed.distance, elevation: !typed.elevation },
+  });
+  const draft = validatePlanEdit(input, plan, { now: request.now, ...deps.limits }, request.units);
+  if (!draft.ok) {
+    // A distance taken from the route is the route's problem, not the field's (D7, D10).
+    const distanceFromRoute = input.distanceKm !== request.input.distanceKm;
+    return {
+      ok: false,
+      errors: draft.errors.map((error) =>
+        distanceFromRoute && error.field === "distanceKm"
+          ? { field: "gpx", code: "route_too_long" }
+          : error,
+      ),
+    };
+  }
+  return { ok: true, value: { route: parsed.value, draft: draft.value } };
 }
 
 export async function cancelPlan(

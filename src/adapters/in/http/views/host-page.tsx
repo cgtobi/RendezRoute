@@ -5,9 +5,8 @@ import type { FieldError, PlanInput } from "../../../../domain/plan-input.ts";
 import type { RecapWindow } from "../../../../domain/schedule.ts";
 import { CSRF_FIELD } from "../csrf.ts";
 import { fieldErrorMessage, retentionOptions } from "./format.ts";
-import { describedBy } from "./line-field.tsx";
 import type { MapSettings } from "./maps.tsx";
-import { PlanForm, type VisibilityChoice } from "./plan-form.tsx";
+import { PlanForm, RouteRemoveForm, type VisibilityChoice } from "./plan-form.tsx";
 import { RecapShortenedNotice, RecapWindowSelect } from "./recap.tsx";
 import { TemplateOptions } from "./templates.tsx";
 import { type LinkEmail, LinkTools } from "./link-tools.tsx";
@@ -16,7 +15,6 @@ import type { RatingResultView } from "../../../../application/plan-views.ts";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
 import { MoreChannels, type NtfySwitchProps, type TelegramSwitchProps } from "./more-channels.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
-import { RouteTrimField } from "./route-trim.tsx";
 import type { Units } from "../../../../domain/units.ts";
 import { PersonName } from "./avatar.tsx";
 import { BackLink } from "./back-link.tsx";
@@ -53,12 +51,12 @@ export interface HostPageProps {
   /** Switching to open mode would accept this many pending requests; asks first (spec 3.4). */
   confirmAcceptPending: number | undefined;
   hasRoute: boolean;
-  /** Error code from the last route upload. */
-  routeError: string | undefined;
   map: MapSettings | undefined;
   placeSearch: boolean;
-  /** The submitted "hide start and end" choice of the last route upload. */
+  /** The submitted "hide start and end" choice, kept when the form is shown again. */
   routeTrim: string;
+  /** A route file was chosen but not saved; the browser does not keep it (decision D10). */
+  gpxDropped: boolean;
   units: Units;
   /** Contributions in the recap, from the start of an active plan on (spec 6 feature 7). */
   recapContributions: number | undefined;
@@ -79,6 +77,9 @@ export interface HostPageProps {
   /** Telegram; undefined without a bot (decision D34). */
   telegram: TelegramSwitchProps | undefined;
 }
+
+/** The "Remove route" form, outside the edit form whose confirm button submits it (decision D10). */
+const ROUTE_REMOVE_FORM = "route-remove";
 
 export function HostPage(props: HostPageProps) {
   const { t, planId, csrfToken } = props;
@@ -111,19 +112,28 @@ export function HostPage(props: HostPageProps) {
           action={`/p/${planId}/host`}
           heading={t("host.heading")}
           submitLabel={t("host.save")}
-          withGpx={false}
+          withGpx
+          route={{ present: props.hasRoute, removeFormId: ROUTE_REMOVE_FORM }}
+          gpxDropped={props.gpxDropped}
           map={props.map}
           placeSearch={props.placeSearch}
-          routeTrim=""
+          routeTrim={props.routeTrim}
           units={props.units}
           confirmAcceptPending={props.confirmAcceptPending}
           visibility={props.visibility}
+          saveBar
         />
       ) : (
         <RetentionForm {...props} />
       )}
 
-      {props.scope === "all" && <RouteSection {...props} />}
+      {props.scope === "all" && props.hasRoute && (
+        <RouteRemoveForm
+          id={ROUTE_REMOVE_FORM}
+          action={`/p/${planId}/host/route/remove`}
+          csrfToken={csrfToken}
+        />
+      )}
 
       {props.rating !== undefined && <RatingResultSection t={t} {...props.rating} />}
 
@@ -247,58 +257,6 @@ export function HostPage(props: HostPageProps) {
       <p class="danger-zone">
         <a href={`/p/${planId}/host/delete`}>{t("host.delete")}</a>
       </p>
-    </section>
-  );
-}
-
-function RouteSection(props: HostPageProps) {
-  const { t, planId } = props;
-  return (
-    <section class="route">
-      <h2>{t("host.route")}</h2>
-      <p>{props.hasRoute ? t("host.routePresent") : t("host.routeNone")}</p>
-      <form method="post" action={`/p/${planId}/host/route`} enctype="multipart/form-data">
-        <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
-        <div class={props.routeError === undefined ? "field" : "field field-invalid"}>
-          <label for="field-route">{t("form.gpx")}</label>
-          <input
-            id="field-route"
-            type="file"
-            name="gpx"
-            accept=".gpx,application/gpx+xml"
-            aria-invalid={props.routeError === undefined ? undefined : "true"}
-            aria-describedby={describedBy(
-              "field-route-hint",
-              props.routeError === undefined ? undefined : "field-route-error",
-            )}
-          />
-          <p class="hint" id="field-route-hint">
-            {t("host.routeHint")}
-          </p>
-          {props.routeError !== undefined && (
-            <p class="error" id="field-route-error" role="alert">
-              {fieldErrorMessage(props.routeError, t)}
-            </p>
-          )}
-        </div>
-        <RouteTrimField
-          t={t}
-          id="field-route-trim"
-          selected={props.routeTrim}
-          units={props.units}
-        />
-        <button type="submit" class="secondary">
-          {props.hasRoute ? t("host.routeReplace") : t("host.routeUpload")}
-        </button>
-      </form>
-      {props.hasRoute && (
-        <form method="post" action={`/p/${planId}/host/route/remove`}>
-          <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
-          <button type="submit" class="secondary">
-            {t("host.routeRemove")}
-          </button>
-        </form>
-      )}
     </section>
   );
 }

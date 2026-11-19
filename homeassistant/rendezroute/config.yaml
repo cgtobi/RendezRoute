@@ -41,6 +41,7 @@ options:
   geocoder_enabled: true
   weather_enabled: true
   posting_mode: anyone
+  palette: default
   public_requires_login: true
   nearby_enabled: true
   federation_enabled: true
@@ -70,6 +71,7 @@ schema:
   weather_enabled: bool
   weather_url: url?
   posting_mode: list(anyone|invite|logged_in)
+  palette: list(default|mono|bold)
   public_requires_login: bool
   nearby_enabled: bool
   federation_enabled: bool

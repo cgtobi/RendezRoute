@@ -8,7 +8,8 @@ import {
 } from "../../i18n/i18n.ts";
 import { assetUrl } from "./asset-url.ts";
 import { CSRF_FIELD } from "./csrf.ts";
-import { RETURN_FIELD } from "./routes/preferences.ts";
+import { RETURN_FIELD, SITE_PALETTE } from "./routes/preferences.ts";
+import { PALETTES, type Palette } from "../../../domain/palette.ts";
 import { type Theme, THEMES } from "../../../domain/theme.ts";
 import { type Units, UNITS } from "../../../domain/units.ts";
 
@@ -24,7 +25,9 @@ interface LayoutProps {
   units: Units;
   /** The chosen theme; "system" renders no attribute (decision D64). */
   theme: Theme;
-  /** The language, units and theme forms in the menu sheet; left out of pages that cannot be loaded again (decision D15). */
+  /** The visitor's own palette (decision 005); undefined means the instance's (config.palette). */
+  palette?: Palette | undefined;
+  /** The language, units, theme and palette forms in the menu sheet; left out of pages that cannot be loaded again (decision D15). */
   languageSwitch?: { csrfToken: string; returnTo: string } | undefined;
   /**
    * Prefix for the app's own links: "/" on public pages; relative ("../") on instance admin pages,
@@ -49,6 +52,7 @@ export function Layout({
   head,
   units,
   theme,
+  palette: chosenPalette,
   languageSwitch,
   pathBase = "/",
   adminListener = false,
@@ -57,9 +61,15 @@ export function Layout({
 }: LayoutProps) {
   /** Adds the full-width class on wide pages. */
   const widened = (base?: string) => (wide ? [base, "wide"].filter(Boolean).join(" ") : base);
+  // The visitor's palette, else the instance's (decisions 004, 005); the admin listener keeps the default colours.
+  const palette = adminListener ? "default" : (chosenPalette ?? config.palette);
   const pageTitle = title === undefined ? config.instanceName : `${title} · ${config.instanceName}`;
   return (
-    <html lang={language} data-theme={theme === "system" ? undefined : theme}>
+    <html
+      lang={language}
+      data-theme={theme === "system" ? undefined : theme}
+      data-palette={palette === "default" ? undefined : palette}
+    >
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -75,6 +85,9 @@ export function Layout({
         <link rel="apple-touch-icon" href={`${pathBase}static/brand/apple-touch-icon.png`} />
         <link rel="stylesheet" href={assetUrl(pathBase, "build/fonts.css")} />
         <link rel="stylesheet" href={assetUrl(pathBase, "app.css")} />
+        {palette !== "default" && (
+          <link rel="stylesheet" href={assetUrl(pathBase, `palettes/${palette}.css`)} />
+        )}
         {/* A module, not a classic script: classic bundles share one global scope and the minified map.js overwrote names of app.js. */}
         <script src={assetUrl(pathBase, "build/app.js")} type="module"></script>
         {head}
@@ -106,6 +119,7 @@ export function Layout({
                   language={language}
                   units={units}
                   theme={theme}
+                  palette={chosenPalette}
                   languageSwitch={languageSwitch}
                   pathBase={pathBase}
                 />
@@ -143,13 +157,14 @@ export function Layout({
   );
 }
 
-/** The menu sheet's content: links, then the language, units and theme rows. Also shown open by the dev style guide. */
+/** The menu sheet's content: links, then the language, units, theme and style rows. Also shown open by the dev style guide. */
 export function MenuSheetBody({
   t,
   config,
   language,
   units,
   theme,
+  palette,
   languageSwitch,
   pathBase = "/",
   idPrefix = "preference",
@@ -159,6 +174,8 @@ export function MenuSheetBody({
   language: Language;
   units: Units;
   theme: Theme;
+  /** The visitor's own palette; undefined shows "Site default". */
+  palette?: Palette | undefined;
   languageSwitch?: { csrfToken: string; returnTo: string } | undefined;
   pathBase?: string | undefined;
   /** Prefix of the select ids, so a second copy on one page keeps its ids unique. */
@@ -219,6 +236,25 @@ export function MenuSheetBody({
               label={t("layout.theme")}
               options={THEMES.map((value) => ({ value, label: t(`theme.${value}`) }))}
               selected={theme}
+            />
+            <PreferenceForm
+              t={t}
+              {...languageSwitch}
+              idPrefix={idPrefix}
+              action="/palette"
+              field="palette"
+              label={t("layout.palette")}
+              options={[
+                {
+                  value: SITE_PALETTE,
+                  label:
+                    config.palette === "default"
+                      ? t("palette.site")
+                      : t("palette.siteNamed", { palette: t(`palette.${config.palette}`) }),
+                },
+                ...PALETTES.map((value) => ({ value, label: t(`palette.${value}`) })),
+              ]}
+              selected={palette ?? SITE_PALETTE}
             />
           </>
         )}

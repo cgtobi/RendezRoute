@@ -10,7 +10,12 @@ import { checkpoint } from "../../src/adapters/out/sqlite/database.ts";
 import { createTestApp } from "../support/app.ts";
 import { hiddenFields as hiddenFieldsOf, TestClient } from "../support/client.ts";
 import { sampleGpx } from "../support/gpx.ts";
-import { createPlanViaUi, planForm as planFormFields, respondViaUi } from "../support/plans.ts";
+import {
+  createPlanViaUi,
+  planForm as planFormFields,
+  respondViaUi,
+  uploadViaEdit,
+} from "../support/plans.ts";
 
 const SENTINEL_DESCRIPTION = "SENTINEL-exact-start-7c1e";
 const SENTINEL_LAT = "48.16321";
@@ -560,6 +565,11 @@ describe("data at rest (spec 2b)", () => {
     const { planId, hostPath } = await createPlanViaUi(host, exactStart);
     const joined = new TestClient(app);
     const { managePath } = await respondViaUi(joined, planId, JOINED_NAME, "joined");
+    // A route saved with the host's edit form (decision D10): stored encrypted like one from /new.
+    const uploaded = await uploadViaEdit(host, planId, sampleGpx({ lat: 45.67891, count: 6 }), {
+      gpxTrim: "0",
+    });
+    expect(uploaded.status).toBe(303);
     const feed = await feedPath(host);
     clock.set(AFTER_START);
     await contribute(joined, planId, RECAP_BODY, RECAP_LINK);
@@ -588,6 +598,8 @@ describe("data at rest (spec 2b)", () => {
       feed.slice("/c/".length),
       SENTINEL_DESCRIPTION,
       SENTINEL_LAT,
+      // A point of the uploaded route other than the first.
+      "45.68091",
       JOINED_NAME,
       hostPath.slice("/a/".length),
       (managePath ?? "/m/missing").slice("/m/".length),
@@ -710,6 +722,43 @@ describe("route geometry per audience (spec 3.6, decision D10)", () => {
       expect(body).toContain(planId);
       expect(body).not.toContain("47.54321");
       expect(body).not.toContain("47.54421");
+    }
+  });
+
+  it("never reaches them for a route saved with the host's edit form (decision D10)", async () => {
+    const test = await createTestApp();
+    const host = new TestClient(test.app);
+    const { planId, hostPath } = await createPlanViaUi(host, {
+      exactLat: "",
+      exactLng: "",
+      exactDescription: SENTINEL_DESCRIPTION,
+    });
+    const uploaded = await uploadViaEdit(host, planId, sampleGpx({ lat: 47.65432, count: 6 }), {
+      gpxTrim: "0",
+    });
+    expect(uploaded.status).toBe(303);
+    expect(await (await host.get(`/p/${planId}/route.gpx`)).text()).toContain('lat="47.65532"');
+    const interested = new TestClient(test.app);
+    await respondViaUi(interested, planId, INTERESTED_NAME, "interested");
+    const fetcher = new TestClient(test.app);
+    // A link-preview fetcher opening the host link follows to the plan (decision D1).
+    const preview = await (await fetcher.get(hostPath)).text();
+    for (const [client, extra] of [
+      [new TestClient(test.app), ""],
+      [interested, ""],
+      [fetcher, preview],
+    ] as const) {
+      for (const path of [
+        `/p/${planId}`,
+        `/p/${planId}/me`,
+        `/p/${planId}/route.gpx`,
+        `/p/${planId}/host`,
+      ]) {
+        const body = extra + (await (await client.get(path)).text());
+        expect(body).not.toContain("47.65432");
+        expect(body).not.toContain("47.65532");
+        expect(body).not.toContain("10.98765");
+      }
     }
   });
 });

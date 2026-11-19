@@ -1,11 +1,11 @@
-// Viewer preferences (decisions P5, D15): language, units and theme, each in its own cookie holding only
-// that value. Set by the footer forms; HttpOnly, Secure, SameSite=Lax, Max-Age 400 days.
+// Viewer preferences (decisions P5, D15): language, units, theme and palette, each in its own cookie holding only
+// that value. Set by the menu forms; HttpOnly, Secure, SameSite=Lax, Max-Age 400 days.
 import type { Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { Config } from "../../../config.ts";
 import { LONG_COOKIE_SECONDS } from "./cookie-lifetime.ts";
 
-export type Preference = "lang" | "units" | "theme";
+export type Preference = "lang" | "units" | "theme" | "palette";
 
 const cookieName = (config: Config, preference: Preference) =>
   config.allowInsecureDev ? `rr-${preference}` : `__Host-rr-${preference}`;

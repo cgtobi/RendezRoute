@@ -18,6 +18,7 @@ export function registerStyleGuideRoutes(app: Hono<AppEnv>, deps: Pick<RouteDeps
         language={c.get("language")}
         units={c.get("units")}
         theme={c.get("theme")}
+        palette={c.get("palette")}
         csrfToken={c.get("csrfToken")()}
         returnTo="/styleguide"
       />,

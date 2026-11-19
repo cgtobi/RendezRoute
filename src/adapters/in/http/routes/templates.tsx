@@ -104,7 +104,7 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     const t = c.get("t");
     c.header("cache-control", "private, no-store");
     return c.render(
-      <section class="host">
+      <section class="host template">
         <BackLink href={base(c)} label={t("template.back")} />
         <PlanForm
           t={t}

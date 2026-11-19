@@ -6,7 +6,12 @@ import { describe, expect, it } from "vite-plus/test";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
 import { sampleGpx } from "../../support/gpx.ts";
-import { createPlanWithRouteViaUi, editForm, hostActsOn } from "../../support/plans.ts";
+import {
+  createPlanWithRouteViaUi,
+  editForm,
+  hostActsOn,
+  uploadViaEdit,
+} from "../../support/plans.ts";
 import {
   delivered,
   HOST,
@@ -259,11 +264,7 @@ describe("the secret link", () => {
 
     // Route replaced: the old link stops, the new one works.
     const csrf = (await host.hiddenFields(`/p/${planId}/host`))._csrf ?? "";
-    await host.postMultipart(
-      `/p/${planId}/host/route`,
-      { _csrf: csrf },
-      { gpx: { name: "new.gpx", content: sampleGpx({ lat: 46.22222 }) } },
-    );
+    await uploadViaEdit(host, planId, sampleGpx({ lat: 46.22222 }), { gpxTrim: "0" });
     await test.runJobs();
     expect(await GENERIC_404(await test.app.request(linkPath(token)))).toBe(unknown);
     const second = tokenOf(notesDelivered(test, "Update").at(-1));

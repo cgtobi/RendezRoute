@@ -64,7 +64,7 @@ async function newPlan(input: Partial<PlanInput> = {}) {
     deviceToken: undefined,
   });
   if (created.kind !== "created") throw new Error("setup failed");
-  await repos.plans.saveRoute(created.planId, route);
+  await repos.plans.updateWithRoute((await repos.plans.findById(created.planId))!, route);
   await respond(deps, {
     planId: created.planId,
     choice: "joined",

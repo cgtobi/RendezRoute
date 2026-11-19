@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.2
+
+- The plans on the home page ("Coming up" and "Recently") now open the plan's page, as everyone sees it, instead of the edit or response page. Hosts still reach "Manage plan" from there, and people who joined reach their response.
+- On "My data" each plan has an "Open plan" link next to its export.
+
 ## 0.18.1
 
 - Closing a full-screen map right after zooming no longer causes an error in the browser console.

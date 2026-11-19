@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.3
+
+- Security: a crafted GPX file could keep the server busy for a very long time while it was checked. The check now takes the same short time for any file, and rejects files with unfinished comments, tags or processing instructions.
+- The app now sends a "Strict-Transport-Security" header when its address starts with https, and tells shared caches not to store its pages.
+
 ## 0.18.2
 
 - The plans on the home page ("Coming up" and "Recently") now open the plan's page, as everyone sees it, instead of the edit or response page. Hosts still reach "Manage plan" from there, and people who joined reach their response.

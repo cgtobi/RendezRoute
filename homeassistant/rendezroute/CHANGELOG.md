@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.1
+
+- Closing a full-screen map right after zooming no longer causes an error in the browser console.
+
 ## 0.18.0
 
 - Every map can now be opened full screen. A button in the top right corner of the plan map, of the

@@ -56,7 +56,7 @@ switch also allows private networks.
 | `IMPRINT_URL`         | Link to your imprint page (unset)              |
 | `PRIVACY_URL`         | Link to your own privacy page (unset)          |
 | `DEFAULT_TIMEZONE`    | IANA time zone (`UTC`)                         |
-| `PALETTE`             | Palette: `default`, `mono`, `bold`, `archivo` |
+| `PALETTE`             | Palette: `default`, `mono`, `bold`, `archivo`  |
 | `ALLOW_INSECURE_DEV`  | Development only: allow http (`false`)         |
 | `E2E_CLOCK_CONTROL`   | Tests only: movable clock, see below (`false`) |
 

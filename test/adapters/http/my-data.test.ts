@@ -25,6 +25,9 @@ describe("the My data page", () => {
     expect(await (await host.get("/")).text()).toContain(
       `<a href="/my-data">${en("layout.myData")}</a>`,
     );
+    expect(await (await host.get("/")).text()).toContain(
+      `<a href="/calendar">${en("layout.calendar")}</a>`,
+    );
     const page = await host.get("/my-data");
     expect(page.headers.get("cache-control")).toBe("private, no-store");
     const html = await page.text();

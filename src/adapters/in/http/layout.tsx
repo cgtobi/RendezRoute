@@ -196,6 +196,9 @@ export function MenuSheetBody({
           <li>
             <a href={`${pathBase}my-data`}>{t("layout.myData")}</a>
           </li>
+          <li>
+            <a href={`${pathBase}calendar`}>{t("layout.calendar")}</a>
+          </li>
           {loginConfigured(config) && (
             <li>
               <a href={`${pathBase}account`}>{t("layout.account")}</a>

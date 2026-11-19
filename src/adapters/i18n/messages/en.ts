@@ -924,6 +924,7 @@ export const en = {
   "field.pace_needs_activity": "Choose an activity to filter by pace or speed.",
   "field.place_invalid": "Please enter 2 to 100 characters.",
   "layout.myData": "My data",
+  "layout.calendar": "Calendar",
   "export.plan": "Export this plan (ZIP)",
   "export.template": "Export this template (ZIP)",
   "export.response": "Export my response (ZIP)",

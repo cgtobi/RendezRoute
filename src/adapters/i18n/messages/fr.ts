@@ -961,6 +961,7 @@ export const fr: Messages = {
   "field.pace_needs_activity": "Choisissez une activité pour filtrer par allure ou vitesse.",
   "field.place_invalid": "Veuillez saisir de 2 à 100 caractères.",
   "layout.myData": "Mes données",
+  "layout.calendar": "Agenda",
   "export.plan": "Exporter cette sortie (ZIP)",
   "export.template": "Exporter ce modèle (ZIP)",
   "export.response": "Exporter ma réponse (ZIP)",

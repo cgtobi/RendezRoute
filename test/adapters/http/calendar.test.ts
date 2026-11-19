@@ -52,12 +52,14 @@ describe("the calendar download (spec 6 feature 2)", () => {
     const { planId } = await createPlanViaUi(host);
     const viewerPage = await (await new TestClient(app).get(`/p/${planId}`)).text();
     expect(viewerPage).toContain(`href="/p/${planId}/calendar.ics"`);
-    expect(viewerPage).not.toContain('href="/calendar"');
-    expect(await (await host.get(`/p/${planId}`)).text()).toContain('href="/calendar"');
+    // The plan page's own button; the site menu links the feed page everywhere.
+    const feedButton = /<a class="button[^"]*" href="\/calendar"/;
+    expect(viewerPage).not.toMatch(feedButton);
+    expect(await (await host.get(`/p/${planId}`)).text()).toMatch(feedButton);
     const removed = new TestClient(app);
     await respondViaUi(removed, planId, "Rex", "joined");
     test.database.sqlite.prepare("update responses set kind = 'removed'").run();
-    expect(await (await removed.get(`/p/${planId}`)).text()).not.toContain('href="/calendar"');
+    expect(await (await removed.get(`/p/${planId}`)).text()).not.toMatch(feedButton);
   });
 
   it("is 404 for unknown plans", async () => {

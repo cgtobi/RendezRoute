@@ -961,6 +961,7 @@ export const de: Messages = {
   "field.pace_needs_activity": "Wähle eine Aktivität, um nach Pace oder Tempo zu filtern.",
   "field.place_invalid": "Bitte gib 2 bis 100 Zeichen ein.",
   "layout.myData": "Meine Daten",
+  "layout.calendar": "Kalender",
   "export.plan": "Dieses Treffen exportieren (ZIP)",
   "export.template": "Diese Vorlage exportieren (ZIP)",
   "export.response": "Meine Antwort exportieren (ZIP)",

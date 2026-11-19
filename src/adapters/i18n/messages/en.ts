@@ -933,6 +933,7 @@ export const en = {
   "myData.templates": "Your templates",
   "myData.cancelled": "cancelled",
   "myData.export": "Export (ZIP)",
+  "myData.openPlan": "Open plan",
   "myData.calendar": "Calendar feed",
   "myData.calendarOn": "This device has a calendar feed.",
   "myData.calendarOff": "This device has no calendar feed.",

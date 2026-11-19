@@ -74,6 +74,7 @@ export function MyDataPage(props: MyDataPageProps) {
               hint={t("push.hostHint")}
             />
             <div class="item-actions">
+              <a href={`/p/${item.planId}`}>{t("myData.openPlan")}</a>
               <a href={`/p/${item.planId}/host/export.zip`}>{t("myData.export")}</a>
               {tools(`/p/${item.planId}/host`, true)}
             </div>
@@ -102,6 +103,7 @@ export function MyDataPage(props: MyDataPageProps) {
                 offOnly={blocked}
               />
               <div class="item-actions">
+                <a href={`/p/${item.planId}`}>{t("myData.openPlan")}</a>
                 <a href={`/p/${item.planId}/me/export.zip`}>{t("myData.export")}</a>
                 {tools(`/p/${item.planId}/me`, !blocked)}
               </div>

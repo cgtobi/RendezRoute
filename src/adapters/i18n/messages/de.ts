@@ -970,6 +970,7 @@ export const de: Messages = {
   "myData.templates": "Deine Vorlagen",
   "myData.cancelled": "abgesagt",
   "myData.export": "Exportieren (ZIP)",
+  "myData.openPlan": "Plan öffnen",
   "myData.calendar": "Kalender-Abo",
   "myData.calendarOn": "Dieses Gerät hat ein Kalender-Abo.",
   "myData.calendarOff": "Dieses Gerät hat kein Kalender-Abo.",

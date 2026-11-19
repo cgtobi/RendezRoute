@@ -46,10 +46,11 @@ describe("the home page's own plans", () => {
     expect(hostHome.headers.get("cache-control")).toBe("private, no-store");
     const hostHtml = await hostHome.text();
     expect(hostHtml).toContain(en("home.upcoming"));
-    expect(hostHtml).toContain('href="/p/' + planId + '/host"');
+    expect(hostHtml).toContain(`href="/p/${planId}"`);
     expect(hostHtml).toContain("Hill repeats");
     expect(hostHtml).toContain(en("home.roleHost"));
     expect(hostHtml).not.toContain(`href="/p/${planId}/me"`);
+    expect(hostHtml).not.toContain(`href="/p/${planId}/host"`);
     // The host link token itself is never repeated on the home page.
     expect(hostHtml).not.toContain(hostPath);
     expectNothingPrivate(hostHtml);
@@ -57,7 +58,8 @@ describe("the home page's own plans", () => {
     const joinerHome = await ben.get("/");
     expect(joinerHome.headers.get("cache-control")).toBe("private, no-store");
     const joinerHtml = await joinerHome.text();
-    expect(joinerHtml).toContain(`href="/p/${planId}/me"`);
+    expect(joinerHtml).toContain(`href="/p/${planId}"`);
+    expect(joinerHtml).not.toContain(`href="/p/${planId}/me"`);
     expect(joinerHtml).not.toContain(`/p/${planId}/host`);
     expect(joinerHtml).toContain("Hill repeats");
     expect(joinerHtml).toContain(escaped(en("status.joined")));
@@ -107,7 +109,8 @@ describe("the home page's own plans", () => {
     const html = await (await anna.get("/")).text();
     expect(html).toContain(en("home.recent"));
     expect(html).not.toContain(en("home.upcoming"));
-    expect(html).toContain(`href="/p/${planId}/host"`);
+    expect(html).toContain(`href="/p/${planId}"`);
+    expect(html).not.toContain(`/p/${planId}/host`);
     expectNothingPrivate(html);
   });
 
@@ -140,7 +143,7 @@ describe("the home page and accounts (spec 7 Identity)", () => {
     await logIn(phone, oidc, sub("anna"));
     const laptop = new TestClient(app);
     await createPlanViaUi(laptop, { title: "Laptop run" });
-    const link = `href="/p/${planId}/host"`;
+    const link = `href="/p/${planId}"`;
 
     // Not the laptop's before it logs in, and not before it is claimed.
     expect(await (await laptop.get("/")).text()).not.toContain(planId);

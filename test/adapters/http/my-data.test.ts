@@ -33,6 +33,7 @@ describe("the My data page", () => {
     expect(html).toContain(`action="/p/${planId}/host/link"`);
     expect(html).toContain('name="from" value="my-data"');
     expect(html).toContain(`href="/p/${planId}/host/export.zip"`);
+    expect(html).toContain(`<a href="/p/${planId}">${en("myData.openPlan")}</a>`);
 
     const signedOut = await host.postForm(`/p/${planId}/host/sign-out`, {
       ...hiddenFields(html),

@@ -9,7 +9,7 @@ export function MyPlans(props: { t: Translate; plans: MyPlansList; language: str
   const { t, language } = props;
   const row = (item: MyPlanItem) => (
     <Item
-      href={item.role === "host" ? `/p/${item.planId}/host` : `/p/${item.planId}/me`}
+      href={`/p/${item.planId}`}
       title={item.title}
       meta={[
         itemWhen(t, { ...item, status: "active" }, language),

@@ -7,6 +7,7 @@ import { Resvg } from "@resvg/resvg-js";
 import satori from "satori";
 import type { PlanPreview } from "../../../application/plan-views.ts";
 import type { MapTiles, PreviewRenderer } from "../../../application/ports.ts";
+import type { Palette } from "../../../domain/palette.ts";
 import { err, ok } from "../../../domain/result.ts";
 import { previewText } from "../../in/http/views/preview-text.ts";
 import { type CardMap, CARD_SIZE, cardElement, MAP_WIDTH } from "./card.ts";
@@ -42,6 +43,7 @@ export function createPreviewRenderer({
   instanceName,
   attribution,
   tiles,
+  palette = "default",
   maxConcurrent = 1,
   maxQueue = 8,
 }: {
@@ -49,6 +51,8 @@ export function createPreviewRenderer({
   attribution: string;
   /** Undefined when maps or server-side tile fetching are disabled: cards without a map. */
   tiles: MapTiles | undefined;
+  /** The instance palette (config.palette) the cards are drawn in. */
+  palette?: Palette;
   maxConcurrent?: number;
   maxQueue?: number;
 }): PreviewRenderer {
@@ -88,6 +92,7 @@ export function createPreviewRenderer({
           colors: preview.colors,
           instanceName,
           map: await mapFor(preview),
+          palette,
         });
         const svg = await satori(element as never, { ...CARD_SIZE, fonts: await loadFonts() });
         const png = new Resvg(svg, { font: { loadSystemFonts: false } }).render().asPng();

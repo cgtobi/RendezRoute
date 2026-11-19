@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { cancelPlan, editPlan } from "../../src/application/host.ts";
+import { PALETTES } from "../../src/domain/palette.ts";
 import { previewOf } from "../../src/application/plan-views.ts";
 import { createPlan, type PlanDeps, viewPlan } from "../../src/application/plans.ts";
 import { previewImage } from "../../src/application/previews.ts";
@@ -79,6 +80,15 @@ describe("previewOf (spec 3.3, 2b: link previews never show the exact start or r
     expect(previewOf(samplePlan({ updatedAt: new Date("2026-06-02T00:00:00Z") })).version).not.toBe(
       before,
     );
+  });
+
+  it("changes its version with the instance palette and only with it", () => {
+    const plan = samplePlan();
+    const versions = PALETTES.map((palette) => previewOf(plan, palette).version);
+    expect(new Set(versions).size).toBe(PALETTES.length);
+    expect(previewOf(plan, "bold").version).toBe(previewOf(plan, "bold").version);
+    expect(previewOf(plan).version).toBe(previewOf(plan, "default").version);
+    expect(versions.every((v) => /^l4[0-9][a-z0-9]+$/.test(v))).toBe(true);
   });
 });
 

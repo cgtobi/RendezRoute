@@ -1,10 +1,16 @@
 // Link preview images (spec 3.3): rendered from the public preview only, cached per plan version
 // and deleted with the plan (spec 3.10).
+import type { Palette } from "../domain/palette.ts";
 import { previewOf } from "./plan-views.ts";
 import type { PlanRepository, PreviewRenderer } from "./ports.ts";
 
 export async function previewImage(
-  deps: { plans: PlanRepository; renderer: PreviewRenderer },
+  deps: {
+    plans: PlanRepository;
+    renderer: PreviewRenderer;
+    /** The instance palette (config.palette); it versions the stored card. */
+    palette?: Palette;
+  },
   request: {
     planId: string;
     /** Asked only when the image must be rendered; false answers "limited" (rate limits). */
@@ -18,7 +24,7 @@ export async function previewImage(
 > {
   const plan = await deps.plans.findById(request.planId);
   if (plan === undefined) return { kind: "not_found" };
-  const preview = previewOf(plan);
+  const preview = previewOf(plan, deps.palette);
   const cached = await deps.plans.findPreview(plan.id, preview.version);
   if (cached !== undefined) return { kind: "found", image: cached };
   if (request.mayRender !== undefined && !request.mayRender()) return { kind: "limited" };

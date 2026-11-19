@@ -1,6 +1,7 @@
 // Plan use cases (spec 5 features 1 and 3).
 import { type PlanTheme, planTheme } from "../domain/color.ts";
 import type { Units } from "../domain/pace.ts";
+import type { Palette } from "../domain/palette.ts";
 import type { Plan } from "../domain/plan.ts";
 import {
   type FieldError,
@@ -103,6 +104,8 @@ export interface PlanDeps extends DeviceDeps {
    * Absent means true, the stricter rule.
    */
   publicRequiresLogin?: boolean | undefined;
+  /** The instance palette (config.palette): the link preview card is drawn in it. Absent is "default". */
+  previewPalette?: Palette | undefined;
   /**
    * Whether public may be chosen at all: in 0.8 a public plan is only listed in Nearby, so not
    * while it is off (decision I59). Absent means true.
@@ -386,7 +389,7 @@ export async function viewPlan(
   const shared: Open = {
     responsesOpen: canRespond(plan, now).ok,
     hasRecap: hasRecap(plan, now),
-    preview: previewOf(plan),
+    preview: previewOf(plan, deps.previewPalette),
   };
   const device = await resolveDevice(deps, request.deviceToken);
   const isHost =

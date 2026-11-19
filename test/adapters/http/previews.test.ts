@@ -4,8 +4,8 @@ import { TestClient } from "../../support/client.ts";
 import { sampleGpx } from "../../support/gpx.ts";
 import { createPlanViaUi, planForm } from "../../support/plans.ts";
 
-async function setup() {
-  const test = await createTestApp({ env: { INSTANCE_NAME: "Isar Runners" } });
+async function setup(palette = "default") {
+  const test = await createTestApp({ env: { INSTANCE_NAME: "Isar Runners", PALETTE: palette } });
   const host = new TestClient(test.app);
   const hidden = await host.hiddenFields("/new");
   const created = await host.postMultipart(
@@ -37,6 +37,19 @@ describe("Open Graph tags (spec 5 feature 3)", () => {
     expect(meta(html, "og:image:width")).toBe("1200");
     expect(meta(html, "og:image:height")).toBe("630");
     expect(meta(html, "twitter:card")).toBe("summary_large_image");
+  });
+
+  it("follow the instance palette, so a changed PALETTE refreshes cached cards", async () => {
+    const imageOf = async (palette: string) => {
+      const { planId, newClient } = await setup(palette);
+      return meta(await (await newClient().get(`/p/${planId}`)).text(), "og:image");
+    };
+    const [base, mono, bold] = await Promise.all([
+      imageOf("default"),
+      imageOf("mono"),
+      imageOf("bold"),
+    ]);
+    expect(new Set([base, mono, bold]).size).toBe(3);
   });
 
   it("are the same for the host and never contain the exact start or route (spec 2b)", async () => {

@@ -4,6 +4,7 @@ import type { ActivityType } from "../domain/activity.ts";
 import type { HexColor } from "../domain/color.ts";
 import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { PaceBand } from "../domain/pace.ts";
+import { PALETTES, type Palette } from "../domain/palette.ts";
 import type {
   DropPolicy,
   JoinMode,
@@ -234,12 +235,14 @@ export interface PlanPreview {
 }
 
 /**
- * Raised when the preview card's look changes (3: the tinted title block, decision D30), so cached
+ * Raised when the preview card's look changes (3: the tinted title block, decision D30; 4: the
+ * instance palette, decision 004), so cached
  * cards are drawn again and chat apps fetch the new image.
  */
-const PREVIEW_LOOK = 3;
+const PREVIEW_LOOK = 4;
 
-export function previewOf(plan: Plan): PlanPreview {
+/** `palette` is the instance's (PALETTE), never a visitor's: it is part of the version. */
+export function previewOf(plan: Plan, palette: Palette = "default"): PlanPreview {
   return {
     id: plan.id,
     title: plan.title,
@@ -253,8 +256,8 @@ export function previewOf(plan: Plan): PlanPreview {
     colors: { primary: plan.colors.primary, secondary: plan.colors.secondary },
     status: plan.status,
     language: plan.posterLanguage,
-    // Letters and digits only, e.g. "l3mwb7l1fu": the look, then the plan's last change.
-    version: `l${PREVIEW_LOOK}${plan.updatedAt.getTime().toString(36)}`,
+    // Letters and digits only, e.g. "l40mwb7l1fu": the look, the palette, then the plan's last change.
+    version: `l${PREVIEW_LOOK}${PALETTES.indexOf(palette)}${plan.updatedAt.getTime().toString(36)}`,
   };
 }
 

@@ -205,7 +205,11 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     // Only renders count: cached cards stay available to chat apps' fetchers.
     let retryAfterSeconds = 0;
     const result = await previewImage(
-      { plans: planDeps.plans, renderer: previewRenderer },
+      {
+        plans: planDeps.plans,
+        renderer: previewRenderer,
+        ...(planDeps.previewPalette === undefined ? {} : { palette: planDeps.previewPalette }),
+      },
       {
         planId: c.req.param("id"),
         mayRender: () => {

@@ -194,6 +194,7 @@ function createRenderer(config: Config, clock: Clock): PreviewRenderer {
     instanceName: config.instanceName,
     attribution: config.maps.attribution,
     tiles,
+    palette: config.palette,
   });
 }
 
@@ -380,6 +381,7 @@ async function openInstance(
     reports: createReportRepository(database, keys.cipher),
     postingMode: config.postingMode,
     publicRequiresLogin: config.publicRequiresLogin,
+    previewPalette: config.palette,
     publicPlansOffered: config.nearbyEnabled,
     // Always there, so accounts can be deleted after federation was turned off (decision D37).
     posterActors: {

@@ -3,7 +3,9 @@
 // and area as boxes with icons, distance and pace in one line, the rough-area map if available, and
 // the instance name with the site's mark. Built from PreviewText, which only holds public data.
 import { readFileSync } from "node:fs";
-import { type HexColor, planTheme, TINT_PERCENT, tintOn, WHITE } from "../../../domain/color.ts";
+import { type HexColor, planTheme, TINT_PERCENT, tintOn } from "../../../domain/color.ts";
+import type { Palette } from "../../../domain/palette.ts";
+import { CARD_PALETTES } from "./card-palettes.ts";
 import type { PreviewText } from "../../in/http/views/preview-text.ts";
 
 export const CARD_SIZE = { width: 1200, height: 630 } as const;
@@ -38,14 +40,6 @@ const clip = (text: string, max: number) => {
   const chars = Array.from(text);
   return chars.length <= max ? text : `${chars.slice(0, max - 1).join("")}…`;
 };
-
-/** The page's light colours, named after their tokens in public/app.css (decision D27). */
-const BG = WHITE;
-const FG = "#16181d";
-const MUTED = "#5c636e";
-const LINE = "#e4e7eb";
-const SURFACE = "#f3f4f6";
-const ACCENT = "#2c67a8";
 
 /** The bundled icons the card uses, and how each is drawn: outlined, or filled (the mark, D28). */
 const ICONS = { calendar: "stroke", pin: "stroke", logo: "fill" } as const;
@@ -83,13 +77,17 @@ export function cardElement({
   colors,
   instanceName,
   map,
+  palette = "default",
 }: {
   text: PreviewText;
   colors: { primary: HexColor; secondary: HexColor };
   instanceName: string;
   map?: CardMap | undefined;
+  /** The instance palette (PALETTE); the card ignores any visitor's own choice. */
+  palette?: Palette;
 }): CardNode {
   const theme = planTheme(colors);
+  const { bg, fg, muted, line, surface, accent, shape } = CARD_PALETTES[palette];
   const box = (name: IconName, label: string) =>
     node(
       "div",
@@ -99,14 +97,14 @@ export function cardElement({
         alignSelf: "flex-start",
         marginTop: 12,
         padding: "10px 20px",
-        border: `2px solid ${LINE}`,
-        borderRadius: 12,
-        backgroundColor: SURFACE,
+        border: `${shape.boxBorder}px solid ${line}`,
+        borderRadius: shape.boxRadius,
+        backgroundColor: surface,
         fontSize: 28,
         fontWeight: 700,
       },
       [
-        icon(name, MUTED, { width: 30, height: 30 }),
+        icon(name, muted, { width: 30, height: 30 }),
         node("div", { display: "flex", marginLeft: 14 }, label),
       ],
     );
@@ -132,8 +130,11 @@ export function cardElement({
           display: "flex",
           flexDirection: "column",
           padding: "28px 32px",
-          borderRadius: 24,
-          backgroundColor: tintOn(theme.primary, TINT_PERCENT.primary, BG),
+          borderRadius: shape.titleRadius,
+          ...(shape.titleBorder > 0
+            ? { border: `${shape.titleBorder}px solid ${shape.titleBorderColor}` }
+            : {}),
+          backgroundColor: tintOn(theme.primary, TINT_PERCENT.primary, bg),
         },
         [
           node(
@@ -152,7 +153,7 @@ export function cardElement({
             {
               display: "flex",
               marginTop: 12,
-              color: MUTED,
+              color: muted,
               fontSize: 24,
               fontWeight: 700,
               letterSpacing: 2,
@@ -177,9 +178,9 @@ export function cardElement({
       ]),
       node(
         "div",
-        { display: "flex", alignItems: "center", color: ACCENT, fontSize: 28, fontWeight: 700 },
+        { display: "flex", alignItems: "center", color: accent, fontSize: 28, fontWeight: 700 },
         [
-          icon("logo", ACCENT, { width: 22, height: 34 }),
+          icon("logo", accent, { width: 22, height: 34 }),
           node("div", { display: "flex", marginLeft: 12 }, instanceName),
         ],
       ),
@@ -192,8 +193,8 @@ export function cardElement({
       display: "flex",
       width: CARD_SIZE.width,
       height: CARD_SIZE.height,
-      backgroundColor: BG,
-      color: FG,
+      backgroundColor: bg,
+      color: fg,
       fontFamily: "Inter",
     },
     map === undefined ? [content] : [content, mapElement(map, theme.secondary)],

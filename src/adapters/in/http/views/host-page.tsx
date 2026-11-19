@@ -13,7 +13,12 @@ import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { RatingResultSection } from "./rating.tsx";
 import type { RatingResultView } from "../../../../application/plan-views.ts";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
-import { MoreChannels, type NtfySwitchProps, type TelegramSwitchProps } from "./more-channels.tsx";
+import {
+  MoreChannels,
+  type NtfySwitchProps,
+  SharedSettingsNotice,
+  type TelegramSwitchProps,
+} from "./more-channels.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import type { Units } from "../../../../domain/units.ts";
 import { PersonName } from "./avatar.tsx";
@@ -142,6 +147,7 @@ export function HostPage(props: HostPageProps) {
         <PushSwitch t={t} push={props.push} hint={t("push.hostHint")} />
         {props.email !== undefined && <EmailSwitch t={t} csrfToken={csrfToken} {...props.email} />}
         <MoreChannels t={t} csrfToken={csrfToken} ntfy={props.ntfy} telegram={props.telegram} />
+        <SharedSettingsNotice t={t} link="host" email={props.email} ntfy={props.ntfy} />
         {Object.values(props.people).every((list) => list.length === 0) ? (
           <p>{t("host.noPeople")}</p>
         ) : (

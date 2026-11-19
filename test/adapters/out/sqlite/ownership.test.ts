@@ -141,6 +141,7 @@ describe("account ownership (step 5a)", () => {
       tokenHash: "feed-hash",
       language: "en",
       createdAt: fixtureNow,
+      identityId: undefined,
     });
     await plan("owned", "anna");
     await devices().setIdentity("laptop", "anna");

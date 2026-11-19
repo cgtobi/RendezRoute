@@ -9,6 +9,7 @@ import {
   startLogin,
   viewAccount,
 } from "../../src/application/accounts.ts";
+import { createCalendarFeed, readCalendarFeed } from "../../src/application/calendar.ts";
 import { deleteMyData, viewMyData } from "../../src/application/my-data.ts";
 import { createPlan, viewPlan } from "../../src/application/plans.ts";
 import type { ProviderAccount } from "../../src/application/ports.ts";
@@ -342,6 +343,70 @@ describe("logging out (spec 7 Identity: this device only)", () => {
     await logOut(deps, { deviceToken: phone });
     expect(await channels.listFor({ planId: own.planId })).toHaveLength(1);
     expect(await channels.listFor({ planId: accountPlan.planId })).toEqual([]);
+  });
+});
+
+describe("logging in to another account without logging out", () => {
+  it("removes the first account's push subscriptions on that browser, keeping them on re-login", async () => {
+    const carol: ProviderAccount = { subject: "https://id.example.org carol", names: ["Carol"] };
+    const dave: ProviderAccount = { subject: "https://id.example.org dave", names: ["Dave"] };
+    const browser = await logIn(carol);
+    const hosted = await newPlan(browser, "Carol's plan");
+    const sub = {
+      endpoint: "https://fcm.googleapis.com/fcm/send/kiosk",
+      keys: { p256dh: `B${"A".repeat(86)}`, auth: "A".repeat(22) },
+    };
+    expect(
+      await subscribe(deps, {
+        planId: hosted.planId,
+        deviceToken: browser,
+        role: "host",
+        subscription: sub,
+      }),
+    ).toEqual({ kind: "subscribed" });
+    const again = await logIn(carol, browser);
+    expect(await channels.listFor({ planId: hosted.planId })).toHaveLength(1);
+    await logIn(dave, again);
+    expect(await channels.listFor({ planId: hosted.planId })).toEqual([]);
+  });
+});
+
+describe("the calendar feed and logging in (decision D25)", () => {
+  const titles = async (token: string) => {
+    const feed = await readCalendarFeed(deps, { token });
+    if (feed.kind !== "found") throw new Error("feed missing");
+    return feed.entries.map((entry) => entry.title).sort();
+  };
+  const makeFeed = async (deviceToken: string | undefined) => {
+    const created = await createCalendarFeed(deps, { deviceToken, language: "en" });
+    if (created.kind !== "created") throw new Error(created.kind);
+    return created.token;
+  };
+
+  it("does not list the plans of whoever logs in later on that browser", async () => {
+    const secret = await newPlan(undefined, "Link-only plan");
+    const alicePhone = await logIn(anna);
+    await join(secret.planId, alicePhone, "Alice");
+    const shared = await join((await newPlan(undefined, "Public plan")).planId, undefined, "Bob");
+    const token = await makeFeed(shared.newDeviceToken);
+    expect(await titles(token)).toEqual(["Public plan"]);
+    await logIn(anna, shared.newDeviceToken);
+    expect(await titles(token)).toEqual(["Public plan"]);
+  });
+
+  it("keeps listing the account's plans while the same account is logged in, not another", async () => {
+    const phone = await logIn(anna);
+    const own = await newPlan(undefined, "Own plan");
+    const browser = await logIn(anna, own.newDeviceToken);
+    await newPlan(phone, "Anna's plan");
+    const token = await makeFeed(browser);
+    expect(await titles(token)).toEqual(["Anna's plan", "Own plan"]);
+    await newPlan(phone, "Anna's later plan");
+    expect(await titles(token)).toEqual(["Anna's later plan", "Anna's plan", "Own plan"]);
+    const other = await logIn(ben, browser);
+    expect(await titles(token)).toEqual(["Own plan"]);
+    await logIn(anna, other);
+    expect(await titles(token)).toEqual(["Anna's later plan", "Anna's plan", "Own plan"]);
   });
 });
 

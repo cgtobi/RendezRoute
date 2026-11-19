@@ -771,6 +771,7 @@ export interface TemplateRepository {
 
 export interface DeviceRepository {
   findByTokenHash(hash: string): Promise<Device | undefined>;
+  findById(id: string): Promise<Device | undefined>;
   create(device: { id: string; tokenHash: string; now: Date }): Promise<void>;
   /** Last activity; also the account's the device is logged in to (spec 3.10). */
   touch(id: string, now: Date): Promise<void>;
@@ -1199,6 +1200,12 @@ export interface CalendarFeed {
   /** For the feed's texts: calendar servers fetch it without the browser's preferences. */
   language: string;
   createdAt: Date;
+  /**
+   * The account the device was logged in to when the feed was made; undefined when it was logged
+   * out, and for feeds made before this was recorded. The feed lists the account's plans only
+   * while the device is still logged in to this account.
+   */
+  identityId: string | undefined;
 }
 
 export interface CalendarFeedRepository {

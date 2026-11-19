@@ -123,16 +123,28 @@ export async function person(
   return { context, page };
 }
 
-/** True once the full-screen map's zoom animation runs (checked every frame), false after 5 s. */
-const ZOOM_ANIMATION_STARTS = `new Promise((resolve) => {
-  const until = performance.now() + 5000;
-  const check = () => {
-    if (document.querySelector(".map-dialog .leaflet-zoom-anim") !== null) resolve(true);
-    else if (performance.now() > until) resolve(false);
-    else requestAnimationFrame(check);
-  };
-  check();
-})`;
+/**
+ * Armed before a zoom key: closes the full-screen map in the same task that sees its zoom animation
+ * start (a MutationObserver callback, so no frame or slow engine can let the 250 ms pass first),
+ * then answers true. False after 5 s without a zoom. (Evaluated from text: a function built by
+ * waitForFunction would be refused by the app's CSP.)
+ */
+const CLOSE_WHEN_ZOOM_STARTS = `(() => {
+  const dialog = document.querySelector("dialog.map-dialog");
+  window.__closedMidZoom = new Promise((resolve) => {
+    const observer = new MutationObserver(() => {
+      if (dialog.querySelector(".leaflet-zoom-anim") === null) return;
+      observer.disconnect();
+      dialog.close();
+      resolve(true);
+    });
+    observer.observe(dialog, { subtree: true, attributes: true, attributeFilter: ["class"] });
+    setTimeout(() => {
+      observer.disconnect();
+      resolve(false);
+    }, 5000);
+  });
+})()`;
 
 /** What moves the full-screen map just before it is closed: a key, or a wheel turn. */
 export type MapMove = "ArrowRight" | "ArrowLeft" | "+" | "-" | "wheel in" | "wheel out";
@@ -155,6 +167,8 @@ export async function closeWhileTheMapMoves(
   for (const move of moves) {
     await open();
     await expect(map).toBeFocused();
+    const zoom = move !== "ArrowRight" && move !== "ArrowLeft";
+    if (zoom) await page.evaluate(CLOSE_WHEN_ZOOM_STARTS);
     if (move === "wheel in" || move === "wheel out") {
       const box = await map.boundingBox();
       await page.mouse.move(
@@ -165,14 +179,13 @@ export async function closeWhileTheMapMoves(
     } else {
       await page.keyboard.press(move);
     }
-    // A zoom: closed only once its animation runs, inside the window the timer was left in.
-    // Watched each frame in the page: polled from here, a slow engine could miss the 250 ms.
-    // (waitForFunction would build a function from the text, which the app's CSP refuses.)
-    if (move !== "ArrowRight" && move !== "ArrowLeft") {
-      const zooming = await page.evaluate<boolean>(ZOOM_ANIMATION_STARTS);
-      expect(zooming, `${move} starts a zoom animation`).toBe(true);
+    if (zoom) {
+      // Closed by the page the moment the zoom began, inside the window the timer was left in.
+      const closed = await page.evaluate<boolean>("window.__closedMidZoom");
+      expect(closed, `${move} starts a zoom animation`).toBe(true);
+    } else {
+      await page.keyboard.press("Escape");
     }
-    await page.keyboard.press("Escape");
     await expect(page.locator("dialog.map-dialog")).toHaveCount(0);
   }
   // The timer runs 250 ms after its zoom started: by now the last one has run.

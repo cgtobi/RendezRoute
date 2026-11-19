@@ -52,6 +52,23 @@ describe("the email setting on the manage and host pages (decision D31)", () => 
     );
   });
 
+  it("says that everyone with the link sees and changes the saved settings", async () => {
+    const { ben, host, planId } = await setup();
+    const manage = `/p/${planId}/me`;
+    const hostPage = `/p/${planId}/host`;
+    const shared = {
+      host: escaped(en("channels.sharedHost")),
+      response: escaped(en("channels.sharedResponse")),
+    };
+    expect(await (await ben.get(manage)).text()).not.toContain(shared.response);
+    await setAddress(ben, manage, "ben@example.org");
+    await setAddress(host, hostPage, "host@example.org");
+    const benPage = await (await ben.get(manage)).text();
+    expect(benPage).toContain(shared.response);
+    expect(benPage.split(shared.response)).toHaveLength(2);
+    expect(await (await host.get(hostPage)).text()).toContain(shared.host);
+  });
+
   it("sends the confirmation link and nothing else until it is used", async () => {
     const { ben, host, planId, mailer, runJobs } = await setup();
     const sent = await setAddress(ben, `/p/${planId}/me`, "ben@example.org");

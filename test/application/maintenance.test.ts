@@ -164,6 +164,7 @@ describe("runHousekeeping and calendar feeds (spec 3.10)", () => {
       tokenHash: "feed-hash",
       language: "en",
       createdAt: fixtureNow,
+      identityId: undefined,
     });
     const housekeeping = () =>
       runHousekeeping({

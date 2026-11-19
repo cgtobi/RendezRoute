@@ -30,15 +30,34 @@ const feed = (id: string, tokenHash: string, language = "de") => ({
   tokenHash,
   language,
   createdAt: fixtureNow,
+  identityId: undefined,
 });
 
 describe("calendar feeds (spec 6 feature 2)", () => {
   it("are found by token hash and by device", async () => {
     await feeds().replace(feed("feed-1", "hash-1"));
-    const expected = { id: "feed-1", deviceId: "device-1", language: "de", createdAt: fixtureNow };
+    const expected = {
+      id: "feed-1",
+      deviceId: "device-1",
+      language: "de",
+      createdAt: fixtureNow,
+      identityId: undefined,
+    };
     expect(await feeds().findByTokenHash("hash-1")).toEqual(expected);
     expect(await feeds().findForDevice("device-1")).toEqual(expected);
     expect(await feeds().findByTokenHash("other")).toBeUndefined();
+  });
+
+  it("remember the account the device was logged in to, and forget a deleted account", async () => {
+    database.sqlite
+      .prepare(
+        "insert into identities (id, provider, subject_hmac, subject_enc, created_at, last_active_at) values ('i', 'oidc', 'h', 'e', 'x', 'x')",
+      )
+      .run();
+    await feeds().replace({ ...feed("feed-1", "hash-1"), identityId: "i" });
+    expect((await feeds().findByTokenHash("hash-1"))?.identityId).toBe("i");
+    database.sqlite.prepare("delete from identities").run();
+    expect((await feeds().findByTokenHash("hash-1"))?.identityId).toBeUndefined();
   });
 
   it("are one per device: a new link replaces the old one", async () => {

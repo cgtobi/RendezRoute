@@ -192,6 +192,8 @@ export interface CalendarFeedsTable {
   token_hash: string;
   language: string;
   created_at: string;
+  /** The account the device was logged in to when the feed was made (0033). */
+  identity_id: string | null;
 }
 
 export interface RecapContributionsTable {

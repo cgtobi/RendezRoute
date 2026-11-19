@@ -599,6 +599,10 @@ export const fr: Messages = {
   "privacy.accountEmail":
     "Si vous ajoutez une adresse e-mail à votre compte, elle est stockée chiffrée, utilisée uniquement pour les e-mails sur le compte (comme l’avertissement avant la suppression d’un compte inutilisé) et pour les sorties pour lesquelles vous la choisissez, et supprimée avec le compte.",
   "email.hostShared": "Toutes les personnes qui gèrent cette sortie voient cette adresse.",
+  "channels.sharedHost":
+    "Toutes les personnes qui ont le lien d’organisation de cette sortie peuvent voir et modifier ces réglages de notification.",
+  "channels.sharedResponse":
+    "Toutes les personnes qui ont votre lien de gestion peuvent voir et modifier ces réglages de notification.",
   "channels.more": "D’autres façons d’être notifié·e",
   "ntfy.label": "Application ntfy",
   "ntfy.hint":

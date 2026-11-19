@@ -41,6 +41,29 @@ export interface FediverseMessagesSwitchProps {
   failed?: boolean;
 }
 
+/**
+ * A notice, once per page, that the plan item's saved email address and ntfy topic belong to the
+ * item and not to a person: everyone holding the link sees and changes them. Shown only while one
+ * of them is saved.
+ */
+export function SharedSettingsNotice({
+  t,
+  link,
+  email,
+  ntfy,
+}: {
+  t: Translate;
+  link: "host" | "response";
+  email: { setting: { state: string } } | undefined;
+  ntfy: { setting: { state: string } } | undefined;
+}) {
+  const saved = [email, ntfy].some((props) => props !== undefined && props.setting.state !== "off");
+  if (!saved) return null;
+  return (
+    <p class="hint">{t(link === "host" ? "channels.sharedHost" : "channels.sharedResponse")}</p>
+  );
+}
+
 export function MoreChannels({
   t,
   csrfToken,

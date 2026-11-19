@@ -4,9 +4,19 @@ import type { Database } from "./database.ts";
 
 export function createCalendarFeedRepository(database: Database): CalendarFeedRepository {
   const select = () =>
-    database.db.selectFrom("calendar_feeds").select(["id", "device_id", "language", "created_at"]);
+    database.db
+      .selectFrom("calendar_feeds")
+      .select(["id", "device_id", "language", "created_at", "identity_id"]);
   const fromRow = (
-    row: { id: string; device_id: string; language: string; created_at: string } | undefined,
+    row:
+      | {
+          id: string;
+          device_id: string;
+          language: string;
+          created_at: string;
+          identity_id: string | null;
+        }
+      | undefined,
   ): CalendarFeed | undefined =>
     row === undefined
       ? undefined
@@ -15,11 +25,18 @@ export function createCalendarFeedRepository(database: Database): CalendarFeedRe
           deviceId: row.device_id,
           language: row.language,
           createdAt: new Date(row.created_at),
+          identityId: row.identity_id ?? undefined,
         };
 
   return {
-    async replace({ id, deviceId, tokenHash, language, createdAt }) {
-      const values = { id, token_hash: tokenHash, language, created_at: createdAt.toISOString() };
+    async replace({ id, deviceId, tokenHash, language, createdAt, identityId }) {
+      const values = {
+        id,
+        token_hash: tokenHash,
+        language,
+        created_at: createdAt.toISOString(),
+        identity_id: identityId ?? null,
+      };
       await database.db
         .insertInto("calendar_feeds")
         .values({ ...values, device_id: deviceId })

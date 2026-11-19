@@ -650,6 +650,10 @@ export function createFakeRepositories(): {
         const entry = [...devices.values()].find((candidate) => candidate.tokenHash === hash);
         return entry === undefined ? undefined : { ...entry.device };
       },
+      async findById(id) {
+        const entry = devices.get(id);
+        return entry === undefined ? undefined : { ...entry.device };
+      },
       async create({ id, tokenHash, now }) {
         devices.set(id, { device: { id, lastSeenAt: now, identityId: undefined }, tokenHash });
       },
@@ -974,5 +978,6 @@ function withoutHash(feed: CalendarFeed & { tokenHash: string }): CalendarFeed {
     deviceId: feed.deviceId,
     language: feed.language,
     createdAt: feed.createdAt,
+    identityId: feed.identityId,
   };
 }

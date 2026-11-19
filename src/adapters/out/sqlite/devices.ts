@@ -138,21 +138,23 @@ const identityOf = async (db: Kysely<DatabaseSchema>, deviceId: string) =>
   )?.identity_id ?? null;
 
 export function createDeviceRepository(database: Database): DeviceRepository {
+  const find = async (column: "id" | "token_hash", value: string) => {
+    const row = await database.db
+      .selectFrom("devices")
+      .select(["id", "last_seen_at", "identity_id"])
+      .where(column, "=", value)
+      .executeTakeFirst();
+    return row === undefined
+      ? undefined
+      : {
+          id: row.id,
+          lastSeenAt: new Date(row.last_seen_at),
+          identityId: row.identity_id ?? undefined,
+        };
+  };
   return {
-    async findByTokenHash(hash) {
-      const row = await database.db
-        .selectFrom("devices")
-        .select(["id", "last_seen_at", "identity_id"])
-        .where("token_hash", "=", hash)
-        .executeTakeFirst();
-      return row === undefined
-        ? undefined
-        : {
-            id: row.id,
-            lastSeenAt: new Date(row.last_seen_at),
-            identityId: row.identity_id ?? undefined,
-          };
-    },
+    findByTokenHash: (hash) => find("token_hash", hash),
+    findById: (id) => find("id", id),
 
     async create({ id, tokenHash, now }) {
       const at = now.toISOString();

@@ -10,7 +10,12 @@ import { fieldErrorMessage } from "./format.ts";
 import { describedBy, RequiredHint } from "./line-field.tsx";
 import { type LinkEmail, LinkTools } from "./link-tools.tsx";
 import { EmailSwitch, type EmailSwitchProps } from "./email-switch.tsx";
-import { MoreChannels, type NtfySwitchProps, type TelegramSwitchProps } from "./more-channels.tsx";
+import {
+  MoreChannels,
+  type NtfySwitchProps,
+  SharedSettingsNotice,
+  type TelegramSwitchProps,
+} from "./more-channels.tsx";
 import { type PushSettings, PushSwitch } from "./push-switch.tsx";
 import { ResponseStatus } from "./response-status.tsx";
 
@@ -119,6 +124,7 @@ export function ManagePage(props: {
           props.telegram === undefined ? undefined : { ...props.telegram, offOnly: blocked }
         }
       />
+      <SharedSettingsNotice t={t} link="response" email={props.email} ntfy={props.ntfy} />
 
       <p>
         <a class="button secondary" href={`/p/${planId}/me/export.zip`}>

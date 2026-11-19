@@ -123,6 +123,11 @@ export async function finishLogin(
 
   const identity = await findOrCreateIdentity(deps, request.provider, result.account, now);
   const { device, newToken } = await ensureDevice(deps, request.deviceToken);
+  // Another account on a device still logged in: the first account's push subscriptions go, as
+  // when logging out.
+  if (device.identityId !== undefined && device.identityId !== identity.id) {
+    await removeAccountOnlyChannels(deps, device.id);
+  }
   await deps.devices.setIdentity(device.id, identity.id);
   // Logging in gives the device cookie more power: a new token, so an older or planted one stops
   // working (session fixation). The device keeps its links.
@@ -244,15 +249,19 @@ export async function logOut(
 ): Promise<{ kind: "logged_out" }> {
   const device = await lookupDevice(deps, request.deviceToken);
   if (device?.identityId === undefined) return { kind: "logged_out" };
-  if (deps.notify !== undefined) {
-    const own = new Set((await deps.plans.findLinkedToDevice(device.id, "device")).map(ownerKey));
-    const throughAccount = (
-      await deps.plans.findLinkedToDevice(device.id, "device_and_account")
-    ).filter((entry) => !own.has(ownerKey(entry)));
-    await deps.notify.channels.removeForDevice(device.id, throughAccount.map(channelOwnerOf));
-  }
+  await removeAccountOnlyChannels(deps, device.id);
   await deps.devices.setIdentity(device.id, undefined);
   return { kind: "logged_out" };
+}
+
+/** Removes the device's channels for items it reaches only through its account. */
+async function removeAccountOnlyChannels(deps: AccountDeps, deviceId: string): Promise<void> {
+  if (deps.notify === undefined) return;
+  const own = new Set((await deps.plans.findLinkedToDevice(deviceId, "device")).map(ownerKey));
+  const throughAccount = (
+    await deps.plans.findLinkedToDevice(deviceId, "device_and_account")
+  ).filter((entry) => !own.has(ownerKey(entry)));
+  await deps.notify.channels.removeForDevice(deviceId, throughAccount.map(channelOwnerOf));
 }
 
 const channelOwnerOf = (entry: LinkedPlan): ChannelOwner =>

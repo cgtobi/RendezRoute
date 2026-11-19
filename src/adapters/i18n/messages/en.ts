@@ -575,6 +575,10 @@ export const en = {
   "privacy.accountEmail":
     "If you add an email address to your account, it is stored encrypted, used only for emails about the account (such as the warning before an unused account is deleted) and for plans you choose it for, and deleted with the account.",
   "email.hostShared": "Everyone who manages this plan sees this address.",
+  "channels.sharedHost":
+    "Everyone who has this plan’s host link can see and change these notification settings.",
+  "channels.sharedResponse":
+    "Everyone who has your manage link can see and change these notification settings.",
   "channels.more": "More ways to be notified",
   "ntfy.label": "ntfy app",
   "ntfy.hint":

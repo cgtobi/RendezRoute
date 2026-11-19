@@ -8,6 +8,7 @@ import type { Plan, PlanStatus } from "../domain/plan.ts";
 import type { ResponseKind } from "../domain/response.ts";
 import { resolveDevice } from "./devices.ts";
 import { type PlanDeps, viewPlan } from "./plans.ts";
+import type { Device } from "./ports.ts";
 
 /** Responses whose plan is in the feed: rejected and removed people no longer see it. */
 const IN_FEED: ReadonlySet<ResponseKind> = new Set(["interested", "requested", "joined"]);
@@ -78,12 +79,23 @@ export async function planCalendar(
   };
 }
 
-/** The plans a device's feed lists: hosted ones and those it is still in, sorted by start. */
+/**
+ * The plans a device's feed lists: hosted ones and those it is still in, sorted by start. The
+ * account's plans are included only while the device is logged in to the account the feed was made
+ * under (`feedIdentityId`): logging in later on a borrowed browser moves nothing into an older
+ * feed (decision D25). A feed made while logged out, or before the account was recorded (NULL),
+ * is device-only: what the device held then cannot be known, and the safe reading leaks nothing.
+ */
 async function feedPlans(
   deps: PlanDeps,
-  deviceId: string,
+  device: Device,
+  feedIdentityId: string | undefined,
 ): Promise<{ plan: Plan; hosting: boolean }[]> {
-  const linked = await deps.plans.findLinkedToDevice(deviceId, "device_and_account");
+  const withAccount = feedIdentityId !== undefined && device.identityId === feedIdentityId;
+  const linked = await deps.plans.findLinkedToDevice(
+    device.id,
+    withAccount ? "device_and_account" : "device",
+  );
   return linked.flatMap((entry): { plan: Plan; hosting: boolean }[] =>
     entry.role === "host"
       ? [{ plan: entry.plan, hosting: true }]
@@ -105,7 +117,7 @@ export async function viewCalendarFeed(
   if (device === undefined) return { hasFeed: false, canCreate: false };
   return {
     hasFeed: (await deps.calendarFeeds.findForDevice(device.id)) !== undefined,
-    canCreate: (await feedPlans(deps, device.id)).length > 0,
+    canCreate: (await feedPlans(deps, device, device.identityId)).length > 0,
   };
 }
 
@@ -118,7 +130,7 @@ export async function createCalendarFeed(
   request: { deviceToken: string | undefined; language: string },
 ): Promise<{ kind: "created"; token: string } | { kind: "nothing_linked" }> {
   const device = await resolveDevice(deps, request.deviceToken);
-  if (device === undefined || (await feedPlans(deps, device.id)).length === 0) {
+  if (device === undefined || (await feedPlans(deps, device, device.identityId)).length === 0) {
     return { kind: "nothing_linked" };
   }
   const token = deps.tokens.generate();
@@ -128,6 +140,7 @@ export async function createCalendarFeed(
     tokenHash: deps.tokens.hash(token),
     language: request.language,
     createdAt: deps.clock.now(),
+    identityId: device.identityId,
   });
   return { kind: "created", token };
 }
@@ -150,7 +163,9 @@ export async function readCalendarFeed(
 ): Promise<{ kind: "found"; language: string; entries: CalendarEntry[] } | { kind: "not_found" }> {
   const feed = await deps.calendarFeeds.findByTokenHash(deps.tokens.hash(request.token));
   if (feed === undefined) return { kind: "not_found" };
-  const plans = await feedPlans(deps, feed.deviceId);
+  const device = await deps.devices.findById(feed.deviceId);
+  if (device === undefined) return { kind: "not_found" };
+  const plans = await feedPlans(deps, device, feed.identityId);
   return {
     kind: "found",
     language: feed.language,

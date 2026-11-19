@@ -600,6 +600,10 @@ export const de: Messages = {
   "privacy.accountEmail":
     "Wenn du deinem Konto eine E-Mail-Adresse hinzufügst, wird sie verschlüsselt gespeichert, nur für E-Mails zum Konto (etwa die Warnung, bevor ein ungenutztes Konto gelöscht wird) und für Treffen genutzt, für die du sie auswählst, und mit dem Konto gelöscht.",
   "email.hostShared": "Alle, die dieses Treffen verwalten, sehen diese Adresse.",
+  "channels.sharedHost":
+    "Alle, die den Organisationslink dieses Treffens haben, können diese Benachrichtigungseinstellungen sehen und ändern.",
+  "channels.sharedResponse":
+    "Alle, die deinen Verwaltungslink haben, können diese Benachrichtigungseinstellungen sehen und ändern.",
   "channels.more": "Weitere Wege, benachrichtigt zu werden",
   "ntfy.label": "ntfy-App",
   "ntfy.hint":

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.8
+
+- Security: "Move into my account" now shows what it will move first: the plans, answers and templates made on this browser, with a warning that they may not be yours, and asks you to confirm. This protects the plans of whoever uses the browser from being taken by someone else who logs in there.
+- Security: the limits on creating plans, answering, sending email, Nearby and place search now also apply to a whole IPv6 network (a /48), so one network cannot multiply them. The limit on email to one address can no longer be pushed out by other traffic.
+
 ## 0.18.7
 
 - The menu now has a "Calendar" entry, so the calendar subscription page can be reached from every page.

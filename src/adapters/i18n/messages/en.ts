@@ -1085,8 +1085,20 @@ export const en = {
     one: "{count} template",
     other: "{count} templates",
   },
-  "account.claimSubmit": "Move into my account",
+  "account.claimSubmit": "Review and move into my account",
   "account.claimed": "Moved into your account.",
+  "account.claimConfirmHeading": "Move into your account?",
+  "account.claimWarning":
+    "These plans were made or joined on this browser, not necessarily by you. Moving them into your account takes them away from this browser. Only continue if they are yours.",
+  "account.claimRoleHost": "Host",
+  "account.claimMove": {
+    zero: "Move nothing into my account",
+    one: "Move {count} plan into my account",
+    other: "Move {count} plans into my account",
+  },
+  "account.claimCancel": "Cancel",
+  "account.claimChanged":
+    "What this browser holds changed in the meantime. Check the list again before you continue.",
   "account.fediverseHeading": "Log in with a fediverse account",
   "account.fediverseServer": "Your server",
   "account.fediverseHint": "For example mastodon.social, or your handle such as @you@your.server.",

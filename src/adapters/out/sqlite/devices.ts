@@ -250,6 +250,15 @@ export function createDeviceRepository(database: Database): DeviceRepository {
       return counts;
     },
 
+    async claimableIds(deviceId) {
+      const { db } = database;
+      const identityId = await identityOf(db, deviceId);
+      const [plans, responses, templates] = await Promise.all(
+        CLAIMS.map((claim) => claimableIds(db, deviceId, identityId, claim)),
+      );
+      return { plans: plans ?? [], responses: responses ?? [], templates: templates ?? [] };
+    },
+
     async claimInto(deviceId, identityId) {
       return database.db.transaction().execute(async (trx) => {
         // Logged out or into another account a moment ago: nothing moves.

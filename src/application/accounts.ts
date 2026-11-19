@@ -16,7 +16,10 @@ import {
   fediverseServerAllowed,
   parseFediverseServer,
 } from "../domain/fediverse.ts";
+import type { ResponseKind } from "../domain/response.ts";
+import type { PlanTemplate } from "../domain/template.ts";
 import { loggedInAccount } from "./account-data.ts";
+import { itemOf, type MyDataItem } from "./my-data.ts";
 import { ensureDevice, lookupDevice } from "./devices.ts";
 import type { PlanDeps } from "./plans.ts";
 import type {
@@ -216,12 +219,61 @@ export async function viewAccount(
  */
 export async function claimDeviceData(
   deps: AccountDeps,
-  request: { deviceToken: string | undefined },
-): Promise<{ kind: "claimed"; moved: ClaimCounts } | { kind: "logged_out" }> {
+  request: {
+    deviceToken: string | undefined;
+    /** How many items the person saw on the confirmation page; a different number moves nothing. */
+    expected?: number | undefined;
+  },
+): Promise<{ kind: "claimed"; moved: ClaimCounts } | { kind: "changed" } | { kind: "logged_out" }> {
   const account = await accountOf(deps, request.deviceToken);
   if (account === undefined) return { kind: "logged_out" };
+  if (request.expected !== undefined) {
+    const now = await deps.devices.claimable(account.device.id);
+    if (now.plans + now.responses + now.templates !== request.expected) {
+      return { kind: "changed" };
+    }
+  }
   const moved = await deps.devices.claimInto(account.device.id, account.identity.id);
   return { kind: "claimed", moved };
+}
+
+export interface ClaimPreview {
+  hosted: MyDataItem[];
+  responses: (MyDataItem & { responseKind: ResponseKind })[];
+  templates: Pick<PlanTemplate, "id" | "title" | "expiresAt" | "timeZone">[];
+  /** What the button promises; sent back with the confirmation. */
+  total: number;
+}
+
+/**
+ * What claiming would move, item by item, so a person sees whose plans they are about to take
+ * before confirming (decision I51). Only this browser's own links, never the account's.
+ */
+export async function previewClaim(
+  deps: AccountDeps,
+  request: { deviceToken: string | undefined },
+): Promise<
+  { kind: "preview"; preview: ClaimPreview } | { kind: "nothing" } | { kind: "logged_out" }
+> {
+  const account = await accountOf(deps, request.deviceToken);
+  if (account === undefined) return { kind: "logged_out" };
+  const ids = await deps.devices.claimableIds(account.device.id);
+  const linked = await deps.plans.findLinkedToDevice(account.device.id, "device");
+  const hosted = linked.flatMap((entry) =>
+    entry.role === "host" && ids.plans.includes(entry.plan.id) ? [itemOf(entry.plan)] : [],
+  );
+  const responses = linked.flatMap((entry) =>
+    entry.role === "manage" && ids.responses.includes(entry.responseId)
+      ? [{ ...itemOf(entry.plan), responseKind: entry.responseKind }]
+      : [],
+  );
+  const templates = (await deps.templates.listForDevice(account.device.id, "device"))
+    .filter((template) => ids.templates.includes(template.id))
+    .map(({ id, title, expiresAt, timeZone }) => ({ id, title, expiresAt, timeZone }));
+  const total = hosted.length + responses.length + templates.length;
+  return total === 0
+    ? { kind: "nothing" }
+    : { kind: "preview", preview: { hosted, responses, templates, total } };
 }
 
 export async function renameAccount(

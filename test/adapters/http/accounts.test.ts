@@ -332,27 +332,91 @@ describe("deleting a logged-in browser's data (spec 3.7)", () => {
 });
 
 describe("claiming on the account page (spec 7 Identity)", () => {
-  it("offers to move this browser's plans into the account, and does so only on request", async () => {
+  it("offers to move this browser's plans into the account, and does so only after confirming", async () => {
     const { app, oidc } = await setup();
     const phone = new TestClient(app);
-    const { planId } = await createPlanViaUi(phone);
+    const { planId } = await createPlanViaUi(phone, { title: "Phone run" });
     await logIn(phone, oidc);
     const page = text(await (await phone.get("/account")).text());
     expect(page).toContain(en("account.claimPlans", { count: 1 }));
-    expect(page).toContain('action="/account/claim"');
+    // The account page only links to the confirmation; nothing moves from it.
+    expect(page).toContain('href="/account/claim"');
+    expect(page).not.toContain('action="/account/claim"');
+
+    const confirmation = await phone.get("/account/claim");
+    expect(confirmation.status).toBe(200);
+    expect(confirmation.headers.get("cache-control")).toBe("private, no-store");
+    const confirmHtml = text(await confirmation.text());
+    expect(confirmHtml).toContain("Phone run");
+    expect(confirmHtml).toContain(en("account.claimRoleHost"));
+    expect(confirmHtml).toContain(en("account.claimWarning"));
+    expect(confirmHtml).toContain(en("account.claimMove", { count: 1 }));
+    expect(confirmHtml).toContain('href="/account"');
 
     const laptop = new TestClient(app);
     await logIn(laptop, oidc);
     // Not the laptop's yet: the host page sends it to the plan page.
     expect((await laptop.get(`/p/${planId}/host`)).status).toBe(303);
     expect((await phone.postForm("/account/claim", {})).status).toBe(403);
-    const claimed = await phone.postForm("/account/claim", hiddenFields(page));
+    const claimed = await phone.postForm("/account/claim", hiddenFields(confirmHtml));
     expect(claimed.status).toBe(303);
     expect(claimed.headers.get("location")).toBe("/account?claimed");
     const after = text(await (await phone.get("/account?claimed")).text());
     expect(after).toContain(en("account.claimed"));
-    expect(after).not.toContain('action="/account/claim"');
+    expect(after).not.toContain('href="/account/claim"');
     expect((await laptop.get(`/p/${planId}/host`)).status).toBe(200);
+    // Nothing left to move: no empty confirmation page.
+    const empty = await phone.get("/account/claim");
+    expect(empty.status).toBe(303);
+    expect(empty.headers.get("location")).toBe("/account");
+  });
+
+  it("lists only this browser's own plans, not another browser's", async () => {
+    const { app, oidc } = await setup();
+    const phone = new TestClient(app);
+    await createPlanViaUi(phone, { title: "Phone run" });
+    const stranger = new TestClient(app);
+    await createPlanViaUi(stranger, { title: "Stranger hike" });
+    await logIn(phone, oidc);
+    const html = text(await (await phone.get("/account/claim")).text());
+    expect(html).toContain("Phone run");
+    expect(html).not.toContain("Stranger hike");
+  });
+
+  it("refuses a confirmation whose list changed meanwhile, and shows the new list", async () => {
+    const { app, oidc } = await setup();
+    const phone = new TestClient(app);
+    const { planId } = await createPlanViaUi(phone, { title: "Phone run" });
+    await logIn(phone, oidc);
+    const fields = hiddenFields(await (await phone.get("/account/claim")).text());
+    expect(fields["expected"]).toBe("1");
+    // The person saw a different number than the browser holds now.
+    const refused = await phone.postForm("/account/claim", { ...fields, expected: "2" });
+    expect(refused.status).toBe(303);
+    expect(refused.headers.get("location")).toBe("/account/claim?changed");
+    const again = text(await (await phone.get("/account/claim?changed")).text());
+    expect(again).toContain(en("account.claimChanged"));
+    expect(again).toContain("Phone run");
+    const laptop = new TestClient(app);
+    await logIn(laptop, oidc);
+    expect((await laptop.get(`/p/${planId}/host`)).status).toBe(303);
+    const done = await phone.postForm("/account/claim", hiddenFields(again));
+    expect(done.headers.get("location")).toBe("/account?claimed");
+    expect((await laptop.get(`/p/${planId}/host`)).status).toBe(200);
+  });
+
+  it("is only for a logged-in browser", async () => {
+    const { app } = await setup();
+    const phone = new TestClient(app);
+    await createPlanViaUi(phone, { title: "Phone run" });
+    const page = await phone.get("/account/claim");
+    expect(page.status).toBe(303);
+    expect(page.headers.get("location")).toBe("/account");
+    const posted = await phone.postForm("/account/claim", await phone.hiddenFields("/new"));
+    expect(posted.status).toBe(303);
+    expect(posted.headers.get("location")).toBe("/account");
+    // The plan is still the browser's own.
+    expect(text(await (await phone.get("/my-data")).text())).toContain("Phone run");
   });
 
   it("puts plans created while logged in into the account right away", async () => {
@@ -360,9 +424,7 @@ describe("claiming on the account page (spec 7 Identity)", () => {
     const phone = new TestClient(app);
     await logIn(phone, oidc);
     const { planId } = await createPlanViaUi(phone);
-    expect(text(await (await phone.get("/account")).text())).not.toContain(
-      'action="/account/claim"',
-    );
+    expect(text(await (await phone.get("/account")).text())).not.toContain('href="/account/claim"');
     const laptop = new TestClient(app);
     await logIn(laptop, oidc);
     expect((await laptop.get(`/p/${planId}/host`)).status).toBe(200);

@@ -19,6 +19,7 @@ import {
   claimDeviceData,
   finishLogin,
   logOut,
+  previewClaim,
   renameAccount,
   startLogin,
   viewAccount,
@@ -36,6 +37,7 @@ import {
 import { exportZip, zipDownload } from "../export-zip.ts";
 import {
   AccountPage,
+  ClaimConfirmPage,
   DeleteAccountPage,
   type AccountNotice,
   ContinueLogin,
@@ -290,9 +292,39 @@ export function registerAccountRoutes(
     }
   });
 
+  // Claiming takes a browser's plans away from it, which a borrowed browser may hold for someone
+  // else: the GET lists what would move, the POST moves it (decision I51).
+  app.get("/account/claim", async (c) => {
+    const result = await previewClaim(deps, { deviceToken: deviceToken(c) });
+    if (result.kind !== "preview") return c.redirect("/account", 303);
+    const t = c.get("t");
+    c.header("cache-control", "private, no-store");
+    return c.render(
+      <ClaimConfirmPage
+        t={t}
+        csrfToken={c.get("csrfToken")()}
+        language={c.get("language")}
+        preview={result.preview}
+        changed={c.req.query("changed") !== undefined}
+      />,
+      { title: t("account.claimConfirmHeading") },
+    );
+  });
+
   app.post("/account/claim", async (c) => {
-    const result = await claimDeviceData(deps, { deviceToken: deviceToken(c) });
-    return c.redirect(result.kind === "claimed" ? "/account?claimed" : "/account", 303);
+    const body = await readForm(c);
+    if (body === undefined) return badRequest(c);
+    const sent = formField(body, "expected");
+    const expected = /^\d{1,6}$/.test(sent) ? Number(sent) : undefined;
+    const result = await claimDeviceData(deps, { deviceToken: deviceToken(c), expected });
+    switch (result.kind) {
+      case "claimed":
+        return c.redirect("/account?claimed", 303);
+      case "changed":
+        return c.redirect("/account/claim?changed", 303);
+      case "logged_out":
+        return c.redirect("/account", 303);
+    }
   });
 
   app.get("/account/export.zip", async (c) => {

@@ -1126,8 +1126,20 @@ export const de: Messages = {
     one: "{count} Vorlage",
     other: "{count} Vorlagen",
   },
-  "account.claimSubmit": "In mein Konto übernehmen",
+  "account.claimSubmit": "Prüfen und in mein Konto übernehmen",
   "account.claimed": "In dein Konto übernommen.",
+  "account.claimConfirmHeading": "In dein Konto übernehmen?",
+  "account.claimWarning":
+    "Diese Treffen wurden in diesem Browser erstellt oder beantwortet, nicht unbedingt von dir. Wenn du sie in dein Konto übernimmst, hat sie dieser Browser nicht mehr. Mach nur weiter, wenn sie dir gehören.",
+  "account.claimRoleHost": "Organisator:in",
+  "account.claimMove": {
+    zero: "Nichts in mein Konto übernehmen",
+    one: "{count} Treffen in mein Konto übernehmen",
+    other: "{count} Treffen in mein Konto übernehmen",
+  },
+  "account.claimCancel": "Abbrechen",
+  "account.claimChanged":
+    "Was dieser Browser hat, hat sich inzwischen geändert. Prüfe die Liste noch einmal, bevor du weitermachst.",
   "account.fediverseHeading": "Mit einem Fediverse-Konto anmelden",
   "account.fediverseServer": "Dein Server",
   "account.fediverseHint": "Zum Beispiel mastodon.social oder dein Handle wie @du@dein.server.",

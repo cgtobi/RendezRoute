@@ -142,10 +142,9 @@ describe("v0.7 acceptance criteria (spec 7)", () => {
     expect(account).toContain(en("account.claimPlans", { count: 1 }));
     expect(account).toContain(en("account.claimResponses", { count: 1 }));
     expect(account).toContain(en("account.claimTemplates", { count: 1 }));
-    await phone.postForm(
-      "/account/claim",
-      hiddenFields(await (await phone.get("/account")).text()),
-    );
+    const confirmation = text(await (await phone.get("/account/claim")).text());
+    expect(confirmation).toContain(en("account.claimMove", { count: 3 }));
+    await phone.postForm("/account/claim", hiddenFields(confirmation));
     const count = (sql: string) => test.database.sqlite.prepare(sql).pluck().get();
     expect(
       test.database.sqlite

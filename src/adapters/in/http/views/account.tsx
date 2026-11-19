@@ -2,7 +2,7 @@
 // or the account's display name and "Log out". Never the provider's identifier.
 import { ProfileSection, type ProfileSectionProps } from "./fediverse-profile.tsx";
 import type { AccountData } from "../../../../application/account-data.ts";
-import type { AccountView } from "../../../../application/accounts.ts";
+import type { AccountView, ClaimPreview } from "../../../../application/accounts.ts";
 import type { ClaimCounts } from "../../../../application/ports.ts";
 import { fediverseAddress } from "../../../../domain/actor.ts";
 import type { FediverseServerError } from "../../../../domain/fediverse.ts";
@@ -328,9 +328,83 @@ function ClaimSection(props: { t: Translate; csrfToken: string; claimable: Claim
           <li>{t("account.claimTemplates", { count: claimable.templates })}</li>
         )}
       </ul>
-      <form method="post" action="/account/claim">
+      <p>
+        <a class="button" href="/account/claim">
+          {t("account.claimSubmit")}
+        </a>
+      </p>
+    </section>
+  );
+}
+
+/**
+ * The step before claiming (decision I51): exactly what this browser would move, with a warning
+ * that it may not be the person's own, since a borrowed browser holds someone else's plans.
+ */
+export function ClaimConfirmPage(props: {
+  t: Translate;
+  csrfToken: string;
+  language: string;
+  preview: ClaimPreview;
+  /** The list changed after the person saw it; they see the new one. */
+  changed: boolean;
+}) {
+  const { t, language, preview } = props;
+  return (
+    <section class="account">
+      <BackLink href="/account" label={t("account.back")} />
+      <h1>{t("account.claimConfirmHeading")}</h1>
+      {props.changed && (
+        <p class="notice" role="status">
+          {t("account.claimChanged")}
+        </p>
+      )}
+      <p class="warning">{t("account.claimWarning")}</p>
+      <ItemList
+        heading={t("myData.hosted")}
+        level={2}
+        items={preview.hosted}
+        item={(item) => (
+          <Item
+            href={`/p/${item.planId}`}
+            title={item.title}
+            meta={`${itemWhen(t, item, language)} · ${t("account.claimRoleHost")}`}
+          />
+        )}
+      />
+      <ItemList
+        heading={t("myData.responses")}
+        level={2}
+        items={preview.responses}
+        item={(item) => (
+          <Item
+            href={`/p/${item.planId}`}
+            title={item.title}
+            meta={`${itemWhen(t, item, language)} · ${t(`status.${item.responseKind}`)}`}
+          />
+        )}
+      />
+      <ItemList
+        heading={t("myData.templates")}
+        level={2}
+        items={preview.templates}
+        item={(template) => (
+          <Item
+            href={`/templates/${template.id}`}
+            title={template.title}
+            meta={t("template.expires", {
+              date: formatDate(template.expiresAt, template.timeZone, language),
+            })}
+          />
+        )}
+      />
+      <form method="post" action="/account/claim" class="button-row">
         <input type="hidden" name={CSRF_FIELD} value={props.csrfToken} />
-        <button type="submit">{t("account.claimSubmit")}</button>
+        <input type="hidden" name="expected" value={String(preview.total)} />
+        <button type="submit">{t("account.claimMove", { count: preview.total })}</button>
+        <a class="button secondary" href="/account">
+          {t("account.claimCancel")}
+        </a>
       </form>
     </section>
   );

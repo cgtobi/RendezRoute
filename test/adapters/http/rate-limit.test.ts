@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   clientKey,
   createRateLimiter,
+  createRateLimits,
   createReplyLimits,
 } from "../../../src/adapters/in/http/rate-limit.ts";
 
@@ -116,5 +117,92 @@ describe("reply limits (decision D45)", () => {
     now += 120_000;
     expect(origin.take("https://one.example").ok).toBe(true);
     expect(origin.take("https://one.example").ok).toBe(false);
+  });
+});
+
+describe("coarse per-/48 bucket for costly actions", () => {
+  const net = (n: number, host = 1) => clientKey(`2001:db8:1:${n.toString(16)}::${host}`);
+
+  function coarseLimiter() {
+    let now = 0;
+    const limit = createRateLimiter({ capacity: 3, perHour: 6, coarse: 2, now: () => now });
+    return { limit, advance: (seconds: number) => (now += seconds * 1000) };
+  }
+
+  it("shares one bucket between /64s of the same /48, not with other /48s", () => {
+    const { limit } = coarseLimiter();
+    // Capacity 3 x 2 = 6 for the /48: two /64s use 3 each.
+    for (let i = 0; i < 3; i++) expect(limit.take(net(1)).ok).toBe(true);
+    for (let i = 0; i < 3; i++) expect(limit.take(net(2)).ok).toBe(true);
+    expect(limit.take(net(3)).ok).toBe(false);
+    expect(limit.take(clientKey("2001:db8:2:1::1")).ok).toBe(true);
+  });
+
+  it("leaves a burst within one /64 unchanged and IPv4 on a single bucket", () => {
+    const { limit } = coarseLimiter();
+    expect(Array.from({ length: 3 }, () => limit.take(net(1)).ok)).toEqual([true, true, true]);
+    expect(limit.take(net(1))).toEqual({ ok: false, retryAfterSeconds: 600 });
+    for (let i = 0; i < 3; i++) expect(limit.take("203.0.113.5").ok).toBe(true);
+    expect(limit.take("203.0.113.5").ok).toBe(false);
+    expect(limit.take("203.0.113.6").ok).toBe(true);
+  });
+
+  it("refunds the fine bucket when the coarse one refuses", () => {
+    const { limit } = coarseLimiter();
+    for (let i = 0; i < 3; i++) limit.take(net(1));
+    for (let i = 0; i < 2; i++) limit.take(net(2));
+    limit.take(net(3));
+    // /48 empty now; /64 number 2 still holds a token but is refused by the /48 and refunded.
+    expect(limit.take(net(2)).ok).toBe(false);
+    expect(limit.check(net(2)).ok).toBe(false);
+    limit.refund(net(1));
+    // The refund reached both buckets: the /48 has a token again, and so does /64 number 2.
+    expect(limit.take(net(2)).ok).toBe(true);
+    expect(limit.take(net(2)).ok).toBe(false);
+  });
+
+  it("applies the per-/48 bucket to the costly app limits", () => {
+    const limits = createRateLimits(() => 0);
+    // Respond: burst 10 per /64, 80 per /48.
+    let granted = 0;
+    for (let n = 0; n < 20; n++) {
+      for (let i = 0; i < 10; i++) if (limits.respond.take(net(n)).ok) granted++;
+    }
+    expect(granted).toBe(80);
+  });
+});
+
+describe("per-address email buckets", () => {
+  it("survive more than 10,000 other keys cycling through the other limiters", () => {
+    const limits = createRateLimits(() => 0);
+    for (let i = 0; i < 3; i++) expect(limits.emailAddress.take("victim").ok).toBe(true);
+    expect(limits.emailAddress.take("victim").ok).toBe(false);
+    for (let i = 0; i < 10_500; i++) {
+      const key = clientKey(`2001:db8:${i.toString(16)}::1`);
+      limits.email.take(key);
+      limits.create.take(key);
+      limits.respond.take(key);
+      limits.nearby.take(key);
+    }
+    expect(limits.emailAddress.take("victim").ok).toBe(false);
+  });
+
+  it("are not evicted by other addresses when the store is full; new ones are refused", () => {
+    let now = 0;
+    const limit = createRateLimiter({
+      capacity: 3,
+      perHour: 3,
+      maxKeys: 5,
+      whenFull: "refuse",
+      now: () => now,
+    });
+    for (let i = 0; i < 3; i++) limit.take("victim");
+    for (let i = 0; i < 4; i++) limit.take(`other${i}`);
+    expect(limit.take("late")).toEqual({ ok: false, retryAfterSeconds: 1200 });
+    expect(limit.take("victim").ok).toBe(false);
+    expect(limit.size()).toBe(5);
+    // Once buckets refill, they are forgotten and room is made.
+    now += 3_600_000;
+    expect(limit.take("late").ok).toBe(true);
   });
 });

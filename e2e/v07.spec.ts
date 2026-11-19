@@ -63,7 +63,9 @@ test("Accounts: OIDC login, claiming and account deletion", async ({ browser, ba
   const planUrl = await createPlan(phone, title);
   await oidcLogIn(phone);
   await expect(phone.getByText("1 plan you host")).toBeVisible();
-  await phone.getByRole("button", { name: "Move into my account" }).click();
+  await phone.getByRole("link", { name: "Review and move into my account" }).click();
+  await expect(phone.getByText(title)).toBeVisible();
+  await phone.getByRole("button", { name: "Move 1 plan into my account" }).click();
   await expect(phone.getByText("Moved into your account.")).toBeVisible();
 
   // Another browser logged in to the same account manages the plan.

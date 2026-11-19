@@ -6,6 +6,7 @@ import {
   claimDeviceData,
   finishLogin,
   logOut,
+  previewClaim,
   startLogin,
   viewAccount,
 } from "../../src/application/accounts.ts";
@@ -139,6 +140,35 @@ describe("claiming (spec 7 Identity)", () => {
     // Logged out, the phone no longer has them: they moved into the account.
     await logOut(deps, { deviceToken: loggedIn });
     expect(await audience(hosted.planId, loggedIn)).toBe("viewer");
+  });
+
+  it("lists what would move, and refuses a confirmation for a different number", async () => {
+    const hosted = await newPlan(undefined, "Phone run");
+    const phone = hosted.newDeviceToken;
+    const other = await newPlan(undefined, "Other plan");
+    await join(other.planId, phone);
+    const stranger = await newPlan(undefined, "Stranger hike");
+    const loggedIn = await logIn(anna, phone);
+
+    const previewed = await previewClaim(deps, { deviceToken: loggedIn });
+    if (previewed.kind !== "preview") throw new Error("expected a preview");
+    expect(previewed.preview.total).toBe(2);
+    expect(previewed.preview.hosted.map((item) => item.title)).toEqual(["Phone run"]);
+    expect(previewed.preview.responses.map((item) => item.title)).toEqual(["Other plan"]);
+    expect(stranger.planId).not.toBe(hosted.planId);
+
+    // The person saw one item; the browser holds two: nothing moves.
+    expect(await claimDeviceData(deps, { deviceToken: loggedIn, expected: 1 })).toEqual({
+      kind: "changed",
+    });
+    expect(await viewAccount(deps, { deviceToken: loggedIn })).toMatchObject({
+      claimable: { plans: 1, responses: 1, templates: 0 },
+    });
+    expect(await claimDeviceData(deps, { deviceToken: loggedIn, expected: 2 })).toMatchObject({
+      kind: "claimed",
+    });
+    expect(await previewClaim(deps, { deviceToken: loggedIn })).toEqual({ kind: "nothing" });
+    expect(await previewClaim(deps, { deviceToken: undefined })).toEqual({ kind: "logged_out" });
   });
 
   it("claims nothing of another device or account", async () => {

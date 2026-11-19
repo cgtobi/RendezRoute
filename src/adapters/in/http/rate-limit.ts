@@ -55,6 +55,19 @@ export interface RateLimits {
 }
 
 /**
+ * Costly actions (plans, responses, confirmation emails, Nearby, place search) also take from a
+ * per-/48 bucket for IPv6 clients, with 8 times the burst and refill of the per-/64 bucket. A /48
+ * is what ISPs and tunnel brokers hand out for free: without this, one holder of a /48 has 65,536
+ * /64 buckets, multiplying every per-client limit. 8 /64s' worth leaves room for several
+ * households, a small office or a carrier-grade NAT sharing a /48, yet caps an attacker at 8x one
+ * client. IPv4 stays a single per-address bucket.
+ */
+const COARSE_FACTOR = 8;
+
+/** Bound on the per-address email buckets (see `emailAddress`). */
+const EMAIL_ADDRESS_MAX_KEYS = 100_000;
+
+/**
  * Creating plans and responding reserve a token before any work and give it back when nothing was
  * created, so parallel requests cannot exceed the burst. Requests carrying a route file always
  * count (parsing is the costly part), as does every place search; previews count only renders.
@@ -68,9 +81,9 @@ export interface RateLimits {
  */
 export function createRateLimits(now: () => number): RateLimits {
   return {
-    create: createRateLimiter({ capacity: 5, perHour: 10, now }),
-    respond: createRateLimiter({ capacity: 10, perHour: 30, now }),
-    geocode: createRateLimiter({ capacity: 10, perHour: 600, now }),
+    create: createRateLimiter({ capacity: 5, perHour: 10, coarse: COARSE_FACTOR, now }),
+    respond: createRateLimiter({ capacity: 10, perHour: 30, coarse: COARSE_FACTOR, now }),
+    geocode: createRateLimiter({ capacity: 10, perHour: 600, coarse: COARSE_FACTOR, now }),
     preview: createRateLimiter({ capacity: 10, perHour: 60, now }),
     route: createRateLimiter({ capacity: 10, perHour: 30, now }),
     notify: createRateLimiter({ capacity: 10, perHour: 30, now }),
@@ -79,10 +92,19 @@ export function createRateLimits(now: () => number): RateLimits {
     adminLogin: createRateLimiter({ capacity: 5, perHour: 10, now }),
     report: createRateLimiter({ capacity: 3, perHour: 10, now }),
     login: createRateLimiter({ capacity: 10, perHour: 30, now }),
-    email: createRateLimiter({ capacity: 5, perHour: 10, now }),
-    emailAddress: createRateLimiter({ capacity: 3, perHour: 3, now }),
+    email: createRateLimiter({ capacity: 5, perHour: 10, coarse: COARSE_FACTOR, now }),
+    // Never evicts a live address to make room: a full store refuses new addresses instead, so
+    // cycling other keys cannot reopen the cap. Memory: at most EMAIL_ADDRESS_MAX_KEYS entries
+    // (64-char hash key plus a bucket, roughly 200 bytes each: about 20 MB at most).
+    emailAddress: createRateLimiter({
+      capacity: 3,
+      perHour: 3,
+      maxKeys: EMAIL_ADDRESS_MAX_KEYS,
+      whenFull: "refuse",
+      now,
+    }),
     // Searches against scraping (spec 3.11); changing a filter is a new search.
-    nearby: createRateLimiter({ capacity: 20, perHour: 120, now }),
+    nearby: createRateLimiter({ capacity: 20, perHour: 120, coarse: COARSE_FACTOR, now }),
     // Posts from fediverse servers: a busy server delivers in bursts.
     inbox: createRateLimiter({ capacity: 120, perHour: 3600, now }),
     noteRoute: createRateLimiter({ capacity: 20, perHour: 120, now }),
@@ -157,10 +179,11 @@ interface Bucket {
   updatedAt: number;
 }
 
-export function createRateLimiter({
+function createBucketStore({
   capacity,
   perHour,
   maxKeys = 10_000,
+  whenFull = "evict",
   now,
 }: {
   /** Burst size. */
@@ -169,6 +192,8 @@ export function createRateLimiter({
   perHour: number;
   /** Beyond this, the least recently used clients are forgotten (they start with a full bucket). */
   maxKeys?: number;
+  /** "refuse" turns new clients away when full (after dropping refilled ones) instead of evicting. */
+  whenFull?: "evict" | "refuse";
   now: () => number;
 }): RateLimiter {
   const buckets = new Map<string, Bucket>();
@@ -221,6 +246,9 @@ export function createRateLimiter({
     take: (key) => {
       const time = now();
       forgetRefilled(time);
+      if (whenFull === "refuse" && !buckets.has(key) && buckets.size >= maxKeys) {
+        return { ok: false, retryAfterSeconds: Math.ceil(msPerToken / 1000) };
+      }
       const bucket = touch(key, time);
       const outcome = result(bucket);
       if (outcome.ok) bucket.tokens -= 1;
@@ -233,6 +261,67 @@ export function createRateLimiter({
     sweep: () => forgetRefilled(now()),
     size: () => buckets.size,
   };
+}
+
+export function createRateLimiter({
+  capacity,
+  perHour,
+  coarse,
+  ...rest
+}: {
+  /** Burst size. */
+  capacity: number;
+  /** Refill rate. */
+  perHour: number;
+  /** Beyond this, the least recently used clients are forgotten (they start with a full bucket). */
+  maxKeys?: number;
+  whenFull?: "evict" | "refuse";
+  /**
+   * For IPv6 client keys ("a:b:c:d::/64"): also take from a bucket per /48 with this many times the
+   * capacity and refill. Other keys are unaffected.
+   */
+  coarse?: number;
+  now: () => number;
+}): RateLimiter {
+  const fine = createBucketStore({ capacity, perHour, ...rest });
+  if (coarse === undefined) return fine;
+  const wide = createBucketStore({
+    capacity: capacity * coarse,
+    perHour: perHour * coarse,
+    ...rest,
+  });
+  return {
+    check: (key) => {
+      const own = fine.check(key);
+      const net = coarseKey(key);
+      if (!own.ok || net === undefined) return own;
+      return wide.check(net);
+    },
+    take: (key) => {
+      const own = fine.take(key);
+      const net = coarseKey(key);
+      if (!own.ok || net === undefined) return own;
+      const outer = wide.take(net);
+      if (!outer.ok) fine.refund(key);
+      return outer;
+    },
+    refund: (key) => {
+      fine.refund(key);
+      const net = coarseKey(key);
+      if (net !== undefined) wide.refund(net);
+    },
+    sweep: () => {
+      fine.sweep();
+      wide.sweep();
+    },
+    size: () => fine.size() + wide.size(),
+  };
+}
+
+/** The /48 key of a /64 client key, or undefined for IPv4 and anything else. */
+function coarseKey(key: string): string | undefined {
+  const match = /^([0-9a-f]+:[0-9a-f]+:[0-9a-f]+):[0-9a-f]+::\/64$/.exec(key);
+  return match === null ? undefined : `${match[1]}::/48`;
 }
 
 /** IPv4 as is; IPv6 by its /64 network, since one client usually has a whole /64. */

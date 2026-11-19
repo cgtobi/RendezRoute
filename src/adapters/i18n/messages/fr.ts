@@ -1127,8 +1127,20 @@ export const fr: Messages = {
     one: "{count} modèle",
     other: "{count} modèles",
   },
-  "account.claimSubmit": "Transférer dans mon compte",
+  "account.claimSubmit": "Vérifier et transférer dans mon compte",
   "account.claimed": "Transféré dans votre compte.",
+  "account.claimConfirmHeading": "Transférer dans votre compte ?",
+  "account.claimWarning":
+    "Ces sorties ont été créées ou rejointes sur ce navigateur, pas forcément par vous. Les transférer dans votre compte les retire de ce navigateur. Ne continuez que si elles sont à vous.",
+  "account.claimRoleHost": "Organisateur·rice",
+  "account.claimMove": {
+    zero: "Ne rien transférer dans mon compte",
+    one: "Transférer {count} sortie dans mon compte",
+    other: "Transférer {count} sorties dans mon compte",
+  },
+  "account.claimCancel": "Annuler",
+  "account.claimChanged":
+    "Ce que contient ce navigateur a changé entre-temps. Vérifiez à nouveau la liste avant de continuer.",
   "account.fediverseHeading": "Se connecter avec un compte du fédivers",
   "account.fediverseServer": "Votre serveur",
   "account.fediverseHint":

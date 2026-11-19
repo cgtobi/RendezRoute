@@ -191,6 +191,13 @@ export interface ClaimCounts {
   templates: number;
 }
 
+/** The IDs claiming would move, by kind. */
+export interface ClaimIds {
+  plans: string[];
+  responses: string[];
+  templates: string[];
+}
+
 /** What a device is linked to, and in which role (spec 3.2). */
 export type DeviceLinkTarget =
   | { role: "host"; planId: string }
@@ -786,6 +793,8 @@ export interface DeviceRepository {
   lastHostName(deviceId: string): Promise<string | undefined>;
   /** What the device links to that no account owns yet, which claiming would move. */
   claimable(deviceId: string): Promise<ClaimCounts>;
+  /** The same, by id: the plans, responses and templates claiming would move (the device's own). */
+  claimableIds(deviceId: string): Promise<ClaimIds>;
   /**
    * Claiming (spec 7 Identity): moves the device's own plans, responses and templates that no
    * account owns into this one, in one step; the device's links to them go, other devices' stay.

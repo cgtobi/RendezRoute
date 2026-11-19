@@ -704,6 +704,15 @@ export function createFakeRepositories(): {
       async claimable(deviceId) {
         return countClaims(claimableKeys(deviceId));
       },
+      async claimableIds(deviceId) {
+        const keys = claimableKeys(deviceId);
+        const ids = (role: string) =>
+          keys.flatMap((key) => {
+            const [, keyRole, id] = key.split("|");
+            return keyRole === role && id !== undefined ? [id] : [];
+          });
+        return { plans: ids("host"), responses: ids("manage"), templates: ids("template") };
+      },
       async claimInto(deviceId, identityId) {
         if (devices.get(deviceId)?.device.identityId !== identityId) return countClaims([]);
         const keys = claimableKeys(deviceId);

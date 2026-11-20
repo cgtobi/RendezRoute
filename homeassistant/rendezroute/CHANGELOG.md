@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.10
+
+- Privacy: the privacy page now says that "Find my location" and "Show where I am" make your browser load map images of the area around you from the map service, which can tell from them roughly where you are. The position itself still never reaches this server.
+
 ## 0.18.9
 
 - Privacy: the ratings a host sees now count only the people who could rate. People who joined from another server cannot rate, so they no longer count towards the minimum or the "of N" in "2 of 3 rated"; with one web participant and two from another server the host used to see that one person's rating.

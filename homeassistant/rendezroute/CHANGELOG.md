@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.9
+
+- Privacy: the ratings a host sees now count only the people who could rate. People who joined from another server cannot rate, so they no longer count towards the minimum or the "of N" in "2 of 3 rated"; with one web participant and two from another server the host used to see that one person's rating.
+- New setting `RATING_MIN_PARTICIPANTS` (Home Assistant option `rating_min_participants`): how many people who can rate a plan needs before the host sees its ratings, 2 to 50, default 3. Results already stored keep their count but are compared with the current setting.
+
 ## 0.18.8
 
 - Security: "Move into my account" now shows what it will move first: the plans, answers and templates made on this browser, with a warning that they may not be yours, and asks you to confirm. This protects the plans of whoever uses the browser from being taken by someone else who logs in there.

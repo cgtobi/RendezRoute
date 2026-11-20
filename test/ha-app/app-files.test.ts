@@ -203,6 +203,17 @@ describe("config.yaml and the options mapper", () => {
     expect(set({ DEFAULT_MAP_ZOOM: "1" }).ok || set({ DEFAULT_MAP_ZOOM: "13" }).ok).toBe(false);
   });
 
+  it("keeps the rating minimum advanced: optional, no default, limits of the configuration", () => {
+    expect(HA_OPTION_KINDS.rating_min_participants).toBe("integer");
+    expect(typeOf("rating_min_participants")).toBe("int(2,50)?");
+    expect(options).not.toHaveProperty("rating_min_participants");
+    const set = (given: Record<string, string>) =>
+      loadConfig({ BASE_URL: "https://x.example", ...given });
+    const ok = (value: string) => set({ RATING_MIN_PARTICIPANTS: value }).ok;
+    expect(ok("2") && ok("50")).toBe(true);
+    expect(ok("1") || ok("51")).toBe(false);
+  });
+
   it("keeps secrets as password fields, and only secrets", () => {
     const passwords = Object.keys(schema).filter((name) => typeOf(name).startsWith("password"));
     expect(passwords.toSorted()).toEqual([...SECRETS].sort());

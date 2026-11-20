@@ -72,6 +72,7 @@ schema:
   weather_url: url?
   posting_mode: list(anyone|invite|logged_in)
   palette: list(default|mono|bold|archivo)
+  rating_min_participants: int(2,50)?
   public_requires_login: bool
   nearby_enabled: bool
   federation_enabled: bool

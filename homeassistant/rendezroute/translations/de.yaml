@@ -50,6 +50,9 @@ configuration:
   palette:
     name: "Farbpalette"
     description: "Die Standardfarben der Seiten auf dieser Instanz; Besucher können sie im Menü unter Stil ändern. default: Blau. mono: Schwarz und Weiß. bold: Weiß und Schwarz mit Signalrot, harten Rasterlinien und eckigen Ecken. archivo: wie mono, in der Schrift Archivo Narrow mit fetten Überschriften."
+  rating_min_participants:
+    name: "Mindestzahl Teilnehmende für Bewertungen"
+    description: "Wie viele Teilnehmende, die bewerten können, ein Treffen braucht, bevor die Organisator:in das Bewertungsergebnis sieht: eine ganze Zahl von 2 bis 50. Wer von einem anderen Fediverse-Server beigetreten ist, kann nicht bewerten und zählt nicht. Leer lassen für 3."
   public_requires_login:
     name: "Öffentliche Treffen nur mit Konto"
     description: "Nur Personen mit Konto dürfen ein Treffen öffentlich machen, und „In der Nähe“ zeigt ohne Anmeldung nichts an. Ist keine Anmeldung eingerichtet, ausschalten, damit öffentliche Treffen möglich sind."

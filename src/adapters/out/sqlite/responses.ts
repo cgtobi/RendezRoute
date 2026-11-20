@@ -121,6 +121,18 @@ export function createResponseRepository(
       return rows.flatMap((row) => remoteFromRow(row) ?? []);
     },
 
+    async listRemoteIds(planId) {
+      const rows = await database.db
+        .selectFrom("responses")
+        .select("id")
+        .where("plan_id", "=", planId)
+        .where("remote_actor_hmac", "is not", null)
+        .orderBy("created_at")
+        .orderBy("id")
+        .execute();
+      return rows.map((row) => row.id);
+    },
+
     async listByRemoteActor(actorId) {
       const rows = await selectResponses()
         .where("remote_actor_hmac", "=", remoteHash(actorId))

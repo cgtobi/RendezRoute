@@ -46,6 +46,7 @@ import {
   viewForResponder,
   viewForViewer,
 } from "./plan-views.ts";
+import { ratingRulesFor } from "./rating-rules.ts";
 import type { Result } from "../domain/result.ts";
 import type {
   AccessScope,
@@ -106,6 +107,11 @@ export interface PlanDeps extends DeviceDeps {
   publicRequiresLogin?: boolean | undefined;
   /** The instance palette (config.palette): the link preview card is drawn in it. Absent is "default". */
   previewPalette?: Palette | undefined;
+  /**
+   * RATING_MIN_PARTICIPANTS: how many participants who can rate a plan needs before the host sees
+   * its rating result. Absent means 3.
+   */
+  ratingMinParticipants?: number | undefined;
   /**
    * Whether public may be chosen at all: in 0.8 a public plan is only listed in Nearby, so not
    * while it is off (decision I59). Absent means true.
@@ -407,15 +413,16 @@ export async function viewPlan(
     const responses = await deps.responses.listByPlan(plan.id);
     const contributions = await deps.recap.listByPlan(plan.id);
     // Notes are decrypted only where shown, and only once the result is due (decision D20).
+    const rules = await ratingRulesFor(deps, plan.id);
     const ratings =
       request.withRatingResult === true &&
       canSee(audience, "ratingResult") &&
-      ratingResultDue(plan, responses, now)
+      ratingResultDue(plan, responses, now, rules)
         ? await deps.ratings.listByPlan(plan.id)
         : undefined;
     return {
       kind: "poster",
-      view: viewForPoster(plan, counts, responses, contributions, ratings, now),
+      view: viewForPoster(plan, counts, responses, contributions, ratings, now, rules),
       ...shared,
     };
   }

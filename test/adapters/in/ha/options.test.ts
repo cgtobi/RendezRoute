@@ -53,6 +53,7 @@ const FULL: [option: string, value: unknown, name: string, text: string][] = [
   ["weather_url", "https://weather.example", "WEATHER_URL", "https://weather.example"],
   ["posting_mode", "invite", "POSTING_MODE", "invite"],
   ["palette", "bold", "PALETTE", "bold"],
+  ["rating_min_participants", 4, "RATING_MIN_PARTICIPANTS", "4"],
   ["public_requires_login", true, "PUBLIC_REQUIRES_LOGIN", "true"],
   ["nearby_enabled", false, "NEARBY_ENABLED", "false"],
   ["federation_enabled", true, "FEDERATION_ENABLED", "true"],
@@ -97,8 +98,8 @@ describe("mapping the options", () => {
   });
 
   it("covers every option of the spec exactly once", () => {
-    expect(FULL.map(([option]) => option).length).toBe(39);
-    expect(new Set(FULL.map(([, , name]) => name)).size).toBe(39);
+    expect(FULL.map(([option]) => option).length).toBe(40);
+    expect(new Set(FULL.map(([, , name]) => name)).size).toBe(40);
     expect([...HA_OPTION_ENVIRONMENT_NAMES].sort()).toEqual(FULL.map(([, , name]) => name).sort());
   });
 
@@ -310,7 +311,7 @@ describe("what the configuration makes of the mapped environment", () => {
     const known = new Set(source.match(/"[A-Z][A-Z0-9_]{2,}"/g)?.map((name) => name.slice(1, -1)));
     const written = [...HA_OPTION_ENVIRONMENT_NAMES, ...Object.keys(FIXED_ENVIRONMENT)];
     expect(written.filter((name) => !known.has(name))).toEqual([]);
-    expect(written.length).toBe(39 + 5);
+    expect(written.length).toBe(40 + 5);
     // Development switches are never Home Assistant options nor fixed values (decision D87).
     expect(written).not.toContain("E2E_CLOCK_CONTROL");
     expect(written).not.toContain("ALLOW_INSECURE_DEV");

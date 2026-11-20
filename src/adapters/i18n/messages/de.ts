@@ -867,7 +867,7 @@ export const de: Messages = {
   "privacy.myData":
     "Alles, was mit deinem Browser verknüpft ist, kannst du jederzeit selbst ansehen, exportieren und löschen:",
   "privacy.ratings":
-    "Nach einem Treffen können Teilnehmer:innen es mit Daumen hoch oder runter und einer optionalen Nachricht bewerten. Nur die Organisator:in sieht Bewertungen, wenn der Rückblick geschlossen ist und nur bei Treffen mit mindestens 3 Teilnehmer:innen; Nachrichten zeigen den Namen ihrer Verfasser:in. Bewertungen werden mit verschlüsselter Nachricht gespeichert und mit dem Treffen, der Antwort oder deinen Daten gelöscht.",
+    "Nach einem Treffen können Teilnehmer:innen es mit Daumen hoch oder runter und einer optionalen Nachricht bewerten. Nur die Organisator:in sieht Bewertungen, wenn der Rückblick geschlossen ist und nur bei Treffen mit mindestens {min} Teilnehmer:innen, die bewerten konnten; Nachrichten zeigen den Namen ihrer Verfasser:in. Bewertungen werden mit verschlüsselter Nachricht gespeichert und mit dem Treffen, der Antwort oder deinen Daten gelöscht.",
   "privacy.templates":
     "Wenn die Organisator:in „Als wiederholbare Vorlage behalten“ wählt oder eine Vorlage speichert, werden die Angaben des Treffens samt ihrem Namen als Vorlage behalten; nie seine Antworten, die Namen der Teilnehmer:innen, der Rückblick oder die Bewertungen. Genauer Treffpunkt und Route werden nur behalten, wenn die Organisator:in sie einschließt, und dann verschlüsselt. Eine Vorlage wird gelöscht, wenn sie 90 Tage lang weder wiederholt noch bearbeitet wurde.",
   "linkTools.heading": "Privater Link",
@@ -1024,14 +1024,14 @@ export const de: Messages = {
   "rating.back": "Zurück zum Treffen",
   "rating.resultHeading": "Bewertungen",
   "rating.resultLater":
-    "Teilnehmer:innen können das Treffen bewerten, solange der Rückblick offen ist. Das Ergebnis siehst du hier, sobald er geschlossen ist, bei Treffen mit mindestens 3 Teilnehmer:innen.",
+    "Teilnehmer:innen können das Treffen bewerten, solange der Rückblick offen ist. Das Ergebnis siehst du hier, sobald er geschlossen ist, bei Treffen mit mindestens {min} Teilnehmer:innen, die bewerten können.",
   "rating.result": {
     zero: "Keine:r der {participants} Teilnehmer:innen hat bewertet.",
     one: "{count} von {participants} hat bewertet: {up} × gut, {down} × nicht so gut",
     other: "{count} von {participants} haben bewertet: {up} × gut, {down} × nicht so gut",
   },
   "rating.resultTooFew":
-    "Bei Treffen mit weniger als 3 Teilnehmer:innen werden keine Bewertungen gezeigt.",
+    "Bei Treffen mit weniger als {min} Teilnehmer:innen, die bewerten konnten, werden keine Bewertungen gezeigt. Wer von einem anderen Server beigetreten ist, kann nicht bewerten und zählt nicht mit.",
   "report.link": "Treffen melden",
   "report.heading": "„{title}“ melden",
   "report.intro":

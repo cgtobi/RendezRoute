@@ -6,6 +6,7 @@ import { isAbsolute } from "node:path";
 import { parseEmailAddress } from "./domain/email.ts";
 import { parseFediverseServer } from "./domain/fediverse.ts";
 import { POSTING_MODES, type PostingMode } from "./domain/invite.ts";
+import { RATING_LIMITS } from "./domain/rating.ts";
 import { isPalette, type Palette } from "./domain/palette.ts";
 import { validateTimeZone } from "./domain/timezone.ts";
 
@@ -66,6 +67,8 @@ export interface Config {
   postingMode: PostingMode;
   /** The colour palette of the whole instance (decision 004); "default" adds nothing to the pages. */
   palette: Palette;
+  /** Participants who can rate that a plan needs before the host sees its rating result (2 to 50). */
+  ratingMinParticipants: number;
   /** Only plans that belong to an account may be public (spec 7 Visibility and Nearby plans). */
   publicRequiresLogin: boolean;
   /** The Nearby page (spec 7 Visibility and Nearby plans); off: no page, no link, no query. */
@@ -663,6 +666,20 @@ export function loadConfig(
   const palette = isPalette(paletteSetting) ? paletteSetting : undefined;
   if (palette === undefined) errors.push("PALETTE must be default, mono, bold or archivo.");
 
+  // RATING_MIN_PARTICIPANTS: how many participants who can rate before the host sees the result.
+  const ratingMinSetting = read("RATING_MIN_PARTICIPANTS") ?? "";
+  let ratingMinParticipants: number = RATING_LIMITS.participantsForResult;
+  if (ratingMinSetting !== "") {
+    const { min, max } = RATING_LIMITS.participantsForResultRange;
+    const parsed = /^\d{1,3}$/.test(ratingMinSetting) ? Number(ratingMinSetting) : Number.NaN;
+    if (parsed >= min && parsed <= max) ratingMinParticipants = parsed;
+    else {
+      errors.push(
+        `RATING_MIN_PARTICIPANTS must be a whole number from ${min} to ${max}, got "${ratingMinSetting}".`,
+      );
+    }
+  }
+
   // SMTP_*: the mail server is trusted configuration, like the OIDC issuer (decision D31).
   const smtp = ((): SmtpConfig | undefined => {
     const host = read("SMTP_HOST") || undefined;
@@ -786,6 +803,7 @@ export function loadConfig(
       admin,
       postingMode,
       palette,
+      ratingMinParticipants,
       publicRequiresLogin,
       nearbyEnabled,
       federationEnabled,

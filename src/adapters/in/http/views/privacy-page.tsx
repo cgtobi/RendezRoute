@@ -45,7 +45,7 @@ export function PrivacyPage({
         <p>{t("privacy.storedPlans")}</p>
         <p>{t("privacy.storedResponses")}</p>
         <p>{t("privacy.storedRecap")}</p>
-        <p>{t("privacy.ratings")}</p>
+        <p>{t("privacy.ratings", { min: config.ratingMinParticipants })}</p>
         <p>{t("privacy.templates")}</p>
         {config.nearbyEnabled && (!config.publicRequiresLogin || loginConfigured(config)) && (
           <p>{t("privacy.publicPlans")}</p>

@@ -67,7 +67,7 @@ describe("frozen ratings (decision D20: a reopened recap does not reopen ratings
   it("keeps a frozen plan closed for rating, with its result shown", () => {
     const frozen = plan({ ratingsClosedAt: at(7 * DAY) });
     expect(canRate(frozen, "joined", at(DAY))).toEqual({ ok: false, error: "rating_closed" });
-    expect(ratingResultVisible(frozen, 3, at(DAY))).toBe(true);
+    expect(ratingResultVisible(frozen, 3, at(DAY), 3)).toBe(true);
   });
 });
 
@@ -95,12 +95,20 @@ describe("validateRating", () => {
   });
 });
 
-describe("ratingResultVisible (spec 6a: the host, after the close, from 3 participants)", () => {
-  it("shows the result once the recap has closed and at least 3 people joined", () => {
-    expect(ratingResultVisible(plan(), 3, at(7 * DAY))).toBe(true);
-    expect(ratingResultVisible(plan(), 3, at(7 * DAY - 1))).toBe(false);
-    expect(ratingResultVisible(plan(), 2, at(8 * DAY))).toBe(false);
-    expect(ratingResultVisible(plan({ status: "cancelled" }), 5, at(8 * DAY))).toBe(false);
+describe("ratingResultVisible (spec 6a: the host, after the close, from the minimum)", () => {
+  it("shows the result once the recap has closed and at least the minimum could rate", () => {
+    expect(ratingResultVisible(plan(), 3, at(7 * DAY), 3)).toBe(true);
+    expect(ratingResultVisible(plan(), 3, at(7 * DAY - 1), 3)).toBe(false);
+    expect(ratingResultVisible(plan(), 2, at(8 * DAY), 3)).toBe(false);
+    expect(ratingResultVisible(plan({ status: "cancelled" }), 5, at(8 * DAY), 3)).toBe(false);
+  });
+
+  it("follows the configured minimum", () => {
+    expect(ratingResultVisible(plan(), 2, at(8 * DAY), 2)).toBe(true);
+    expect(ratingResultVisible(plan(), 1, at(8 * DAY), 2)).toBe(false);
+    expect(ratingResultVisible(plan(), 3, at(8 * DAY), 4)).toBe(false);
+    expect(ratingResultVisible(plan(), 4, at(8 * DAY), 4)).toBe(true);
+    expect(ratingResultVisible(plan(), 50, at(8 * DAY), 50)).toBe(true);
   });
 });
 
@@ -114,9 +122,11 @@ describe("the stored tally (decision D20: fixed once anything changes after the 
     );
   });
 
-  it("decides the 3-participant rule once stored", () => {
+  it("decides the minimum rule once stored, against the current minimum", () => {
     const tally = { participants: 3, rated: 1, up: 1, down: 0 };
-    expect(ratingResultVisible(plan({ ratingTally: tally }), 2, at(8 * DAY))).toBe(true);
+    expect(ratingResultVisible(plan({ ratingTally: tally }), 2, at(8 * DAY), 3)).toBe(true);
+    expect(ratingResultVisible(plan({ ratingTally: tally }), 9, at(8 * DAY), 4)).toBe(false);
+    expect(ratingResultVisible(plan({ ratingTally: tally }), 1, at(8 * DAY), 2)).toBe(true);
   });
 });
 

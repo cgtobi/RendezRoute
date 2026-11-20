@@ -1133,3 +1133,26 @@ describe("TELEGRAM_BOT_TOKEN and TELEGRAM_API_URL (spec 7 Optional notification 
     ]);
   });
 });
+
+describe("RATING_MIN_PARTICIPANTS", () => {
+  it("is 3 unless set", () => {
+    expect(ok(minimal).config.ratingMinParticipants).toBe(3);
+    expect(ok({ ...minimal, RATING_MIN_PARTICIPANTS: "" }).config.ratingMinParticipants).toBe(3);
+  });
+
+  it("accepts whole numbers from 2 to 50", () => {
+    for (const value of ["2", "3", "4", "50"]) {
+      expect(ok({ ...minimal, RATING_MIN_PARTICIPANTS: value }).config.ratingMinParticipants).toBe(
+        Number(value),
+      );
+    }
+  });
+
+  it("refuses to start with anything else, naming the setting", () => {
+    for (const value of ["1", "0", "51", "-3", "3.5", "three", "1e1", "003x"]) {
+      expect(errors({ ...minimal, RATING_MIN_PARTICIPANTS: value }).join(" ")).toContain(
+        `RATING_MIN_PARTICIPANTS must be a whole number from 2 to 50, got "${value}".`,
+      );
+    }
+  });
+});

@@ -140,17 +140,18 @@ options in the Configuration tab. All of them, with their defaults and rules, ar
 <details>
 <summary>The ones you are most likely to set</summary>
 
-| Setting              | What it does (default)                   |
-| -------------------- | ---------------------------------------- |
-| `BASE_URL`           | Public https address, no path (required) |
-| `INSTANCE_NAME`      | Name of the instance (`RendezRoute`)     |
-| `TRUST_PROXY`        | Trust the proxy headers (`false`)        |
-| `CONTACT_EMAIL`      | Identifies you to providers (unset)      |
-| `POSTING_MODE`       | Who may create plans (`anyone`)          |
-| `PALETTE`            | Colour palette (`default`)               |
-| `ADMIN_TOKEN`        | Turns on `/admin` (unset)                |
-| `SMTP_HOST`          | Mail server; turns email on (unset)      |
-| `FEDERATION_ENABLED` | Join the fediverse (on)                  |
+| Setting                   | What it does (default)                                 |
+| ------------------------- | ------------------------------------------------------ |
+| `BASE_URL`                | Public https address, no path (required)               |
+| `INSTANCE_NAME`           | Name of the instance (`RendezRoute`)                   |
+| `TRUST_PROXY`             | Trust the proxy headers (`false`)                      |
+| `CONTACT_EMAIL`           | Identifies you to providers (unset)                    |
+| `POSTING_MODE`            | Who may create plans (`anyone`)                        |
+| `PALETTE`                 | Colour palette (`default`)                             |
+| `RATING_MIN_PARTICIPANTS` | People who can rate before the host sees ratings (`3`) |
+| `ADMIN_TOKEN`             | Turns on `/admin` (unset)                              |
+| `SMTP_HOST`               | Mail server; turns email on (unset)                    |
+| `FEDERATION_ENABLED`      | Join the fediverse (on)                                |
 
 </details>
 

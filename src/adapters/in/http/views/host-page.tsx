@@ -66,7 +66,7 @@ export interface HostPageProps {
   /** Contributions in the recap, from the start of an active plan on (spec 6 feature 7). */
   recapContributions: number | undefined;
   /** From the start of an active plan on (spec 6a): whether ratings closed, and the result once due. */
-  rating: { closed: boolean; result: RatingResultView | undefined } | undefined;
+  rating: { closed: boolean; result: RatingResultView | undefined; minimum: number } | undefined;
   /** One-time value for "Save as template" (decision I9). */
   templateNonce: string;
   /** Other devices removed by "Sign out all other devices", right after it (spec 3.2). */

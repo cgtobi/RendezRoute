@@ -252,6 +252,7 @@ export async function createTestApp({
     reports: createReportRepository(database, cipher),
     postingMode: config.postingMode,
     publicRequiresLogin: config.publicRequiresLogin,
+    ratingMinParticipants: config.ratingMinParticipants,
     publicPlansOffered: config.nearbyEnabled,
     posterActors: {
       profiles,

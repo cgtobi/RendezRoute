@@ -853,6 +853,8 @@ export interface ResponseRepository {
   remoteOf(responseId: string): Promise<{ actor: RemoteActor; join: RemoteJoin } | undefined>;
   /** Every remote response of a plan, of any kind. */
   listRemote(planId: string): Promise<RemoteParticipant[]>;
+  /** The response ids `listRemote` returns, without opening the remote actors. */
+  listRemoteIds(planId: string): Promise<readonly string[]>;
   /** Every response of a remote actor, across plans (its `Delete`, spec 3.7). */
   listByRemoteActor(actorId: string): Promise<PlanResponse[]>;
   /** A repeated `Join` or `TentativeAccept`: the kind and the activity answered change. */

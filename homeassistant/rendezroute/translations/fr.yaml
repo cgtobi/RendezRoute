@@ -50,6 +50,9 @@ configuration:
   palette:
     name: "Palette de couleurs"
     description: "Les couleurs par défaut des pages de cette instance ; les visiteurs peuvent les changer sous Style dans le menu. default : bleu. mono : noir et blanc. bold : blanc et noir avec du rouge signal, des filets rigides et des coins carrés. archivo : comme mono, en police Archivo Narrow avec des titres en gras."
+  rating_min_participants:
+    name: "Minimum de participant·e·s pour les évaluations"
+    description: "Nombre de participant·e·s pouvant évaluer qu’une sortie doit compter avant que l’organisateur·rice voie le résultat des évaluations : un nombre entier de 2 à 50. Les personnes venues d’un autre serveur du Fediverse ne peuvent pas évaluer et ne comptent pas. Laissez vide pour 3."
   public_requires_login:
     name: "Sorties publiques réservées aux comptes"
     description: "Seules les personnes avec un compte peuvent rendre une sortie publique, et « À proximité » n’affiche rien sans connexion. Si aucune connexion n’est configurée, désactivez cette option pour autoriser les sorties publiques."

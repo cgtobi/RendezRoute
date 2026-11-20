@@ -14,6 +14,7 @@ import type {
   Visibility,
 } from "../domain/plan.ts";
 import type { PlanEventView } from "./ports.ts";
+import type { RatingRules } from "./rating-rules.ts";
 import {
   canRate,
   type PlanRating,
@@ -133,24 +134,31 @@ export interface RatingResultView extends RatingResult {
   notes: { authorName: string; value: RatingValue; note: string }[];
 }
 
-/** The participants, and the ratings that count: those of people still in (spec 3.5). */
+/**
+ * The participants who can rate, and the ratings that count: those of people still in (spec
+ * 3.5). People who joined from another server cannot rate, so they are not counted.
+ */
 export function countedRatings(
   ratings: readonly PlanRating[],
   responses: readonly PlanResponse[],
+  remoteIds: ReadonlySet<string>,
 ): { participants: PlanResponse[]; counted: PlanRating[] } {
-  const participants = responses.filter((r) => r.kind === "joined");
+  const participants = responses.filter((r) => r.kind === "joined" && !remoteIds.has(r.id));
   const ids = new Set(participants.map((r) => r.id));
   return { participants, counted: ratings.filter((rating) => ids.has(rating.responseId)) };
 }
 
-/** Whether the host's result is due: ratings closed, and at least 3 participants (D20). */
+/** Whether the host's result is due: ratings closed, and enough participants who can rate (D20). */
 export function ratingResultDue(
   plan: Plan,
   responses: readonly PlanResponse[],
   now: Date,
+  rules: RatingRules,
 ): boolean {
-  const participants = responses.filter((r) => r.kind === "joined").length;
-  return ratingResultVisible(plan, participants, now);
+  const participants = responses.filter(
+    (r) => r.kind === "joined" && !rules.remoteIds.has(r.id),
+  ).length;
+  return ratingResultVisible(plan, participants, now, rules.minimum);
 }
 
 /**
@@ -162,9 +170,10 @@ export function ratingResultFor(
   ratings: readonly PlanRating[] | undefined,
   responses: readonly PlanResponse[],
   now: Date,
+  rules: RatingRules,
 ): RatingResultView | undefined {
-  if (ratings === undefined || !ratingResultDue(plan, responses, now)) return undefined;
-  const { participants, counted } = countedRatings(ratings, responses);
+  if (ratings === undefined || !ratingResultDue(plan, responses, now, rules)) return undefined;
+  const { participants, counted } = countedRatings(ratings, responses, rules.remoteIds);
   const names = new Map(participants.map((r) => [r.id, r.displayName]));
   return {
     ...(plan.ratingTally ??
@@ -401,6 +410,7 @@ export function viewForPoster(
   /** Undefined unless loaded for the plan page (decision D20: decrypted only where shown). */
   ratings: readonly PlanRating[] | undefined,
   now: Date,
+  rules: RatingRules,
 ): PlanViewForPoster {
   return {
     ...viewForViewer(plan, counts),
@@ -413,6 +423,6 @@ export function viewForPoster(
     pendingRequests: responses.filter((r) => r.kind === "requested").length,
     retentionDays: plan.retentionDays,
     recap: recapViewFor(plan, contributions, responses, { kind: "host" }, now),
-    ratingResult: ratingResultFor(plan, ratings, responses, now),
+    ratingResult: ratingResultFor(plan, ratings, responses, now, rules),
   };
 }

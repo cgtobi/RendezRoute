@@ -865,7 +865,7 @@ export const fr: Messages = {
   "privacy.myData":
     "Vous pouvez à tout moment consulter, exporter et supprimer vous-même tout ce qui est associé à votre navigateur :",
   "privacy.ratings":
-    "Après une sortie, les participant·e·s peuvent l’évaluer d’un pouce levé ou baissé, avec un message facultatif. Seul·e l’organisateur·rice voit les évaluations, une fois le récapitulatif clos et seulement pour les sorties d’au moins 3 participant·e·s ; les messages affichent le nom de leur auteur·rice. Les évaluations sont enregistrées avec le message chiffré et supprimées avec la sortie, la réponse ou vos données.",
+    "Après une sortie, les participant·e·s peuvent l’évaluer d’un pouce levé ou baissé, avec un message facultatif. Seul·e l’organisateur·rice voit les évaluations, une fois le récapitulatif clos et seulement pour les sorties d’au moins {min} participant·e·s pouvant évaluer ; les messages affichent le nom de leur auteur·rice. Les évaluations sont enregistrées avec le message chiffré et supprimées avec la sortie, la réponse ou vos données.",
   "privacy.templates":
     "Si l’organisateur·rice choisit « Garder comme modèle réutilisable » ou enregistre un modèle, les informations de la sortie, y compris le nom de l’organisateur·rice, sont gardées comme modèle, jamais ses réponses, les noms des participant·e·s, son récapitulatif ni ses évaluations. Le point de départ exact et le parcours ne sont gardés que si l’organisateur·rice les inclut, et alors chiffrés. Un modèle est supprimé après 90 jours sans être répété ni modifié.",
   "linkTools.heading": "Lien privé",
@@ -1024,13 +1024,14 @@ export const fr: Messages = {
   "rating.back": "Retour à la sortie",
   "rating.resultHeading": "Évaluations",
   "rating.resultLater":
-    "Les participant·e·s peuvent évaluer la sortie tant que le récapitulatif est ouvert. Vous voyez le résultat ici une fois qu’il est clos, pour les sorties d’au moins 3 participant·e·s.",
+    "Les participant·e·s peuvent évaluer la sortie tant que le récapitulatif est ouvert. Vous voyez le résultat ici une fois qu’il est clos, pour les sorties d’au moins {min} participant·e·s pouvant évaluer.",
   "rating.result": {
     zero: "Aucun·e des {participants} participant·e·s n’a évalué la sortie.",
     one: "{count} sur {participants} a évalué : {up} bien, {down} pas bien",
     other: "{count} sur {participants} ont évalué : {up} bien, {down} pas bien",
   },
-  "rating.resultTooFew": "Les sorties de moins de 3 participant·e·s n’affichent pas d’évaluations.",
+  "rating.resultTooFew":
+    "Les sorties comptant moins de {min} participant·e·s pouvant évaluer n’affichent pas d’évaluations. Les personnes venues d’un autre serveur ne peuvent pas évaluer et ne comptent donc pas.",
   "report.link": "Signaler cette sortie",
   "report.heading": "Signaler « {title} »",
   "report.intro":

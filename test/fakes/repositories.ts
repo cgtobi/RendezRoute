@@ -813,6 +813,11 @@ export function createFakeRepositories(): {
             : [],
         );
       },
+      async listRemoteIds(planId) {
+        return [...responses.values()].flatMap((entry) =>
+          entry.response.planId === planId && entry.remote !== undefined ? [entry.response.id] : [],
+        );
+      },
       async listByRemoteActor(actorId) {
         return [...responses.values()]
           .filter((entry) => entry.remote?.actor.id === actorId)

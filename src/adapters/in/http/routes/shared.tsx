@@ -218,6 +218,7 @@ export async function renderPlanPage(
       hasRecap={hasRecap}
       csrfToken={c.get("csrfToken")()}
       reporting={reporting}
+      ratingMinimum={config.ratingMinParticipants}
       fediverseNote={fediverseNote(config, sharedByActor)}
     />,
     {

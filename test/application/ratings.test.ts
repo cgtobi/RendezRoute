@@ -5,7 +5,7 @@ import { confirmHostLink } from "../../src/application/secret-links.ts";
 import { planToInput } from "../../src/domain/plan-edit.ts";
 import { countedRatings } from "../../src/application/plan-views.ts";
 import { createPlan, type PlanDeps, viewPlan } from "../../src/application/plans.ts";
-import { ratePlan, removeRating } from "../../src/application/ratings.ts";
+import { freezeRatingTally, ratePlan, removeRating } from "../../src/application/ratings.ts";
 import { respond, withdrawMyResponse } from "../../src/application/responses.ts";
 import { FakeClock } from "../fakes/clock.ts";
 import { SequentialIdGenerator } from "../fakes/ids.ts";
@@ -13,6 +13,7 @@ import { createFakeRepositories } from "../fakes/repositories.ts";
 import { FakeRouteParser } from "../fakes/route-parser.ts";
 import { FakeTokenService } from "../fakes/tokens.ts";
 import { fixtureNow, sampleInput } from "../fixtures/plans.ts";
+import { addRemoteJoined } from "../support/plans.ts";
 
 // sampleInput starts on 7 June 2026 at 07:30 in Berlin (05:30 UTC); recap open for 1 week.
 const STARTED = "2026-06-07T06:00:00Z";
@@ -298,6 +299,74 @@ describe("the host's counts stay fixed after the close (decision D20)", () => {
   });
 });
 
+describe("people who joined from another server cannot rate, so they do not count", () => {
+  const hostResult = async () => {
+    const page = await viewHostPage(deps, { planId, deviceToken: host, units: "metric" });
+    return page.kind === "found" ? page.rating : undefined;
+  };
+
+  it("keeps a plan with 1 web and 2 remote participants below the minimum of 3", async () => {
+    const ben = await person("Ben", "joined");
+    await addRemoteJoined(deps, planId, "remote-a");
+    await addRemoteJoined(deps, planId, "remote-b");
+    clock.set(STARTED);
+    await rate(ben, "up");
+    clock.set(CLOSED);
+    expect(await hostResult()).toMatchObject({ closed: true, result: undefined, minimum: 3 });
+    const poster = await viewPlan(deps, { planId, deviceToken: host, withRatingResult: true });
+    expect(poster.kind === "poster" && poster.view.ratingResult).toBeUndefined();
+  });
+
+  it("counts only web participants as N, against the configured minimum", async () => {
+    deps = { ...deps, ratingMinParticipants: 2 };
+    const [ben, lea] = [await person("Ben", "joined"), await person("Lea", "joined")];
+    await addRemoteJoined(deps, planId, "remote-a");
+    clock.set(STARTED);
+    await rate(ben, "up");
+    await rate(lea, "down");
+    clock.set(CLOSED);
+    expect(await hostResult()).toMatchObject({
+      minimum: 2,
+      result: { participants: 2, rated: 2, up: 1, down: 1 },
+    });
+  });
+
+  it("stores N without the remote participants when the counts are frozen", async () => {
+    deps = { ...deps, ratingMinParticipants: 2 };
+    const [ben, lea] = [await person("Ben", "joined"), await person("Lea", "joined")];
+    await addRemoteJoined(deps, planId, "remote-a");
+    await addRemoteJoined(deps, planId, "remote-b");
+    clock.set(STARTED);
+    await rate(ben, "up");
+    await rate(lea, "down");
+    clock.set(CLOSED);
+    const plan = await repos.plans.findById(planId);
+    if (plan === undefined) throw new Error("missing plan");
+    await freezeRatingTally(deps, plan);
+    expect((await repos.plans.findById(planId))?.ratingTally).toEqual({
+      participants: 2,
+      rated: 2,
+      up: 1,
+      down: 1,
+    });
+  });
+
+  it("compares a stored tally with the current minimum", async () => {
+    deps = { ...deps, ratingMinParticipants: 2 };
+    const [ben, lea] = [await person("Ben", "joined"), await person("Lea", "joined")];
+    clock.set(STARTED);
+    await rate(ben, "up");
+    await rate(lea, "up");
+    clock.set(CLOSED);
+    const plan = await repos.plans.findById(planId);
+    if (plan === undefined) throw new Error("missing plan");
+    await freezeRatingTally(deps, plan);
+    expect((await hostResult())?.result).toMatchObject({ participants: 2 });
+    deps = { ...deps, ratingMinParticipants: 3 };
+    expect((await hostResult())?.result).toBeUndefined();
+  });
+});
+
 describe("countedRatings", () => {
   it("counts only ratings of people still in, against the participants", async () => {
     const ben = await person("Ben", "joined");
@@ -312,10 +381,15 @@ describe("countedRatings", () => {
     const benLeft = responses.map((r) =>
       r.displayName === "Ben" ? { ...r, kind: "interested" as const } : r,
     );
-    expect(countedRatings([rating], responses)).toMatchObject({ counted: [rating] });
-    expect(countedRatings([rating], benLeft)).toMatchObject({
+    expect(countedRatings([rating], responses, new Set())).toMatchObject({ counted: [rating] });
+    expect(countedRatings([rating], benLeft, new Set())).toMatchObject({
       participants: [{ displayName: "Lea" }],
       counted: [],
+    });
+    const remote = new Set([responses.find((r) => r.displayName === "Lea")?.id ?? ""]);
+    expect(countedRatings([rating], responses, remote)).toMatchObject({
+      participants: [{ displayName: "Ben" }],
+      counted: [rating],
     });
   });
 });

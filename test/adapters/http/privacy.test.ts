@@ -33,7 +33,6 @@ describe("privacy notice (spec 5 feature 13)", () => {
       "privacy.previews",
       "privacy.calendar",
       "privacy.storedRecap",
-      "privacy.ratings",
       "privacy.templates",
       "privacy.myData",
     ] as const) {
@@ -42,6 +41,17 @@ describe("privacy notice (spec 5 feature 13)", () => {
     expect(text(html)).toContain(en("privacy.cookieDevice", { days: 400 }));
     expect(text(html)).toContain(en("privacy.cookiePreferences", { days: 400 }));
     expect(text(html)).toContain(en("privacy.devices", { unlinkedDays: 30, unusedDays: 365 }));
+  });
+
+  it("names the minimum of participants who can rate, as configured", async () => {
+    expect(text((await page()).html)).toContain(en("privacy.ratings", { min: 3 }));
+    expect(text((await page({ RATING_MIN_PARTICIPANTS: "5" })).html)).toContain(
+      en("privacy.ratings", { min: 5 }),
+    );
+    for (const language of ["en", "de", "fr"] as const) {
+      expect(translator(language)("privacy.ratings", { min: 7 })).toContain("7");
+      expect(translator(language)("privacy.ratings", { min: 7 })).not.toContain("{min}");
+    }
   });
 
   it("names the palette cookie among the preference cookies, in every language (decision 005)", async () => {

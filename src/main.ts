@@ -382,6 +382,7 @@ async function openInstance(
     postingMode: config.postingMode,
     publicRequiresLogin: config.publicRequiresLogin,
     previewPalette: config.palette,
+    ratingMinParticipants: config.ratingMinParticipants,
     publicPlansOffered: config.nearbyEnabled,
     // Always there, so accounts can be deleted after federation was turned off (decision D37).
     posterActors: {

@@ -35,6 +35,7 @@ import { withdrawNotesOfAuthor, withdrawNotesOfPlanContributions } from "./contr
 import { deletionNotices, notifyResponders, notifyResponse } from "./notify.ts";
 import { syncNoteOf, syncParticipantNotes } from "./participant-notes.ts";
 import { answerRemoteResponse } from "./remote-participants.ts";
+import { ratingRulesFor } from "./rating-rules.ts";
 import { ratingResultDue, ratingResultFor, type RatingResultView } from "./plan-views.ts";
 import { freezeRatingTally } from "./ratings.ts";
 import { type PlanDeps, readRoute } from "./plans.ts";
@@ -91,7 +92,9 @@ export type HostPageResult =
       /** Contributions in the recap, from the start of an active plan on (spec 6 feature 7). */
       recapContributions: number | undefined;
       /** From the start of an active plan on (spec 6a): whether ratings closed, and the result once due. */
-      rating: { closed: boolean; result: RatingResultView | undefined } | undefined;
+      rating:
+        | { closed: boolean; result: RatingResultView | undefined; minimum: number }
+        | undefined;
       people: {
         participants: HostPerson[];
         interested: HostPerson[];
@@ -109,6 +112,7 @@ export async function viewHostPage(
   if (isDenied(plan)) return plan;
   const now = deps.clock.now();
   const responses = await deps.responses.listByPlan(plan.id);
+  const ratingRules = await ratingRulesFor(deps, plan.id);
   const people = (kind: "joined" | "interested" | "rejected" | "removed") =>
     responses
       .filter((r) => r.kind === kind)
@@ -127,9 +131,16 @@ export async function viewHostPage(
     rating: hasRecap(plan, now)
       ? {
           closed: ratingsClosed(plan, now),
+          minimum: ratingRules.minimum,
           // Notes are decrypted only once the result is due (decision D20).
-          result: ratingResultDue(plan, responses, now)
-            ? ratingResultFor(plan, await deps.ratings.listByPlan(plan.id), responses, now)
+          result: ratingResultDue(plan, responses, now, ratingRules)
+            ? ratingResultFor(
+                plan,
+                await deps.ratings.listByPlan(plan.id),
+                responses,
+                now,
+                ratingRules,
+              )
             : undefined,
         }
       : undefined,

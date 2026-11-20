@@ -833,7 +833,7 @@ export const en = {
   "privacy.myData":
     "You can see, export and delete everything linked to your browser yourself, at any time:",
   "privacy.ratings":
-    "After a plan, participants can rate it with a thumbs up or down and an optional note. Only the host sees ratings, once the recap has closed and only for plans with at least 3 participants; notes show their author’s name. Ratings are stored with the note encrypted and deleted with the plan, the response or your data.",
+    "After a plan, participants can rate it with a thumbs up or down and an optional note. Only the host sees ratings, once the recap has closed and only for plans with at least {min} participants who could rate; notes show their author’s name. Ratings are stored with the note encrypted and deleted with the plan, the response or your data.",
   "privacy.templates":
     "If a host chooses “Keep as repeatable template” or saves a template, the plan’s details, including the host’s name, are kept as a template; never its responses, participants’ names, recap or ratings. The exact start and route are kept only if the host includes them, and then encrypted. A template is deleted after 90 days without being repeated or edited.",
   "linkTools.heading": "Private link",
@@ -986,13 +986,14 @@ export const en = {
   "rating.back": "Back to the plan",
   "rating.resultHeading": "Ratings",
   "rating.resultLater":
-    "Participants can rate the plan while the recap is open. You see the result here once it has closed, for plans with at least 3 participants.",
+    "Participants can rate the plan while the recap is open. You see the result here once it has closed, for plans with at least {min} participants who could rate.",
   "rating.result": {
     zero: "None of the {participants} participants rated the plan.",
     one: "{count} of {participants} rated: {up} up, {down} down",
     other: "{count} of {participants} rated: {up} up, {down} down",
   },
-  "rating.resultTooFew": "Plans with fewer than 3 participants show no ratings.",
+  "rating.resultTooFew":
+    "Plans with fewer than {min} participants who could rate show no ratings. People who joined from another server cannot rate, so they do not count.",
   "report.link": "Report this plan",
   "report.heading": "Report “{title}”",
   "report.intro":

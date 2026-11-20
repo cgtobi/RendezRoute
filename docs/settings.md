@@ -45,24 +45,26 @@ These addresses must be https unless `ALLOW_INSECURE_DEV=true`: `BASE_URL`, `OID
 `NTFY_URL`, `TELEGRAM_API_URL` and the map, place-search and weather addresses. The development
 switch also allows private networks.
 
-| Setting               | What it does (default)                         |
-| --------------------- | ---------------------------------------------- |
-| `BASE_URL`            | Public https address, no path (required)       |
-| `INSTANCE_NAME`       | Name of the instance (`RendezRoute`)           |
-| `DATA_DIR`            | Absolute path of the data (`/data`)            |
-| `ENCRYPTION_KEY_FILE` | Absolute path of the key file (see below)      |
-| `TRUST_PROXY`         | Trust the proxy headers (`false`)              |
-| `CONTACT_EMAIL`       | Identifies you to providers (unset)            |
-| `IMPRINT_URL`         | Link to your imprint page (unset)              |
-| `PRIVACY_URL`         | Link to your own privacy page (unset)          |
-| `DEFAULT_TIMEZONE`    | IANA time zone (`UTC`)                         |
-| `PALETTE`             | Palette: `default`, `mono`, `bold`, `archivo`  |
-| `ALLOW_INSECURE_DEV`  | Development only: allow http (`false`)         |
-| `E2E_CLOCK_CONTROL`   | Tests only: movable clock, see below (`false`) |
+| Setting                   | What it does (default)                                                |
+| ------------------------- | --------------------------------------------------------------------- |
+| `BASE_URL`                | Public https address, no path (required)                              |
+| `INSTANCE_NAME`           | Name of the instance (`RendezRoute`)                                  |
+| `DATA_DIR`                | Absolute path of the data (`/data`)                                   |
+| `ENCRYPTION_KEY_FILE`     | Absolute path of the key file (see below)                             |
+| `TRUST_PROXY`             | Trust the proxy headers (`false`)                                     |
+| `CONTACT_EMAIL`           | Identifies you to providers (unset)                                   |
+| `IMPRINT_URL`             | Link to your imprint page (unset)                                     |
+| `PRIVACY_URL`             | Link to your own privacy page (unset)                                 |
+| `DEFAULT_TIMEZONE`        | IANA time zone (`UTC`)                                                |
+| `PALETTE`                 | Palette: `default`, `mono`, `bold`, `archivo`                         |
+| `RATING_MIN_PARTICIPANTS` | Participants who can rate before the host sees ratings, 2 to 50 (`3`) |
+| `ALLOW_INSECURE_DEV`      | Development only: allow http (`false`)                                |
+| `E2E_CLOCK_CONTROL`       | Tests only: movable clock, see below (`false`)                        |
 
 - `BASE_URL` has no path, query or credentials. `INSTANCE_NAME` is 1 to 60 characters.
 - `DEFAULT_TIMEZONE` is such as `Europe/Berlin`.
 - `PALETTE` sets the colours of the site (`default`). Visitors can pick another palette for their own browser under "Style" in the menu (a cookie, like the language), and "Site default" brings back this setting. They also still choose light, dark or system. The admin pages keep the default colours.
+- `RATING_MIN_PARTICIPANTS` is the fewest joined participants who can rate (web participants; people who joined from another server cannot rate and do not count) a plan needs before its host sees the ratings. Raising it gives raters more cover in small groups, but small plans then get no feedback; it also decides over results already stored at a recap's close.
 - `PRIVACY_URL` unset: the generated page at `/privacy` is used.
 - `ENCRYPTION_KEY_FILE` defaults to `/keys/field.key` when `/keys` is a mounted volume, otherwise
   to `keys/field.key` in `DATA_DIR`. The VAPID and federation keys live in the same directory. Back

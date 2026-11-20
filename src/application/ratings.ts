@@ -13,6 +13,7 @@ import { audienceFor, canSee } from "../domain/visibility.ts";
 import { resolveDevice } from "./devices.ts";
 import { type Denied, isDenied } from "./host.ts";
 import { countedRatings } from "./plan-views.ts";
+import { ratingRulesFor } from "./rating-rules.ts";
 import type { PlanDeps } from "./plans.ts";
 
 type Request = { planId: string; deviceToken: string | undefined };
@@ -88,6 +89,7 @@ export async function freezeRatingTally(deps: PlanDeps, plan: Plan): Promise<voi
   const { participants, counted } = countedRatings(
     await deps.ratings.listByPlan(plan.id),
     responses,
+    (await ratingRulesFor(deps, plan.id)).remoteIds,
   );
   const ratingTally = ratingTallyBeforeChange(
     plan,

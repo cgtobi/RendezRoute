@@ -1,5 +1,6 @@
 // Plan ratings (spec 6a, decision D20): participants rate the plan, never the host, while the
-// recap is open; only the host sees the result, after the close and from 3 participants.
+// recap is open; only the host sees the result, after the close and from the minimum number of
+// participants.
 import { hasRecap, isRecapOpen, recapClosesAt, type RecapState } from "./recap.ts";
 import type { ResponseKind } from "./response.ts";
 import { err, ok, type FieldError, type Result } from "./result.ts";
@@ -12,8 +13,10 @@ export type RatingValue = (typeof RATING_VALUES)[number];
 export const RATING_LIMITS = {
   /** Characters of the note to the host. */
   note: 500,
-  /** Participants a plan needs before the host sees its result. */
+  /** Participants who can rate that a plan needs before the host sees its result (default). */
   participantsForResult: 3,
+  /** The range the instance admin may set (RATING_MIN_PARTICIPANTS). */
+  participantsForResultRange: { min: 2, max: 50 },
 } as const;
 
 /** One participant's rating; one per response. */
@@ -77,14 +80,17 @@ export function validateRating(input: {
 
 /**
  * The host sees the result once ratings have closed, so a change in the tally cannot be matched
- * to a person, and only for plans with at least 3 participants (decision D20); once frozen, the
- * stored participant count decides.
+ * to a person, and only for plans with at least `minimum` participants who could rate (decision
+ * D20; the instance's setting); once frozen, the stored participant count decides, against the
+ * current minimum.
  */
-export function ratingResultVisible(plan: RatedPlan, participants: number, now: Date): boolean {
-  return (
-    ratingsClosed(plan, now) &&
-    (plan.ratingTally?.participants ?? participants) >= RATING_LIMITS.participantsForResult
-  );
+export function ratingResultVisible(
+  plan: RatedPlan,
+  participants: number,
+  now: Date,
+  minimum: number,
+): boolean {
+  return ratingsClosed(plan, now) && (plan.ratingTally?.participants ?? participants) >= minimum;
 }
 
 /**

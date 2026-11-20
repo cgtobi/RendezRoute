@@ -1,3 +1,4 @@
+import type { PlanDeps } from "../../src/application/plans.ts";
 import type { PlanInput } from "../../src/domain/plan-input.ts";
 import { sampleInput } from "../fixtures/plans.ts";
 import { hiddenFields, type TestClient } from "./client.ts";
@@ -152,4 +153,34 @@ export async function uploadViaEdit(
   return client.postMultipart(`/p/${planId}/host`, fields, {
     gpx: { name: "route.gpx", content: gpx },
   });
+}
+
+/**
+ * Someone who joined from another server (decision D42): a joined response with no device, which
+ * cannot rate. Returns the response's ID.
+ */
+export async function addRemoteJoined(
+  deps: Pick<PlanDeps, "responses" | "ids" | "clock">,
+  planId: string,
+  name: string,
+): Promise<string> {
+  const id = deps.ids.rowId();
+  const now = deps.clock.now();
+  const actorId = `https://social.example/users/${name}`;
+  await deps.responses.createRemote({
+    response: {
+      id,
+      planId,
+      kind: "joined",
+      displayName: name,
+      language: "en",
+      previousKind: undefined,
+      createdAt: now,
+      updatedAt: now,
+    },
+    actor: { id: actorId, inbox: `${actorId}/inbox`, sharedInbox: undefined },
+    join: { id: `${actorId}#join`, kind: "join" },
+    manageTokenHash: `manage-${id}`,
+  });
+  return id;
 }

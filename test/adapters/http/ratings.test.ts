@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { translator } from "../../../src/adapters/i18n/i18n.ts";
 import { createTestApp } from "../../support/app.ts";
 import { hiddenFields, TestClient } from "../../support/client.ts";
-import { createPlanViaUi, respondViaUi } from "../../support/plans.ts";
+import { addRemoteJoined, createPlanViaUi, respondViaUi } from "../../support/plans.ts";
 
 const en = translator("en");
 const AFTER_START = "2026-06-07T06:00:00Z";
@@ -117,7 +117,7 @@ describe("the host's result (spec 6a, step 2)", () => {
     await rate(ben, planId, "down", `${NOTE} https://example.org/too-fast`);
     await rate(lea, planId, "up");
     expect(text(result(await (await host.get(`/p/${planId}/host`)).text()))).toContain(
-      en("rating.resultLater"),
+      en("rating.resultLater", { min: 3 }),
     );
     expect(await (await host.get(`/p/${planId}`)).text()).not.toContain("rating-result");
 
@@ -137,7 +137,81 @@ describe("the host's result (spec 6a, step 2)", () => {
     await rate(ben, planId, "up", NOTE);
     clock.set(CLOSED);
     const page = text(result(await (await host.get(`/p/${planId}/host`)).text()));
-    expect(page).toContain(en("rating.resultTooFew"));
+    expect(page).toContain(en("rating.resultTooFew", { min: 3 }));
     expect(page).not.toContain(NOTE);
+  });
+
+  it("does not count people who joined from another server, who cannot rate", async () => {
+    // Ben and Lea are on the web; two remote people pad the plan to 4 joined.
+    const { host, ben, lea, planDeps, planId, clock } = await setup();
+    await addRemoteJoined(planDeps, planId, "remote-a");
+    await addRemoteJoined(planDeps, planId, "remote-b");
+    clock.set(AFTER_START);
+    await rate(ben, planId, "up", NOTE);
+    await rate(lea, planId, "down");
+    clock.set(CLOSED);
+    const page = text(result(await (await host.get(`/p/${planId}/host`)).text()));
+    expect(page).toContain(en("rating.resultTooFew", { min: 3 }));
+    expect(page).not.toContain(NOTE);
+    expect(page).not.toContain(en("rating.result", { count: 2, participants: 4, up: 1, down: 1 }));
+  });
+
+  it("shows N as the people who could rate: 2 of 2, not 2 of 4", async () => {
+    const test = await createTestApp({ env: { RATING_MIN_PARTICIPANTS: "2" } });
+    const host = new TestClient(test.app);
+    const { planId } = await createPlanViaUi(host);
+    const ben = new TestClient(test.app);
+    await respondViaUi(ben, planId, "Ben", "joined");
+    const lea = new TestClient(test.app);
+    await respondViaUi(lea, planId, "Lea", "joined");
+    await addRemoteJoined(test.planDeps, planId, "remote-a");
+    await addRemoteJoined(test.planDeps, planId, "remote-b");
+    test.clock.set(AFTER_START);
+    await rate(ben, planId, "up");
+    await rate(lea, planId, "down");
+    test.clock.set(CLOSED);
+    for (const path of [`/p/${planId}/host`, `/p/${planId}`]) {
+      const shown = text(result(await (await host.get(path)).text()));
+      expect(shown).toContain(en("rating.result", { count: 2, participants: 2, up: 1, down: 1 }));
+    }
+  });
+
+  it("follows RATING_MIN_PARTICIPANTS: 4 hides a 3-person plan, 2 shows a 2-person plan", async () => {
+    const threePeople = async (env: Record<string, string>) => {
+      const test = await createTestApp({ env });
+      const host = new TestClient(test.app);
+      const { planId } = await createPlanViaUi(host);
+      const people = [];
+      for (const name of ["Ben", "Lea", "Max"]) {
+        const client = new TestClient(test.app);
+        await respondViaUi(client, planId, name, "joined");
+        people.push(client);
+      }
+      test.clock.set(AFTER_START);
+      const [first] = people;
+      if (first === undefined) throw new Error("no participants");
+      await rate(first, planId, "up");
+      test.clock.set(CLOSED);
+      return text(result(await (await host.get(`/p/${planId}/host`)).text()));
+    };
+    expect(await threePeople({ RATING_MIN_PARTICIPANTS: "4" })).toContain(
+      en("rating.resultTooFew", { min: 4 }),
+    );
+    expect(await threePeople({ RATING_MIN_PARTICIPANTS: "3" })).toContain(
+      en("rating.result", { count: 1, participants: 3, up: 1, down: 0 }),
+    );
+
+    const test = await createTestApp({ env: { RATING_MIN_PARTICIPANTS: "2" } });
+    const host = new TestClient(test.app);
+    const { planId } = await createPlanViaUi(host);
+    const ben = new TestClient(test.app);
+    await respondViaUi(ben, planId, "Ben", "joined");
+    await respondViaUi(new TestClient(test.app), planId, "Lea", "joined");
+    test.clock.set(AFTER_START);
+    await rate(ben, planId, "up");
+    test.clock.set(CLOSED);
+    expect(text(result(await (await host.get(`/p/${planId}/host`)).text()))).toContain(
+      en("rating.result", { count: 1, participants: 2, up: 1, down: 0 }),
+    );
   });
 });

@@ -27,6 +27,7 @@ const OPTIONS: Readonly<Record<string, readonly [string, HaOptionKind]>> = {
   weather_url: ["WEATHER_URL", "text"],
   posting_mode: ["POSTING_MODE", "text"],
   palette: ["PALETTE", "text"],
+  rating_min_participants: ["RATING_MIN_PARTICIPANTS", "integer"],
   public_requires_login: ["PUBLIC_REQUIRES_LOGIN", "flag"],
   nearby_enabled: ["NEARBY_ENABLED", "flag"],
   federation_enabled: ["FEDERATION_ENABLED", "flag"],

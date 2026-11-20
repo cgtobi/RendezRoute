@@ -106,6 +106,9 @@ describe("remote participants", () => {
       cleo.id,
     ]);
     expect(await repo.listRemote("plan-0002")).toEqual([]);
+    // The ids alone, without opening the actors: the same people in the same order.
+    expect(await repo.listRemoteIds("plan-0001")).toEqual(["r-1", "r-2"]);
+    expect(await repo.listRemoteIds("plan-0002")).toEqual([]);
     // Listed with everyone else, counted like anyone.
     expect((await repo.listByPlan("plan-0001")).map((r) => r.id)).toEqual(["r-1", "r-2"]);
     expect(await repo.counts("plan-0001")).toEqual({ interested: 1, participants: 1 });

@@ -144,17 +144,22 @@ export function RatingResultSection({
   t,
   closed,
   result,
+  minimum,
 }: {
   t: Translate;
   /** Ratings can no longer be given. */
   closed: boolean;
   result: RatingResultView | undefined;
+  /** The instance's minimum number of participants who can rate (RATING_MIN_PARTICIPANTS). */
+  minimum: number;
 }) {
   return (
     <section class="rating-result" id="rating-result">
       <h2>{t("rating.resultHeading")}</h2>
       {result === undefined ? (
-        <p class="hint">{t(closed ? "rating.resultTooFew" : "rating.resultLater")}</p>
+        <p class="hint">
+          {t(closed ? "rating.resultTooFew" : "rating.resultLater", { min: minimum })}
+        </p>
       ) : (
         <>
           <p>

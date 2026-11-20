@@ -57,6 +57,8 @@ export function PlanPage(props: {
   csrfToken: string;
   /** Show "Report this plan": instance admin authentication is configured (spec 7 Moderation). */
   reporting: boolean;
+  /** RATING_MIN_PARTICIPANTS, named where the rating result is explained. */
+  ratingMinimum: number;
   /** While federation is on: what Mastodon can do (spec 7 Client compatibility); with the fediverse login named where it is configured. */
   fediverseNote?: "general" | "login" | undefined;
 }) {
@@ -277,7 +279,12 @@ export function PlanPage(props: {
             />
           )}
           {audience.kind === "poster" && audience.view.ratingResult !== undefined && (
-            <RatingResultSection t={t} closed result={audience.view.ratingResult} />
+            <RatingResultSection
+              t={t}
+              closed
+              result={audience.view.ratingResult}
+              minimum={props.ratingMinimum}
+            />
           )}
           {audience.kind === "participant" && audience.view.rating !== undefined && (
             <RatingSection

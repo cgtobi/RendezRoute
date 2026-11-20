@@ -79,11 +79,25 @@ describe("privacy notice (spec 5 feature 13)", () => {
       en("privacy.geocoder", { host: "nominatim.openstreetmap.org", days: 7 }),
     );
     expect(text(html)).toContain(en("privacy.location"));
-    expect(text(html)).toContain(en("privacy.locationMap"));
+    expect(text(html)).toContain(en("privacy.locationMap", { host: "tile.openstreetmap.org" }));
+    expect(text(html)).toContain("roughly where you are");
     expect(en("privacy.location")).toContain("not sent to this server");
     const withoutMaps = text((await page({ MAPS_ENABLED: "false" })).html);
     expect(withoutMaps).not.toContain(en("privacy.location"));
-    expect(withoutMaps).not.toContain(en("privacy.locationMap"));
+    expect(withoutMaps).not.toContain("roughly where you are");
+  });
+
+  it("names the configured tile host in the location line, in every language", async () => {
+    const env = { MAP_TILE_URL: "https://tiles.example.org/{z}/{x}/{y}.png" };
+    expect(text((await page(env)).html)).toContain(
+      en("privacy.locationMap", { host: "tiles.example.org" }),
+    );
+    const de = text((await page({}, { "accept-language": "de" })).html);
+    expect(de).toContain("ungefähr erkennen");
+    const fr = text((await page({}, { "accept-language": "fr" })).html);
+    expect(fr).toContain("à peu près où vous vous trouvez");
+    const noMaps = await page({ MAPS_ENABLED: "false" }, { "accept-language": "de" });
+    expect(text(noMaps.html)).not.toContain("ungefähr erkennen");
   });
 
   it("says that “Show where I am” shows the position on the map only, never sent or stored (ADR 008)", () => {

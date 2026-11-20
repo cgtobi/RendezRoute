@@ -107,7 +107,7 @@ export const en = {
   "privacy.location":
     "“Find my location” on the map asks your browser for your position only to move the map; it is not sent to this server and fills in nothing. “Show where I am” on a plan’s full-screen map shows your position on your map only; it is not sent to this server and not stored.",
   "privacy.locationMap":
-    "The map then shows your area, so your browser loads map images of that area from the map service.",
+    "In both cases the map then shows the area around your position, so your browser loads map images of that area from {host}; that service can tell from them roughly where you are.",
   "privacy.share": "WhatsApp is contacted only when you use its share link.",
   "privacy.previews":
     "When a plan link is shared in a chat app, the app fetches the plan’s title, time, area, distance, pace and a preview image. Chat apps may keep this preview after the plan is deleted.",

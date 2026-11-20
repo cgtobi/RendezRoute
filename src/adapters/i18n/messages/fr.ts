@@ -110,7 +110,7 @@ export const fr: Messages = {
   "privacy.location":
     "« Trouver ma position » sur la carte demande votre position à votre navigateur, uniquement pour déplacer la carte ; elle n’est pas envoyée à ce serveur et ne remplit rien. « Montrer où je suis » sur la carte en plein écran d’une sortie affiche votre position sur votre carte uniquement ; elle n’est pas envoyée à ce serveur et n’est pas enregistrée.",
   "privacy.locationMap":
-    "La carte montre ensuite votre région, et votre navigateur charge donc des images de cette zone depuis le service de cartes.",
+    "Dans les deux cas, la carte affiche ensuite les environs de votre position. Votre navigateur charge alors les images de cette zone depuis {host}, qui peut ainsi savoir à peu près où vous vous trouvez.",
   "privacy.share": "WhatsApp n’est contacté que si vous utilisez son lien de partage.",
   "privacy.previews":
     "Quand le lien d’une sortie est partagé dans une messagerie, celle-ci récupère le titre, l’heure, la zone, la distance, l’allure et une image d’aperçu. Les messageries peuvent conserver cet aperçu après la suppression de la sortie.",

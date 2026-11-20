@@ -133,7 +133,7 @@ export function PrivacyPage({
           )}
           {maps.enabled && (
             <li>
-              {t("privacy.location")} {t("privacy.locationMap")}
+              {t("privacy.location")} {t("privacy.locationMap", { host: maps.tileHost })}
             </li>
           )}
           <li>{t("privacy.push")}</li>

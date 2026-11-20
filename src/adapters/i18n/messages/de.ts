@@ -108,7 +108,7 @@ export const de: Messages = {
   "privacy.location":
     "„Meinen Standort finden“ auf der Karte fragt deinen Browser nach deiner Position, nur um die Karte zu verschieben; sie wird nicht an diesen Server gesendet, und es wird nichts ausgefüllt. „Zeigen, wo ich bin“ auf der Vollbildkarte eines Treffens zeigt deine Position nur auf deiner Karte; sie wird nicht an diesen Server gesendet und nicht gespeichert.",
   "privacy.locationMap":
-    "Die Karte zeigt dann deine Gegend, sodass dein Browser Kartenbilder dieser Gegend vom Kartendienst lädt.",
+    "In beiden Fällen zeigt die Karte dann die Umgebung deiner Position. Dein Browser lädt dafür Kartenbilder dieser Gegend von {host}; dieser Dienst kann daran ungefähr erkennen, wo du bist.",
   "privacy.share": "WhatsApp wird nur kontaktiert, wenn du den Teilen-Link benutzt.",
   "privacy.previews":
     "Wird ein Link zu einem Treffen in einer Chat-App geteilt, ruft die App Titel, Zeit, Gebiet, Distanz, Pace und ein Vorschaubild ab. Chat-Apps können diese Vorschau auch nach dem Löschen des Treffens behalten.",

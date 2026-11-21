@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.12
+
+- On the Nearby page the map now zooms in to your area, sized to the selected search radius, when you use your location or a place is found. Before, it stayed on the world view. The map shows the position rounded to about 2 km, as before.
+
 ## 0.18.11
 
 - Fix: the map on the Nearby page showed OpenStreetMap's "Access blocked" tile. The page asks browsers not to send a referrer, and OpenStreetMap refuses tiles without one. Map tiles now always send the site's address (and nothing more), as OpenStreetMap's tile policy requires.

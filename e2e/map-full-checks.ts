@@ -50,7 +50,7 @@ function countRouteRequests(page: Page): () => number {
 async function openFull(page: Page): Promise<void> {
   await openButton(page).click();
   await expect(page.locator("dialog.map-dialog:modal")).toHaveCount(1);
-  await expect(page.locator(".map-dialog img.leaflet-tile").first()).toBeVisible();
+  await expect(page.locator(".map-dialog img.leaflet-tile-loaded").first()).toBeVisible();
 }
 
 async function expectNoAxeViolations(page: Page): Promise<void> {
@@ -177,7 +177,7 @@ export async function hostOpensFullMap(
     expect(await page.evaluate<string>(FOCUS_FRAME)).toBe("3px");
     // The view is settled: the route is drawn (the dialog opened on its bounds already).
     await expect(page.locator(".map-dialog path.map-route")).toHaveCount(1);
-    await expect(page.locator(".map-dialog img.leaflet-tile").first()).toBeVisible();
+    await expect(page.locator(".map-dialog img.leaflet-tile-loaded").first()).toBeVisible();
     // ArrowRight pans east: the exact start's dot (a fixed 8 px radius) moves left by about 80 px.
     const exact = ".map-dialog path.map-exact";
     const before = await edge(page, exact);

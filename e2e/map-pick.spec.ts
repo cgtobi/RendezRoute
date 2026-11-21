@@ -145,7 +145,7 @@ test("Find my location moves the view only: no field changes, no point is set", 
 
   // The opening view is the browser zone's region or Berlin (tile zoom 6), not the device's place.
   await expect(
-    page.locator(".map-picker img.leaflet-tile[src*='/tiles/6/']").first(),
+    page.locator(".map-picker img.leaflet-tile-loaded[src*='/tiles/6/']").first(),
   ).toBeAttached();
   await expect(locate).toBeEnabled();
   const box = await locate.boundingBox();
@@ -153,7 +153,7 @@ test("Find my location moves the view only: no field changes, no point is set", 
   expect(box?.height).toBeGreaterThanOrEqual(44);
   await locate.click();
   await expect(
-    page.locator(".map-picker img.leaflet-tile[src*='/tiles/15/']").first(),
+    page.locator(".map-picker img.leaflet-tile-loaded[src*='/tiles/15/']").first(),
   ).toBeAttached();
   for (const field of Object.values(f)) await expect(field).toHaveValue("");
   await openFold(page, EXACT_FOLD);
@@ -254,7 +254,7 @@ test("The full-screen form map: its switch follows the page, taps set the points
   const openFull = async () => {
     await open.click();
     await expect(page.locator("dialog.map-dialog:modal")).toHaveCount(1);
-    await expect(dialog.locator("img.leaflet-tile").first()).toBeVisible();
+    await expect(dialog.locator("img.leaflet-tile-loaded").first()).toBeVisible();
   };
 
   await test.step("Tapping the open icon sets nothing; the switch starts as the page's; Escape closes", async () => {

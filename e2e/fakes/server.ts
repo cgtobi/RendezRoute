@@ -115,6 +115,12 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
   if (await handleTelegram(request, response, url)) return;
   if (await handleFediverse(request, response, url)) return;
   if (/^\/tiles\/\d+\/\d+\/\d+\.png$/.test(url.pathname)) {
+    // Like tile.openstreetmap.org: no Referer, no tile.
+    if ((request.headers.referer ?? "") === "") {
+      response.writeHead(403, { "content-type": "text/plain", "x-blocked": "No referer sent" });
+      response.end("Access blocked: no Referer sent (tile usage policy)");
+      return;
+    }
     response.writeHead(200, { "content-type": "image/png", "access-control-allow-origin": "*" });
     response.end(TILE);
   } else if (url.pathname === "/search") {

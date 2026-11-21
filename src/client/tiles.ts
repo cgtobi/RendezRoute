@@ -1,11 +1,14 @@
 import L from "leaflet";
-import { escapeHtml } from "./geo.ts";
+import { attributionHtml } from "./geo.ts";
 
-/** Tile layer from the server's data attributes; the attribution is configuration, shown as text. */
+/** Tile layer from the server's data attributes; the attribution is configuration, shown as escaped text with the OSM name linked. */
 export function tileLayer(element: HTMLElement): L.TileLayer {
   return L.tileLayer(element.dataset.tileUrl ?? "", {
-    attribution: escapeHtml(element.dataset.attribution ?? ""),
+    attribution: attributionHtml(element.dataset.attribution ?? ""),
     maxZoom: 19,
+    // The OSM tile usage policy requires a Referer. Leaflet's tiles follow the page's policy,
+    // and a page may be stricter (/nearby sends no-referrer), so ask for the origin only.
+    referrerPolicy: "strict-origin",
   });
 }
 

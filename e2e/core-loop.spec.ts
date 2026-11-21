@@ -84,7 +84,8 @@ test("A plan can be created, shared, joined, cancelled and deleted without any a
   const card = await viewer.request.get(image ?? "");
   expect(card.status()).toBe(200);
   expect(card.headers()["content-type"]).toBe("image/png");
-  if (withMaps) await expect(viewer.locator("[data-plan-map] .leaflet-tile").first()).toBeVisible();
+  if (withMaps)
+    await expect(viewer.locator("[data-plan-map] .leaflet-tile-loaded").first()).toBeVisible();
   else await expect(viewer.locator("[data-plan-map]")).toHaveCount(0);
   // The fake weather service answers for the start hour; disabled weather shows nothing.
   if (withMaps) await expect(viewer.getByText("Partly cloudy · 14 °C")).toBeVisible();

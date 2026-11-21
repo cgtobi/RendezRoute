@@ -43,6 +43,19 @@ export const escapeHtml = (text: string): string =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
+const OSM_COPYRIGHT = "https://www.openstreetmap.org/copyright";
+
+/**
+ * The configured attribution as safe HTML: escaped text, with the word "OpenStreetMap" linked to
+ * OSM's copyright page (the tile usage policy asks for a link). The anchor is built here from a
+ * constant; nothing the operator configures reaches the markup unescaped.
+ */
+export const attributionHtml = (text: string): string =>
+  escapeHtml(text).replace(
+    "OpenStreetMap",
+    `<a href="${OSM_COPYRIGHT}" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>`,
+  );
+
 /**
  * The public area's grid: 100 lines per degree (0.01°, about 1 km). Mirrors PUBLIC_GRID_PER_DEGREE
  * in src/domain/geo.ts, which the client may not import; a test pins both to the same results.

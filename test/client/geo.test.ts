@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { publicAreaFrom } from "../../src/domain/geo.ts";
 import { NEARBY_GRID_PER_DEGREE as DOMAIN_GRID, onGrid } from "../../src/domain/nearby.ts";
 import {
+  attributionHtml,
   escapeHtml,
   NEARBY_GRID_PER_DEGREE,
   nearbyCoordinate,
@@ -99,5 +100,20 @@ describe("zoomForAccuracy (decision D62)", () => {
     expect(zoomForAccuracy(2000.1)).toBe(13);
     expect(zoomForAccuracy(50_000)).toBe(13);
     expect(zoomForAccuracy(Number.NaN)).toBe(15);
+  });
+});
+
+describe("attributionHtml", () => {
+  it("links OpenStreetMap to its copyright page in the default attribution", () => {
+    expect(attributionHtml("© OpenStreetMap contributors")).toBe(
+      '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+    );
+  });
+
+  it("leaves a custom attribution as escaped text", () => {
+    expect(attributionHtml("© Example")).toBe("© Example");
+    expect(attributionHtml('<img src=x onerror="a()"> OpenStreetMap')).toBe(
+      '&lt;img src=x onerror=&quot;a()&quot;&gt; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
+    );
   });
 });

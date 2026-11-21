@@ -278,7 +278,19 @@ test("Nearby: a public plan found from the device's location and from a typed pl
   // Every request the page makes: nothing may carry the place before "Search".
   const sent: string[] = [];
   viewer.on("request", (request) => sent.push(request.url()));
+  // Chromium only (WebKit's tile host is stubbed): the tiles load, each with a Referer, which
+  // the page's own no-referrer policy must not strip (the OSM tile usage policy).
+  const tileHeaders: Promise<Record<string, string>>[] = [];
+  viewer.on("request", (request) => {
+    if (request.url().includes("/tiles/")) tileHeaders.push(request.allHeaders());
+  });
   await viewer.goto("/nearby");
+  if (browser.browserType().name() === "chromium") {
+    await expect(viewer.locator("[data-nearby-map] img.leaflet-tile-loaded").first()).toBeVisible();
+    const headers = await Promise.all(tileHeaders);
+    expect(headers.length).toBeGreaterThan(0);
+    expect(headers.filter((sentHeaders) => !sentHeaders.referer)).toEqual([]);
+  }
   const search = viewer.locator("form[data-nearby] > button[type=submit]");
   await viewer.getByRole("button", { name: "Use my location" }).click();
   await expect(viewer.getByText("Around the spot you chose")).toBeVisible();
@@ -327,7 +339,7 @@ test("Nearby full screen: a tap, Use my location and a place search set the poin
   const openFull = async () => {
     await open.click();
     await expect(page.locator("dialog.map-dialog:modal")).toHaveCount(1);
-    await expect(dialog.locator("img.leaflet-tile").first()).toBeVisible();
+    await expect(dialog.locator("img.leaflet-tile-loaded").first()).toBeVisible();
   };
 
   await test.step("A tap in the dialog fills the hidden point; closed, the page says so", async () => {

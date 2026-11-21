@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.11
+
+- Fix: the map on the Nearby page showed OpenStreetMap's "Access blocked" tile. The page asks browsers not to send a referrer, and OpenStreetMap refuses tiles without one. Map tiles now always send the site's address (and nothing more), as OpenStreetMap's tile policy requires.
+- The map credit now links "OpenStreetMap" to its copyright page.
+
 ## 0.18.10
 
 - Privacy: the privacy page now says that "Find my location" and "Show where I am" make your browser load map images of the area around you from the map service, which can tell from them roughly where you are. The position itself still never reaches this server.

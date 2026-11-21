@@ -98,6 +98,23 @@ export function publicCircleCenter(
 export const zoomForAccuracy = (accuracyMeters: number): number =>
   accuracyMeters > 2000 ? 13 : 15;
 
+/** Metres per degree of latitude (a sphere is exact enough for framing a map). */
+const METERS_PER_DEGREE = 111_320;
+
+/**
+ * The south-west and north-east corners of the square that holds the circle of `radiusKm` around
+ * `point`, for fitting a map to a search radius. Longitude widens towards the poles.
+ */
+export function radiusBounds(point: Point, radiusKm: number): [[number, number], [number, number]] {
+  const dLat = (radiusKm * 1000) / METERS_PER_DEGREE;
+  const cos = Math.max(Math.cos((point.lat * Math.PI) / 180), 0.01);
+  const dLng = Math.min(dLat / cos, 180);
+  return [
+    [Math.max(point.lat - dLat, -90), point.lng - dLng],
+    [Math.min(point.lat + dLat, 90), point.lng + dLng],
+  ];
+}
+
 /** ~1 km grid cell around the public point (spec 3.1): the area circle's radius on every map. */
 export const AREA_RADIUS_M = 750;
 

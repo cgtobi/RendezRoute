@@ -5,7 +5,7 @@
 // and the server looks it up. The full-screen map (ADR 008) sets the same point through the same
 // controller, and its own place search never sends the form.
 import L from "leaflet";
-import { nearbyCoordinate, type Point, readCoordinate } from "./geo.ts";
+import { nearbyCoordinate, type Point, radiusBounds, readCoordinate } from "./geo.ts";
 import { addExpandControl, type MapDialogSetup } from "./map-dialog.ts";
 import { lookUp, type LookUpResult } from "./nearby-lookup.ts";
 import { createMap, themeColor, tileLayer } from "./tiles.ts";
@@ -19,6 +19,9 @@ const LOCATE_OPTIONS: PositionOptions = {
 
 /** The zoom a point from the device or a search is shown at, at least. */
 const POINT_ZOOM = 11;
+
+/** The search radius when the form has none (DEFAULT_RADIUS_KM in src/domain/nearby.ts). */
+const FALLBACK_RADIUS_KM = 10;
 
 /** The server refuses shorter queries (MIN_QUERY in src/application/places.ts). */
 const MIN_QUERY = 2;
@@ -316,6 +319,10 @@ export function initNearby(): void {
       );
       tileLayer(container).addTo(map);
       const marker = pointMarker();
+      const radius = form.querySelector<HTMLSelectElement>('select[name="radius"]');
+      // A tap on the map keeps the view (the point is under the finger); the device and a search
+      // frame the point and the selected radius.
+      let tapped = false;
       const show = (point: Point | undefined) => {
         if (point === undefined) {
           marker.remove();
@@ -323,15 +330,21 @@ export function initNearby(): void {
         }
         const where = L.latLng(point.lat, point.lng);
         marker.setLatLng(where).addTo(map);
-        // From the device, the spot may be anywhere: bring it into view.
-        if (!map.getBounds().contains(where)) map.setView(where, POINT_ZOOM);
+        if (tapped) return;
+        const km = Number(radius?.value);
+        map.fitBounds(radiusBounds(point, km > 0 ? km : FALLBACK_RADIUS_KM), {
+          maxZoom: 19,
+          padding: [24, 24],
+        });
       };
       show(at);
       controller.subscribe(show);
       map.on("click", (event: L.LeafletMouseEvent) => {
         // A tap on a repeated world copy has a longitude beyond 180: wrap it into -180 to 180.
         const { lat, lng } = event.latlng.wrap();
+        tapped = true;
         controller.setPoint(lat, lng);
+        tapped = false;
       });
 
       const template = container.nextElementSibling;

@@ -292,8 +292,25 @@ test("Nearby: a public plan found from the device's location and from a typed pl
     expect(headers.filter((sentHeaders) => !sentHeaders.referer)).toEqual([]);
   }
   const search = viewer.locator("form[data-nearby] > button[type=submit]");
+  // The map's zoom, read from the loaded tiles' /tiles/<z>/ segment (Chromium only).
+  const tileZoom = () =>
+    viewer
+      .locator("[data-nearby-map] img.leaflet-tile-loaded")
+      .evaluateAll((tiles) =>
+        Math.max(
+          0,
+          ...tiles.map((tile) =>
+            Number(/\/tiles\/(\d+)\//.exec(tile.getAttribute("src") ?? "")?.[1]),
+          ),
+        ),
+      );
+  const zoomBefore = browser.browserType().name() === "chromium" ? await tileZoom() : 0;
   await viewer.getByRole("button", { name: "Use my location" }).click();
   await expect(viewer.getByText("Around the spot you chose")).toBeVisible();
+  if (browser.browserType().name() === "chromium") {
+    // The location zooms the map in from the world view to the radius around the point.
+    await expect.poll(tileZoom).toBeGreaterThan(Math.max(zoomBefore, 5));
+  }
   expect(sent.filter((url) => /lat=|48\.13|48\.14/.test(url))).toEqual([]);
   await search.click();
   await expect(viewer).toHaveURL(/\/nearby\?(?:[^#]*&)?lat=48\.14&lng=11\.58(?:&|$)/);

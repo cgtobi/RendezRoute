@@ -9,6 +9,7 @@ import {
   PUBLIC_GRID_PER_DEGREE,
   publicCircleCenter,
   publicPointOf,
+  radiusBounds,
   readCoordinate,
   roundCoordinate,
   shortLabel,
@@ -115,5 +116,22 @@ describe("attributionHtml", () => {
     expect(attributionHtml('<img src=x onerror="a()"> OpenStreetMap')).toBe(
       '&lt;img src=x onerror=&quot;a()&quot;&gt; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
     );
+  });
+});
+
+describe("radiusBounds", () => {
+  it("frames the radius around the point, wider in longitude away from the equator", () => {
+    const [[south, west], [north, east]] = radiusBounds({ lat: 0, lng: 10 }, 10);
+    expect(north - south).toBeCloseTo(2 * (10_000 / 111_320), 6);
+    expect(east - west).toBeCloseTo(north - south, 6);
+    const [[, w60], [, e60]] = radiusBounds({ lat: 60, lng: 10 }, 10);
+    expect(e60 - w60).toBeCloseTo((north - south) * 2, 4);
+  });
+
+  it("stays on the globe near the poles", () => {
+    const [[south], [north, east]] = radiusBounds({ lat: 89.99, lng: 0 }, 100);
+    expect(south).toBeGreaterThan(88);
+    expect(north).toBe(90);
+    expect(east).toBeLessThanOrEqual(180);
   });
 });

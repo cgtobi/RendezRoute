@@ -396,6 +396,7 @@ export const fr: Messages = {
   "plan.fediverseJoinLogin":
     "Sur Mastodon, vous pouvez suivre l’organisateur·rice, mais l’inscription se fait sur cette page : connectez-vous avec votre compte du fédivers.",
   "plan.host": "organisateur·rice",
+  "plan.me": "Moi",
   "plan.postedBy": "Proposée par {name}",
   "plan.youAreHost": "Vous organisez cette sortie.",
   "plan.when": "Quand",

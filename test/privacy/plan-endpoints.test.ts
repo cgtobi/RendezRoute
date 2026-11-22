@@ -204,6 +204,30 @@ describe("names and exact start per audience (spec 3.6)", () => {
     expect(body).not.toContain(REMOVED_NAME);
   });
 
+  it("a participant's own entry reads Me: their name stays in their own pages, no response id in the HTML", async () => {
+    const OTHER_JOINED_NAME = "SENTINEL-other-joined-name";
+    const { joined, client, planId, database } = await audiences();
+    await respondViaUi(client(), planId, OTHER_JOINED_NAME, "joined");
+    const plan = await (await joined.get(`/p/${planId}`)).text();
+    expect(plan).toContain(OTHER_JOINED_NAME);
+    expect(plan.match(/<span class="person-label person-me">Me<\/span>/g)).toHaveLength(1);
+    expect(plan).not.toContain(JOINED_NAME);
+    // The manage page and the exports keep the real name.
+    for (const path of [`/p/${planId}/me`, `/p/${planId}/me/export.zip`, "/my-data/export.zip"]) {
+      expect(await bodyOf(await joined.get(path))).toContain(JOINED_NAME);
+    }
+    const ids = database.sqlite.prepare("select id from responses").pluck().all() as string[];
+    expect(ids.length).toBeGreaterThan(5);
+    for (const id of ids) expect(plan).not.toContain(id);
+  });
+
+  it("marks nobody as Me for viewers, interested, pending, rejected or removed people", async () => {
+    const { viewer, interested, pending, rejected, removed, planId } = await audiences();
+    for (const client of [viewer, interested, pending, rejected, removed]) {
+      expect(await pages(client, planId)).not.toContain("person-me");
+    }
+  });
+
   it("the host sees participants and interested people; removed people only on the host page (decision D8)", async () => {
     const { host, planId } = await audiences();
     const body = await pages(host, planId);

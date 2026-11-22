@@ -14,13 +14,14 @@ import { createPlanViaUi, respondViaUi } from "../../support/plans.ts";
 const en = translator("en");
 const text = (html: string) => html.replaceAll("&#39;", "'");
 
-async function planPage() {
+/** The plan page as Ben, who joined, sees it; or as the host, Anna, with `asHost`. */
+async function planPage({ asHost = false } = {}) {
   const test = await createTestApp();
   const host = new TestClient(test.app);
   const { planId } = await createPlanViaUi(host);
   const ben = new TestClient(test.app);
   await respondViaUi(ben, planId, "Ben", "joined");
-  return text(await (await ben.get(`/p/${planId}`)).text());
+  return text(await (await (asHost ? host : ben).get(`/p/${planId}`)).text());
 }
 
 const css = loadStylesheet();
@@ -80,12 +81,27 @@ describe("plan page look (decision D30)", () => {
     expect(page).toContain(
       `<li class="person"><span class="avatar avatar-host" aria-hidden="true">A</span><span class="person-label">Anna</span><span class="host-mark"><span class="icon icon-flag" aria-hidden="true"></span><span class="visually-hidden">${en("plan.host")}</span></span></li>`,
     );
+    // Ben's own entry reads "Me", the initial and its colour still from his name.
     expect(page).toContain(
-      `<li class="person"><span class="avatar avatar-${avatarOf("Ben", "en").hue}" aria-hidden="true">B</span><span class="person-label">Ben</span></li>`,
+      `<li class="person"><span class="avatar avatar-${avatarOf("Ben", "en").hue}" aria-hidden="true">B</span><span class="person-label person-me">${en("plan.me")}</span></li>`,
     );
     expect(rule(".icon-flag")).toContain('--icon: url("icons/flag.svg")');
     expect(
       readFileSync(new URL("../../../public/icons/flag.svg", import.meta.url), "utf8"),
     ).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 24 24"/);
+  });
+
+  it("shows the viewer's own entry as Me, set apart in bold; the host's with the host mark", async () => {
+    const page = await planPage({ asHost: true });
+    expect(en("plan.me")).toBe("Me");
+    expect(page).toContain(
+      `<li class="person"><span class="avatar avatar-host" aria-hidden="true">A</span><span class="person-label person-me">Me</span><span class="host-mark"><span class="icon icon-flag" aria-hidden="true"></span><span class="visually-hidden">${en("plan.host")}</span></span></li>`,
+    );
+    expect(page).toContain(
+      `<li class="person"><span class="avatar avatar-${avatarOf("Ben", "en").hue}" aria-hidden="true">B</span><span class="person-label">Ben</span></li>`,
+    );
+    expect(page.match(/person-me/g)).toHaveLength(1);
+    // So someone who calls themselves "Me" does not look like the viewer.
+    expect(rule(".person-me")).toContain("font-weight: 700");
   });
 });

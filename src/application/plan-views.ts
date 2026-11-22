@@ -43,6 +43,11 @@ export interface PersonView {
   name: string;
   /** The poster, shown with a host badge (spec 3.5). */
   isHost: boolean;
+  /**
+   * The person looking at the page: shown as "Me", so people of the same name are told apart.
+   * Only this flag tells which entry is theirs; no response id leaves the read model.
+   */
+  isViewer: boolean;
 }
 
 export interface OwnResponseView {
@@ -312,13 +317,21 @@ export const ownResponse = (response: PlanResponse, plan: Plan, now: Date): OwnR
   notAnswered: isNotAnswered(response, plan, now),
 });
 
-/** Host first, then joined people in response order. */
-function participantsOf(plan: Plan, responses: readonly PlanResponse[]): PersonView[] {
+/** Host first, then joined people in response order; the viewer's own entry marked. */
+function participantsOf(
+  plan: Plan,
+  responses: readonly PlanResponse[],
+  viewer: RecapAuthor,
+): PersonView[] {
   return [
-    { name: plan.posterName, isHost: true },
+    { name: plan.posterName, isHost: true, isViewer: viewer.kind === "host" },
     ...responses
       .filter((r) => r.kind === "joined")
-      .map((r) => ({ name: r.displayName, isHost: false })),
+      .map((r) => ({
+        name: r.displayName,
+        isHost: false,
+        isViewer: viewer.kind === "participant" && r.id === viewer.responseId,
+      })),
   ];
 }
 
@@ -343,8 +356,9 @@ export function recapViewFor(
   now: Date,
 ): RecapView | undefined {
   if (!hasRecap(plan, now)) return undefined;
-  const ownResponseId = viewer.kind === "participant" ? viewer.responseId : undefined;
-  const isOwn = (c: RecapContribution) => c.responseId === ownResponseId;
+  // The host's contributions have no response id; a participant's carry theirs.
+  const isOwn = (c: RecapContribution) =>
+    viewer.kind === "host" ? c.responseId === undefined : c.responseId === viewer.responseId;
   const names = new Map(responses.map((r) => [r.id, r.displayName]));
   const open = isRecapOpen(plan, now);
   return {
@@ -380,18 +394,13 @@ export function viewForParticipant(
   contributions: readonly RecapContribution[],
   ownRating: PlanRating | undefined,
 ): PlanViewForParticipant {
+  const self: RecapAuthor = { kind: "participant", responseId: response.id };
   return {
     ...viewForResponder(plan, counts, response, now),
     exactStart: plan.exactStart,
     hasRoute: plan.hasRoute,
-    participants: participantsOf(plan, responses),
-    recap: recapViewFor(
-      plan,
-      contributions,
-      responses,
-      { kind: "participant", responseId: response.id },
-      now,
-    ),
+    participants: participantsOf(plan, responses, self),
+    recap: recapViewFor(plan, contributions, responses, self, now),
     rating: hasRecap(plan, now)
       ? {
           canRate: canRate(plan, response.kind, now).ok,
@@ -416,10 +425,10 @@ export function viewForPoster(
     ...viewForViewer(plan, counts),
     exactStart: plan.exactStart,
     hasRoute: plan.hasRoute,
-    participants: participantsOf(plan, responses),
+    participants: participantsOf(plan, responses, { kind: "host" }),
     interested: responses
       .filter((r) => r.kind === "interested")
-      .map((r) => ({ name: r.displayName, isHost: false })),
+      .map((r) => ({ name: r.displayName, isHost: false, isViewer: false })),
     pendingRequests: responses.filter((r) => r.kind === "requested").length,
     retentionDays: plan.retentionDays,
     recap: recapViewFor(plan, contributions, responses, { kind: "host" }, now),

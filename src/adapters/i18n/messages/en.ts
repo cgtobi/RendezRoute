@@ -382,6 +382,7 @@ export const en = {
   "plan.fediverseJoinLogin":
     "On Mastodon you can follow the host, but joining happens on this page: log in with your fediverse account.",
   "plan.host": "host",
+  "plan.me": "Me",
   "plan.postedBy": "Posted by {name}",
   "plan.youAreHost": "You are the host of this plan.",
   "plan.when": "When",

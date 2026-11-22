@@ -206,8 +206,8 @@ describe("viewPlan per audience (spec 3.6)", () => {
     if (result.kind !== "participant") return;
     expect(result.view.exactStart?.description).toBe("North gate, by the bike racks");
     expect(result.view.participants).toEqual([
-      { name: "Anna", isHost: true },
-      { name: "SENTINEL-Ben", isHost: false },
+      { name: "Anna", isHost: true, isViewer: false },
+      { name: "SENTINEL-Ben", isHost: false, isViewer: true },
     ]);
     expect(JSON.stringify(result)).not.toContain("SENTINEL-Cleo");
   });
@@ -219,6 +219,28 @@ describe("viewPlan per audience (spec 3.6)", () => {
     if (result.kind !== "poster") return;
     expect(result.view.participants.map((p) => p.name)).toEqual(["Anna", "SENTINEL-Ben"]);
     expect(result.view.interested.map((p) => p.name)).toEqual(["SENTINEL-Cleo"]);
+  });
+
+  it("marks the poster's own entry as the viewer's, and nobody else's", async () => {
+    await setupPeople();
+    const result = await viewPlan(deps, { planId, deviceToken: hostDevice });
+    if (result.kind !== "poster") throw new Error(`expected poster, got ${result.kind}`);
+    expect(result.view.participants.map((p) => p.isViewer)).toEqual([true, false]);
+    expect(result.view.interested.map((p) => p.isViewer)).toEqual([false]);
+  });
+
+  it("tells two participants of the same name apart: each sees only their own entry as theirs", async () => {
+    const first = await joined("Ben");
+    const second = await joined("Ben");
+    const viewerFlags = async (deviceToken: string | undefined) => {
+      const result = await viewPlan(deps, { planId, deviceToken });
+      if (result.kind !== "participant")
+        throw new Error(`expected participant, got ${result.kind}`);
+      expect(result.view.participants.map((p) => p.name)).toEqual(["Anna", "Ben", "Ben"]);
+      return result.view.participants.map((p) => p.isViewer);
+    };
+    expect(await viewerFlags(first.newDeviceToken)).toEqual([false, true, false]);
+    expect(await viewerFlags(second.newDeviceToken)).toEqual([false, false, true]);
   });
 
   it("removed people see only what rejected people see, plus their status", async () => {

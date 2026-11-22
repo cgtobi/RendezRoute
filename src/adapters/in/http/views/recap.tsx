@@ -165,7 +165,7 @@ function Contribution({
   return (
     <li class={contribution.hidden ? "contribution hidden-contribution" : "contribution"}>
       <p class="contribution-author">
-        {contribution.authorName}
+        {contribution.own ? <span class="person-me">{t("plan.me")}</span> : contribution.authorName}
         {contribution.byHost && (
           <>
             {" "}

@@ -402,10 +402,16 @@ function People({
         {people.map((person) => {
           return (
             // A round initial with the name below. The host's mark follows the name, so it reads
-            // "Anna, host": an icon on the initial, the same size in every language (D30).
+            // "Anna, host": an icon on the initial, the same size in every language (D30). The
+            // viewer's own entry reads "Me" in bold, so people of the same name are told apart and
+            // someone named "Me" does not pass for the viewer; the initial stays the real name's.
             <li class="person">
               <Initial name={person.name} language={language} host={person.isHost} />
-              <span class="person-label">{person.name}</span>
+              {person.isViewer ? (
+                <span class="person-label person-me">{t("plan.me")}</span>
+              ) : (
+                <span class="person-label">{person.name}</span>
+              )}
               {person.isHost && (
                 <span class="host-mark">
                   <span class="icon icon-flag" aria-hidden="true"></span>

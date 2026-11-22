@@ -156,6 +156,30 @@ describe("the recap as participants and the host see it", () => {
     });
   });
 
+  it("marks the host's contributions as own for the host only, a participant's for them only", async () => {
+    const ben = await person("Ben", "joined");
+    const lea = await person("Lea", "joined");
+    clock.set(STARTED);
+    await add(ben.device, "Ben's");
+    await add(host, "Anna's");
+    const own = async (device: string | undefined) => {
+      const recap = await recapOf(device);
+      return typeof recap === "object" ? recap.contributions.map((c) => [c.body, c.own]) : [];
+    };
+    expect(await own(host)).toEqual([
+      ["Ben's", false],
+      ["Anna's", true],
+    ]);
+    expect(await own(ben.device)).toEqual([
+      ["Ben's", true],
+      ["Anna's", false],
+    ]);
+    expect(await own(lea.device)).toEqual([
+      ["Ben's", false],
+      ["Anna's", false],
+    ]);
+  });
+
   it("is not part of what interested and pending people see (spec 3.6)", async () => {
     const ben = await person("Ben", "joined");
     const ida = await person("Ida", "interested");

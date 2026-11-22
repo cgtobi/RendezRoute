@@ -18,7 +18,8 @@
    - States: section.status (with .status-joined, .status-loggedIn, …) for one's own state;
      section.message-page for a page that only says what happened.
    - Plan facts: dl.when-where (boxes, or .lines on the plan page), dl.metrics (inline, or .tiles
-     on the plan page); people as li.person with the initial, .person-label and the host's .host-mark.
+     on the plan page); people as li.person with the initial, .person-label and the host's .host-mark;
+     .person-me on the viewer's own "Me".
    - Radii: --r-sm for text inputs and small labels (.pill, .plan-activity), --r-md for buttons,
      fieldsets, message boxes, tiles, cards and maps, --r-lg for the plan's title block, --r-pill
      for badges and counts.
@@ -2323,6 +2324,12 @@
   .person-label {
     max-width: 100%;
     overflow-wrap: anywhere;
+  }
+
+  /* The viewer's own "Me" in the participant list and the recap, in bold so someone who calls
+     themselves "Me" does not pass for the viewer. */
+  .person-me {
+    font-weight: 700;
   }
 
   /* Initials coloured from the name (never from an account); the host's in the plan's secondary

@@ -190,6 +190,23 @@ describe("the account's data (spec 3.7)", () => {
   });
 });
 
+describe("the account's own entry among the participants", () => {
+  it("is the viewer's on a second device too, beside someone of the same name", async () => {
+    const ben: ProviderAccount = { subject: "https://id.example.org ben", names: ["Ben"] };
+    const plan = await newPlan(undefined, "Shared run");
+    await join(plan.planId, undefined, "Ben");
+    await join(plan.planId, await logIn(ben), "Ben");
+    const laptop = await logIn(ben);
+    const result = await viewPlan(deps, { planId: plan.planId, deviceToken: laptop });
+    if (result.kind !== "participant") throw new Error(`expected participant, got ${result.kind}`);
+    expect(result.view.participants.map((p) => [p.name, p.isViewer])).toEqual([
+      ["Host", false],
+      ["Ben", false],
+      ["Ben", true],
+    ]);
+  });
+});
+
 describe("export scopes (decision I52)", () => {
   it("export a browser that responded alone to an account's own plan as a responder, not as the host", async () => {
     const accountPlan = await newPlan(await logIn(), "Anna's run");

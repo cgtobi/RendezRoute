@@ -60,6 +60,33 @@ describe("the recap section (spec 6 feature 5)", () => {
     }
   });
 
+  it("names the viewer's own contributions Me, the others by name, the host's with the badge", async () => {
+    const { host, ben, planId, clock } = await setup();
+    clock.set(AFTER_START);
+    await contribute(ben, planId, "From Ben");
+    await contribute(host, planId, "From Anna");
+    const authors = async (client: TestClient) =>
+      [
+        ...section(await (await client.get(`/p/${planId}`)).text()).matchAll(
+          /<p class="contribution-author">(.*?)<\/p>/g,
+        ),
+      ].map((m) => m[1]);
+    expect(await authors(ben)).toEqual([
+      '<span class="person-me">Me</span>',
+      'Anna <span class="badge">host</span>',
+    ]);
+    expect(await authors(host)).toEqual([
+      "Ben",
+      '<span class="person-me">Me</span> <span class="badge">host</span>',
+    ]);
+    const german = section(
+      await (await ben.request(`/p/${planId}`, { headers: { "accept-language": "de" } })).text(),
+    );
+    expect(german).toContain(
+      '<p class="contribution-author"><span class="person-me">Ich</span></p>',
+    );
+  });
+
   it("shows errors on the form's own page, and refuses before the start", async () => {
     const { ben, planId, clock } = await setup();
     expect((await contribute(ben, planId, "Too early")).status).toBe(409);

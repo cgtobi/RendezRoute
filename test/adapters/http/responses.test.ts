@@ -63,7 +63,29 @@ describe("POST /p/:id/respond", () => {
     expect(html).toMatch(
       /Anna<\/span><span class="host-mark"><span class="icon icon-flag" aria-hidden="true"><\/span><span class="visually-hidden">host<\/span>/,
     );
-    expect(html).toContain("Ben");
+    // Ben's own entry reads "Me", not his name (people of the same name are told apart).
+    expect(html).toContain('<span class="person-label person-me">Me</span>');
+    expect(html).not.toContain('<span class="person-label">Ben</span>');
+  });
+
+  it("tells two participants of the same name apart: one Me, one Ben", async () => {
+    const { planId, newClient } = await setup();
+    const first = newClient();
+    await respondViaUi(first, planId, "Ben", "joined");
+    await respondViaUi(newClient(), planId, "Ben", "joined");
+    const html = await (await first.get(`/p/${planId}`)).text();
+    expect(html.match(/<span class="person-label person-me">Me<\/span>/g)).toHaveLength(1);
+    expect(html.match(/<span class="person-label">Ben<\/span>/g)).toHaveLength(1);
+  });
+
+  it("says Me in the viewer's language", async () => {
+    const { planId, newClient } = await setup();
+    const ben = newClient();
+    await respondViaUi(ben, planId, "Ben", "joined");
+    const page = async (language: string) =>
+      (await ben.request(`/p/${planId}`, { headers: { "accept-language": language } })).text();
+    expect(await page("de")).toContain('<span class="person-label person-me">Ich</span>');
+    expect(await page("fr")).toContain('<span class="person-label person-me">Moi</span>');
   });
 
   it("gives interested people their status but not the exact start; the host sees them listed", async () => {

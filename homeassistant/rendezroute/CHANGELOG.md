@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.13
+
+- Your own entry in the "Who's coming" list and in the recap now reads "Me" ("Ich", "Moi") instead of your name, so you can tell yourself apart from someone with the same name. Everyone else still sees your name, and exports, calendars and previews are unchanged.
+
 ## 0.18.12
 
 - On the Nearby page the map now zooms in to your area, sized to the selected search radius, when you use your location or a place is found. Before, it stayed on the world view. The map shows the position rounded to about 2 km, as before.

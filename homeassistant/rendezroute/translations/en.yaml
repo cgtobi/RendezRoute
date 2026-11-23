@@ -116,6 +116,9 @@ configuration:
   max_plan_horizon_days:
     name: "Plan ahead at most (days)"
     description: "How far ahead a run, ride or hike may be planned, 1 to 180 days."
+  max_new_plans_per_day:
+    name: "New plans per day (whole instance)"
+    description: "The most new plans this instance takes in 24 hours, 0 to 200. It can only lower the built-in limit of 200 a day (and 40 an hour); 0 pauses new plans while joining and managing keep working. Leave empty for 200."
   trust_proxy:
     name: "Trust the reverse proxy"
     description: "Turn on only when a reverse proxy in front of the public port sets the X-Forwarded-For header and no one can reach the port directly. Then the app counts rate limits per real visitor and not per proxy."

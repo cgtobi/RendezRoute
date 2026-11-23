@@ -25,7 +25,7 @@ import type { ControllableClock } from "../../out/controllable-clock.ts";
 import { toGpx } from "../../out/gpx/write-gpx.ts";
 import { composeCommonStack, STATIC_ROOT } from "./app-common.tsx";
 import { readDeviceToken } from "./device-cookie.ts";
-import { clientKey, type RateLimits } from "./rate-limit.ts";
+import { clientKey, createJoinLimits, type JoinLimits, type RateLimits } from "./rate-limit.ts";
 import { registerClockControlRoute } from "./routes/e2e-clock.ts";
 import { registerCalendarRoutes } from "./routes/calendar.tsx";
 import { registerHostRoutes } from "./routes/host.tsx";
@@ -102,6 +102,11 @@ export interface AppDeps {
   weather: WeatherProvider | undefined;
   /** Shared with the scheduler, which sweeps them every minute (decision I33). */
   rateLimits: RateLimits;
+  /**
+   * The per-plan cap on notices to the host, shared with the fediverse's joins (0.19.0); absent:
+   * the app has its own, which the fediverse does not share.
+   */
+  joinLimits?: JoinLimits | undefined;
   /** Given to browsers as the applicationServerKey for Web Push (spec 6 feature 3). */
   vapidPublicKey: string;
   /** The instance admin's authentication; undefined when none is configured (spec 7). */
@@ -141,6 +146,7 @@ export function createApp({
   previewRenderer,
   weather,
   rateLimits,
+  joinLimits,
   vapidPublicKey,
   adminAuth,
   accounts,
@@ -282,6 +288,7 @@ export function createApp({
     previewRenderer,
     weather,
     limits: rateLimits,
+    joinLimits: joinLimits ?? createJoinLimits(() => planDeps.clock.now().getTime()),
     vapidPublicKey,
     reporting: adminAuth !== undefined,
   };

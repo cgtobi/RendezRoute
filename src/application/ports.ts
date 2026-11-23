@@ -1,4 +1,5 @@
 import type { ActivityType } from "../domain/activity.ts";
+import type { StorageSample } from "../domain/instance-limits.ts";
 import type { BoundingBox } from "../domain/nearby.ts";
 import type { ExactStart, GeoPoint } from "../domain/geo.ts";
 import type { Identity, IdentityProviderKind } from "../domain/identity.ts";
@@ -22,6 +23,12 @@ import type { PlanPreview } from "./plan-views.ts";
 
 export interface Clock {
   now(): Date;
+}
+
+/** Free and total space of the disk the data directory is on (0.19.0 disk guard). */
+export interface StorageStatus {
+  /** undefined when the system gave no answer. */
+  read(): Promise<StorageSample | undefined>;
 }
 
 export interface IdGenerator {
@@ -152,6 +159,15 @@ export interface PlanRepository {
   findOwnedBy(identityId: string): Promise<LinkedPlan[]>;
   /** Plans whose retention exceeds `maxRetentionDays` (apply-retention-max). */
   findWithRetentionAbove(maxRetentionDays: number): Promise<Plan[]>;
+  /**
+   * How many plans were created at or after each time (the hour's is never above the day's), in
+   * one pass over the stored plans so a restart does not reset it: the instance-wide cap on new
+   * plans (0.19.0). Deleted plans no longer count.
+   */
+  countCreatedSince(since: {
+    hour: Date;
+    day: Date;
+  }): Promise<{ lastHour: number; lastDay: number }>;
   /** The route, decrypted; only for audiences that may see it (spec 3.6). */
   findRoute(planId: string): Promise<Route | undefined>;
   /**
@@ -672,6 +688,8 @@ export interface ReportRepository {
   create(report: Report): Promise<void>;
   /** Unresolved reports, oldest first, with their plan's public title; nothing is decrypted. */
   listOpen(): Promise<OpenReportRow[]>;
+  /** How many reports are unresolved, as `listOpen` would list them, without reading them. */
+  countOpen(): Promise<number>;
   /** The plan's unresolved reports, oldest first, decrypted. */
   listOpenForPlan(planId: string): Promise<Report[]>;
   countResolvedForPlan(planId: string): Promise<number>;
@@ -876,6 +894,8 @@ export interface ResponseRepository {
   listByPlan(planId: string): Promise<PlanResponse[]>;
   /** Interested and joined counts; rejected and removed people never count (spec 3.5). */
   counts(planId: string): Promise<{ interested: number; participants: number }>;
+  /** Every response made on the web, of any kind (remote participants have their own limits). */
+  countWebResponses(planId: string): Promise<number>;
   /** Updates kind, display name and previous kind. */
   update(response: PlanResponse): Promise<void>;
   /** Hard delete, including device links, physically removed from disk (spec 1.6, 3.10). */
@@ -954,6 +974,15 @@ export interface QueuedJob {
   /** Failed attempts so far. */
   attempts: number;
   expiresAt: Date | undefined;
+}
+
+/**
+ * When the latest report alert email goes out (or went out), kept across restarts so the spacing
+ * of one an hour holds (0.19.0). Stored in instance_meta as `report_alert_sent_at`.
+ */
+export interface ReportAlertState {
+  read(): Promise<Date | undefined>;
+  write(at: Date): Promise<void>;
 }
 
 export interface JobQueue {
@@ -1187,8 +1216,11 @@ export interface ChannelOutbox<R extends ChannelRecipient> {
 
 /** Emails that are not notifications (decision D31). */
 export interface EmailOutbox extends ChannelOutbox<EmailRecipient> {
-  /** Tells CONTACT_EMAIL that a report came in, without its content (spec 7 Moderation). */
-  reportAlert(): Promise<SendResult>;
+  /**
+   * Tells CONTACT_EMAIL that reports are waiting and how many are open, without their content
+   * (spec 7 Moderation).
+   */
+  reportAlert(openReports: number): Promise<SendResult>;
   /** "Email me my links": the item's new link, which replaces the old one (decision D31). */
   newLink(to: EmailRecipient, link: { title: string; url: string }): Promise<SendResult>;
 }

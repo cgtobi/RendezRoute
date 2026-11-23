@@ -129,6 +129,10 @@ export const de: Messages = {
   "error.busy": "Der Server ist ausgelastet. Bitte versuche es in ein paar Sekunden noch einmal.",
   "error.rateLimited":
     "Zu viele Anfragen aus deinem Netzwerk. Bitte versuche es in ein paar Minuten noch einmal.",
+  "error.instanceBusy":
+    "Diese Instanz ist gerade ausgelastet. Bitte versuche es später noch einmal.",
+  "error.reportsBusy":
+    "Dieses Treffen wurde in der letzten Stunde oft gemeldet. Bitte versuche es später noch einmal.",
   "error.notFound": "Diese Seite gibt es nicht.",
   "error.forbidden": "Du hast keinen Zugriff auf diese Seite.",
   "error.badRequest":
@@ -373,6 +377,8 @@ export const de: Messages = {
   "field.route_too_long": "Die Route ist länger als 1.000 km.",
   "field.route_trimmed_away":
     "Ohne Anfang und Ende bliebe nichts von der Route übrig. Wähle eine kürzere Strecke.",
+  "field.storage_low":
+    "Routendateien werden gerade nicht angenommen: Dem Server geht der Speicher aus. Es wurde nichts gespeichert, versuche es später noch einmal.",
   "field.route_rate_limited":
     "Zu viele Routendateien in kurzer Zeit. Es wurde nichts gespeichert: Versuche es später noch einmal.",
   "field.name_taken_by_host":
@@ -458,6 +464,8 @@ export const de: Messages = {
     "Die Organisator:in entscheidet, wer teilnimmt. Sobald du angenommen bist, siehst du den genauen Treffpunkt und wer sonst noch kommt.",
   "respond.closed": "Für dieses Treffen sind keine Antworten mehr möglich.",
   "respond.blocked": "Du kannst auf dieses Treffen nicht antworten.",
+  "respond.full":
+    "Dieses Treffen hat sein Limit von {count} Antworten erreicht. Neue sind nicht mehr möglich.",
 
   "responded.heading": "Antwort gespeichert",
   "responded.manageLink": "Dein Verwaltungslink: privat halten",
@@ -697,6 +705,10 @@ export const de: Messages = {
   "email.reportBody": "Jemand hat ein Treffen gemeldet. Die Admin-Seite zeigt die Meldung.",
   "email.reportBodyNoLink":
     "Jemand hat ein Treffen gemeldet. Öffne die Admin-Seiten, um die Meldung zu sehen.",
+  "email.reportOpen": {
+    one: "{count} Meldung ist offen.",
+    other: "{count} Meldungen sind offen.",
+  },
   "email.reportAction": "Admin-Seite öffnen",
   "email.reportWhy":
     "Du bekommst diese E-Mail, weil diese Adresse die Kontaktadresse von {instance} ist.",

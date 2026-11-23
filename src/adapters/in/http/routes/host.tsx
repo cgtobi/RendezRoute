@@ -166,9 +166,10 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     const routeTrim = formField(body, ROUTE_TRIM_FIELD);
     // Shown again, the page has lost the chosen file: the host is asked to choose it again.
     const gpxDropped = gpx !== undefined;
+    const client = clientOf(c);
     if (gpx !== undefined) {
       // Every route file counts: parsing it is the costly part (decision I32). Nothing is saved.
-      const allowed = limits.route.take(clientOf(c));
+      const allowed = limits.route.take(client);
       if (!allowed.ok) {
         c.header("retry-after", String(allowed.retryAfterSeconds));
         c.status(429);
@@ -190,6 +191,14 @@ export function registerHostRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       confirmAcceptPending: Number(formField(body, "confirmAcceptPending")) || undefined,
       route: gpx === undefined ? undefined : { gpx, trim: routeTrim },
     });
+    // Refused for a nearly full disk before the file was read: no parsing was paid for.
+    if (
+      gpx !== undefined &&
+      result.kind === "invalid" &&
+      result.errors.some((error) => error.field === "gpx" && error.code === "storage_low")
+    ) {
+      limits.route.refund(client);
+    }
     switch (result.kind) {
       case "updated": {
         const shortened = result.recapWindowShortened;

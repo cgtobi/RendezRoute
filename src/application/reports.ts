@@ -71,6 +71,6 @@ export async function reportPlan(
     createdAt: now,
     resolvedAt: undefined,
   });
-  await queueReportAlert(deps, request.planId);
+  await queueReportAlert(deps);
   return { kind: "sent", created: true };
 }

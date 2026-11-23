@@ -18,6 +18,7 @@ import type { Units } from "../domain/units.ts";
 import { lookupDevice, resolveDevice } from "./devices.ts";
 import { asHost, type Denied, isDenied } from "./host.ts";
 import { type PostingNeed, postingNeed } from "./posting-rules.ts";
+import { reserveNewPlan } from "./instance-limits.ts";
 import {
   checkCreationNonce,
   CREATION_NONCE,
@@ -235,6 +236,8 @@ export type RepeatTemplateResult =
   | { kind: "duplicate"; planId: string }
   /** The posting rules do not let this device create plans (spec 7 Moderation). */
   | { kind: "not_allowed"; needs: PostingNeed }
+  /** The instance takes no new plans now (0.19.0). */
+  | { kind: "busy"; retryAfterSeconds: number }
   /** The date or time is not accepted. */
   | { kind: "invalid"; errors: FieldError[] }
   /** Other settings break the current rules and cannot be adjusted: edit the template first. */
@@ -262,7 +265,27 @@ export async function repeatTemplate(
   if (nonceUsed !== undefined) return nonceUsed;
   const needs = await postingNeed(deps, request);
   if (needs !== undefined) return { kind: "not_allowed", needs };
+  const slot = await reserveNewPlan(deps);
+  if (!slot.ok) return { kind: "busy", retryAfterSeconds: slot.retryAfterSeconds };
+  // The place is held until the plan is stored, or the attempt failed or was refused.
+  try {
+    return await repeatReserved(deps, template, request);
+  } finally {
+    slot.release();
+  }
+}
 
+async function repeatReserved(
+  deps: PlanDeps,
+  template: PlanTemplate,
+  request: {
+    date: string;
+    time: string;
+    units: Units;
+    deviceToken: string | undefined;
+    creationNonce: string;
+  },
+): Promise<RepeatTemplateResult> {
   const now = deps.clock.now();
   // The new plan belongs to the repeating device's account, if it is logged in.
   const choices = await visibilityChoices(deps, { deviceToken: request.deviceToken });

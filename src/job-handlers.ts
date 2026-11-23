@@ -47,7 +47,10 @@ export function createJobHandlers({
       stillDue: (reminder) => reminderStillDue(planDeps, reminder),
     }),
     channelConfirmation: channelConfirmationHandler(planDeps),
-    reportAlert: emailOutbox === undefined ? dropped : reportAlertHandler({ outbox: emailOutbox }),
+    reportAlert:
+      emailOutbox === undefined
+        ? dropped
+        : reportAlertHandler({ outbox: emailOutbox, reports: planDeps.reports }),
     accountNotice: accountNoticeHandler({ ...planDeps, identities }),
     federationDelivery: federation?.deliver ?? dropped,
   };

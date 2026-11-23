@@ -131,6 +131,9 @@ export const fr: Messages = {
   "error.busy": "Le serveur est occupé. Veuillez réessayer dans quelques secondes.",
   "error.rateLimited":
     "Trop de requêtes depuis votre réseau. Veuillez réessayer dans quelques minutes.",
+  "error.instanceBusy": "Cette instance est très sollicitée. Veuillez réessayer plus tard.",
+  "error.reportsBusy":
+    "Cette sortie a été signalée souvent durant la dernière heure. Veuillez réessayer plus tard.",
   "error.notFound": "Cette page n’existe pas.",
   "error.forbidden": "Vous n’avez pas accès à cette page.",
   "error.badRequest":
@@ -374,6 +377,8 @@ export const fr: Messages = {
   "field.route_too_long": "Le parcours dépasse 1 000 km.",
   "field.route_trimmed_away":
     "Masquer le début et la fin supprimerait tout le parcours. Choisissez une distance plus courte.",
+  "field.storage_low":
+    "Les fichiers de parcours ne sont pas acceptés pour le moment : le serveur manque d’espace. Rien n’a été enregistré, réessayez plus tard.",
   "field.route_rate_limited":
     "Trop de fichiers de parcours en peu de temps. Rien n’a été enregistré : réessayez plus tard.",
   "field.name_taken_by_host": "C’est le nom de l’organisateur·rice. Veuillez en choisir un autre.",
@@ -457,6 +462,8 @@ export const fr: Messages = {
     "L’organisateur·rice décide qui participe. Une fois accepté·e, vous voyez le point de départ exact et qui d’autre vient.",
   "respond.closed": "Les réponses sont closes pour cette sortie.",
   "respond.blocked": "Vous ne pouvez pas répondre à cette sortie.",
+  "respond.full":
+    "Cette sortie a atteint sa limite de {count} réponses. Aucune nouvelle réponse n’est possible.",
 
   "responded.heading": "Réponse enregistrée",
   "responded.manageLink": "Votre lien de gestion : gardez-le privé",
@@ -697,6 +704,10 @@ export const fr: Messages = {
     "Quelqu’un a signalé une sortie. La page d’administration affiche le signalement.",
   "email.reportBodyNoLink":
     "Quelqu’un a signalé une sortie. Ouvrez les pages d’administration pour voir le signalement.",
+  "email.reportOpen": {
+    one: "{count} signalement est ouvert.",
+    other: "{count} signalements sont ouverts.",
+  },
   "email.reportAction": "Ouvrir la page d’administration",
   "email.reportWhy":
     "Vous recevez cet e-mail parce que cette adresse est l’adresse de contact de {instance}.",

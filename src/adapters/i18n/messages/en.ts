@@ -125,6 +125,8 @@ export const en = {
   "error.tooLarge": "This request is too large.",
   "error.busy": "The server is busy. Please try again in a few seconds.",
   "error.rateLimited": "Too many requests from your network. Please try again in a few minutes.",
+  "error.instanceBusy": "This instance is busy right now. Please try again later.",
+  "error.reportsBusy": "This plan was reported often in the last hour. Please try again later.",
   "error.notFound": "This page does not exist.",
   "error.forbidden": "You do not have access to this page.",
   "error.badRequest": "The form could not be processed. Please reload the page and try again.",
@@ -361,6 +363,8 @@ export const en = {
   "field.route_too_long": "The route is longer than 1,000 km.",
   "field.route_trimmed_away":
     "Hiding the start and end would remove the whole route. Choose a shorter distance.",
+  "field.storage_low":
+    "Route files are not accepted right now: the server is short of storage. Nothing was saved, try again later.",
   "field.route_rate_limited":
     "Too many route files in a short time. Nothing was saved: try again later.",
   "field.name_taken_by_host": "That's the host's name. Please use a different one.",
@@ -442,6 +446,7 @@ export const en = {
     "The host decides who joins. Once accepted, you see the exact start and who else is coming.",
   "respond.closed": "Responses are closed for this plan.",
   "respond.blocked": "You can't respond to this plan.",
+  "respond.full": "This plan has reached its limit of {count} responses. No new ones can be added.",
 
   "responded.heading": "Response saved",
   "responded.manageLink": "Your manage link: keep this private",
@@ -668,6 +673,10 @@ export const en = {
   "email.reportSubject": "New report on {instance}",
   "email.reportBody": "Someone reported a plan. The admin page shows the report.",
   "email.reportBodyNoLink": "Someone reported a plan. Open the admin pages to see the report.",
+  "email.reportOpen": {
+    one: "{count} report is open.",
+    other: "{count} reports are open.",
+  },
   "email.reportAction": "Open the admin page",
   "email.reportWhy":
     "You get this email because this address is the contact address of {instance}.",

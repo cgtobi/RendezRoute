@@ -263,6 +263,32 @@ describe("the email setting on the manage and host pages (decision D31)", () => 
     expect(mailer.sent).toHaveLength(3);
   });
 
+  it("also limits one address to 6 confirmation links in any 24 hours, next to 3 an hour (0.19.0)", async () => {
+    const { app, planId, runJobs, mailer, clock } = await setup();
+    const people: TestClient[] = [];
+    for (let i = 0; i < 8; i++) {
+      const someone = new TestClient(app);
+      await respondViaUi(someone, planId, `Runner ${i}`, "joined");
+      people.push(someone);
+    }
+    const ask = async (i: number) =>
+      (await setAddress(people[i] ?? new TestClient(app), `/p/${planId}/me`, "victim@example.org"))
+        .status;
+    expect([await ask(0), await ask(1), await ask(2), await ask(3)]).toEqual([303, 303, 303, 429]);
+    clock.advance({ hours: 1 });
+    // The hour's allowance is back; the window has 3 of its 6 left.
+    expect([await ask(3), await ask(4), await ask(5)]).toEqual([303, 303, 303]);
+    clock.advance({ hours: 1 });
+    // 6 asked within 24 hours: nothing comes back before the first three are a day old.
+    expect(await ask(6)).toBe(429);
+    clock.advance({ hours: 5 });
+    expect(await ask(6)).toBe(429);
+    clock.advance({ hours: 17 });
+    expect(await ask(6)).toBe(303);
+    await runJobs();
+    expect(mailer.sent).toHaveLength(7);
+  });
+
   it("never writes an address into the logs", async () => {
     const { ben, planId, logs, runJobs } = await setup();
     await setAddress(ben, `/p/${planId}/me`, "SENTINEL@example.org");

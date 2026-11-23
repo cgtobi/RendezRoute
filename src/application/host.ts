@@ -38,6 +38,7 @@ import { answerRemoteResponse } from "./remote-participants.ts";
 import { ratingRulesFor } from "./rating-rules.ts";
 import { ratingResultDue, ratingResultFor, type RatingResultView } from "./plan-views.ts";
 import { freezeRatingTally } from "./ratings.ts";
+import { routeUploadsRefused } from "./instance-limits.ts";
 import { type PlanDeps, readRoute } from "./plans.ts";
 import { deletePlansKeepingTemplates } from "./templates.ts";
 
@@ -225,6 +226,11 @@ export async function editPlan(
     };
   }
 
+  // A nearly full disk takes no new route file: the whole edit is refused, so the host can save
+  // it again without the file (or later).
+  if (upload !== undefined && routeUploadsRefused(deps)) {
+    return { kind: "invalid", errors: [{ field: "gpx", code: "storage_low" }] };
+  }
   // The form first: parsing a large file is the costly part (as when creating).
   const draft = validatePlanEdit(request.input, plan, { now, ...deps.limits }, request.units);
   if (!draft.ok) return { kind: "invalid", errors: draft.errors };

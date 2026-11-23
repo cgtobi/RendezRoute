@@ -2,6 +2,7 @@
 // decision D31): confirmed before first use, turned off from every message.
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import {
+  createReportAlertThrottle,
   emailSetting,
   reportAlertHandler,
   requestEmail,
@@ -26,6 +27,7 @@ import { SequentialIdGenerator } from "../fakes/ids.ts";
 import { FakeJobQueue } from "../fakes/job-queue.ts";
 import { FakeNotifier } from "../fakes/notifier.ts";
 import { FakeOutbox } from "../fakes/outbox.ts";
+import { FakeReportAlertState } from "../fakes/report-alert-state.ts";
 import { FakeSentReminders } from "../fakes/reminders.ts";
 import { createFakeRepositories } from "../fakes/repositories.ts";
 import { FakeRouteParser } from "../fakes/route-parser.ts";
@@ -43,12 +45,14 @@ const nonce = () => `nonce-${String(++n).padStart(16, "0")}`;
 const links = new FakeChannelLinks();
 
 let outbox: FakeOutbox;
+let alertState: FakeReportAlertState;
 
 /** `sending: false`: SMTP not configured (or switched off later), so there is no outbox. */
 function setup(
   email: { sending: boolean; reportAlerts: boolean } = { sending: true, reportAlerts: true },
 ) {
   outbox = new FakeOutbox();
+  alertState = new FakeReportAlertState();
   repos = createFakeRepositories();
   channels = new FakeChannelRepository();
   jobs = new FakeJobQueue();
@@ -68,6 +72,7 @@ function setup(
       email: {
         outbox: email.sending ? outbox : undefined,
         reportAlerts: email.reportAlerts,
+        alertThrottle: createReportAlertThrottle(alertState),
       },
     },
   };
@@ -496,10 +501,14 @@ describe("email jobs", () => {
     const queued = [...jobs.jobs.values()].filter((job) => job.type === "reportAlert");
     expect(queued).toHaveLength(1);
     expect(JSON.stringify(queued)).not.toContain("SENTINEL");
-    expect(queued[0]?.planId).toBe(planId);
+    // The job outlives the plan it was raised for: nothing ties it to one.
+    expect(queued[0]?.planId).toBeUndefined();
 
-    expect(await reportAlertHandler({ outbox })(queued[0]?.payload)).toBe("done");
+    expect(await reportAlertHandler({ outbox, reports: repos.reports })(queued[0]?.payload)).toBe(
+      "done",
+    );
     expect(outbox.sent).toEqual(["reportAlert"]);
+    expect(outbox.alertCounts).toEqual([1]);
   });
 
   it("send no report alerts when they are off", async () => {
@@ -521,5 +530,237 @@ describe("email jobs", () => {
       nonce: nonce(),
     });
     expect(takeQueued()).toEqual([]);
+  });
+});
+
+describe("report alerts are batched, at most one email an hour (0.19.0)", () => {
+  const clock = () => deps.clock as FakeClock;
+  const report = () =>
+    reportPlan(deps, {
+      planId,
+      deviceToken: undefined,
+      reason: "spam",
+      details: "",
+      attach: [],
+      nonce: nonce(),
+    });
+  const alerts = () =>
+    [...jobs.jobs.values()]
+      .filter((job) => job.type === "reportAlert")
+      .map((job) => Math.round((job.runAt.getTime() - fixtureNow.getTime()) / 60_000));
+
+  it("sends the first report's alert now and folds later ones into one alert an hour on", async () => {
+    await report();
+    clock().advance({ minutes: 10 });
+    await report();
+    clock().advance({ minutes: 10 });
+    await report();
+    clock().advance({ minutes: 10 });
+    await report();
+    // Minutes after the first report: now, then one at the end of the hour for all the others.
+    expect(alerts()).toEqual([0, 60]);
+  });
+
+  it("names how many reports are open when the batched alert is sent", async () => {
+    for (let i = 0; i < 3; i++) {
+      await report();
+      clock().advance({ minutes: 5 });
+    }
+    const queued = [...jobs.jobs.values()].filter((job) => job.type === "reportAlert");
+    expect(queued).toHaveLength(2);
+    const handle = reportAlertHandler({ outbox, reports: repos.reports });
+    for (const job of queued) await handle(job.payload);
+    expect(outbox.alertCounts).toEqual([3, 3]);
+  });
+
+  it("keeps a spacing of an hour between alerts, also for reports just after one", async () => {
+    await report();
+    clock().advance({ minutes: 10 });
+    await report();
+    clock().advance({ minutes: 51 });
+    // The batched alert (minute 60) is due; a new report waits for the next free hour.
+    await report();
+    expect(alerts()).toEqual([0, 60, 120]);
+  });
+
+  it("alerts at once again after a quiet hour", async () => {
+    await report();
+    clock().advance({ hours: 3 });
+    await report();
+    expect(alerts()).toEqual([0, 180]);
+  });
+
+  const runDueAlerts = async () => {
+    const handle = reportAlertHandler({ outbox, reports: repos.reports });
+    for (const job of await jobs.due(deps.clock.now(), 100)) {
+      if (job.type !== "reportAlert") continue;
+      await handle(job.payload);
+      await jobs.complete(job.id);
+    }
+  };
+
+  it("still sends the batched alert when the plan of the report that set it up is deleted", async () => {
+    await report();
+    await runDueAlerts();
+    const other = await createPlan(deps, {
+      input: sampleInput,
+      units: "metric",
+      language: "de",
+      creationNonce: nonce(),
+      deviceToken: undefined,
+    });
+    if (other.kind !== "created") throw new Error("setup failed");
+    const reportOther = () =>
+      reportPlan(deps, {
+        planId: other.planId,
+        deviceToken: undefined,
+        reason: "spam",
+        details: "",
+        attach: [],
+        nonce: nonce(),
+      });
+    clock().advance({ minutes: 10 });
+    await reportOther();
+    clock().advance({ minutes: 10 });
+    await reportOther();
+    // The admin deletes the reported plan; the database cascades the jobs bound to it.
+    await repos.plans.delete(other.planId);
+    for (const [id, job] of jobs.jobs) if (job.planId === other.planId) jobs.jobs.delete(id);
+    outbox.sent.length = 0;
+    outbox.alertCounts.length = 0;
+    clock().advance({ minutes: 61 });
+    await runDueAlerts();
+    expect(outbox.sent).toEqual(["reportAlert"]);
+    expect(outbox.alertCounts).toEqual([1]);
+  });
+
+  it("keeps the spacing across a restart: a pending batch is not joined by an alert at once", async () => {
+    await report();
+    clock().advance({ minutes: 10 });
+    await report();
+    // A new process: fresh throttle over the same stored state and queue.
+    const restarted = {
+      ...deps.notify!.email!,
+      alertThrottle: createReportAlertThrottle(alertState),
+    };
+    deps = { ...deps, notify: { ...deps.notify!, email: restarted } };
+    clock().advance({ minutes: 10 });
+    await report();
+    expect(alerts()).toEqual([0, 60]);
+    // Also after the batch went out, the next report waits for the hour that followed it.
+    clock().advance({ minutes: 41 });
+    await report();
+    expect(alerts()).toEqual([0, 60, 120]);
+  });
+
+  it("does not alert at once after a restart within the hour of a sent alert", async () => {
+    await report();
+    deps = {
+      ...deps,
+      notify: {
+        ...deps.notify!,
+        email: { ...deps.notify!.email!, alertThrottle: createReportAlertThrottle(alertState) },
+      },
+    };
+    clock().advance({ minutes: 5 });
+    await report();
+    expect(alerts()).toEqual([0, 60]);
+  });
+
+  const failingState = (): FakeReportAlertState => {
+    const failing = new FakeReportAlertState();
+    failing.write = () => Promise.reject(new Error("SQLITE_FULL"));
+    return failing;
+  };
+  const withThrottle = (throttle: ReturnType<typeof createReportAlertThrottle>) => {
+    deps = {
+      ...deps,
+      notify: {
+        ...deps.notify!,
+        email: { ...deps.notify!.email!, alertThrottle: throttle },
+      },
+    };
+  };
+
+  it("still queues the alert and answers the reporter when the state cannot be written", async () => {
+    withThrottle(createReportAlertThrottle(failingState()));
+    expect((await report()).kind).toBe("sent");
+    expect(alerts()).toEqual([0]);
+    clock().advance({ minutes: 10 });
+    // Held in memory meanwhile: the next report is batched, not suppressed for good.
+    expect((await report()).kind).toBe("sent");
+    expect(alerts()).toEqual([0, 60]);
+  });
+
+  it("alerts at once when the state cannot be read", async () => {
+    const unreadable = new FakeReportAlertState();
+    unreadable.read = () => Promise.reject(new Error("locked"));
+    withThrottle(createReportAlertThrottle(unreadable));
+    expect((await report()).kind).toBe("sent");
+    clock().advance({ minutes: 1 });
+    expect((await report()).kind).toBe("sent");
+    expect(alerts()).toEqual([0, 1]);
+  });
+
+  it("shares one alert between two reports in the same tick", async () => {
+    await Promise.all([report(), report()]);
+    expect(alerts()).toEqual([0, 60]);
+  });
+
+  it("reads the state again after a failed read, and batches after the recovery", async () => {
+    const flaky = new FakeReportAlertState();
+    const read = flaky.read.bind(flaky);
+    let reads = 0;
+    flaky.read = () => (reads++ === 0 ? Promise.reject(new Error("locked")) : read());
+    withThrottle(createReportAlertThrottle(flaky));
+    await report();
+    clock().advance({ minutes: 1 });
+    await report();
+    clock().advance({ minutes: 1 });
+    await report();
+    expect(alerts()).toEqual([0, 1, 61]);
+  });
+
+  it("gives the reservation back when the queue fails, so the next report alerts", async () => {
+    const enqueue = jobs.enqueue.bind(jobs);
+    let failures = 1;
+    jobs.enqueue = (job) => {
+      if (failures-- > 0) return Promise.reject(new Error("SQLITE_FULL"));
+      return enqueue(job);
+    };
+    expect((await report()).kind).toBe("sent");
+    expect(alerts()).toEqual([]);
+    expect(alertState.at).toBeUndefined();
+    clock().advance({ minutes: 1 });
+    await report();
+    expect(alerts()).toEqual([1]);
+    expect(alertState.at?.getTime()).toBe(fixtureNow.getTime() + 60_000);
+  });
+
+  it("after a crash between queueing and storing, at worst one alert too many, never none", async () => {
+    // The first process queued the job but died before storing the time.
+    await report();
+    alertState.at = undefined;
+    withThrottle(createReportAlertThrottle(alertState));
+    clock().advance({ minutes: 5 });
+    await report();
+    expect(alerts()).toEqual([0, 5]);
+  });
+
+  it("treats a stored time more than an hour ahead as stale", async () => {
+    alertState.at = new Date(fixtureNow.getTime() + 3 * 3_600_000);
+    withThrottle(createReportAlertThrottle(alertState));
+    await report();
+    expect(alerts()).toEqual([0]);
+  });
+
+  it("sends nothing when every report was resolved before the alert goes out", async () => {
+    await report();
+    const [row] = [...jobs.jobs.values()];
+    for (const found of await repos.reports.listOpenForPlan(planId)) {
+      await repos.reports.resolve(found.id, deps.clock.now());
+    }
+    await reportAlertHandler({ outbox, reports: repos.reports })(row?.payload);
+    expect(outbox.sent).toEqual([]);
   });
 });

@@ -23,6 +23,7 @@ import { TemplatePage, TemplateSavedPage } from "../views/templates.tsx";
 import {
   badRequest,
   clientOf,
+  instanceBusy,
   formField,
   postingClosed,
   localizedInput,
@@ -198,6 +199,8 @@ export function registerTemplateRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         return badRequest(c);
       case "not_allowed":
         return postingClosed(c, config, result.needs, 403);
+      case "busy":
+        return instanceBusy(c, result.retryAfterSeconds);
       case "duplicate":
         return c.redirect(`/p/${result.planId}`, 303);
       case "invalid":

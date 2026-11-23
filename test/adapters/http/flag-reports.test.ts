@@ -513,7 +513,7 @@ describe("the limits on Flags (spec 3.11, decision D46)", () => {
 });
 
 describe("what a Flag leaves behind (decision D22)", () => {
-  it("stores no actor, address or server of the reporter, and sends one alert per report with nothing in it", async () => {
+  it("stores no actor, address or server of the reporter, and alerts with nothing of it, at most once an hour", async () => {
     const { test, planId, zed } = await setup({ ADMIN_TOKEN: TOKEN, ...SMTP });
     for (let n = 1; n <= 2; n++) {
       await post(test, zed, flagOf(zed, [planUri(planId)], { n, content: `Quiet ${n} 9930` }));
@@ -540,7 +540,12 @@ describe("what a Flag leaves behind (decision D22)", () => {
       holdingReporter.map(() => ["_fedify", "publicKey"]),
     );
     await test.runJobs();
+    // One email now; the second report's alert waits for the hour's end and names the count.
+    expect(test.mailer.sent).toHaveLength(1);
+    test.clock.advance({ minutes: 61 });
+    await test.runJobs();
     expect(test.mailer.sent).toHaveLength(2);
+    expect(test.mailer.sent[1]?.text).toContain(en("email.reportOpen", { count: 2 }));
     for (const mail of test.mailer.sent) {
       expect(`${mail.subject}${mail.text}${mail.html}`).not.toMatch(
         /9930|Quiet|reporter\.example|users\/zed/,

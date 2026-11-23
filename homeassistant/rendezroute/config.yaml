@@ -95,4 +95,5 @@ schema:
   telegram_api_url: url?
   max_retention_days: int(1,30)
   max_plan_horizon_days: int(1,180)
+  max_new_plans_per_day: int(0,200)?
   trust_proxy: bool

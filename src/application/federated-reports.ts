@@ -124,6 +124,6 @@ export async function reportFromFederation(
     createdAt: deps.clock.now(),
     resolvedAt: undefined,
   });
-  await queueReportAlert(deps, planId);
+  await queueReportAlert(deps);
   return "reported";
 }

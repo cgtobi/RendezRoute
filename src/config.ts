@@ -6,6 +6,7 @@ import { isAbsolute } from "node:path";
 import { parseEmailAddress } from "./domain/email.ts";
 import { parseFediverseServer } from "./domain/fediverse.ts";
 import { POSTING_MODES, type PostingMode } from "./domain/invite.ts";
+import { MAX_NEW_PLANS_PER_DAY } from "./domain/instance-limits.ts";
 import { RATING_LIMITS } from "./domain/rating.ts";
 import { isPalette, type Palette } from "./domain/palette.ts";
 import { validateTimeZone } from "./domain/timezone.ts";
@@ -28,6 +29,8 @@ export interface Config {
   privacyUrl: URL | undefined;
   maxRetentionDays: number;
   maxPlanHorizonDays: number;
+  /** Cap on new plans for the whole instance in a rolling day: 0 to 200, 0 pauses them (0.19.0). */
+  maxNewPlansPerDay: number;
   defaultTimezone: string;
   /**
    * Where the form map opens when the browser's time zone is not enough (decision D63). The zoom
@@ -229,13 +232,13 @@ export function loadConfig(
     return fallback;
   };
 
-  const lowerableLimit = (name: string, max: number): number => {
+  const lowerableLimit = (name: string, max: number, min = 1): number => {
     const value = read(name);
     if (value === undefined) return max;
     const parsed = /^\d+$/.test(value) ? Number(value) : Number.NaN;
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > max) {
+    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
       errors.push(
-        `${name} must be a whole number from 1 to ${max} (it may only be lowered), got "${value}".`,
+        `${name} must be a whole number from ${min} to ${max} (it may only be lowered), got "${value}".`,
       );
       return max;
     }
@@ -427,6 +430,7 @@ export function loadConfig(
     "MAX_PLAN_HORIZON_DAYS",
     DEFAULTS.MAX_PLAN_HORIZON_DAYS,
   );
+  const maxNewPlansPerDay = lowerableLimit("MAX_NEW_PLANS_PER_DAY", MAX_NEW_PLANS_PER_DAY, 0);
   const trustProxy = bool("TRUST_PROXY", false);
 
   // ADMIN_TOKEN: at least 32 characters, or the app refuses to start (spec 7 Moderation).
@@ -785,6 +789,7 @@ export function loadConfig(
       privacyUrl,
       maxRetentionDays,
       maxPlanHorizonDays,
+      maxNewPlansPerDay,
       defaultTimezone,
       defaultMap: { center: mapCenter, zoom: mapZoom },
       maps: {

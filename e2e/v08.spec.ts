@@ -225,16 +225,31 @@ test("Notifications: email, ntfy and Telegram confirmed on one plan, then one ca
   });
 
   await test.step("Email: a report alerts the contact address, without the report's content", async () => {
-    const alerts = (await (await fetch(`${MAIL}?to=e2e@example.org`)).json()) as Mail[];
+    // At most one alert an hour for the whole instance (0.19.0): the first report in an hour
+    // alerts at once, later ones share one alert at the end of the hour. v07's report, an earlier
+    // run on a kept container or a retry may have used the hour already, so this step cannot
+    // require a mail; what it can check is that a mail that does arrive is the alert, without the
+    // report's content, and that this report does not send more than one. The batching itself
+    // (first at once, then one an hour on, also across a restart) is pinned by the unit and
+    // HTTP tests (test/application/email.test.ts, test/adapters/http/flag-reports.test.ts).
+    const before = (await (await fetch(`${MAIL}?to=e2e@example.org`)).json()) as Mail[];
     const { page: visitor } = await person(browser, base, problems);
     await visitor.goto(planUrl);
     await visitor.getByRole("link", { name: "Report this plan" }).click();
     await visitor.getByLabel("Spam or advertising").check();
     await visitor.getByLabel("Details").fill(`SENTINEL-${RUN}`);
     await visitor.getByRole("button", { name: "Send report" }).click();
-    const alert = await nextMail("e2e@example.org", alerts.length);
-    expect(alert.text).toContain("http://localhost:3103/admin/");
-    expect(alert.text).not.toContain("SENTINEL");
+    await expect(visitor.getByText("Thank you. Your report was sent to the admin.")).toBeVisible();
+    // The job runner looks every 10 seconds and the mail fake is local, so an alert that goes out
+    // at once is there within one run (14 s leaves a margin); none may be required (see above).
+    await new Promise((resolve) => setTimeout(resolve, 14_000));
+    const after = (await (await fetch(`${MAIL}?to=e2e@example.org`)).json()) as Mail[];
+    expect(after.length - before.length).toBeLessThanOrEqual(1);
+    for (const alert of after.slice(before.length)) {
+      expect(alert.text).toContain("http://localhost:3103/admin/");
+    }
+    // No alert, from this or any earlier run, carries a report's content.
+    for (const alert of after) expect(alert.text).not.toContain("SENTINEL");
   });
 
   // Chrome logs the deliberate 404 of the used link as an error; nothing else may appear.

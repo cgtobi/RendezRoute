@@ -8,7 +8,12 @@ import {
   type ResponseChoice,
   validateRequestNote,
 } from "../domain/requests.ts";
-import { canChangeResponse, canRespond, validateDisplayName } from "../domain/responding.ts";
+import {
+  canChangeResponse,
+  canRespond,
+  MAX_WEB_RESPONSES_PER_PLAN,
+  validateDisplayName,
+} from "../domain/responding.ts";
 import {
   syncContributionNotes,
   withdrawNotesOfAuthor,
@@ -39,6 +44,8 @@ export type RespondResult =
   | { kind: "already_responded"; planId: string }
   | { kind: "is_host" }
   | { kind: "blocked" }
+  /** The plan already has as many web responses as it takes (0.19.0). */
+  | { kind: "full" }
   | Closed
   | Invalid
   | { kind: "not_found" }
@@ -57,6 +64,11 @@ export async function respond(
     /** One-time value from the response form. */
     creationNonce: string;
     deviceToken: string | undefined;
+    /**
+     * Asked when the host is to be told of this response; false drops the notice only (the shared
+     * per-plan cap on notices, 0.19.0). Absent means yes.
+     */
+    takeHostNotice?: () => boolean;
   },
 ): Promise<RespondResult> {
   if (!NONCE.test(request.creationNonce)) return { kind: "bad_request" };
@@ -81,6 +93,11 @@ export async function respond(
   const now = deps.clock.now();
   const open = canRespond(plan, now);
   if (!open.ok) return { kind: "closed", reason: open.error };
+
+  // Hard cap per plan; people already in keep editing and withdrawing (other use cases).
+  if ((await deps.responses.countWebResponses(plan.id)) >= MAX_WEB_RESPONSES_PER_PLAN) {
+    return { kind: "full" };
+  }
 
   const name = validateDisplayName(request.displayName, plan.posterName);
   const note = validateRequestNote(noteText);
@@ -122,7 +139,7 @@ export async function respond(
       return { kind: "duplicate", planId: plan.id };
     throw error;
   }
-  await notifyHostOfArrival(deps, plan, request.choice);
+  if (request.takeHostNotice?.() !== false) await notifyHostOfArrival(deps, plan, request.choice);
   return {
     kind: "created",
     planId: plan.id,
@@ -197,6 +214,8 @@ export async function updateMyResponse(
     displayName: string;
     /** False once the caller's rate limit is used up: joining or requesting is refused then. */
     mayNotifyHost?: boolean;
+    /** As for `respond`: false keeps the change and drops only the notice to the host. */
+    takeHostNotice?: () => boolean;
   },
 ): Promise<UpdateMyResponseResult> {
   const found = await ownResponse(deps, request.planId, request.deviceToken);
@@ -229,7 +248,9 @@ export async function updateMyResponse(
     displayName: name.value,
     updatedAt: now,
   });
-  if (notifiedHost) await notifyHostOfArrival(deps, plan, request.choice);
+  if (notifiedHost && request.takeHostNotice?.() !== false) {
+    await notifyHostOfArrival(deps, plan, request.choice);
+  }
   // A new name is a new author's name on their contributions' Notes (decision D44).
   if (name.value !== response.displayName) await syncContributionNotes(deps, plan);
   return { kind: "updated", notifiedHost };

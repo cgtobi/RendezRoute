@@ -116,6 +116,9 @@ configuration:
   max_plan_horizon_days:
     name: "Planifier au plus à l’avance (jours)"
     description: "Combien de jours à l’avance une sortie peut être planifiée, de 1 à 180."
+  max_new_plans_per_day:
+    name: "Nouvelles sorties par jour (toute l’instance)"
+    description: "Le nombre maximal de nouvelles sorties que cette instance accepte en 24 heures, de 0 à 200. Il ne peut que réduire la limite intégrée de 200 par jour (et 40 par heure) ; 0 met les nouvelles sorties en pause, alors que les inscriptions et la gestion continuent. Laissez vide pour 200."
   trust_proxy:
     name: "Faire confiance au proxy inverse"
     description: "À activer seulement si un proxy inverse devant le port public définit l’en-tête X-Forwarded-For et que personne n’atteint le port directement. L’application compte alors les limites par visiteur réel et non par proxy."

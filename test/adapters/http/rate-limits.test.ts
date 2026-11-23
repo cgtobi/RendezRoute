@@ -98,7 +98,7 @@ describe("rate limits on responses (spec 5 feature 12)", () => {
   it("hold for parallel responses", async () => {
     const { at } = await setup();
     const { planId } = await createPlanViaUi(at("198.51.100.1"));
-    const clients = Array.from({ length: 13 }, () => at("203.0.113.5"));
+    const clients = Array.from({ length: 33 }, () => at("203.0.113.5"));
     const forms = await Promise.all(clients.map((client) => client.hiddenFields(`/p/${planId}`)));
     const responses = await Promise.all(
       clients.map((client, i) =>
@@ -110,13 +110,13 @@ describe("rate limits on responses (spec 5 feature 12)", () => {
       ),
     );
     const created = responses.filter((response) => response.status === 200).length;
-    expect([created, responses.length - created]).toEqual([10, 3]);
+    expect([created, responses.length - created]).toEqual([30, 3]);
   });
 
-  it("allow 10 responses per client in a burst", async () => {
+  it("allow 30 responses per client in a burst", async () => {
     const { at } = await setup();
     const { planId } = await createPlanViaUi(at("198.51.100.1"));
-    for (let i = 0; i < 10; i++)
+    for (let i = 0; i < 30; i++)
       await respondViaUi(at("203.0.113.5"), planId, `Runner ${i}`, "joined");
 
     const client = at("203.0.113.5");
@@ -127,7 +127,8 @@ describe("rate limits on responses (spec 5 feature 12)", () => {
       choice: "joined",
     });
     expect(refused.status).toBe(429);
-    expect(refused.headers.get("retry-after")).toBe("120");
+    // 120 an hour: a token every 30 seconds.
+    expect(refused.headers.get("retry-after")).toBe("30");
   });
 });
 

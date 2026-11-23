@@ -36,6 +36,7 @@ import {
   renderPlanPage,
   type RouteDeps,
   clientOf,
+  instanceBusy,
   tooManyRequests,
   secretLinkHeaders,
   TIME_ZONES,
@@ -118,7 +119,8 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
     const client = clientOf(c);
     const gpx = await formFile(body, "gpx");
     // A route file always counts: parsing it is the costly part (decision I32).
-    if (gpx !== undefined && gpx.byteLength > 0) {
+    const hasRoute = gpx !== undefined && gpx.byteLength > 0;
+    if (hasRoute) {
       const routeAllowed = limits.route.take(client);
       if (!routeAllowed.ok) return tooManyRequests(c, routeAllowed.retryAfterSeconds);
     }
@@ -137,12 +139,16 @@ export function registerPlanRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       routeTrim: formField(body, ROUTE_TRIM_FIELD),
     });
     if (result.kind !== "created") limits.create.refund(client);
+    // Refused as busy before the file was read: no parsing was paid for.
+    if (hasRoute && result.kind === "busy") limits.route.refund(client);
 
     switch (result.kind) {
       case "bad_request":
         return badRequest(c);
       case "not_allowed":
         return postingClosed(c, config, result.needs, 403);
+      case "busy":
+        return instanceBusy(c, result.retryAfterSeconds);
       case "duplicate":
         return c.redirect(`/p/${result.planId}`, 303);
       case "invalid":

@@ -138,6 +138,23 @@ describe("the report alert (spec 7 Moderation)", () => {
     expect(email.html).toContain('href="https://runs.example.org/admin/"');
   });
 
+  it("says how many reports are open, in each language", () => {
+    expect(reportAlertEmail(instance, instance.baseUrl, "en", 1).text).toContain(
+      "1 report is open.",
+    );
+    expect(reportAlertEmail(instance, instance.baseUrl, "en", 7).text).toContain(
+      "7 reports are open.",
+    );
+    expect(reportAlertEmail(instance, instance.baseUrl, "de", 7).text).toContain(
+      "7 Meldungen sind offen.",
+    );
+    expect(reportAlertEmail(instance, instance.baseUrl, "fr", 7).text).toContain(
+      "7 signalements sont ouverts.",
+    );
+    // Still nothing of the reports themselves, and the plain alert has no count line.
+    expect(email.text).not.toContain("open.");
+  });
+
   it("links to ADMIN_URL's admin pages when the admin listener has its own address (decision D55)", () => {
     const split = reportAlertEmail(instance, new URL("/admin/", "https://admin.example.org:8443"));
     expect(split.text).toContain("https://admin.example.org:8443/admin/");

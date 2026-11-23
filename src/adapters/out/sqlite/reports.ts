@@ -66,6 +66,16 @@ export function createReportRepository(database: Database, cipher: FieldCipher):
       return rows.map((row) => ({ planId: row.plan_id, planTitle: row.title, reason: row.reason }));
     },
 
+    async countOpen() {
+      const row = await db
+        .selectFrom("reports")
+        .innerJoin("plans", "plans.id", "reports.plan_id")
+        .select((eb) => eb.fn.countAll<number>().as("n"))
+        .where("reports.resolved_at", "is", null)
+        .executeTakeFirst();
+      return Number(row?.n ?? 0);
+    },
+
     async listOpenForPlan(planId) {
       const rows = await db
         .selectFrom("reports")

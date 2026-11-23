@@ -173,6 +173,8 @@ export function reportAlertEmail(
   adminUrl: URL | undefined,
   /** The operator's language is not configured; the default unless a test says otherwise. */
   recipientLanguage?: string,
+  /** How many reports are open: alerts are batched, so one email can stand for several. */
+  openReports?: number,
 ): ComposedEmail {
   const language = negotiateLanguage(recipientLanguage);
   const t = translator(language);
@@ -184,7 +186,7 @@ export function reportAlertEmail(
       instanceName: instance.instanceName,
       heading,
       body: [t(adminUrl === undefined ? "email.reportBodyNoLink" : "email.reportBody")],
-      facts: [],
+      facts: openReports === undefined ? [] : [t("email.reportOpen", { count: openReports })],
       action:
         adminUrl === undefined
           ? undefined

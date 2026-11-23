@@ -80,12 +80,21 @@ switch also allows private networks.
 
 ### Limits
 
-| Setting                 | What it does (default)                 |
-| ----------------------- | -------------------------------------- |
-| `MAX_RETENTION_DAYS`    | Longest time plans are kept (`30`)     |
-| `MAX_PLAN_HORIZON_DAYS` | How far ahead a plan may start (`180`) |
+| Setting                 | What it does (default)                                 |
+| ----------------------- | ------------------------------------------------------ |
+| `MAX_RETENTION_DAYS`    | Longest time plans are kept (`30`)                     |
+| `MAX_PLAN_HORIZON_DAYS` | How far ahead a plan may start (`180`)                 |
+| `MAX_NEW_PLANS_PER_DAY` | New plans the whole instance takes in 24 hours (`200`) |
 
-Both are in days and can only be lowered: 1 to 30 and 1 to 180.
+The first two are in days and can only be lowered: 1 to 30 and 1 to 180.
+
+`MAX_NEW_PLANS_PER_DAY` can only be lowered too, from 200 down to 0. The instance never takes more
+than 200 new plans in a rolling 24 hours or 40 in a rolling hour (the hourly cap is also never above
+the daily one), counted from the stored plans, so a restart does not reset it. Over the cap, creating
+a plan and repeating a template answer 503 with "This instance is busy, try again later"; joining,
+managing, deleting and exports are never blocked. `0` pauses new plans. A data directory whose disk is
+nearly full (under 512 MiB and under 3 % free) also refuses new plans and route files; under 2 GiB and
+10 % free the app only logs a warning.
 
 ### Maps and services
 

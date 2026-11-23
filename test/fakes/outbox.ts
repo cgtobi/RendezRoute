@@ -18,8 +18,12 @@ export class FakeOutbox implements EmailOutbox {
     return Promise.resolve(this.result);
   }
 
-  reportAlert() {
+  /** The number of open reports each report alert named. */
+  readonly alertCounts: number[] = [];
+
+  reportAlert(openReports: number) {
     this.sent.push("reportAlert");
+    this.alertCounts.push(openReports);
     return Promise.resolve(this.result);
   }
 

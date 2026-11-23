@@ -49,6 +49,7 @@ const OPTIONS: Readonly<Record<string, readonly [string, HaOptionKind]>> = {
   telegram_api_url: ["TELEGRAM_API_URL", "text"],
   max_retention_days: ["MAX_RETENTION_DAYS", "integer"],
   max_plan_horizon_days: ["MAX_PLAN_HORIZON_DAYS", "integer"],
+  max_new_plans_per_day: ["MAX_NEW_PLANS_PER_DAY", "integer"],
   trust_proxy: ["TRUST_PROXY", "flag"],
 };
 

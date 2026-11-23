@@ -17,7 +17,11 @@ export interface RateLimiter {
   size(): number;
 }
 
-/** Per-client limits of the app (spec 5 feature 12, decision I32). */
+/**
+ * Per-client limits of the app (spec 5 feature 12, decision I32). Every limiter keyed by a client
+ * address takes from a /48 bucket too (`coarse`); `emailAddress`, `emailAddressDay`, `reportPlan`
+ * and `fediverseMessagesAccount` are keyed by something else (a test pins both lists).
+ */
 export interface RateLimits {
   create: RateLimiter;
   respond: RateLimiter;
@@ -40,6 +44,10 @@ export interface RateLimits {
   email: RateLimiter;
   /** The same, per address, whoever types it: no flooding someone's mailbox (spec 3.11). */
   emailAddress: RateLimiter;
+  /** The same per address over a rolling 24 hours: 6 links, next to the 3 an hour above. */
+  emailAddressDay: RateLimiter;
+  /** Web reports per plan, keyed by its id, whoever sends them: 10, then 10 an hour. */
+  reportPlan: RateLimiter;
   /** Nearby searches, against scraping public plans (spec 3.11, 7 Nearby). */
   nearby: RateLimiter;
   /** Posts to the inboxes, per server address (spec 3.11: inbox rate limits). */
@@ -55,12 +63,12 @@ export interface RateLimits {
 }
 
 /**
- * Costly actions (plans, responses, confirmation emails, Nearby, place search) also take from a
- * per-/48 bucket for IPv6 clients, with 8 times the burst and refill of the per-/64 bucket. A /48
- * is what ISPs and tunnel brokers hand out for free: without this, one holder of a /48 has 65,536
- * /64 buckets, multiplying every per-client limit. 8 /64s' worth leaves room for several
- * households, a small office or a carrier-grade NAT sharing a /48, yet caps an attacker at 8x one
- * client. IPv4 stays a single per-address bucket.
+ * Every limiter keyed by a client address also takes from a per-/48 bucket for IPv6 clients, with
+ * 8 times the burst and refill of the per-/64 bucket. A /48 is what ISPs and tunnel brokers hand
+ * out for free: without this, one holder of a /48 has 65,536 /64 buckets, multiplying every
+ * per-client limit. 8 /64s' worth leaves room for several households, a small office or a
+ * carrier-grade NAT sharing a /48, yet caps an attacker at 8x one client. IPv4 stays a single
+ * per-address bucket.
  */
 const COARSE_FACTOR = 8;
 
@@ -82,16 +90,16 @@ const EMAIL_ADDRESS_MAX_KEYS = 100_000;
 export function createRateLimits(now: () => number): RateLimits {
   return {
     create: createRateLimiter({ capacity: 5, perHour: 10, coarse: COARSE_FACTOR, now }),
-    respond: createRateLimiter({ capacity: 10, perHour: 30, coarse: COARSE_FACTOR, now }),
+    respond: createRateLimiter({ capacity: 30, perHour: 120, coarse: COARSE_FACTOR, now }),
     geocode: createRateLimiter({ capacity: 10, perHour: 600, coarse: COARSE_FACTOR, now }),
-    preview: createRateLimiter({ capacity: 10, perHour: 60, now }),
-    route: createRateLimiter({ capacity: 10, perHour: 30, now }),
-    notify: createRateLimiter({ capacity: 10, perHour: 30, now }),
-    calendar: createRateLimiter({ capacity: 5, perHour: 10, now }),
-    recap: createRateLimiter({ capacity: 10, perHour: 30, now }),
-    adminLogin: createRateLimiter({ capacity: 5, perHour: 10, now }),
-    report: createRateLimiter({ capacity: 3, perHour: 10, now }),
-    login: createRateLimiter({ capacity: 10, perHour: 30, now }),
+    preview: createRateLimiter({ capacity: 10, perHour: 60, coarse: COARSE_FACTOR, now }),
+    route: createRateLimiter({ capacity: 10, perHour: 30, coarse: COARSE_FACTOR, now }),
+    notify: createRateLimiter({ capacity: 10, perHour: 30, coarse: COARSE_FACTOR, now }),
+    calendar: createRateLimiter({ capacity: 5, perHour: 10, coarse: COARSE_FACTOR, now }),
+    recap: createRateLimiter({ capacity: 10, perHour: 30, coarse: COARSE_FACTOR, now }),
+    adminLogin: createRateLimiter({ capacity: 5, perHour: 10, coarse: COARSE_FACTOR, now }),
+    report: createRateLimiter({ capacity: 3, perHour: 10, coarse: COARSE_FACTOR, now }),
+    login: createRateLimiter({ capacity: 10, perHour: 30, coarse: COARSE_FACTOR, now }),
     email: createRateLimiter({ capacity: 5, perHour: 10, coarse: COARSE_FACTOR, now }),
     // Never evicts a live address to make room: a full store refuses new addresses instead, so
     // cycling other keys cannot reopen the cap. Memory: at most EMAIL_ADDRESS_MAX_KEYS entries
@@ -103,13 +111,23 @@ export function createRateLimits(now: () => number): RateLimits {
       whenFull: "refuse",
       now,
     }),
+    // The same address also gets at most 6 links in any rolling 24 hours: a sliding window, as a
+    // token bucket that refills would allow about 11 in a day.
+    emailAddressDay: createWindowLimiter({
+      capacity: 6,
+      windowMs: 24 * 3_600_000,
+      maxKeys: EMAIL_ADDRESS_MAX_KEYS,
+      now,
+    }),
+    // Per plan, whoever reports: like the federated Flag cap (10 an hour).
+    reportPlan: createRateLimiter({ capacity: 10, perHour: 10, now }),
     // Searches against scraping (spec 3.11); changing a filter is a new search.
     nearby: createRateLimiter({ capacity: 20, perHour: 120, coarse: COARSE_FACTOR, now }),
     // Posts from fediverse servers: a busy server delivers in bursts.
-    inbox: createRateLimiter({ capacity: 120, perHour: 3600, now }),
-    noteRoute: createRateLimiter({ capacity: 20, perHour: 120, now }),
-    profile: createRateLimiter({ capacity: 5, perHour: 10, now }),
-    fediverseMessages: createRateLimiter({ capacity: 5, perHour: 10, now }),
+    inbox: createRateLimiter({ capacity: 120, perHour: 3600, coarse: COARSE_FACTOR, now }),
+    noteRoute: createRateLimiter({ capacity: 20, perHour: 120, coarse: COARSE_FACTOR, now }),
+    profile: createRateLimiter({ capacity: 5, perHour: 10, coarse: COARSE_FACTOR, now }),
+    fediverseMessages: createRateLimiter({ capacity: 5, perHour: 10, coarse: COARSE_FACTOR, now }),
     fediverseMessagesAccount: createRateLimiter({ capacity: 3, perHour: 6, now }),
   };
 }
@@ -315,6 +333,73 @@ export function createRateLimiter({
       wide.sweep();
     },
     size: () => fine.size() + wide.size(),
+  };
+}
+
+/**
+ * At most `capacity` takes per key in any rolling `windowMs`, unlike a bucket that refills while
+ * it is used. Like a bucket store with `whenFull: "refuse"`, a full store (after dropping keys
+ * whose window has passed) turns new keys away instead of forgetting a live one.
+ */
+export function createWindowLimiter({
+  capacity,
+  windowMs,
+  maxKeys,
+  now,
+}: {
+  capacity: number;
+  windowMs: number;
+  maxKeys: number;
+  now: () => number;
+}): RateLimiter {
+  /** Times of the takes still inside the window, oldest first. */
+  const taken = new Map<string, number[]>();
+
+  const recent = (key: string, time: number): number[] => {
+    const times = (taken.get(key) ?? []).filter((at) => at > time - windowMs);
+    if (times.length === 0) taken.delete(key);
+    else taken.set(key, times);
+    return times;
+  };
+
+  const retryAfter = (times: number[], time: number): RateLimitResult => {
+    const oldest = times[times.length - capacity] ?? time;
+    return {
+      ok: false,
+      retryAfterSeconds: Math.max(1, Math.ceil((oldest + windowMs - time) / 1000)),
+    };
+  };
+
+  const sweep = () => {
+    const time = now();
+    for (const key of taken.keys()) recent(key, time);
+  };
+
+  return {
+    check: (key) => {
+      const time = now();
+      const times = recent(key, time);
+      return times.length < capacity ? { ok: true } : retryAfter(times, time);
+    },
+    take: (key) => {
+      const time = now();
+      const times = recent(key, time);
+      if (times.length >= capacity) return retryAfter(times, time);
+      if (times.length === 0 && taken.size >= maxKeys) {
+        sweep();
+        if (taken.size >= maxKeys) return { ok: false, retryAfterSeconds: 3600 };
+      }
+      taken.set(key, [...times, time]);
+      return { ok: true };
+    },
+    refund: (key) => {
+      const times = taken.get(key);
+      if (times === undefined) return;
+      times.pop();
+      if (times.length === 0) taken.delete(key);
+    },
+    sweep,
+    size: () => taken.size,
   };
 }
 

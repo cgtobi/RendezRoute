@@ -12,6 +12,7 @@ import {
   newNonce,
   planGone,
   type RouteDeps,
+  messagePage,
   tooManyRequests,
 } from "./shared.tsx";
 
@@ -81,8 +82,19 @@ export function registerReportRoutes(app: Hono<AppEnv>, { config, planDeps, limi
     const client = clientOf(c);
     const allowed = limits.report.take(client);
     if (!allowed.ok) return tooManyRequests(c, allowed.retryAfterSeconds);
+    // Per plan, whoever sends them: 10 an hour, like reports from the fediverse (0.19.0).
+    const { planId } = request(c);
+    const planAllowed = limits.reportPlan.take(planId);
+    if (!planAllowed.ok) {
+      limits.report.refund(client);
+      c.header("retry-after", String(planAllowed.retryAfterSeconds));
+      return messagePage(c, 429, c.get("t")("error.reportsBusy"));
+    }
     const result = await reportPlan(planDeps, { ...request(c), ...form });
-    if (result.kind !== "sent" || !result.created) limits.report.refund(client);
+    if (result.kind !== "sent" || !result.created) {
+      limits.report.refund(client);
+      limits.reportPlan.refund(planId);
+    }
     switch (result.kind) {
       case "sent":
         return c.redirect(`/p/${request(c).planId}/report?sent`, 303);

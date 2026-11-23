@@ -359,6 +359,13 @@ export function createFakeRepositories(): {
           .filter((e) => e.plan.retentionDays > max)
           .map((e) => structuredClone(e.plan));
       },
+      async countCreatedSince(since) {
+        const created = [...plans.values()].map((e) => e.plan.createdAt);
+        return {
+          lastHour: created.filter((at) => at >= since.hour).length,
+          lastDay: created.filter((at) => at >= since.day).length,
+        };
+      },
       delete: async (id) => deletePlan(id),
       async deleteMany(ids, kept = []) {
         for (const template of kept) insertTemplate(template);
@@ -411,6 +418,11 @@ export function createFakeRepositories(): {
               ? []
               : [{ planId: plan.id, planTitle: plan.title, reason: report.reason }];
           });
+      },
+      async countOpen() {
+        return [...reports.values()].filter(
+          (report) => report.resolvedAt === undefined && plans.has(report.planId),
+        ).length;
       },
       async listOpenForPlan(planId) {
         return [...reports.values()]
@@ -888,6 +900,11 @@ export function createFakeRepositories(): {
           interested: kinds.filter((kind) => kind === "interested").length,
           participants: kinds.filter((kind) => kind === "joined").length,
         };
+      },
+      async countWebResponses(planId) {
+        return [...responses.values()].filter(
+          (e) => e.response.planId === planId && e.remote === undefined,
+        ).length;
       },
       async update(response) {
         const entry = responses.get(response.id);

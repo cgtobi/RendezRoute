@@ -49,7 +49,7 @@ The Configuration tab always shows the options most people set first: the public
 name, contact email, imprint and privacy links, the email server and the limits. An empty field means
 "not set". The form does not check the email and link syntax of these fields; the app does when it
 starts and names the setting in the log (for example CONTACT_EMAIL). The advanced options (single sign-on, ntfy, Telegram, map,
-geocoder and weather addresses, `rating_min_participants`, the default map center and zoom (`default_map_center` such as `48.1374,11.5755`, `default_map_zoom` 2 to 12), Fediverse login servers, the email port) are hidden until you open
+geocoder and weather addresses, `rating_min_participants`, `max_new_plans_per_day` (the most new plans the whole instance takes in 24 hours, 0 to 200; only lowers the built-in 200 a day and 40 an hour, 0 pauses new plans), the default map center and zoom (`default_map_center` such as `48.1374,11.5755`, `default_map_zoom` 2 to 12), Fediverse login servers, the email port) are hidden until you open
 the **⋮** menu of the Configuration tab and choose **Show unused optional configuration options**.
 
 The `palette` option sets the instance's default colours: `default` (blue), `mono` (black and

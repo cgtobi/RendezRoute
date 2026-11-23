@@ -1,6 +1,7 @@
 // Responding and the manage page (spec 5 features 5 and 6).
 import type { Context, Hono } from "hono";
 import { viewPlan } from "../../../../application/plans.ts";
+import { MAX_WEB_RESPONSES_PER_PLAN } from "../../../../domain/responding.ts";
 import { BackLink } from "../views/back-link.tsx";
 import {
   respond,
@@ -32,22 +33,28 @@ import {
 import { linkEmailProps } from "./link-tools.tsx";
 
 export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
-  const { config, planDeps, limits, vapidPublicKey } = deps;
+  const { config, planDeps, limits, joinLimits, vapidPublicKey } = deps;
   const message = (
     c: Context<AppEnv>,
     planId: string,
-    key: "respond.closed" | "respond.blocked",
+    key: "respond.closed" | "respond.blocked" | "respond.full",
     status: 403 | 409,
   ) => {
     c.status(status);
+    const text = c.get("t")(key, { count: MAX_WEB_RESPONSES_PER_PLAN });
     return c.render(
       <>
         <BackLink href={`/p/${planId}`} label={c.get("t")("responded.back")} />
-        <h1>{c.get("t")(key)}</h1>
+        <h1>{text}</h1>
       </>,
-      { title: c.get("t")(key) },
+      { title: text },
     );
   };
+  /**
+   * The host hears of at most PLAN_NOTICES_PER_HOUR joins an hour per plan, the same bucket as
+   * joins from the fediverse; over it the join is kept and only the notice is dropped.
+   */
+  const takeHostNotice = (planId: string) => () => joinLimits.notifyPlan.take(planId).ok;
 
   app.post("/p/:id/respond", async (c) => {
     const planId = c.req.param("id");
@@ -66,6 +73,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       language: c.get("language"),
       creationNonce: formField(body, "nonce"),
       deviceToken,
+      takeHostNotice: takeHostNotice(planId),
     });
     if (result.kind !== "created") limits.respond.refund(client);
 
@@ -92,6 +100,8 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
         return message(c, planId, "respond.blocked", 403);
       case "closed":
         return message(c, planId, "respond.closed", 409);
+      case "full":
+        return message(c, planId, "respond.full", 409);
       case "not_found":
         return planGone(c);
       case "bad_request":
@@ -192,6 +202,7 @@ export function registerResponseRoutes(app: Hono<AppEnv>, deps: RouteDeps) {
       choice: formField(body, "choice"),
       displayName: formField(body, "displayName"),
       mayNotifyHost: allowed.ok,
+      takeHostNotice: takeHostNotice(planId),
     });
     if (allowed.ok && (result.kind !== "updated" || !result.notifiedHost)) {
       limits.respond.refund(client);

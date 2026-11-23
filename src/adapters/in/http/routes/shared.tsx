@@ -15,7 +15,7 @@ import type { VisibilityChoice } from "../views/plan-form.tsx";
 import type { ViewPlanResult } from "../../../../application/plans.ts";
 import { fediverseAddress } from "../../../../domain/actor.ts";
 import { PLAN_INPUT_FIELDS, type PlanInput } from "../../../../domain/plan-input.ts";
-import { clientKey, type RateLimits } from "../rate-limit.ts";
+import { clientKey, type JoinLimits, type RateLimits } from "../rate-limit.ts";
 import { type Config, loginConfigured } from "../../../../config.ts";
 import type { AppEnv } from "../app.tsx";
 import { readDeviceToken } from "../device-cookie.ts";
@@ -35,6 +35,8 @@ export interface RouteDeps {
   /** Forecasts on plan pages; undefined when weather is disabled (spec 3.9). */
   weather: WeatherProvider | undefined;
   limits: RateLimits;
+  /** The per-plan cap on notices to the host, shared with the fediverse's joins (0.19.0). */
+  joinLimits: JoinLimits;
   vapidPublicKey: string;
   /** Plans can be reported: instance admin authentication is configured (spec 7 Moderation). */
   reporting: boolean;
@@ -48,6 +50,15 @@ export const clientOf = (c: Context<AppEnv>) => clientKey(c.get("clientIp"));
 export function tooManyRequests(c: Context<AppEnv>, retryAfterSeconds: number) {
   c.header("retry-after", String(retryAfterSeconds));
   return messagePage(c, 429, c.get("t")("error.rateLimited"));
+}
+
+/**
+ * The instance takes no new plans now: its cap is reached, new plans are paused or its disk is
+ * nearly full (0.19.0). 503 with Retry-After, and a friendly page.
+ */
+export function instanceBusy(c: Context<AppEnv>, retryAfterSeconds: number) {
+  c.header("retry-after", String(retryAfterSeconds));
+  return messagePage(c, 503, c.get("t")("error.instanceBusy"));
 }
 
 /** Tile settings for browser maps, or undefined when maps are disabled (spec 3.9). */

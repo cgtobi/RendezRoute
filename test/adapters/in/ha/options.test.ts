@@ -80,6 +80,7 @@ const FULL: [option: string, value: unknown, name: string, text: string][] = [
   ["telegram_api_url", "https://tg.example", "TELEGRAM_API_URL", "https://tg.example"],
   ["max_retention_days", 14, "MAX_RETENTION_DAYS", "14"],
   ["max_plan_horizon_days", 90, "MAX_PLAN_HORIZON_DAYS", "90"],
+  ["max_new_plans_per_day", 0, "MAX_NEW_PLANS_PER_DAY", "0"],
   ["trust_proxy", true, "TRUST_PROXY", "true"],
 ];
 
@@ -98,8 +99,8 @@ describe("mapping the options", () => {
   });
 
   it("covers every option of the spec exactly once", () => {
-    expect(FULL.map(([option]) => option).length).toBe(40);
-    expect(new Set(FULL.map(([, , name]) => name)).size).toBe(40);
+    expect(FULL.map(([option]) => option).length).toBe(41);
+    expect(new Set(FULL.map(([, , name]) => name)).size).toBe(41);
     expect([...HA_OPTION_ENVIRONMENT_NAMES].sort()).toEqual(FULL.map(([, , name]) => name).sort());
   });
 
@@ -311,7 +312,7 @@ describe("what the configuration makes of the mapped environment", () => {
     const known = new Set(source.match(/"[A-Z][A-Z0-9_]{2,}"/g)?.map((name) => name.slice(1, -1)));
     const written = [...HA_OPTION_ENVIRONMENT_NAMES, ...Object.keys(FIXED_ENVIRONMENT)];
     expect(written.filter((name) => !known.has(name))).toEqual([]);
-    expect(written.length).toBe(40 + 5);
+    expect(written.length).toBe(41 + 5);
     // Development switches are never Home Assistant options nor fixed values (decision D87).
     expect(written).not.toContain("E2E_CLOCK_CONTROL");
     expect(written).not.toContain("ALLOW_INSECURE_DEV");

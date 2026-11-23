@@ -7,6 +7,9 @@ import { cleanText, type TextError } from "./text.ts";
 /** Same limit as the poster name (decision D7). */
 export const MAX_DISPLAY_NAME_LENGTH = 50;
 
+/** Responses made on the web a plan takes; people already in can still edit and withdraw (0.19.0). */
+export const MAX_WEB_RESPONSES_PER_PLAN = 300;
+
 /** No new responses or requests from the start time on, in any join mode, nor for cancelled plans (decision D6). */
 export function canRespond(
   plan: { startsAt: Date; status: PlanStatus },

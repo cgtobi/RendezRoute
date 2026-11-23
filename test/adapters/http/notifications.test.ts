@@ -140,15 +140,15 @@ describe("abuse limits on notifications (spec 3.11)", () => {
     const change = (choice: string, displayName = "Ben") =>
       ben.postForm(`/p/${planId}/me`, { ...hidden, displayName, choice });
     let joins = 0;
-    for (let round = 0; round < 15; round++) {
+    for (let round = 0; round < 40; round++) {
       expect((await change("interested")).status).toBe(303);
       const joined = await change("joined");
       if (joined.status === 429) break;
       expect(joined.status).toBe(303);
       joins += 1;
     }
-    // Responding took one token of the burst of 10.
-    expect(joins).toBe(9);
+    // Responding took one token of the burst of 30.
+    expect(joins).toBe(29);
     expect((await change("interested", "Benjamin")).status).toBe(303);
   });
 });

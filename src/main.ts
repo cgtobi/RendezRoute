@@ -30,6 +30,8 @@ import {
   runRetentionSweep,
 } from "./application/maintenance.ts";
 import { runDueJobs } from "./application/jobs.ts";
+import { createInstanceLimits } from "./application/instance-limits.ts";
+import { createReportAlertThrottle } from "./application/email.ts";
 import type { PlanDeps } from "./application/plans.ts";
 import { runReminders } from "./application/reminders.ts";
 import type { Clock, Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
@@ -52,6 +54,8 @@ import {
 } from "./adapters/out/cache-lifetime.ts";
 import { startScheduler } from "./adapters/in/scheduler.ts";
 import { createLogger, type Logger } from "./adapters/logging.ts";
+import { createStorageStatus } from "./adapters/out/storage-status.ts";
+import { createStorageGuard } from "./application/storage-guard.ts";
 import { type InstanceKeys, openInstanceKeys } from "./adapters/out/crypto/instance-keys.ts";
 import { KeyError } from "./adapters/out/crypto/keyring.ts";
 import {
@@ -79,7 +83,7 @@ import { createNtfy, type NtfyDelivery } from "./adapters/out/ntfy/notifier.ts";
 import { createTelegramClient, type TelegramClient } from "./adapters/out/telegram/client.ts";
 import { createTelegram, type TelegramDelivery } from "./adapters/out/telegram/notifier.ts";
 import { startTelegramPoller, TELEGRAM_WAIT_SECONDS } from "./adapters/in/telegram-poller.ts";
-import { readMeta, writeMeta } from "./adapters/out/sqlite/meta.ts";
+import { createReportAlertState, readMeta, writeMeta } from "./adapters/out/sqlite/meta.ts";
 import { startTelegramChat } from "./application/telegram.ts";
 import { createJobHandlers } from "./job-handlers.ts";
 import { isPushServiceHost } from "./domain/push.ts";
@@ -407,6 +411,7 @@ async function openInstance(
       email: {
         outbox: email?.outbox,
         reportAlerts: email !== undefined && config.contactEmail !== undefined,
+        alertThrottle: createReportAlertThrottle(createReportAlertState(database)),
       },
       ntfy: ntfy === undefined ? undefined : { outbox: ntfy.outbox, server: ntfy.server },
       telegram:
@@ -477,7 +482,24 @@ export async function startServer(
 ): Promise<StartResult> {
   const opened = await openInstance(env, { ingressVersionVerified });
   if (!opened.ok) return opened;
-  const { config, database, keys, planDeps, clockControl, warnings } = opened.instance;
+  const { config, database, keys, clockControl, warnings } = opened.instance;
+  // The disk guard (0.19.0): sampled every minute below, read from the cache by requests. Only
+  // the level is logged, never the data directory.
+  const storageGuard = createStorageGuard({
+    status: createStorageStatus(config.dataDir),
+    onChange: (level, previous) =>
+      level === "ok"
+        ? logger.info("storage_ok", { previous })
+        : logger.warn("storage_low", { level, previous }),
+    onUnavailable: () => logger.warn("storage_unknown", {}),
+  });
+  const planDeps: PlanDeps = {
+    ...opened.instance.planDeps,
+    instanceLimits: createInstanceLimits({
+      maxNewPlansPerDay: config.maxNewPlansPerDay,
+      storage: () => storageGuard.level(),
+    }),
+  };
   if (config.admin?.port === port) {
     await database.close();
     return {
@@ -521,6 +543,8 @@ export async function startServer(
   }
 
   const rateLimits = createRateLimits(() => planDeps.clock.now().getTime());
+  // The web and the fediverse share the per-plan cap on notices to the host (decision D42, 0.19.0).
+  const joinLimits = createJoinLimits(() => planDeps.clock.now().getTime());
 
   // Accounts (spec 7 Identity): the OIDC issuer is trusted configuration and may be on the local
   // network (decision D23), so it gets the trusted fetch, not OutboundHttp.
@@ -607,7 +631,7 @@ export async function startServer(
           planDeps,
           identities: accounts.identities,
           hasher: keys.identityLookup,
-          joinLimits: createJoinLimits(() => planDeps.clock.now().getTime()),
+          joinLimits,
           replyLimits: createReplyLimits(() => planDeps.clock.now().getTime()),
           flagLimits: createFlagLimits(() => planDeps.clock.now().getTime()),
           reporting: adminConfigured(config),
@@ -645,6 +669,15 @@ export async function startServer(
       { name: "reminders", intervalMs: MINUTE_MS, run: () => runReminders(planDeps) },
       // Forgets client addresses whose limits have refilled, also when no requests come in.
       { name: "rate_limit_sweep", intervalMs: MINUTE_MS, run: sweepLimits },
+      // The free disk space, cached for the guard: no request reads the disk (0.19.0).
+      {
+        name: "storage_sample",
+        intervalMs: MINUTE_MS,
+        run: async () => {
+          await storageGuard.sample();
+          return {};
+        },
+      },
     ],
     { logger },
   );
@@ -683,6 +716,7 @@ export async function startServer(
     previewRenderer: createRenderer(config, planDeps.clock),
     weather: createWeather(config, logger, planDeps.clock),
     rateLimits,
+    joinLimits,
     vapidPublicKey: vapid.publicKey,
     adminAuth,
     accounts,

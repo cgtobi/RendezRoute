@@ -33,6 +33,8 @@ import {
 import { canRespond } from "../domain/responding.ts";
 import { type DeviceDeps, ensureDevice, resolveDevice } from "./devices.ts";
 import { type PostingNeed, postingNeed } from "./posting-rules.ts";
+import type { ReportAlertThrottle } from "./email.ts";
+import { type InstanceLimits, reserveNewPlan } from "./instance-limits.ts";
 import {
   type PlanViewForParticipant,
   type PlanViewForPoster,
@@ -141,6 +143,11 @@ export interface PlanDeps extends DeviceDeps {
     | undefined;
   invites: InviteRepository;
   permissions: PermissionRepository;
+  /**
+   * The instance-wide cap on new plans and the disk guard's level (0.19.0). Absent: no limits,
+   * as in tests that do not care.
+   */
+  instanceLimits?: InstanceLimits | undefined;
   /** Notification channels, the job queue that delivers to them and sent reminders (spec 6 feature 3). */
   notify?:
     | {
@@ -153,7 +160,14 @@ export interface PlanDeps extends DeviceDeps {
          */
         links?: ChannelLinks | undefined;
         /** The outbox exists only while SMTP is configured. */
-        email?: { outbox: EmailOutbox | undefined; reportAlerts: boolean } | undefined;
+        email?:
+          | {
+              outbox: EmailOutbox | undefined;
+              reportAlerts: boolean;
+              /** At most one report alert an hour; absent means no spacing (0.19.0). */
+              alertThrottle?: ReportAlertThrottle | undefined;
+            }
+          | undefined;
         /** Present while NTFY_URL is configured (decision D33). */
         ntfy?: { outbox: NtfyOutbox; server: URL } | undefined;
         /**
@@ -182,7 +196,9 @@ export type CreatePlanResult =
   | { kind: "invalid"; errors: FieldError[] }
   | { kind: "bad_request" }
   /** The posting rules do not let this device create plans (spec 7 Moderation). */
-  | { kind: "not_allowed"; needs: PostingNeed };
+  | { kind: "not_allowed"; needs: PostingNeed }
+  /** The instance takes no new plans now: its cap is reached or its disk nearly full (0.19.0). */
+  | { kind: "busy"; retryAfterSeconds: number };
 
 /**
  * Parses an upload, cuts it to the meeting point where the plan has one with coordinates (D40)
@@ -222,7 +238,20 @@ export async function createPlan(
   if (used !== undefined) return used;
   const needs = await postingNeed(deps, request);
   if (needs !== undefined) return { kind: "not_allowed", needs };
+  const slot = await reserveNewPlan(deps);
+  if (!slot.ok) return { kind: "busy", retryAfterSeconds: slot.retryAfterSeconds };
+  // The place is held until the plan is stored, or the attempt failed or was refused.
+  try {
+    return await createReserved(deps, request);
+  } finally {
+    slot.release();
+  }
+}
 
+async function createReserved(
+  deps: PlanDeps,
+  request: Parameters<typeof createPlan>[1],
+): Promise<CreatePlanResult> {
   const now = deps.clock.now();
   const rules = { now, ...deps.limits };
   let input = request.input;

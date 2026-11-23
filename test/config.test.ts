@@ -718,6 +718,23 @@ describe("limits that may only be lowered", () => {
   });
 });
 
+describe("MAX_NEW_PLANS_PER_DAY", () => {
+  it("defaults to 200, the instance cap", () => {
+    expect(ok(minimal).config.maxNewPlansPerDay).toBe(200);
+  });
+
+  it("may only be lowered: whole numbers from 0 to 200, 0 pausing new plans", () => {
+    expect(ok({ ...minimal, MAX_NEW_PLANS_PER_DAY: "0" }).config.maxNewPlansPerDay).toBe(0);
+    expect(ok({ ...minimal, MAX_NEW_PLANS_PER_DAY: "25" }).config.maxNewPlansPerDay).toBe(25);
+    expect(ok({ ...minimal, MAX_NEW_PLANS_PER_DAY: "200" }).config.maxNewPlansPerDay).toBe(200);
+    for (const bad of ["201", "-1", "7.5", "abc", ""]) {
+      expect(errors({ ...minimal, MAX_NEW_PLANS_PER_DAY: bad })).toEqual([
+        expect.stringContaining("MAX_NEW_PLANS_PER_DAY must be a whole number from 0 to 200"),
+      ]);
+    }
+  });
+});
+
 describe("DEFAULT_TIMEZONE", () => {
   it("accepts IANA zones", () => {
     expect(ok({ ...minimal, DEFAULT_TIMEZONE: "Europe/Berlin" }).config.defaultTimezone).toBe(

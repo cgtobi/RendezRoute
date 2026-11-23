@@ -116,6 +116,9 @@ configuration:
   max_plan_horizon_days:
     name: "Höchstens im Voraus planen (Tage)"
     description: "Wie weit im Voraus ein Treffen geplant werden darf, 1 bis 180 Tage."
+  max_new_plans_per_day:
+    name: "Neue Pläne pro Tag (ganze Instanz)"
+    description: "Die meisten neuen Pläne, die diese Instanz innerhalb von 24 Stunden annimmt, 0 bis 200. Der Wert kann das eingebaute Limit von 200 pro Tag (und 40 pro Stunde) nur senken; 0 pausiert neue Pläne, während Zusagen und Verwalten weiter funktionieren. Leer lassen für 200."
   trust_proxy:
     name: "Reverse-Proxy vertrauen"
     description: "Nur einschalten, wenn ein Reverse-Proxy vor dem öffentlichen Port den Header X-Forwarded-For setzt und niemand den Port direkt erreicht. Dann zählt die App ihre Begrenzungen je Besucher:in statt je Proxy."

@@ -9,7 +9,13 @@ import { accountOf, jobOutcomeOf, queueConfirmation } from "./channel-links.ts";
 import { type Denied, isDenied } from "./host.ts";
 import type { JobOutcome } from "./jobs.ts";
 import type { PlanDeps } from "./plans.ts";
-import type { ChannelOwner, EmailChannel, EmailOutbox } from "./ports.ts";
+import type {
+  ChannelOwner,
+  EmailChannel,
+  EmailOutbox,
+  ReportAlertState,
+  ReportRepository,
+} from "./ports.ts";
 
 type Unavailable = { kind: "unavailable" };
 const UNAVAILABLE: Unavailable = { kind: "unavailable" };
@@ -201,22 +207,122 @@ export async function exportedEmail(
 
 const REPORT_ALERT = "reportAlert";
 
-/** Queues the alert for a new report (spec 7 Moderation): the job carries nothing of it. */
-export async function queueReportAlert(deps: PlanDeps, planId: string): Promise<void> {
+const ALERT_SPACING_MS = 3_600_000;
+
+/**
+ * At most one report alert email an hour for the instance (0.19.0): the first report alerts at
+ * once, later ones share one alert at the end of the hour, which names how many reports are open
+ * when it goes out. The time of the latest alert is stored (`ReportAlertState`), so a restart
+ * neither forgets the hour nor a batch still waiting: an alert due later is that pending batch.
+ *
+ * Order: the time is reserved in memory at once (so reports arriving together see each other),
+ * then the job is queued, and only then is the time stored. A crash in between can at worst send
+ * one alert too many, never lose one; a failing store is ignored (an extra email beats a lost
+ * alert), and a failing queue gives the reservation back.
+ */
+export interface ReportAlertThrottle {
+  /**
+   * Queues the alert for a report arriving now through `enqueue`, called with the time it should
+   * go out, unless one is already pending. Throws only what `enqueue` throws, after the
+   * reservation was given back.
+   */
+  schedule(now: Date, enqueue: (runAt: Date) => Promise<void>): Promise<void>;
+}
+
+export function createReportAlertThrottle(
+  state: ReportAlertState = memoryAlertState(),
+): ReportAlertThrottle {
+  /** The latest alert's time as stored; read once, then kept here and written through. */
+  let loaded: Promise<void> | undefined;
+  let latest = 0;
+  return {
+    schedule: async (now, enqueue) => {
+      const current = (loaded ??= state.read().then((at) => {
+        latest = at?.getTime() ?? 0;
+      }));
+      try {
+        await current;
+      } catch {
+        if (loaded === current) loaded = undefined;
+        // Fail open: the state cannot be read, so alert now.
+        return enqueue(now);
+      }
+      // From here to the queueing there is no await before `latest` changes.
+      const time = now.getTime();
+      // A pending alert is at most an hour away; a later time is stale (a clock that jumped back,
+      // a restored database) and would hold alerts back.
+      if (latest > time + ALERT_SPACING_MS) latest = 0;
+      if (latest > time) return;
+      const previous = latest;
+      const at = Math.max(time, latest + ALERT_SPACING_MS);
+      latest = at;
+      try {
+        await enqueue(new Date(at));
+      } catch (error) {
+        // Reports folded into this reservation while it was being queued get no alert of their
+        // own. If a later reservation failed too, its rollback restores this one's time (and this
+        // one finds `latest` changed and leaves it): the time then stands with no job behind it
+        // and the next report is delayed by at most the spacing. Delayed, never lost for good,
+        // and only while the queue cannot write.
+        if (latest === at) latest = previous;
+        throw error;
+      }
+      try {
+        await state.write(new Date(at));
+      } catch {
+        // The alert is queued; only a restart in this hour could now send one more.
+      }
+    },
+  };
+}
+
+function memoryAlertState(): ReportAlertState {
+  let at: Date | undefined;
+  return {
+    read: () => Promise.resolve(at),
+    write: (value) => {
+      at = value;
+      return Promise.resolve();
+    },
+  };
+}
+
+/**
+ * Queues the alert for a new report (spec 7 Moderation): the job carries nothing of it. The report
+ * is stored already, so a failure here is never passed on to the reporter.
+ */
+export async function queueReportAlert(deps: PlanDeps): Promise<void> {
   const notify = deps.notify;
   if (notify?.email?.reportAlerts !== true) return;
-  await notify.jobs.enqueue({
-    type: REPORT_ALERT,
-    payload: {},
-    planId,
-    responseId: undefined,
-    runAt: deps.clock.now(),
-    expiresAt: undefined,
-  });
+  const now = deps.clock.now();
+  const enqueue = async (runAt: Date) => {
+    await notify.jobs.enqueue({
+      type: REPORT_ALERT,
+      payload: {},
+      // Bound to no plan: the job cascades with its plan, and the alert it carries is shared by
+      // reports of other plans, so deleting the reported plan must not lose it.
+      planId: undefined,
+      responseId: undefined,
+      runAt,
+      expiresAt: undefined,
+    });
+  };
+  try {
+    const throttle = notify.email.alertThrottle;
+    await (throttle === undefined ? enqueue(now) : throttle.schedule(now, enqueue));
+  } catch {
+    // The queue is unavailable (disk full): the report stands, the next one alerts again.
+  }
 }
 
 export function reportAlertHandler(deps: {
   outbox: EmailOutbox;
+  reports: Pick<ReportRepository, "countOpen">;
 }): (payload: unknown) => Promise<JobOutcome> {
-  return async () => jobOutcomeOf(await deps.outbox.reportAlert());
+  return async () => {
+    // The count is taken when the alert goes out: reports resolved meanwhile need no alert.
+    const open = await deps.reports.countOpen();
+    if (open === 0) return "done";
+    return jobOutcomeOf(await deps.outbox.reportAlert(open));
+  };
 }

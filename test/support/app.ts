@@ -34,6 +34,7 @@ import { createFieldCipher } from "../../src/adapters/out/crypto/field-cipher.ts
 import { createKeyring, deriveKey } from "../../src/adapters/out/crypto/keyring.ts";
 import { createIdGenerator } from "../../src/adapters/out/ids.ts";
 import { type Database, openDatabase } from "../../src/adapters/out/sqlite/database.ts";
+import { createReportAlertState } from "../../src/adapters/out/sqlite/meta.ts";
 import { createDeviceRepository } from "../../src/adapters/out/sqlite/devices.ts";
 import { createPlanRepository } from "../../src/adapters/out/sqlite/plans.ts";
 import { createRecapRepository } from "../../src/adapters/out/sqlite/recap.ts";
@@ -48,7 +49,10 @@ import { createReportRepository } from "../../src/adapters/out/sqlite/reports.ts
 import { createResponseRepository } from "../../src/adapters/out/sqlite/responses.ts";
 import { createTokenService } from "../../src/adapters/out/tokens.ts";
 import { adminConfigured, adminPagesOrigin, type Config, loadConfig } from "../../src/config.ts";
+import { createInstanceLimits } from "../../src/application/instance-limits.ts";
+import { createReportAlertThrottle } from "../../src/application/email.ts";
 import type { PlanDeps } from "../../src/application/plans.ts";
+import type { StorageLevel } from "../../src/domain/instance-limits.ts";
 import type {
   ActorKeyFactory,
   PreviewRenderer,
@@ -235,7 +239,13 @@ export async function createTestApp({
             timeZone: config.defaultTimezone,
           }),
         };
+  // The disk guard's cached level, set by tests; the real guard samples the disk every minute.
+  const storage: { level: StorageLevel } = { level: "ok" };
   const planDeps: PlanDeps = {
+    instanceLimits: createInstanceLimits({
+      maxNewPlansPerDay: config.maxNewPlansPerDay,
+      storage: () => storage.level,
+    }),
     plans: createPlanRepository(database, cipher),
     devices: createDeviceRepository(database),
     responses: createResponseRepository(database, cipher, lookupHasher),
@@ -275,6 +285,7 @@ export async function createTestApp({
       email: {
         outbox: email?.outbox,
         reportAlerts: config.smtp !== undefined && config.contactEmail !== undefined,
+        alertThrottle: createReportAlertThrottle(createReportAlertState(database)),
       },
       ntfy: ntfy === undefined ? undefined : { outbox: ntfy.outbox, server: ntfy.server },
       telegram:
@@ -301,6 +312,7 @@ export async function createTestApp({
   const pendingLogins = createPendingLoginRepository(database, cipher);
   const identityLookup = createLookupHasher(randomBytes(32));
   const federationKv = createFedifyKvStore(database, () => clock.now());
+  const joinLimits = createJoinLimits(() => clock.now().getTime());
   const federation =
     federationKeys === undefined
       ? undefined
@@ -312,7 +324,7 @@ export async function createTestApp({
           instanceKeys: federationKeys,
           planDeps,
           hasher: lookupHasher,
-          joinLimits: createJoinLimits(() => clock.now().getTime()),
+          joinLimits,
           replyLimits: createReplyLimits(() => clock.now().getTime()),
           flagLimits: createFlagLimits(() => clock.now().getTime()),
           reporting: adminConfigured(config),
@@ -340,6 +352,7 @@ export async function createTestApp({
     previewRenderer: renderer ?? previewRenderer,
     weather: config.weather.enabled ? weather : undefined,
     rateLimits,
+    joinLimits,
     vapidPublicKey,
     adminAuth,
     csrfKey: publicCsrfKey,
@@ -401,6 +414,9 @@ export async function createTestApp({
     geocoder,
     previewRenderer,
     planDeps,
+    storage,
+    joinLimits,
+    rateLimits,
     channels,
     jobs,
     vapidPublicKey,
@@ -418,3 +434,4 @@ export async function createTestApp({
     federationKeys,
   };
 }
+export type TestApp = Awaited<ReturnType<typeof createTestApp>>;

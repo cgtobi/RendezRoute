@@ -256,6 +256,16 @@ export function createResponseRepository(
       return { interested: count("interested"), participants: count("joined") };
     },
 
+    async countWebResponses(planId) {
+      const row = await database.db
+        .selectFrom("responses")
+        .select((eb) => eb.fn.countAll<number>().as("n"))
+        .where("plan_id", "=", planId)
+        .where("remote_actor_hmac", "is", null)
+        .executeTakeFirst();
+      return Number(row?.n ?? 0);
+    },
+
     async update(response) {
       await database.db
         .updateTable("responses")

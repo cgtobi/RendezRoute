@@ -347,6 +347,18 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       return rows.map(fromRow);
     },
 
+    async countCreatedSince(since) {
+      const row = await database.db
+        .selectFrom("plans")
+        .select((eb) => [
+          eb.fn.countAll<number>().as("lastDay"),
+          sql<number>`coalesce(sum(created_at >= ${iso(since.hour)}), 0)`.as("lastHour"),
+        ])
+        .where("created_at", ">=", iso(since.day))
+        .executeTakeFirst();
+      return { lastHour: Number(row?.lastHour ?? 0), lastDay: Number(row?.lastDay ?? 0) };
+    },
+
     async findRoute(planId) {
       const row = await database.db
         .selectFrom("routes")

@@ -203,6 +203,17 @@ describe("config.yaml and the options mapper", () => {
     expect(set({ DEFAULT_MAP_ZOOM: "1" }).ok || set({ DEFAULT_MAP_ZOOM: "13" }).ok).toBe(false);
   });
 
+  it("keeps the instance cap on new plans advanced: optional, no default, 0 to 200 (0.19.0)", () => {
+    expect(HA_OPTION_KINDS.max_new_plans_per_day).toBe("integer");
+    expect(typeOf("max_new_plans_per_day")).toBe("int(0,200)?");
+    expect(options).not.toHaveProperty("max_new_plans_per_day");
+    const loaded = loadConfig({ BASE_URL: "https://x.example", MAX_NEW_PLANS_PER_DAY: "0" });
+    expect(loaded.ok && loaded.config.maxNewPlansPerDay).toBe(0);
+    expect(loadConfig({ BASE_URL: "https://x.example", MAX_NEW_PLANS_PER_DAY: "201" }).ok).toBe(
+      false,
+    );
+  });
+
   it("keeps the rating minimum advanced: optional, no default, limits of the configuration", () => {
     expect(HA_OPTION_KINDS.rating_min_participants).toBe("integer");
     expect(typeOf("rating_min_participants")).toBe("int(2,50)?");

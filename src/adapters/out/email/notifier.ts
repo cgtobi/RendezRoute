@@ -71,10 +71,13 @@ export function createEmailOutbox({
           { ...instance, confirmUrl: urlOf(to.channelId) },
         ),
       }),
-    reportAlert: () =>
+    reportAlert: (openReports) =>
       contactEmail === undefined
         ? Promise.resolve("failed")
-        : mailer.send({ to: contactEmail, ...reportAlertEmail(instance, adminUrl) }),
+        : mailer.send({
+            to: contactEmail,
+            ...reportAlertEmail(instance, adminUrl, undefined, openReports),
+          }),
     accountExpiry: (to, deleteAt) =>
       mailer.send({
         to: to.address,

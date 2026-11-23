@@ -62,8 +62,9 @@ export async function accountEmailProps(
 
 /**
  * Each request for a confirmation link, or for a new link by email, counts per client and per
- * address, so the forms cannot be used to flood someone's mailbox (spec 3.11). The address key lives only in memory; both are
- * given back when no link was sent.
+ * address (3 an hour and 6 in any 24 hours), so the forms cannot be used to flood someone's
+ * mailbox (spec 3.11). The address key lives only in memory; both are given back when no link
+ * was sent.
  */
 export function takeEmailLimits(
   c: Context<AppEnv>,
@@ -79,11 +80,19 @@ export function takeEmailLimits(
     limits.email.refund(client);
     return byAddress;
   }
+  // 3 an hour, and 6 in any 24 hours (0.19.0): a slot each, given back when nothing was sent.
+  const byDay = limits.emailAddressDay.take(addressKey);
+  if (!byDay.ok) {
+    limits.email.refund(client);
+    limits.emailAddress.refund(addressKey);
+    return byDay;
+  }
   return {
     ok: true,
     refund: () => {
       limits.email.refund(client);
       limits.emailAddress.refund(addressKey);
+      limits.emailAddressDay.refund(addressKey);
     },
   };
 }

@@ -11,7 +11,7 @@ import {
 import { deletionNotices } from "./notify.ts";
 import type { PlanViewForInstanceAdmin } from "./plan-views.ts";
 import { type PlanDeps, viewPlan } from "./plans.ts";
-import type { AdminAuth, Clock } from "./ports.ts";
+import type { AdminAuth, Clock, RecentPlanRow } from "./ports.ts";
 
 /** How long an admin session lasts (spec 7 Moderation). */
 export const ADMIN_SESSION_HOURS = 12;
@@ -130,13 +130,34 @@ export async function deletePlanAsAdmin(
   request: { planId: string; session: string | undefined },
 ): Promise<{ kind: "deleted" } | { kind: "not_found" } | NotAdmin> {
   if (!isAdmin(deps, request)) return { kind: "not_admin" };
-  const plan = await deps.plans.findById(request.planId);
+  const result = await deletePlanAsOperator(deps, request.planId);
+  return result.kind === "deleted" ? { kind: "deleted" } : result;
+}
+
+/**
+ * The deletion behind `deletePlanAsAdmin`, for the operator's command line, which has no session
+ * (whoever runs it has the data directory): the same notices, federation `Delete` and physical
+ * removal. The notices and the `Delete` are queued as jobs; the running server sends them.
+ */
+export async function deletePlanAsOperator(
+  deps: PlanDeps,
+  planId: string,
+): Promise<{ kind: "deleted"; title: string } | { kind: "not_found" }> {
+  const plan = await deps.plans.findById(planId);
   if (plan === undefined) return { kind: "not_found" };
   const sendNotices = await deletionNotices(deps, plan);
   await withdrawDeletedPlans(deps, [plan]);
   await deps.plans.delete(plan.id);
   await sendNotices();
-  return { kind: "deleted" };
+  return { kind: "deleted", title: plan.title };
+}
+
+/** The newest plans with their public title and response count, for the command line. */
+export async function listRecentPlans(
+  deps: Pick<PlanDeps, "plans">,
+  { limit }: { limit: number },
+): Promise<RecentPlanRow[]> {
+  return deps.plans.listRecent(limit);
 }
 
 /**

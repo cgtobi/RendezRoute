@@ -4,7 +4,7 @@ import type { JoinMode, PlanStatus } from "./plan.ts";
 import { canRespond } from "./responding.ts";
 import type { PlanResponse, ResponseKind } from "./response.ts";
 import { err, ok, type Result } from "./result.ts";
-import { cleanText, type TextError } from "./text.ts";
+import { cleanText, MAX_URLS_IN_TEXT, type TextError } from "./text.ts";
 
 /** What someone can choose for their own response. */
 export type ResponseChoice = "interested" | "joined" | "requested";
@@ -33,7 +33,11 @@ export const MAX_REQUEST_NOTE_LENGTH = 500;
 export function validateRequestNote(
   note: string,
 ): Result<string | undefined, Exclude<TextError, "required">> {
-  return cleanText(note, { max: MAX_REQUEST_NOTE_LENGTH, multiline: true });
+  return cleanText(note, {
+    max: MAX_REQUEST_NOTE_LENGTH,
+    multiline: true,
+    urls: { max: MAX_URLS_IN_TEXT },
+  });
 }
 
 type DecisionError = "not_pending" | "plan_started" | "plan_cancelled";

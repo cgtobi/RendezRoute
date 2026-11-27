@@ -70,8 +70,8 @@ describe("a reply's text", () => {
 
   it("removes scripts' and styles' markup and control characters, keeping their text out", () => {
     expect(
-      replyContent("<p>ok<script>alert(1)</script><style>p{}</style></p>\u0007‮", [])?.body,
-    ).toBe("ok‮".replace("‮", ""));
+      replyContent("<p>ok<script>alert(1)</script><style>p{}</style></p>\u0007\u202E", [])?.body,
+    ).toBe("ok\u202E".replace("\u202E", ""));
   });
 
   it("is plain text already: unchanged", () => {

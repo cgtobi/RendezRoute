@@ -76,6 +76,15 @@ export function createReportRepository(database: Database, cipher: FieldCipher):
       return Number(row?.n ?? 0);
     },
 
+    async countCreatedSince(since) {
+      const row = await db
+        .selectFrom("reports")
+        .select((eb) => eb.fn.countAll<number>().as("n"))
+        .where("created_at", ">=", iso(since))
+        .executeTakeFirst();
+      return Number(row?.n ?? 0);
+    },
+
     async listOpenForPlan(planId) {
       const rows = await db
         .selectFrom("reports")

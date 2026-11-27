@@ -1,5 +1,6 @@
 // Coordinates, the public area grid and the exact start (spec 3.1).
 import { err, ok, type Result } from "./result.ts";
+import { cleanText } from "./text.ts";
 
 export interface GeoPoint {
   lat: number;
@@ -55,12 +56,17 @@ export interface ExactStart {
 export function validateExactStart(input: {
   point?: GeoPoint | undefined;
   description?: string | undefined;
-}): Result<ExactStart, "exact_start_empty" | "exact_start_too_long" | "coordinates_invalid"> {
-  const description = input.description?.trim() || undefined;
+}): Result<
+  ExactStart,
+  "exact_start_empty" | "exact_start_too_long" | "coordinates_invalid" | "invalid_characters"
+> {
+  const cleaned = cleanText(input.description ?? "", { max: MAX_DESCRIPTION_LENGTH });
+  if (!cleaned.ok)
+    return err(
+      cleaned.error === "invalid_characters" ? "invalid_characters" : "exact_start_too_long",
+    );
+  const description = cleaned.value;
   if (input.point === undefined && description === undefined) return err("exact_start_empty");
-  if (description !== undefined && Array.from(description).length > MAX_DESCRIPTION_LENGTH) {
-    return err("exact_start_too_long");
-  }
   if (input.point !== undefined) {
     const point = validateGeoPoint(input.point);
     if (!point.ok) return point;

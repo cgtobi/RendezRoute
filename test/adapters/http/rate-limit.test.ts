@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   clientKey,
+  countRefusals,
   createRateLimiter,
   createRateLimits,
   createWindowLimiter,
@@ -301,5 +302,23 @@ describe("window limiter (6 in any rolling 24 hours)", () => {
     limit.sweep();
     expect(limit.size()).toBe(0);
     expect(limit.take("c").ok).toBe(true);
+  });
+});
+
+describe("countRefusals (hourly summary)", () => {
+  it("tells about every refused take and nothing else", () => {
+    let refused = 0;
+    const limits = countRefusals(
+      createRateLimits(() => 0),
+      () => {
+        refused += 1;
+      },
+    );
+    for (let i = 0; i < 5; i++) limits.create.take("k");
+    expect(refused).toBe(0);
+    limits.create.take("k");
+    expect(refused).toBe(1);
+    expect(limits.create.check("k").ok).toBe(false);
+    expect(refused).toBe(1);
   });
 });

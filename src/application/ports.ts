@@ -120,6 +120,14 @@ export interface NewPlan {
   route?: Route | undefined;
 }
 
+/** A plan as the operator's list shows it: when, what it is called and how many responded. */
+export interface RecentPlanRow {
+  id: string;
+  createdAt: Date;
+  title: string;
+  responseCount: number;
+}
+
 export interface PlanRepository {
   /** Stores the plan, its creation nonce and the host device link in one transaction. */
   create(input: NewPlan): Promise<void>;
@@ -168,6 +176,11 @@ export interface PlanRepository {
     hour: Date;
     day: Date;
   }): Promise<{ lastHour: number; lastDay: number }>;
+  /**
+   * The newest plans first with the public title and how many responses each has, for the
+   * operator's command line; no name, note, place or token is read.
+   */
+  listRecent(limit: number): Promise<RecentPlanRow[]>;
   /** The route, decrypted; only for audiences that may see it (spec 3.6). */
   findRoute(planId: string): Promise<Route | undefined>;
   /**
@@ -690,6 +703,8 @@ export interface ReportRepository {
   listOpen(): Promise<OpenReportRow[]>;
   /** How many reports are unresolved, as `listOpen` would list them, without reading them. */
   countOpen(): Promise<number>;
+  /** How many reports were made at or after `since` (the hourly summary); no content is read. */
+  countCreatedSince(since: Date): Promise<number>;
   /** The plan's unresolved reports, oldest first, decrypted. */
   listOpenForPlan(planId: string): Promise<Report[]>;
   countResolvedForPlan(planId: string): Promise<number>;
@@ -863,6 +878,8 @@ export interface RemoteParticipant {
 }
 
 export interface ResponseRepository {
+  /** How many responses, web and remote, were made at or after `since` (the hourly summary). */
+  countCreatedSince(since: Date): Promise<number>;
   /** Stores a remote actor's response; its manage token hash is never given to anyone. */
   createRemote(input: RemoteParticipant & { manageTokenHash: string }): Promise<void>;
   /** The actor's response to the plan, whatever its kind (a rejected one blocks). */

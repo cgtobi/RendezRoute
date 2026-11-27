@@ -87,7 +87,12 @@ export function composeCommonStack(
 
   app.use(requestLogger(logger));
   app.use(securityHeaders(config, frameAncestors));
-  app.use(clientIp({ trustProxy: config.trustProxy }));
+  app.use(
+    clientIp({
+      trustProxy: config.trustProxy,
+      onUntrustedForwarded: () => logger.warn("forwarded_header_ignored", {}),
+    }),
+  );
 
   app.use(async (c, next) => {
     const language = requestLanguage(c);
@@ -101,6 +106,11 @@ export function composeCommonStack(
     c.set("palette", isPalette(palette) ? palette : undefined);
     c.set("relativeLinks", relativeLinks);
     await next();
+    // Nothing under /p/ is indexed, public plans included: Nearby and the fediverse are how
+    // plans are found (decision D96). Routes that set a stricter value keep it.
+    if (c.req.path.startsWith("/p/") && !c.res.headers.has("x-robots-tag")) {
+      c.res.headers.set("x-robots-tag", "noindex");
+    }
     // Pages and plain-text errors are in the request's language; images, scripts and feeds are not.
     if (/^text\/(html|plain)/.test(c.res.headers.get("content-type") ?? "")) {
       c.res.headers.set("content-language", language);

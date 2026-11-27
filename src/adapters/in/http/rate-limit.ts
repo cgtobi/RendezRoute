@@ -132,6 +132,24 @@ export function createRateLimits(now: () => number): RateLimits {
   };
 }
 
+/**
+ * The same limiters, telling `onRefusal` whenever `take` turns a request away (the hourly summary
+ * counts them; no key is passed on, I18).
+ */
+export function countRefusals(limits: RateLimits, onRefusal: () => void): RateLimits {
+  const counted = (limiter: RateLimiter): RateLimiter => ({
+    ...limiter,
+    take: (key) => {
+      const result = limiter.take(key);
+      if (!result.ok) onRefusal();
+      return result;
+    },
+  });
+  return Object.fromEntries(
+    Object.entries(limits).map(([name, limiter]) => [name, counted(limiter)]),
+  ) as unknown as RateLimits;
+}
+
 /** Limits on remote `Join`s (decision D42, spec 3.11); keys are kept in memory only. */
 export interface JoinLimits {
   /** Per remote server, as strict as responding on the web (I32). */

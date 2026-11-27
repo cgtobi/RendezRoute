@@ -5,6 +5,7 @@ import { createFieldCipher } from "../../../../src/adapters/out/crypto/field-cip
 import { createKeyring } from "../../../../src/adapters/out/crypto/keyring.ts";
 import { createLookupHasher } from "../../../../src/adapters/out/crypto/lookup-hasher.ts";
 import { createResponseRepository } from "../../../../src/adapters/out/sqlite/responses.ts";
+import { createReportRepository } from "../../../../src/adapters/out/sqlite/reports.ts";
 import { createPlanRepository } from "../../../../src/adapters/out/sqlite/plans.ts";
 import { type Database, openDatabase } from "../../../../src/adapters/out/sqlite/database.ts";
 import { createDeviceRepository } from "../../../../src/adapters/out/sqlite/devices.ts";
@@ -102,5 +103,75 @@ describe("ResponseRepository.countWebResponses", () => {
     expect(await responses.countWebResponses("p1")).toBe(2);
     expect(await responses.countWebResponses("p2")).toBe(1);
     expect(await responses.countWebResponses("none")).toBe(0);
+  });
+});
+
+describe("countCreatedSince of responses and reports, and listRecent (ADR 009)", () => {
+  it("counts rows made at or after the time, and lists the newest plans with response counts", async () => {
+    const plans = createPlanRepository(database, cipher);
+    const at = (minutes: number) => new Date(fixtureNow.getTime() + minutes * 60_000);
+    for (const [id, minutes] of [
+      ["old", 0],
+      ["new", 60],
+    ] as const) {
+      await plans.create({
+        plan: samplePlan({
+          id,
+          title: `Plan ${id}`,
+          createdAt: at(minutes),
+          updatedAt: at(minutes),
+        }),
+        hostTokenHash: `host-${id}`,
+        creationNonce: `nonce-${id}`,
+        hostDeviceId: "d",
+        ownerIdentityId: undefined,
+      });
+    }
+    const responses = createResponseRepository(
+      database,
+      cipher,
+      createLookupHasher(randomBytes(32)),
+    );
+    for (const [id, planId, minutes] of [
+      ["w1", "new", 61],
+      ["w2", "new", 5],
+      ["w3", "old", 90],
+    ] as const) {
+      await responses.create({
+        response: {
+          id,
+          planId,
+          kind: "joined" as const,
+          displayName: id,
+          language: "en",
+          previousKind: undefined,
+          createdAt: at(minutes),
+          updatedAt: at(minutes),
+        },
+        manageTokenHash: `manage-${id}`,
+        creationNonce: `nonce-${id}`,
+        deviceId: "d",
+      });
+    }
+    expect(await responses.countCreatedSince(at(60))).toBe(2);
+    expect(await responses.countCreatedSince(at(100))).toBe(0);
+    const reports = createReportRepository(database, cipher);
+    await reports.create({
+      id: "rep1",
+      planId: "new",
+      reason: "spam",
+      details: undefined,
+      attached: [],
+      createdAt: at(70),
+      resolvedAt: undefined,
+    });
+    expect(await reports.countCreatedSince(at(60))).toBe(1);
+    expect(await reports.countCreatedSince(at(71))).toBe(0);
+
+    expect(await plans.listRecent(10)).toEqual([
+      { id: "new", createdAt: at(60), title: "Plan new", responseCount: 2 },
+      { id: "old", createdAt: at(0), title: "Plan old", responseCount: 1 },
+    ]);
+    expect(await plans.listRecent(1)).toHaveLength(1);
   });
 });

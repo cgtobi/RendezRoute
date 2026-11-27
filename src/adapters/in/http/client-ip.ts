@@ -31,8 +31,20 @@ function normalize(address: string): string {
   return mapped ?? address;
 }
 
-export function clientIp({ trustProxy }: { trustProxy: boolean }): MiddlewareHandler<ClientIpEnv> {
+export function clientIp({
+  trustProxy,
+  onUntrustedForwarded,
+}: {
+  trustProxy: boolean;
+  /** Called once, without any address, when X-Forwarded-For arrives while TRUST_PROXY is off. */
+  onUntrustedForwarded?: () => void;
+}): MiddlewareHandler<ClientIpEnv> {
+  let reported = false;
   return async (c, next) => {
+    if (!trustProxy && !reported && c.req.header("x-forwarded-for") !== undefined) {
+      reported = true;
+      onUntrustedForwarded?.();
+    }
     let remoteAddress: string | undefined;
     try {
       remoteAddress = getConnInfo(c).remote.address;

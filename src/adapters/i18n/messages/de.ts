@@ -349,6 +349,8 @@ export const de: Messages = {
   "field.requiredHint": "Pflichtfeld",
   "field.too_long": "Das ist zu lang.",
   "field.invalid_characters": "Das enthält nicht erlaubte Zeichen.",
+  "field.urls_not_allowed": "Webadressen sind hier nicht erlaubt.",
+  "field.too_many_urls": "Bitte verwende höchstens {maxUrls} Webadressen.",
   "field.choice_invalid": "Bitte wähle eine der Optionen.",
   "field.datetime_invalid": "Bitte gib ein gültiges Datum und eine gültige Uhrzeit ein.",
   "field.starts_invalid": "Bitte gib ein gültiges Datum und eine gültige Uhrzeit ein.",

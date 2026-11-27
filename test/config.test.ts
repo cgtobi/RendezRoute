@@ -46,7 +46,7 @@ describe("defaults (spec section 10)", () => {
       url: new URL("https://nominatim.openstreetmap.org"),
     });
     expect(config.weather).toEqual({ enabled: true, url: new URL("https://api.open-meteo.com") });
-    expect(warnings).toEqual([]);
+    expect(warnings).toEqual([expect.stringContaining("No admin is configured")]);
   });
 
   it("reports every problem at once", () => {
@@ -648,7 +648,7 @@ describe("BASE_URL", () => {
     });
     expect(config.allowInsecureDev).toBe(true);
     expect(config.baseUrl.href).toBe("http://localhost:3000/");
-    expect(warnings).toEqual([expect.stringContaining("development mode")]);
+    expect(warnings).toContainEqual(expect.stringContaining("development mode"));
   });
 });
 
@@ -880,7 +880,7 @@ describe("CONTACT_EMAIL (spec section 10)", () => {
   });
 
   it("when unset, disables geocoding and server-side tile fetching with a warning", () => {
-    const { config, warnings } = ok({ BASE_URL: minimal.BASE_URL });
+    const { config, warnings } = ok({ BASE_URL: minimal.BASE_URL, ADMIN_TOKEN: "t".repeat(32) });
     expect(config.contactEmail).toBeUndefined();
     expect(config.geocoder.enabled).toBe(false);
     expect(config.maps.enabled).toBe(true);
@@ -893,6 +893,7 @@ describe("CONTACT_EMAIL (spec section 10)", () => {
       BASE_URL: minimal.BASE_URL,
       MAPS_ENABLED: "false",
       GEOCODER_ENABLED: "false",
+      ADMIN_TOKEN: "t".repeat(32),
     });
     expect(warnings).toEqual([]);
   });
@@ -1171,5 +1172,34 @@ describe("RATING_MIN_PARTICIPANTS", () => {
         `RATING_MIN_PARTICIPANTS must be a whole number from 2 to 50, got "${value}".`,
       );
     }
+  });
+});
+
+describe("startup warnings for risky settings (ADR 009)", () => {
+  const admin = { ADMIN_TOKEN: "t".repeat(32) };
+
+  it("says nothing about a plain instance with an admin", () => {
+    expect(ok({ ...minimal, ...admin }).warnings).toEqual([]);
+  });
+
+  it("warns when no admin is configured", () => {
+    expect(ok(minimal).warnings.join(" ")).toContain("delete-plan");
+  });
+
+  it("warns when new plans are paused with MAX_NEW_PLANS_PER_DAY=0", () => {
+    const { warnings } = ok({ ...minimal, ...admin, MAX_NEW_PLANS_PER_DAY: "0" });
+    expect(warnings).toEqual([expect.stringContaining("MAX_NEW_PLANS_PER_DAY=0")]);
+  });
+
+  it("warns about fediverse login from any server, not with a server list", () => {
+    const open = ok({ ...minimal, ...admin, FEDIVERSE_LOGIN: "true" });
+    expect(open.warnings).toEqual([expect.stringContaining("FEDIVERSE_LOGIN_SERVERS")]);
+    const listed = ok({
+      ...minimal,
+      ...admin,
+      FEDIVERSE_LOGIN: "true",
+      FEDIVERSE_LOGIN_SERVERS: "mastodon.social",
+    });
+    expect(listed.warnings).toEqual([]);
   });
 });

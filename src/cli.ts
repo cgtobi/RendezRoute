@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 import { parseCommand } from "./adapters/in/cli/parse.ts";
-import { runApplyRetentionMax, runBackup, runServe } from "./main.ts";
+import { stripBidiControls } from "./domain/text.ts";
+import {
+  runApplyRetentionMax,
+  runBackup,
+  runDeletePlan,
+  runRecentPlans,
+  runServe,
+} from "./main.ts";
 
 const command = parseCommand(process.argv.slice(2));
 
@@ -23,6 +30,47 @@ switch (command.kind) {
     for (const warning of result.warnings) console.warn(`Warning: ${warning}`);
     console.log(
       `Applied MAX_RETENTION_DAYS: shortened ${result.shortened} plan(s), deleted ${result.deleted} plan(s) whose new deletion date had passed.`,
+    );
+    break;
+  }
+  case "recent-plans": {
+    const result = await runRecentPlans(process.env);
+    if (!result.ok) {
+      console.error(
+        `RendezRoute cannot run: invalid configuration\n${result.errors.map((e) => `  - ${e}`).join("\n")}`,
+      );
+      process.exit(1);
+    }
+    for (const warning of result.warnings) console.warn(`Warning: ${warning}`);
+    if (result.plans.length === 0) console.log("No plans.");
+    for (const plan of result.plans) {
+      console.log(
+        [
+          plan.id,
+          plan.createdAt.toISOString(),
+          `${plan.responseCount} response(s)`,
+          stripBidiControls(plan.title),
+        ].join("\t"),
+      );
+    }
+    break;
+  }
+  case "delete-plan": {
+    const result = await runDeletePlan(process.env, command.planId);
+    if (!result.ok) {
+      console.error(
+        `RendezRoute cannot run: invalid configuration\n${result.errors.map((e) => `  - ${e}`).join("\n")}`,
+      );
+      process.exit(1);
+    }
+    for (const warning of result.warnings) console.warn(`Warning: ${warning}`);
+    if (!result.deleted) {
+      console.error(`No plan with the id ${command.planId}.`);
+      process.exitCode = 1;
+      break;
+    }
+    console.log(
+      `Deleted the plan "${stripBidiControls(result.title ?? "")}". Notices to participants are sent by the running server.`,
     );
     break;
   }

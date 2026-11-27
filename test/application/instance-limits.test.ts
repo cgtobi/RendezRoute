@@ -319,3 +319,25 @@ describe("createStorageGuard", () => {
     expect(guard.level()).toBe("ok");
   });
 });
+
+describe("refusals are reported for the hourly summary", () => {
+  it("tells onRefusal about a busy answer and a full disk, not about plans taken", async () => {
+    let refused = 0;
+    deps = {
+      ...deps,
+      instanceLimits: createInstanceLimits({
+        maxNewPlansPerDay: 1,
+        storage: () => level,
+        onRefusal: () => {
+          refused += 1;
+        },
+      }),
+    };
+    expect((await create()).kind).toBe("created");
+    expect(refused).toBe(0);
+    expect((await create()).kind).toBe("busy");
+    level = "critical";
+    expect((await create()).kind).toBe("busy");
+    expect(refused).toBe(2);
+  });
+});

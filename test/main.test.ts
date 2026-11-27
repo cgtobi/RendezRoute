@@ -9,7 +9,14 @@ import { networkInterfaces, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import BetterSqlite3 from "better-sqlite3";
-import { runApplyRetentionMax, runBackup, type RunningServer, startServer } from "../src/main.ts";
+import {
+  runApplyRetentionMax,
+  runBackup,
+  runDeletePlan,
+  runRecentPlans,
+  type RunningServer,
+  startServer,
+} from "../src/main.ts";
 import { TestClient } from "./support/client.ts";
 import { createPlanViaUi, respondViaUi } from "./support/plans.ts";
 
@@ -64,6 +71,7 @@ describe("startServer", () => {
     if (!result.ok) throw new Error(result.errors.join("; "));
     expect(result.warnings).toEqual([
       expect.stringContaining("CONTACT_EMAIL"),
+      expect.stringContaining("No admin is configured"),
       expect.stringContaining("Backups of DATA_DIR"),
     ]);
   });
@@ -77,7 +85,7 @@ describe("encryption key handling at startup (spec 3.11)", () => {
 
     const first = await start(vars);
     if (!first.ok) throw new Error(first.errors.join("; "));
-    expect(first.warnings).toEqual([]);
+    expect(first.warnings).toEqual([expect.stringContaining("No admin is configured")]);
     await running.pop()?.close();
 
     const second = await start(vars);
@@ -156,12 +164,46 @@ describe("apply-retention-max (spec 3.10)", () => {
       ok: true,
       shortened: 0,
       deleted: 1,
-      warnings: [expect.stringContaining("DATA_DIR")],
+      warnings: [
+        expect.stringContaining("No admin is configured"),
+        expect.stringContaining("DATA_DIR"),
+      ],
     });
   });
 
   it("refuses to run with invalid configuration", async () => {
     expect(await runApplyRetentionMax({ BASE_URL: "nope" })).toMatchObject({ ok: false });
+  });
+});
+
+describe("recent-plans and delete-plan (ADR 009)", () => {
+  const ID_A = "AAAAAAAAAAAAAAAAAAAAAA";
+  const ID_B = "BBBBBBBBBBBBBBBBBBBBBB";
+
+  it("lists the newest plans and deletes one through the admin's deletion path", async () => {
+    const vars = env();
+    const first = await start(vars);
+    if (!first.ok) throw new Error(first.errors.join("; "));
+    await running.pop()?.close();
+    insertPlan(vars.DATA_DIR ?? "", ID_A, 1, "2999-01-01T00:00:00.000Z");
+    insertPlan(vars.DATA_DIR ?? "", ID_B, 1, "2999-01-01T00:00:00.000Z");
+
+    const listed = await runRecentPlans(vars);
+    if (!listed.ok) throw new Error(listed.errors.join("; "));
+    expect(listed.plans.map((plan) => plan.id).sort()).toEqual([ID_A, ID_B]);
+    expect(listed.plans[0]).toMatchObject({ title: "Run", responseCount: 0 });
+
+    const deleted = await runDeletePlan(vars, ID_A);
+    expect(deleted).toMatchObject({ ok: true, deleted: true, title: "Run" });
+    expect(await runDeletePlan(vars, ID_A)).toMatchObject({ ok: true, deleted: false });
+    const after = await runRecentPlans(vars);
+    if (!after.ok) throw new Error(after.errors.join("; "));
+    expect(after.plans.map((plan) => plan.id)).toEqual([ID_B]);
+  });
+
+  it("refuses to run with invalid configuration", async () => {
+    expect(await runRecentPlans({ BASE_URL: "nope" })).toMatchObject({ ok: false });
+    expect(await runDeletePlan({ BASE_URL: "nope" }, ID_A)).toMatchObject({ ok: false });
   });
 });
 

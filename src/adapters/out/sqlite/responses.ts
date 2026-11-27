@@ -256,6 +256,15 @@ export function createResponseRepository(
       return { interested: count("interested"), participants: count("joined") };
     },
 
+    async countCreatedSince(since) {
+      const row = await database.db
+        .selectFrom("responses")
+        .select((eb) => eb.fn.countAll<number>().as("n"))
+        .where("created_at", ">=", since.toISOString())
+        .executeTakeFirst();
+      return Number(row?.n ?? 0);
+    },
+
     async countWebResponses(planId) {
       const row = await database.db
         .selectFrom("responses")

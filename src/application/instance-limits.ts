@@ -21,10 +21,12 @@ export interface InstanceLimits {
   /** The cached disk level (see storage-guard.ts); never reads the disk. */
   storage: () => StorageLevel;
   slots: NewPlanSlots;
+  /** Told of every refusal, for the hourly summary. */
+  onRefusal?: (() => void) | undefined;
 }
 
 export function createInstanceLimits(
-  limits: Pick<InstanceLimits, "maxNewPlansPerDay" | "storage">,
+  limits: Pick<InstanceLimits, "maxNewPlansPerDay" | "storage" | "onRefusal">,
 ): InstanceLimits {
   return { ...limits, slots: { inFlight: 0, gate: Promise.resolve() } };
 }
@@ -51,6 +53,7 @@ export async function reserveNewPlan(
   const limits = deps.instanceLimits;
   if (limits === undefined) return NO_LIMITS;
   if (limits.storage() === "critical") {
+    limits.onRefusal?.();
     return { ok: false, retryAfterSeconds: STORAGE_RETRY_SECONDS };
   }
   const { slots } = limits;
@@ -68,6 +71,7 @@ export async function reserveNewPlan(
       lastHour: stored.lastHour + slots.inFlight,
       lastDay: stored.lastDay + slots.inFlight,
     });
+    if (!verdict.allowed) limits.onRefusal?.();
     if (!verdict.allowed) return { ok: false, retryAfterSeconds: verdict.retryAfterSeconds };
     slots.inFlight += 1;
     let released = false;
@@ -88,7 +92,9 @@ export async function reserveNewPlan(
   return decision;
 }
 
-/** Whether route (GPX) uploads are refused: the disk is nearly full. */
+/** Whether route (GPX) uploads are refused: the disk is nearly full. Counts as a refusal. */
 export function routeUploadsRefused(deps: Pick<PlanDeps, "instanceLimits">): boolean {
-  return deps.instanceLimits?.storage() === "critical";
+  const refused = deps.instanceLimits?.storage() === "critical";
+  if (refused) deps.instanceLimits?.onRefusal?.();
+  return refused;
 }

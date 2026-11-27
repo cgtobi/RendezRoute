@@ -154,3 +154,14 @@ describe("requestsAcceptedBySwitch (spec 3.4)", () => {
     expect(requestsAcceptedBySwitch("approval", "approval", responses)).toEqual([]);
   });
 });
+
+describe("validateRequestNote: web addresses (decision D95)", () => {
+  it("takes at most three", () => {
+    const three = "https://a.example https://b.example https://c.example";
+    expect(validateRequestNote(three).ok).toBe(true);
+    expect(validateRequestNote(`${three} https://d.example`)).toEqual({
+      ok: false,
+      error: "too_many_urls",
+    });
+  });
+});

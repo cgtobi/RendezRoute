@@ -59,7 +59,11 @@ describe("reportFromFederation", () => {
 
   it("makes the details of the text: bidi controls and control characters gone, cut at 1,000 characters, then cleaned", async () => {
     const { test, planId, request } = await setup();
-    const texts = ["  Spaced‮ 6150\u0007x  ", `${"é".repeat(998)}  ${"z".repeat(50)}`, "   ‮  "];
+    const texts = [
+      "  Spaced\u202E 6150\u0007x  ",
+      `${"é".repeat(998)}  ${"z".repeat(50)}`,
+      "   \u202E  ",
+    ];
     for (const text of texts) await reportFromFederation(test.planDeps, request({ text }));
     // Reports made at one instant have no order of their own.
     const details = (await test.planDeps.reports.listOpenForPlan(planId)).map(

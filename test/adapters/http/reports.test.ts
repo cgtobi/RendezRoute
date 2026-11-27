@@ -154,12 +154,13 @@ describe("reporting a plan (spec 7 Moderation)", () => {
 
 describe("reports on the admin pages (spec 7 Moderation)", () => {
   it("counts open reports, shows them on the plan's page and resolves them", async () => {
-    const { app, planId, admin } = await setup();
+    const { app, planId, admin, clock } = await setup();
     await logIn(admin);
     expect(text(await (await admin.get("/admin/")).text())).toContain(
       en("admin.openReports", { count: 0 }),
     );
     await report(new TestClient(app), planId, { reason: "unsafe", details: "SENTINEL-one" });
+    clock.set("2026-06-01T08:00:01Z");
     await report(new TestClient(app), planId, { reason: "spam", details: "SENTINEL-two" });
     const home = text(await (await admin.get("/admin/")).text());
     expect(home).toContain(en("admin.openReports", { count: 2 }));
@@ -186,6 +187,7 @@ describe("reports on the admin pages (spec 7 Moderation)", () => {
     expect(unknown.status).toBe(404);
     expect(text(await unknown.text())).toContain(en("admin.reportNotFound"));
     const after = text(await (await admin.get(`/admin/plans/${planId}`)).text());
+    // The second report was made a second later, so the first form resolves the first one.
     expect(after).not.toContain("SENTINEL-one");
     expect(after).toContain("SENTINEL-two");
     expect(after).toContain(en("admin.resolvedReports", { count: 1 }));

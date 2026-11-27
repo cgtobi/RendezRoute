@@ -344,3 +344,38 @@ describe("static assets (spec 2: served by the instance, never from a CDN)", () 
     }
   });
 });
+
+describe("noindex under /p/ (decision D96)", () => {
+  it("marks the plan page, its files and an unknown plan, in the header and the page", async () => {
+    const { client } = await setup();
+    const { planId } = await createPlanViaUi(client);
+    const page = await client.get(`/p/${planId}`);
+    expect(page.headers.get("x-robots-tag")).toContain("noindex");
+    expect(await page.text()).toContain('<meta name="robots" content="noindex"');
+    for (const path of [
+      `/p/${planId}/theme.css`,
+      `/p/${planId}/calendar.ics`,
+      "/p/AAAAAAAAAAAAAAAAAAAAAA",
+    ]) {
+      expect((await client.get(path)).headers.get("x-robots-tag")).toContain("noindex");
+    }
+  });
+
+  it("leaves pages outside /p/ alone", async () => {
+    const { client } = await setup();
+    expect((await client.get("/")).headers.get("x-robots-tag")).toBeNull();
+  });
+});
+
+describe("web addresses in names and titles (decision D95)", () => {
+  it("refuses an address in the title and shows the message", async () => {
+    const { client } = await setup();
+    const hidden = await client.hiddenFields("/new");
+    const response = await client.postForm("/new", {
+      ...hidden,
+      ...planForm({ title: "Win now https://spam.example" }),
+    });
+    expect(response.status).toBe(422);
+    expect(await response.text()).toContain(escaped(en["field.urls_not_allowed"]));
+  });
+});

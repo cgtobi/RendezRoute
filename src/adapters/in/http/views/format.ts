@@ -4,6 +4,7 @@ import { localeOf as locale, type Translate } from "../../../i18n/i18n.ts";
 import { en, type MessageKey } from "../../../i18n/messages/en.ts";
 import { type ActivityType, paceStyleFor } from "../../../../domain/activity.ts";
 import type { PlanStatus } from "../../../../domain/plan.ts";
+import { MAX_URLS_IN_TEXT } from "../../../../domain/text.ts";
 import type { ResponseKind } from "../../../../domain/response.ts";
 import { formatPace, formatSpeed, type PaceBand } from "../../../../domain/pace.ts";
 import {
@@ -99,7 +100,7 @@ export function fieldErrorMessage(
   params?: Readonly<Record<string, string | number>>,
 ): string {
   const key = `field.${code}`;
-  return isMessageKey(key) ? t(key, params) : t("field.invalid");
+  return isMessageKey(key) ? t(key, { maxUrls: MAX_URLS_IN_TEXT, ...params }) : t("field.invalid");
 }
 
 function isMessageKey(key: string): key is MessageKey {

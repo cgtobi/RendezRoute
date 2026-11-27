@@ -33,7 +33,7 @@ import {
   validateStartsAt,
 } from "./schedule.ts";
 import type { FieldError as GenericFieldError } from "./result.ts";
-import { cleanText } from "./text.ts";
+import { cleanText, MAX_URLS_IN_TEXT, type UrlRule } from "./text.ts";
 import { localToInstant, validateTimeZone } from "./timezone.ts";
 
 /** Form field names, also used as the HTML `name` attributes. */
@@ -193,8 +193,16 @@ export function validatePlanInput(
     return undefined;
   };
 
-  const text = (field: PlanField, max: number, { required = false, multiline = false } = {}) => {
-    const result = cleanText(input[field], { max, multiline });
+  const text = (
+    field: PlanField,
+    max: number,
+    {
+      required = false,
+      multiline = false,
+      urls,
+    }: { required?: boolean; multiline?: boolean; urls?: UrlRule | undefined } = {},
+  ) => {
+    const result = cleanText(input[field], { max, multiline, urls });
     if (!result.ok) return fail(field, result.error);
     if (required && result.value === undefined) return fail(field, "required");
     return result.value;
@@ -219,10 +227,10 @@ export function validatePlanInput(
     return point.ok ? point.value : fail(latField, point.error);
   };
 
-  const posterName = text("posterName", PLAN_LIMITS.posterName, { required: true });
+  const posterName = text("posterName", PLAN_LIMITS.posterName, { required: true, urls: "none" });
   const activity = choice("activity", ACTIVITY_TYPES);
-  const title = text("title", PLAN_LIMITS.title, { required: true });
-  const note = text("note", PLAN_LIMITS.note, { multiline: true });
+  const title = text("title", PLAN_LIMITS.title, { required: true, urls: "none" });
+  const note = text("note", PLAN_LIMITS.note, { multiline: true, urls: { max: MAX_URLS_IN_TEXT } });
 
   // Start time in the plan's time zone.
   let startsAt: Date | undefined;
@@ -245,7 +253,7 @@ export function validatePlanInput(
   }
 
   // Public area and exact start; the public point comes from the exact point when there is one.
-  const areaLabel = text("areaLabel", PLAN_LIMITS.areaLabel, { required: true });
+  const areaLabel = text("areaLabel", PLAN_LIMITS.areaLabel, { required: true, urls: "none" });
   const areaPoint = coordinates("areaLat", "areaLng");
   const exactPoint = coordinates("exactLat", "exactLng");
   const exactDescription = input.exactDescription.trim();

@@ -2,7 +2,7 @@
 // in on is linked to the account; no second cookie (plan v1.0, settled 4). Only an encrypted
 // identifier and the display name are kept, never passwords or tokens.
 import { err, ok, type Result } from "./result.ts";
-import { cleanText } from "./text.ts";
+import { cleanText, type TextError } from "./text.ts";
 
 export const IDENTITY_PROVIDERS = ["oidc", "fediverse"] as const;
 export type IdentityProviderKind = (typeof IDENTITY_PROVIDERS)[number];
@@ -24,10 +24,10 @@ export const IDENTITY_LIMITS = {
   displayName: 50,
 } as const;
 
-export type DisplayNameError = "too_long" | "invalid_characters";
+export type DisplayNameError = Exclude<TextError, "required">;
 
 export function validateDisplayName(value: string): Result<string | undefined, DisplayNameError> {
-  const cleaned = cleanText(value, { max: IDENTITY_LIMITS.displayName });
+  const cleaned = cleanText(value, { max: IDENTITY_LIMITS.displayName, urls: "none" });
   return cleaned.ok ? ok(cleaned.value) : err(cleaned.error);
 }
 

@@ -30,11 +30,19 @@ import {
   runRetentionSweep,
 } from "./application/maintenance.ts";
 import { runDueJobs } from "./application/jobs.ts";
+import { createRefusalCounter, summarizeLastHour } from "./application/activity-summary.ts";
 import { createInstanceLimits } from "./application/instance-limits.ts";
 import { createReportAlertThrottle } from "./application/email.ts";
 import type { PlanDeps } from "./application/plans.ts";
 import { runReminders } from "./application/reminders.ts";
-import type { Clock, Geocoder, PreviewRenderer, WeatherProvider } from "./application/ports.ts";
+import type {
+  Clock,
+  Geocoder,
+  PreviewRenderer,
+  RecentPlanRow,
+  WeatherProvider,
+} from "./application/ports.ts";
+import { deletePlanAsOperator, listRecentPlans } from "./application/admin.ts";
 import { createAdminApp } from "./adapters/in/http/admin-app.tsx";
 import { type AccountWiring, createApp } from "./adapters/in/http/app.tsx";
 import { createIngressAdminAuth } from "./adapters/out/admin/ingress-admin-auth.ts";
@@ -44,6 +52,7 @@ import { checkSupervisorVersion } from "./application/supervisor-version.ts";
 import {
   createFlagLimits,
   createJoinLimits,
+  countRefusals,
   createRateLimits,
   createReplyLimits,
 } from "./adapters/in/http/rate-limit.ts";
@@ -130,6 +139,7 @@ export { DEFAULT_PORT };
 const MINUTE_MS = 60 * 1000;
 /** How often due background jobs run; short, so notifications arrive promptly. */
 const JOB_INTERVAL_MS = 10 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 
 /** Outbound requests to tile and geocoding providers, identified as their policies require. */
@@ -493,11 +503,14 @@ export async function startServer(
         : logger.warn("storage_low", { level, previous }),
     onUnavailable: () => logger.warn("storage_unknown", {}),
   });
+  // What was turned away since the last hourly summary line (counts only).
+  const refusals = createRefusalCounter();
   const planDeps: PlanDeps = {
     ...opened.instance.planDeps,
     instanceLimits: createInstanceLimits({
       maxNewPlansPerDay: config.maxNewPlansPerDay,
       storage: () => storageGuard.level(),
+      onRefusal: () => refusals.add(),
     }),
   };
   if (config.admin?.port === port) {
@@ -542,7 +555,10 @@ export async function startServer(
     }
   }
 
-  const rateLimits = createRateLimits(() => planDeps.clock.now().getTime());
+  const rateLimits = countRefusals(
+    createRateLimits(() => planDeps.clock.now().getTime()),
+    () => refusals.add(),
+  );
   // The web and the fediverse share the per-plan cap on notices to the host (decision D42, 0.19.0).
   const joinLimits = createJoinLimits(() => planDeps.clock.now().getTime());
 
@@ -639,6 +655,7 @@ export async function startServer(
 
   // The first sweep finishes before the server listens, so plans past their deletion
   // date are never served after downtime (spec 3.10: sweep at startup).
+  let firstSummary = true;
   const scheduler = await startScheduler(
     [
       { name: "retention_sweep", intervalMs: MINUTE_MS, run: () => runRetentionSweep(planDeps) },
@@ -675,6 +692,21 @@ export async function startServer(
         intervalMs: MINUTE_MS,
         run: async () => {
           await storageGuard.sample();
+          return {};
+        },
+      },
+      // One line an hour with what came in and what was turned away: counts, nothing personal.
+      {
+        name: "activity_summary",
+        intervalMs: HOUR_MS,
+        run: async () => {
+          // The scheduler runs every job once at start; an hour's counts need an hour.
+          if (firstSummary) {
+            firstSummary = false;
+            return {};
+          }
+          const summary = await summarizeLastHour({ ...planDeps, refusals });
+          logger.info("activity_summary", { ...summary });
           return {};
         },
       },
@@ -883,6 +915,53 @@ export async function runApplyRetentionMax(
   try {
     const result = await applyRetentionMax(planDeps, { maxRetentionDays: config.maxRetentionDays });
     return { ok: true, ...result, warnings };
+  } finally {
+    await database.close();
+  }
+}
+
+/** The most plans `recent-plans` lists. */
+const RECENT_PLANS_LIMIT = 20;
+
+/** CLI `recent-plans` (ADR 009): the newest plans with public fields only, for installs without admin. */
+export async function runRecentPlans(
+  env: ConfigSource,
+): Promise<
+  { ok: true; plans: RecentPlanRow[]; warnings: string[] } | { ok: false; errors: string[] }
+> {
+  const opened = await openInstance(env);
+  if (!opened.ok) return opened;
+  const { database, planDeps, warnings } = opened.instance;
+  try {
+    return {
+      ok: true,
+      plans: await listRecentPlans(planDeps, { limit: RECENT_PLANS_LIMIT }),
+      warnings,
+    };
+  } finally {
+    await database.close();
+  }
+}
+
+/**
+ * CLI `delete-plan <id>`: the instance admin's deletion without a session. Notices and the
+ * federation `Delete` are queued as jobs, which the running server sends.
+ */
+export async function runDeletePlan(
+  env: ConfigSource,
+  planId: string,
+): Promise<
+  | { ok: true; deleted: boolean; title: string | undefined; warnings: string[] }
+  | { ok: false; errors: string[] }
+> {
+  const opened = await openInstance(env);
+  if (!opened.ok) return opened;
+  const { database, planDeps, warnings } = opened.instance;
+  try {
+    const result = await deletePlanAsOperator(planDeps, planId);
+    return result.kind === "deleted"
+      ? { ok: true, deleted: true, title: result.title, warnings }
+      : { ok: true, deleted: false, title: undefined, warnings };
   } finally {
     await database.close();
   }

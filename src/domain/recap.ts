@@ -1,6 +1,7 @@
 // The recap (spec 6 features 5–7, decision I42): a window after the start in which participants
 // and the host add comments and links, visible only to them.
 import type { PlanStatus } from "./plan.ts";
+import { cleanText, MAX_URLS_IN_TEXT } from "./text.ts";
 import { type RecapWindow, RECAP_WINDOWS, recapWindowDays } from "./schedule.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -109,7 +110,13 @@ export function fitRecapWindow(recapWindow: RecapWindow, retentionDays: number):
 
 export interface ContributionError {
   field: "body" | "linkUrl";
-  code: "contribution_empty" | "contribution_too_long" | "link_invalid" | "link_too_long";
+  code:
+    | "contribution_empty"
+    | "contribution_too_long"
+    | "too_many_urls"
+    | "invalid_characters"
+    | "link_invalid"
+    | "link_too_long";
 }
 
 /** A comment, a link or both; links must be http(s) web addresses (spec 3.8). */
@@ -119,14 +126,25 @@ export function validateContribution(input: {
 }):
   | { ok: true; value: { body: string | undefined; linkUrl: string | undefined } }
   | { ok: false; errors: ContributionError[] } {
-  const body = input.body.trim() || undefined;
+  const cleaned = cleanText(input.body, {
+    max: CONTRIBUTION_LIMITS.body,
+    multiline: true,
+    urls: { max: MAX_URLS_IN_TEXT },
+  });
+  const body = cleaned.ok ? cleaned.value : input.body.trim() || undefined;
   const linkUrl = input.linkUrl.trim() || undefined;
   if (body === undefined && linkUrl === undefined) {
     return { ok: false, errors: [{ field: "body", code: "contribution_empty" }] };
   }
   const errors: ContributionError[] = [];
-  if (body !== undefined && Array.from(body).length > CONTRIBUTION_LIMITS.body) {
-    errors.push({ field: "body", code: "contribution_too_long" });
+  if (!cleaned.ok) {
+    errors.push({
+      field: "body",
+      code:
+        cleaned.error === "invalid_characters" || cleaned.error === "too_many_urls"
+          ? cleaned.error
+          : "contribution_too_long",
+    });
   }
   if (linkUrl !== undefined) {
     const parsed = URL.parse(linkUrl);

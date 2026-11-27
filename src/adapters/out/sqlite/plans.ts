@@ -359,6 +359,32 @@ export function createPlanRepository(database: Database, cipher: FieldCipher): P
       return { lastHour: Number(row?.lastHour ?? 0), lastDay: Number(row?.lastDay ?? 0) };
     },
 
+    async listRecent(limit) {
+      const rows = await database.db
+        .selectFrom("plans")
+        .select([
+          "plans.id",
+          "plans.created_at",
+          "plans.title",
+          (eb) =>
+            eb
+              .selectFrom("responses")
+              .select((inner) => inner.fn.countAll<number>().as("n"))
+              .whereRef("responses.plan_id", "=", "plans.id")
+              .as("response_count"),
+        ])
+        .orderBy("plans.created_at", "desc")
+        .orderBy("plans.id")
+        .limit(limit)
+        .execute();
+      return rows.map((row) => ({
+        id: row.id,
+        createdAt: new Date(row.created_at),
+        title: row.title,
+        responseCount: Number(row.response_count ?? 0),
+      }));
+    },
+
     async findRoute(planId) {
       const row = await database.db
         .selectFrom("routes")

@@ -106,3 +106,13 @@ describe("canChangeResponse (spec 5 feature 6)", () => {
     });
   });
 });
+
+describe("validateDisplayName: web addresses (decision D95)", () => {
+  it("refuses an address in a name", () => {
+    expect(validateDisplayName("Ben https://spam.example", "Anna")).toEqual({
+      ok: false,
+      error: "urls_not_allowed",
+    });
+    expect(validateDisplayName("Ben", "Anna")).toEqual({ ok: true, value: "Ben" });
+  });
+});

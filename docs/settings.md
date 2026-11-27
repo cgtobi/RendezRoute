@@ -26,6 +26,10 @@ Everything you set or check when you run RendezRoute yourself. The short version
   copies the live database safely. Copy it off the server together with the key volume, stored
   separately. Upgrades also back up the database before migrations (`/data/backups`, at most two,
   deleted after 7 days).
+- **Without an admin:** `docker compose exec rendezroute node dist/cli.js recent-plans` lists the
+  newest 20 plans (id, creation time, responses, title) and `... delete-plan <id>` deletes one for
+  everyone, like the admin page does. Notices to participants and the fediverse `Delete` are queued
+  and sent by the running server.
 - **Admin pages:** with `ADMIN_TOKEN` they are at `/admin`. Limit them to your own addresses in the
   proxy: [`deploy/Caddyfile`](../deploy/Caddyfile) has a commented rule for it (see [Admin](#admin)).
 - **Federation:** it is on by default. It has been tested against fake servers, not yet by hand
@@ -95,6 +99,19 @@ a plan and repeating a template answer 503 with "This instance is busy, try agai
 managing, deleting and exports are never blocked. `0` pauses new plans. A data directory whose disk is
 nearly full (under 512 MiB and under 3 % free) also refuses new plans and route files; under 2 GiB and
 10 % free the app only logs a warning.
+
+Texts: web addresses are refused in plan titles, the public place (area) and names (host,
+participants, accounts); notes, join request notes and recap comments take at most 3. A recap
+comment's separate link field does not count towards the 3. Text direction overrides and isolates
+are refused everywhere. Plans, templates and accounts that already hold an address or such a
+character must be cleaned before they can be edited or repeated. Pages under `/p/` (public plans
+too) carry `noindex`; Nearby and the fediverse are how plans are found.
+
+The log gets one `activity_summary` line an hour with the counts of new plans, responses, reports
+and refused requests (rate limits, the plan cap, route uploads and plans refused by the disk
+guard); it holds no personal data. The first line comes an hour after start. At start the app warns
+about risky settings: no admin, new plans paused, fediverse login open to every server, and a
+forwarding header (`X-Forwarded-For`) arriving while `TRUST_PROXY` is off.
 
 ### Maps and services
 

@@ -351,3 +351,41 @@ describe("mayBePublic (spec 7 Visibility and Nearby plans)", () => {
     expect(mayBePublic({ requiresLogin: false }, { ownerIdentityId: undefined })).toBe(true);
   });
 });
+
+describe("validatePlanInput: web addresses (decision D95)", () => {
+  const link = "https://spam.example";
+
+  it("refuses them in the title, the area and the host name", () => {
+    expect(errors({ title: `Run ${link}` })).toEqual([
+      { field: "title", code: "urls_not_allowed" },
+    ]);
+    expect(errors({ areaLabel: `www.spam.example` })).toEqual([
+      { field: "areaLabel", code: "urls_not_allowed" },
+    ]);
+    expect(errors({ posterName: `Anna ${link}` })).toEqual([
+      { field: "posterName", code: "urls_not_allowed" },
+    ]);
+  });
+
+  it("allows up to three in the note", () => {
+    const three = `${link}/1 ${link}/2 ${link}/3`;
+    expect(draft({ note: three }).note).toBe(three);
+    expect(errors({ note: `${three} ${link}/4` })).toEqual([
+      { field: "note", code: "too_many_urls" },
+    ]);
+  });
+
+  it("refuses bidi overrides in the title", () => {
+    expect(errors({ title: "Run \u202Egpj.exe" })).toEqual([
+      { field: "title", code: "invalid_characters" },
+    ]);
+  });
+});
+
+describe("validatePlanInput: exact start description (decision D96)", () => {
+  it("refuses bidi and control characters", () => {
+    expect(errors({ exactDescription: "North gate\u202E" })).toEqual([
+      { field: "exactDescription", code: "invalid_characters" },
+    ]);
+  });
+});

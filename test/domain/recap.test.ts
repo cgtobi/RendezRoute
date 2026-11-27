@@ -154,3 +154,29 @@ describe("validateContribution (spec 6 feature 5)", () => {
     ]);
   });
 });
+
+describe("validateContribution: web addresses in the comment (decision D95)", () => {
+  it("takes at most three", () => {
+    const three = "https://a.example https://b.example https://c.example";
+    expect(validateContribution({ body: three, linkUrl: "" }).ok).toBe(true);
+    expect(validateContribution({ body: `${three} https://d.example`, linkUrl: "" })).toEqual({
+      ok: false,
+      errors: [{ field: "body", code: "too_many_urls" }],
+    });
+  });
+});
+
+describe("validateContribution: control and bidi characters in the comment (decision D96)", () => {
+  it("refuses them with the form's code", () => {
+    for (const body of ["a\u202Eb", "a\u0007b"]) {
+      expect(validateContribution({ body, linkUrl: "" })).toEqual({
+        ok: false,
+        errors: [{ field: "body", code: "invalid_characters" }],
+      });
+    }
+    expect(validateContribution({ body: "x".repeat(1001), linkUrl: "" })).toEqual({
+      ok: false,
+      errors: [{ field: "body", code: "contribution_too_long" }],
+    });
+  });
+});

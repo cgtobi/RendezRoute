@@ -217,3 +217,16 @@ describe("the recap window on the forms (spec 6 feature 6)", () => {
     );
   });
 });
+
+describe("the recap form's messages for web addresses (decision D96)", () => {
+  it("names the limit of addresses, not the comment's length", async () => {
+    const { ben, planId, clock } = await setup();
+    clock.set(AFTER_START);
+    const four = "https://a.example https://b.example https://c.example https://d.example";
+    const refused = await contribute(ben, planId, four);
+    expect(refused.status).toBe(422);
+    const html = await refused.text();
+    expect(html).toContain("Please use at most 3 web addresses.");
+    expect(html).not.toContain("1000 web addresses");
+  });
+});

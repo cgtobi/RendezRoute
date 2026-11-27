@@ -359,6 +359,19 @@ export function createFakeRepositories(): {
           .filter((e) => e.plan.retentionDays > max)
           .map((e) => structuredClone(e.plan));
       },
+      async listRecent(limit) {
+        return [...plans.values()]
+          .map((e) => e.plan)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? -1 : 1))
+          .slice(0, limit)
+          .map((plan) => ({
+            id: plan.id,
+            createdAt: plan.createdAt,
+            title: plan.title,
+            responseCount: [...responses.values()].filter((e) => e.response.planId === plan.id)
+              .length,
+          }));
+      },
       async countCreatedSince(since) {
         const created = [...plans.values()].map((e) => e.plan.createdAt);
         return {
@@ -423,6 +436,9 @@ export function createFakeRepositories(): {
         return [...reports.values()].filter(
           (report) => report.resolvedAt === undefined && plans.has(report.planId),
         ).length;
+      },
+      async countCreatedSince(since) {
+        return [...reports.values()].filter((report) => report.createdAt >= since).length;
       },
       async listOpenForPlan(planId) {
         return [...reports.values()]
@@ -900,6 +916,9 @@ export function createFakeRepositories(): {
           interested: kinds.filter((kind) => kind === "interested").length,
           participants: kinds.filter((kind) => kind === "joined").length,
         };
+      },
+      async countCreatedSince(since) {
+        return [...responses.values()].filter((e) => e.response.createdAt >= since).length;
       },
       async countWebResponses(planId) {
         return [...responses.values()].filter(

@@ -33,7 +33,7 @@ export function validateDisplayName(
   name: string,
   posterName: string,
 ): Result<string, TextError | "name_taken_by_host"> {
-  const cleaned = cleanText(name, { max: MAX_DISPLAY_NAME_LENGTH });
+  const cleaned = cleanText(name, { max: MAX_DISPLAY_NAME_LENGTH, urls: "none" });
   if (!cleaned.ok) return cleaned;
   if (cleaned.value === undefined) return err("required");
   if (isPosterName(cleaned.value, posterName)) return err("name_taken_by_host");

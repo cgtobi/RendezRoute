@@ -237,6 +237,7 @@ export async function renderPlanPage(
       wide: true,
       head: (
         <>
+          <meta name="robots" content="noindex" />
           <link
             rel="stylesheet"
             href={`/p/${result.view.id}/theme.css?v=${themeVersion(result.view.colors)}`}

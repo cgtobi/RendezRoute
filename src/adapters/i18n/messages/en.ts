@@ -335,6 +335,8 @@ export const en = {
   "field.requiredHint": "Required",
   "field.too_long": "This is too long.",
   "field.invalid_characters": "This contains characters that are not allowed.",
+  "field.urls_not_allowed": "Web addresses are not allowed here.",
+  "field.too_many_urls": "Please use at most {maxUrls} web addresses.",
   "field.choice_invalid": "Please choose one of the options.",
   "field.datetime_invalid": "Please enter a valid date and time.",
   "field.starts_invalid": "Please enter a valid date and time.",

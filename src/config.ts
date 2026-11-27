@@ -775,6 +775,23 @@ export function loadConfig(
   if (errors.length > 0 || postingMode === undefined || palette === undefined)
     return { ok: false, errors };
 
+  // Risky but valid settings (ADR 009, decision D95): said once at start, never refused.
+  if (maxNewPlansPerDay === 0) {
+    warnings.push("MAX_NEW_PLANS_PER_DAY=0: new plans are paused; nobody can create a plan.");
+  }
+  if (fediverseLogin !== undefined && fediverseLogin.servers === undefined) {
+    warnings.push(
+      "FEDIVERSE_LOGIN=true without FEDIVERSE_LOGIN_SERVERS: accounts on any fediverse server can log in, " +
+        "which anyone can set up for themselves. List the servers you trust.",
+    );
+  }
+  if (adminToken === undefined && ingress === undefined) {
+    warnings.push(
+      "No admin is configured (ADMIN_TOKEN or ADMIN_INGRESS): the report button is off and plans can " +
+        "only be removed with the command line (rendezroute delete-plan).",
+    );
+  }
+
   return {
     ok: true,
     warnings,

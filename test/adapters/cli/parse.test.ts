@@ -39,4 +39,17 @@ describe("parseCommand (decision I5)", () => {
     expect(parseCommand(["backup"]).kind).toBe("error");
     expect(parseCommand(["backup", "/a", "/b"]).kind).toBe("error");
   });
+
+  it("knows recent-plans without arguments (ADR 009)", () => {
+    expect(parseCommand(["recent-plans"])).toEqual({ kind: "recent-plans" });
+    expect(parseCommand(["recent-plans", "x"]).kind).toBe("error");
+  });
+
+  it("knows delete-plan with one plan id (ADR 009)", () => {
+    const id = "abcdefghijklmnopqrstuv";
+    expect(parseCommand(["delete-plan", id])).toEqual({ kind: "delete-plan", planId: id });
+    expect(parseCommand(["delete-plan"]).kind).toBe("error");
+    expect(parseCommand(["delete-plan", id, id]).kind).toBe("error");
+    expect(parseCommand(["delete-plan", "../etc"]).kind).toBe("error");
+  });
 });

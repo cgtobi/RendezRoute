@@ -76,3 +76,24 @@ describe("clientIp middleware", () => {
     expect(await (await app(false).request("/", { headers })).text()).toBe("unknown");
   });
 });
+
+describe("clientIp middleware: forwarding header without TRUST_PROXY", () => {
+  it("reports once, without any address, and never with the proxy trusted", async () => {
+    const seen: unknown[][] = [];
+    const build = (trustProxy: boolean) => {
+      const hono = new Hono<ClientIpEnv>();
+      hono.use(clientIp({ trustProxy, onUntrustedForwarded: (...args) => seen.push(args) }));
+      hono.get("/", (c) => c.text("ok"));
+      return hono;
+    };
+    const headers = { "x-forwarded-for": "198.51.100.7" };
+    const untrusted = build(false);
+    await untrusted.request("/");
+    expect(seen).toHaveLength(0);
+    await untrusted.request("/", { headers });
+    await untrusted.request("/", { headers });
+    expect(seen).toEqual([[]]);
+    await build(true).request("/", { headers });
+    expect(seen).toHaveLength(1);
+  });
+});

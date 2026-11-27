@@ -225,7 +225,7 @@ describe("a Flag naming a plan or one of our contribution Notes", () => {
         content: "<p>Hello &amp; <b>bye</b><br>again 8123</p><script>alert(1)</script>",
       }),
       flagOf(zed, plan, { n: 2, content: `${"a".repeat(1500)}TAIL` }),
-      flagOf(zed, plan, { n: 3, content: "abc‮def⁦ghi 4417‏" }),
+      flagOf(zed, plan, { n: 3, content: "abc\u202Edef\u2066ghi 4417\u200F" }),
       flagOf(zed, plan, { n: 4, content: "" }),
       flagOf(zed, plan, { n: 5, content: null }),
     ];

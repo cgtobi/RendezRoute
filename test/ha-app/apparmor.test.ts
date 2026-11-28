@@ -403,8 +403,8 @@ describe("the profile and the rest of the app", () => {
     expect(section.includes("enforces")).toBe(!COMPLAIN_MODE);
   });
 
-  it("is version 0.18.13 (the 0.11.1 flip to enforcement is kept) with its changelog", () => {
+  it("is version 0.19.0 (the 0.11.1 flip to enforcement is kept) with its changelog", () => {
     const config = parse(readFileSync(join(APP, "config.yaml"), "utf8")) as Record<string, unknown>;
-    expect(config.version).toBe("0.18.13");
+    expect(config.version).toBe("0.19.0");
   });
 });

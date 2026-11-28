@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.0
+
+- Protection against spam and flooding. An instance now accepts at most 200 new plans a day and 40 an hour (counting plan creation and "Repeat"); beyond that visitors see a "busy, try again later" page. You can lower the daily limit with the new option `max_new_plans_per_day` (0 pauses new plans). New plans and GPX uploads are also refused while the disk is almost full.
+- Tighter limits: rate limits now group IPv6 addresses by their /48 range, a plan takes at most 300 web responses, host notifications per plan are capped at 20 an hour, moderators get at most one report alert email an hour, and confirmation emails are limited per address.
+- Web addresses are no longer allowed in plan titles, areas and names, and notes, request notes and recap comments take at most 3. Hidden text-direction control characters are refused in all texts. Existing plans that contain such text must be cleaned before they can be edited or repeated.
+- Pages under /p/ ask search engines not to index them.
+- New operator tools: the command line gets `recent-plans` and `delete-plan <id>`, the log gets an hourly `activity_summary` line with counts only, and startup warns about risky settings (no admin, plan cap 0, fediverse login without allowed servers).
+
 ## 0.18.13
 
 - Your own entry in the "Who's coming" list and in the recap now reads "Me" ("Ich", "Moi") instead of your name, so you can tell yourself apart from someone with the same name. Everyone else still sees your name, and exports, calendars and previews are unchanged.
